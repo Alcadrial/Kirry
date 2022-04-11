@@ -2,8 +2,6 @@ package com.alcadra.renderengine.renderer;
 
 import java.awt.IllegalComponentStateException;
 
-import org.lwjgl.opengl.GL30;
-
 import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector3f;
@@ -25,21 +23,7 @@ public class TextureRenderer extends Renderer {
 	protected void initializeArrayBuffer()
 	{
 		if (!(shader.useUV() || shader.hasUniformUV())) throw new IllegalComponentStateException("Shader cannot use a texture for render in a TextureRenderer!");
-		VertexArray vertexArray = getVertexArray();
-		vertexArray.bindBuffer(getArrayBuffer());
-		int size = 20 + (shader.useColor() ? 16 : 0), offset = 0, i = 0;
-		vertexArray.vertexAttributePointer(i, 3, GL30.GL_FLOAT, false, size, offset);
-		vertexArray.enableVertexAttribute(i++);
-		offset += 12;
-		if (shader.useColor())
-		{
-			vertexArray.vertexAttributePointer(i, 4, GL30.GL_FLOAT, false, size, offset);
-			vertexArray.enableVertexAttribute(i++);
-			offset += 16;
-		}
-		vertexArray.vertexAttributePointer(i, 2, GL30.GL_FLOAT, false, size, offset);
-		vertexArray.enableVertexAttribute(i++);
-		VertexArray.unbind();
+		super.initializeArrayBuffer();
 	}
 	
 	public void loadImage(Image image)
