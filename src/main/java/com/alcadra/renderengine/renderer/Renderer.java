@@ -250,13 +250,18 @@ public class Renderer extends BaseRenderer {
 	{
 		getArrayBuffer().merge(renderer.getArrayBuffer());
 		getElementArrayBuffer().merge(renderer.getElementArrayBuffer(), offset);
-		offset += renderer.offset;
+		offset += renderer.getOffset();
 	}
 	
 	@Override
 	protected ArrayBuffer getArrayBuffer()
 	{
 		return arrayBuffer;
+	}
+	
+	public int getOffset()
+	{
+		return offset;
 	}
 	
 	@Override

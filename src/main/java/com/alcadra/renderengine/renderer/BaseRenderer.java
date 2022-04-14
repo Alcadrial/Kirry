@@ -81,4 +81,9 @@ public abstract class BaseRenderer {
 	{
 		return elements;
 	}
+	
+	public Shader getShader()
+	{
+		return shader;
+	}
 }
