@@ -1,5 +1,6 @@
 package com.alcadra.renderengine.window.widget;
 
+import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3i;
 import com.alcadra.renderengine.window.Window;
@@ -27,8 +28,15 @@ public abstract class Widget {
 		return v.x() > pos.x() && v.x() < pos.x() + size.x() && v.y() > pos.y() && v.y() < pos.y() + size.y();
 	}
 	
-	protected abstract boolean onResize(Vector2i oldSize, Vector2i newSize);
-	protected abstract void onResized(Vector2i oldSize, Vector2i newSize);
+	protected boolean onResize(Vector2i oldSize, Vector2i newSize)
+	{
+		return true;
+	}
+	
+	protected Vector2i resize(Vector2i oldSize, Vector2i newSize)
+	{
+		return new Vector2i(new Vector2f(size).multiply(newSize).divide(oldSize));
+	}
 	
 	protected final Window getWindow()
 	{
@@ -67,11 +75,6 @@ public abstract class Widget {
 	
 	public final void setSize(Vector2i size)
 	{
-		if (onResize(this.size, size))
-		{
-			Vector2i old = this.size;
-			this.size = size;
-			onResized(old, size);
-		}
+		if (onResize(window.getSize(), size)) this.size = resize(window.getSize(), size);
 	}
 }
