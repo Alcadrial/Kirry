@@ -2,6 +2,8 @@ package com.alcadra.renderengine.buffer;
 
 import org.lwjgl.opengl.GL15;
 
+import com.alcadra.renderengine.Launch;
+
 public class SimpleBuffer {
 	
 	private static final SimpleBuffer NULL = new SimpleBuffer(0, 0);
@@ -19,6 +21,7 @@ public class SimpleBuffer {
 	
 	protected SimpleBuffer(int target, int id)
 	{
+		Launch.printError("[INTERNAL] simplebuffer " + target + " " + id);
 		this.target = target;
 		this.id = id;
 	}

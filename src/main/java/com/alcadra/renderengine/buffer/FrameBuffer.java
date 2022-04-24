@@ -1,10 +1,14 @@
 package com.alcadra.renderengine.buffer;
 
+import java.util.LinkedList;
+import java.util.Queue;
+
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL32;
 
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector4i;
+import com.alcadra.renderengine.Launch;
 import com.alcadra.renderengine.textures.ColorTexture;
 import com.alcadra.renderengine.textures.DepthTexture;
 import com.alcadra.renderengine.textures.Texture;
@@ -13,19 +17,28 @@ public class FrameBuffer extends SimpleBuffer {
 	
 	private static final FrameBuffer DEFAULT = new FrameBuffer(GL32.GL_FRAMEBUFFER, 0);
 	private static FrameBuffer binded = DEFAULT;
+	private static final Queue<FrameBuffer> BINDED_QUEUE = new LinkedList<>();
+	
 	private Vector4i screen = new Vector4i(0, 0, 0, 0);
-	private ColorTexture colorTexture = ColorTexture.getNull();
-	private DepthTexture depthTexture = DepthTexture.getNull();
-	private RenderBuffer renderBuffer = RenderBuffer.getNull();
+	private ColorTexture colorTexture;
+	private DepthTexture depthTexture;
+	private RenderBuffer renderBuffer;
 	
 	public FrameBuffer()
 	{
 		this(GL32.GL_FRAMEBUFFER);
+		colorTexture = ColorTexture.getNull();
+		Launch.printError("[INTERNAL] framebuffer colorstep");
+		depthTexture = DepthTexture.getNull();
+		Launch.printError("[INTERNAL] framebuffer depthstep");
+		renderBuffer = RenderBuffer.getNull();
+		Launch.printError("[INTERNAL] framebuffer renderstep");
 	}
 	
 	protected FrameBuffer(int target)
 	{
 		super(target, GL32.glGenFramebuffers());
+		Launch.printError("[INTERNAL] framebuffer");
 	}
 	
 	protected FrameBuffer(int target, int id)
@@ -36,7 +49,15 @@ public class FrameBuffer extends SimpleBuffer {
 	@Override
 	public void bind()
 	{
-		if (binded.getId() != getId())
+		GL32.glBindFramebuffer(getTarget(), getId());
+		BINDED_QUEUE.offer(binded);
+		binded = this;
+		GL32.glViewport(screen.x(), screen.y(), screen.z(), screen.w());
+	}
+	
+	private void bind0()
+	{
+		if (!isBinded())
 		{
 			GL32.glBindFramebuffer(getTarget(), getId());
 			binded = this;
@@ -44,11 +65,35 @@ public class FrameBuffer extends SimpleBuffer {
 		}
 	}
 	
+	public void unbind()
+	{
+		if (isBinded())
+		{
+			FrameBuffer frameBuffer = BINDED_QUEUE.poll();
+			if (frameBuffer == null)
+			{
+				DEFAULT.bind0();
+				return;
+			}
+			frameBuffer.bind0();
+		}
+	}
+	
+	public void bindUnbinded()
+	{
+		if (isBinded()) bind();
+	}
+	
+	public boolean isBinded()
+	{
+		return binded.getId() == getId();
+	}
+	
 	public void bindTexture(Texture texture, int attachment)
 	{
 		if (texture.nonNull())
 		{
-			bind();
+			bindUnbinded();
 			GL32.glFramebufferTexture(getTarget(), attachment, texture.getId(), 0);
 			setDrawArea(screen.xy(), texture.getSize());
 			if (texture instanceof ColorTexture) colorTexture = (ColorTexture) texture;
@@ -80,12 +125,14 @@ public class FrameBuffer extends SimpleBuffer {
 	{
 		if (notDefault())
 		{
+			bind();
 			bindTexture(new DepthTexture(width, height), GL32.GL_DEPTH_ATTACHMENT);
 			GL32.glClear(GL32.GL_DEPTH_BUFFER_BIT);
 			bindTexture(new ColorTexture(width, height), GL32.GL_COLOR_ATTACHMENT0);
 			GL30.glEnable(GL30.GL_DEPTH_TEST);
 			GL32.glEnable(GL32.GL_BLEND);
 			GL32.glBlendFunc(GL32.GL_SRC_ALPHA, GL32.GL_ONE_MINUS_SRC_ALPHA);
+			unbind();
 		}
 	}
 	
@@ -101,15 +148,14 @@ public class FrameBuffer extends SimpleBuffer {
 	public void setDrawArea(Vector2i start, Vector2i size)
 	{
 		screen = new Vector4i(start.x(), start.y(), size.x(), size.y());
-		if (binded.getId() != getId()) bind();
+		if (isBinded()) bind();
 		else GL32.glViewport(screen.x(), screen.y(), screen.z(), screen.w());
 	}
 	
 	public void clear()
 	{
-		bind();
+		bindUnbinded();
 		GL32.glClear(GL32.GL_DEPTH_BUFFER_BIT | GL32.GL_COLOR_BUFFER_BIT);
-		unbind();
 	}
 	
 	public ColorTexture getColorTexture()
@@ -130,17 +176,14 @@ public class FrameBuffer extends SimpleBuffer {
 	public String getError()
 	{
 		bind();
-		return getBindedError();
+		String error = getBindedError();
+		unbind();
+		return error;
 	}
 	
 	public boolean notDefault()
 	{
 		return getId() != DEFAULT.getId();
-	}
-	
-	public static void unbind()
-	{
-		DEFAULT.bind();
 	}
 	
 	public static FrameBuffer getDefault()

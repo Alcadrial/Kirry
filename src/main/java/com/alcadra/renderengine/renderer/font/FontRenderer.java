@@ -1,6 +1,7 @@
 package com.alcadra.renderengine.renderer.font;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.lwjgl.opengl.GL30;
@@ -9,84 +10,42 @@ import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
-import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
-import com.alcadra.renderengine.buffer.FrameBuffer;
 import com.alcadra.renderengine.renderer.BaseRenderer;
-import com.alcadra.renderengine.renderer.TextureRenderer;
 import com.alcadra.renderengine.renderer.VertexArray;
 import com.alcadra.renderengine.renderer.font.text.Text;
 import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.shader.Shader;
-import com.alcadra.renderengine.textures.ColorTexture;
 import com.alcadra.renderengine.textures.Texture;
 
 public class FontRenderer extends BaseRenderer {
 	
-	public class FontTextureRenderer extends TextureRenderer {
-		
-		public FontTextureRenderer(Shader shader)
-		{
-			super(shader);
-		}
-		
-		@Override
-		protected void initializeArrayBuffer()
-		{
-			VertexArray vertexArray = getVertexArray();
-			vertexArray.bindBuffer(getArrayBuffer());
-			int size = 20 + (shader.useColor() ? 16 : 0), offset = 0, i = 0;
-			vertexArray.vertexAttributePointer(i, 3, GL30.GL_FLOAT, false, size, offset);
-			vertexArray.enableVertexAttribute(i++);
-			offset += 12;
-			if (shader.useColor())
-			{
-				vertexArray.vertexAttributePointer(i, 4, GL30.GL_FLOAT, false, size, offset);
-				vertexArray.enableVertexAttribute(i++);
-				offset += 16;
-			}
-			vertexArray.vertexAttributePointer(i, 2, GL30.GL_FLOAT, false, size, offset);
-			vertexArray.enableVertexAttribute(i++);
-			VertexArray.unbind();
-		}
-	}
-	
-	private final FrameBuffer frameBuffer = new FrameBuffer();
-	private final TextureRenderer textureRenderer;
+	private Font font;
 	
 	public FontRenderer(Shader fontShader, Shader textureShader)
 	{
 		super(fontShader, new VertexArray(), new FloatArrayBuffer(), null);
 		getVertexArray().bindBuffer(getArrayBuffer());
-		GL30.glVertexAttribPointer(0, 2, GL30.GL_FLOAT, false, 16, 0);
-		GL30.glVertexAttribPointer(1, 2, GL30.GL_FLOAT, false, 16, 8);
+		GL30.glVertexAttribPointer(0, 3, GL30.GL_FLOAT, false, 32, 0);
+		GL30.glVertexAttribPointer(1, 2, GL30.GL_FLOAT, false, 32, 12);
+		GL30.glVertexAttribPointer(2, 3, GL30.GL_FLOAT, false, 32, 20);
 		GL30.glEnableVertexAttribArray(0);
 		GL30.glEnableVertexAttribArray(1);
+		GL30.glEnableVertexAttribArray(2);
 		VertexArray.unbind();
-		textureRenderer = new FontTextureRenderer(textureShader);
 	}
 	
-	public void drawString(Matrix4f matrix, Font font, Text text, Vector2i position, float size, float z)
+	public void loadText(Matrix4f matrix, Text text, Vector2i position, float size, int maxLength, float z)
 	{
-		drawString(matrix, font, text, position, new Vector3f(0, 0, 0), size, z);
+		loadText(matrix, text, position, new Vector3f(0, 0, 0), size, maxLength, z);
 	}
 	
-	public void drawString(Matrix4f matrix, Font font, Text text, Vector2i position, Vector3f color, float size, float z)
+	public void loadText(Matrix4f matrix, Text text, Vector2i position, Vector3f color, float size, int maxLength, float z)
 	{
-		drawString(matrix, font, text, position, color, size, 500, z);
+		loadText(matrix, text, new Vector2f(position), color, size, maxLength, z);
 	}
 	
-	public void drawString(Matrix4f matrix, Font font, Text text, Vector2i position, float size, int maxLength, float z)
-	{
-		drawString(matrix, font, text, position, new Vector3f(0, 0, 0), size, maxLength, z);
-	}
-	
-	public void drawString(Matrix4f matrix, Font font, Text text, Vector2i position, Vector3f color, float size, int maxLength, float z)
-	{
-		drawString(matrix, font, text, new Vector2f(position), color, size, maxLength, z);
-	}
-	
-	public void drawString(Matrix4f matrix, Font font, Text text, Vector2f position, Vector3f color, float size, int maxLength, float z)
+	public void loadText(Matrix4f matrix, Text text, Vector2f position, Vector3f color, float size, int maxLength, float z)
 	{
 		if (text.isEmpty()) return;
 		List<List<RenderCharacter>> fontText = new ArrayList<>(text.lines());
@@ -122,22 +81,7 @@ public class FontRenderer extends BaseRenderer {
 				float v0 = (float) formattedChar.getY() / texture.getHeight();
 				float u1 = (float) formattedChar.getWidth() / texture.getWidth();
 				float v1 = (float) formattedChar.getHeight() / texture.getHeight();
-				vertices.add(x);
-				vertices.add(y);
-				vertices.add(u0);
-				vertices.add(v0);
-				vertices.add(x);
-				vertices.add(y + h);
-				vertices.add(u0);
-				vertices.add(v0 + v1);
-				vertices.add(x + w);
-				vertices.add(y + h);
-				vertices.add(u0 + u1);
-				vertices.add(v0 + v1);
-				vertices.add(x + w);
-				vertices.add(y);
-				vertices.add(u0 + u1);
-				vertices.add(v0);
+				vertices.addAll(Arrays.asList(x, y, z, u0, v0, color.x(), color.y(), color.z(), x, y + h, z, u0, v0 + v1, color.x(), color.y(), color.z(), x + w, y + h, z, u0 + u1, v0 + v1, color.x(), color.y(), color.z(), x + w, y, z, u0 + u1, v0, color.x(), color.y(), color.z()));
 				advanced += formattedChar.getAdvance();
 				if (advanced > maxLength)
 				{
@@ -148,45 +92,28 @@ public class FontRenderer extends BaseRenderer {
 			advanced = 0;
 			line += font.getLineHeight();
 		}
-		getArrayBuffer().clear();
-		getArrayBuffer().addAll(vertices);
+		((FloatArrayBuffer) getArrayBuffer()).addAll(vertices);
+	}
+	
+	public void draw(Matrix4f matrix)
+	{
 		Texture.setActive(0);
-		texture.bind();
+		font.getTexture().bind();
 		shader.enable();
-		shader.setUniform((Vector4f) color.multiply(1 / 255F), "color");
-		shader.setUniform(z / Integer.MAX_VALUE, "z");
 		shader.setUniform(0, "atlas");
 		shader.setUniform(matrix, "transformation");
-		frameBuffer.bind();
 		draw(GL30.GL_QUADS);
-		FrameBuffer.unbind();
 		Shader.disableShaders();
+		getArrayBuffer().clear();
 	}
 	
-	public void drawTexture(Matrix4f matrix, float z)
+	public Font getFont()
 	{
-		textureRenderer.clear();
-		textureRenderer.loadQuad(-1, -1, 1, 1, z, 0, 1, 1, 0);
-		textureRenderer.draw(GL30.GL_QUADS, matrix);
-		frameBuffer.clear();
+		return font;
 	}
 	
-	public ColorTexture getTexture()
+	public void setFont(Font font)
 	{
-		return frameBuffer.getColorTexture();
-	}
-	
-	@Override
-	protected FloatArrayBuffer getArrayBuffer()
-	{
-		return (FloatArrayBuffer) super.getArrayBuffer();
-	}
-	
-	public void initializeFrameBuffer(int width, int height)
-	{
-		frameBuffer.initializeDepthTextureBuffer(width, height);
-		frameBuffer.clear();
-		textureRenderer.loadTexture(frameBuffer.getColorTexture());
-		FrameBuffer.unbind();
+		this.font = font;
 	}
 }
