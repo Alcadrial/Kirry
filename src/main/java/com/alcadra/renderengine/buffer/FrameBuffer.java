@@ -81,7 +81,7 @@ public class FrameBuffer extends SimpleBuffer {
 	
 	public void bindUnbinded()
 	{
-		if (isBinded()) bind();
+		if (!isBinded()) bind();
 	}
 	
 	public boolean isBinded()
