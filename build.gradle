@@ -5,13 +5,13 @@ plugins {
     id("java-library")
 }
 
-def printClass(Object obj) {
+void printClass(Object obj) {
 	println(obj.class)
 }
 
 println("Configuring RenderEngine's project")
 
-boolean printExportedFiles = false;
+boolean printExportedFiles = true;
 boolean excludeTestFiles = true;
 
 java {
@@ -25,7 +25,10 @@ sourceSets.main.java {
 	srcDir("src/main/java")
 	
 	exclude(e -> {
-		if (!excludeTestFiles || !e.getFile().isFile()) return false;
+		if (!excludeTestFiles || !e.getFile().isFile()) {
+			System.out.println("D " + e.getFile())
+			return false
+		}
 		boolean b = e.getFile().name.endsWith(".java")
 		String text = e.getFile().text
 		boolean b0 = text.contains("@Test")
@@ -33,7 +36,7 @@ sourceSets.main.java {
 		boolean b2 = text.contains("package com.alcadra.renderengine;")
 		boolean b3 = text.contains("@com.alcadra.renderengine.Test")
 		boolean result = b && ((b0 && (b1 || b2)) || b3)
-		if (!result && printExportedFiles) System.out.println(e.getFile());
+		if (!result && printExportedFiles) System.out.println("F " + e.getFile())
 		return result
 	})
 }
@@ -98,8 +101,8 @@ task exportSources(type: AlcadrialTask) {
 }
 
 task exportTestSources(type: AlcadrialTask) {
-	excludeTestFiles = false;
-	tasks.named("sourcesJar") {getArchiveFileName().set("RenderEngine-test.jar")}
+//	excludeTestFiles = false;
+//	tasks.named("sourcesJar") {getArchiveFileName().set("RenderEngine-test.jar")}
 	dependsOn("sourcesJar")
 	doLast{
 		tasks.named("sourcesJar") {getArchiveFileName().set("RenderEngine.jar")}

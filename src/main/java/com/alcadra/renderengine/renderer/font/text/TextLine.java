@@ -6,9 +6,19 @@ public class TextLine implements Iterable<Character> {
 	
 	private String line;
 	
+	public TextLine()
+	{
+		line = "";
+	}
+	
 	public TextLine(String line)
 	{
-		this.line = line != null ? line : "";
+		this.line = String.valueOf(line);
+	}
+	
+	public TextLine(Object obj)
+	{
+		line = String.valueOf(obj);
 	}
 	
 	public boolean isBlank()

@@ -1,107 +1,141 @@
 package com.alcadra.renderengine.buffer;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.nio.IntBuffer;
 
-import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL15;
+import org.lwjgl.system.MemoryUtil;
 
-public class ArrayBuffer extends SimpleBuffer {
+public abstract class ArrayBuffer<B extends Buffer> extends SimpleBuffer {
 	
-	protected List<Byte> values = new ArrayList<>();
+	public static final ArrayBuffer<Buffer> NULL = new ArrayBuffer<>(0) {
+		
+		@Override
+		public int size()
+		{
+			return 0;
+		}
+		
+		@Override
+		public int byteSize()
+		{
+			return 0;
+		}
+		
+		@Override
+		protected Buffer nativeBuffer()
+		{
+			return null;
+		}
+		
+		@Override
+		protected Buffer nativeGlBuffer()
+		{
+			return null;
+		}
+		
+		@Override
+		protected void syncRewrite(Buffer buffer)
+		{}
+		
+		@Override
+		protected void syncModify(Buffer buffer, int from, int to)
+		{}
+		
+		@Override
+		protected boolean equals(Buffer buffer, Buffer other)
+		{
+			return false;
+		}
+		
+		@Override
+		protected int elementSize()
+		{
+			return 0;
+		}
+	};
+	
+	protected boolean isModified = false;
 	
 	public ArrayBuffer()
-	{}
-	
-	protected ArrayBuffer(int target)
 	{
-		super(target);
+		
 	}
 	
-	protected ArrayBuffer(int target, int id)
+	private ArrayBuffer(int id)
 	{
-		super(target, id);
+		super(GL15.GL_ARRAY_BUFFER, id);
 	}
 	
-	public void add(byte i)
+	public abstract int size();
+	
+	public abstract int byteSize();
+	
+	@Override
+	public SimpleBuffer getNull()
 	{
-		values.add(i);
+		return null;
 	}
 	
-	public void add(short i)
-	{
-		values.addAll(Arrays.asList((byte) (i >>> 8), (byte) (i & 255)));
-	}
+	protected abstract B nativeBuffer();
+	protected abstract B nativeGlBuffer();
 	
-	public void add(int i)
-	{
-		values.addAll(Arrays.asList((byte) (i >>> 24), (byte) (i >> 16 & 255), (byte) (i >> 8 & 255), (byte) (i & 255)));
-	}
+	protected abstract void syncRewrite(B buffer);
+	protected abstract void syncModify(B buffer, int from, int to);
 	
-	public void add(float f)
-	{
-		add(Float.floatToRawIntBits(f));
-	}
-	
-	public void add(long i)
-	{
-		values.addAll(Arrays.asList((byte) (i >>> 56), (byte) (i >> 48 & 255), (byte) (i >> 40 & 255), (byte) (i >> 32 & 255), (byte) (i >> 24 & 255), (byte) (i >> 16 & 255), (byte) (i >> 8 & 255), (byte) (i & 255)));
-	}
-	
-	public void add(double f)
-	{
-		add(Double.doubleToRawLongBits(f));
-	}
-	
-	public void merge(ArrayBuffer arrayBuffer)
-	{
-		values.addAll(arrayBuffer.values);
-	}
-	
-	public void clear()
-	{
-		values.clear();
-	}
+	protected abstract boolean equals(B buffer, B other);
 	
 	public void sync()
 	{
-		int size = getGlSize();
-		if (size != size())
+		if (isModified)
 		{
-			ByteBuffer b = BufferUtils.createByteBuffer(values.size());
-			for (byte i : values) b.put(i);
-			GL15.glBufferData(getTarget(), b.flip(), GL15.GL_DYNAMIC_DRAW);
-		}
-		else
-		{
-			ByteBuffer fixed = BufferUtils.createByteBuffer(size);
-			for (byte i : values) fixed.put(i);
-			fixed.flip();
-			ByteBuffer buffer = BufferUtils.createByteBuffer(size);
-			GL15.glGetBufferSubData(getTarget(), 0, buffer);
-			int start = -1;
-			for (int i = 0; i < size; i++)
+			/*
+			@off
+			int byteSize = getGlByteSize();
+			if (byteSize != byteSize())
 			{
-				if (buffer.get() != fixed.get())
-				{
-					if (start == -1) start = i;
-				}
-				else if (start != -1)
-				{
-					ByteBuffer l = BufferUtils.createByteBuffer(i - start);
-					for (int j = start; j < i; j++) l.put(fixed.get(j));
-					GL15.glBufferSubData(getTarget(), start, l.flip());
-					start = -1;
-				}
+			@on
+			*/
+			B buffer = nativeBuffer();
+			syncRewrite(buffer);
+			MemoryUtil.memFree(buffer);
+			/*
+			@off
 			}
+			else
+			{
+				B local = nativeBuffer();
+				B buffer = nativeGlBuffer();
+				int start = -1;
+				int size = size();
+				for (int i = 0; i < size; i++)
+				{
+					if (!equals(buffer, local))
+					{
+						if (start == -1) start = i;
+					}
+					else if (start != -1)
+					{
+						syncModify(local, start, i);
+						local.limit(size).position(i);
+						start = -1;
+					}
+				}
+				MemoryUtil.memFree(local);
+				MemoryUtil.memFree(buffer);
+			}
+			@on
+			*/
+			isModified = false;
 		}
 	}
 	
+	protected abstract int elementSize();
+	
 	public int getGlSize()
 	{
-		return GL15.glGetBufferParameteri(getTarget(), GL15.GL_BUFFER_SIZE) / elementSize();
+		return getGlByteSize() / elementSize();
 	}
 	
 	public int getGlByteSize()
@@ -109,33 +143,33 @@ public class ArrayBuffer extends SimpleBuffer {
 		return GL15.glGetBufferParameteri(getTarget(), GL15.GL_BUFFER_SIZE);
 	}
 	
+	public byte[] getGlData()
+	{
+		ByteBuffer buffer = MemoryUtil.memAlloc(getGlByteSize());
+		GL15.glGetBufferSubData(getTarget(), 0, buffer);
+		byte[] v = new byte[getGlByteSize()];
+		for (int i = 0; i < v.length; i++) v[i] = buffer.get(i);
+		MemoryUtil.memFree(buffer);
+		return v;
+	}
+	
 	public int[] getGlIntData()
 	{
-		int[] v = new int[getGlSize()];
-		GL15.glGetBufferSubData(getTarget(), 0, v);
+		IntBuffer buffer = MemoryUtil.memAllocInt(getGlByteSize() / 4);
+		GL15.glGetBufferSubData(getTarget(), 0, buffer);
+		int[] v = new int[buffer.limit()];
+		for (int i = 0; i < v.length; i++) v[i] = buffer.get(i);
+		MemoryUtil.memFree(buffer);
 		return v;
 	}
 	
 	public float[] getGlFloatData()
 	{
-		float[] v = new float[getGlSize()];
-		GL15.glGetBufferSubData(getTarget(), 0, v);
+		IntBuffer buffer = MemoryUtil.memAllocInt(getGlByteSize() / 4);
+		GL15.glGetBufferSubData(getTarget(), 0, buffer);
+		float[] v = new float[buffer.limit()];
+		for (int i = 0; i < v.length; i++) v[i] = Float.intBitsToFloat(buffer.get(i));
+		MemoryUtil.memFree(buffer);
 		return v;
-	}
-	
-	public int size()
-	{
-		return values.size();
-	}
-	
-	protected int elementSize()
-	{
-		return 1;
-	}
-	
-	@Override
-	public String toString()
-	{
-		return "ArrayBuffer{values=" + values + "}";
 	}
 }

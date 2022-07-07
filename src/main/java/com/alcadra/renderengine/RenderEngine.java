@@ -4,12 +4,15 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Random;
 
+import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
-import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GL43;
+import org.lwjgl.system.Configuration;
+import org.lwjgl.system.MemoryUtil;
 
 import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector2f;
@@ -25,35 +28,53 @@ import com.alcadra.renderengine.renderer.font.Font;
 import com.alcadra.renderengine.renderer.font.FontRenderer;
 import com.alcadra.renderengine.renderer.font.text.Text;
 import com.alcadra.renderengine.renderer.font.text.TextLine;
+import com.alcadra.renderengine.rendertest.ObjectRenderTest;
+import com.alcadra.renderengine.rendertest.RenderTest;
 import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.shader.ShaderInputDataType;
+import com.alcadra.renderengine.shader.ShaderStatus;
 import com.alcadra.renderengine.shader.ShaderType;
-import com.alcadra.renderengine.textures.ColorTexture;
 import com.alcadra.renderengine.util.Image;
-import com.alcadra.renderengine.util.Logger;
 import com.alcadra.renderengine.util.Util;
 import com.alcadra.renderengine.window.Window;
 import com.alcadra.renderengine.window.widget.VisibleButton;
 import com.alcadra.threads.TimeThread;
 
-public class Launch {
+@SuppressWarnings("unused")
+public class RenderEngine implements RenderTest {
 	
-	public static final Logger LOGGER = new Logger();
-	private static volatile String colorShaderVertexPath = "src/main/resources/assets/renderengine/colored_cube.vert";
-	private static volatile String colorShaderFragmentPath = "src/main/resources/assets/renderengine/colored_cube.frag";
-	private static volatile String textureShaderVertexPath = "src/main/resources/assets/renderengine/colored_texture.vert";
-	private static volatile String textureShaderFragmentPath = "src/main/resources/assets/renderengine/colored_texture.frag";
-	private static volatile String fontShaderVertexPath = "src/main/resources/assets/renderengine/font.vert";
-	private static volatile String fontShaderFragmentPath = "src/main/resources/assets/renderengine/font.frag";
-	private static volatile String iconPath = "src/main/resources/assets/renderengine/icon.png";
-	private static volatile String fontPath = "src/main/resources/assets/renderengine/Segoe UI.json";
-	private static volatile String fontImagePath = "src/main/resources/assets/renderengine/font.png";
+	public static volatile String colorShaderVertexPath = "src/main/resources/assets/renderengine/colored_cube.vert";
+	public static volatile String colorShaderFragmentPath = "src/main/resources/assets/renderengine/colored_cube.frag";
+	public static volatile String textureShaderVertexPath = "src/main/resources/assets/renderengine/colored_texture.vert";
+	public static volatile String textureShaderFragmentPath = "src/main/resources/assets/renderengine/colored_texture.frag";
+	public static volatile String fontShaderVertexPath = "src/main/resources/assets/renderengine/font.vert";
+	public static volatile String fontShaderFragmentPath = "src/main/resources/assets/renderengine/font.frag";
+	public static volatile String iconPath = "src/main/resources/assets/renderengine/icon.png";
+	public static volatile String texturePath = "src/main/resources/assets/renderengine/grass1.png";
+	public static volatile String fontPath = "src/main/resources/assets/renderengine/Segoe UI.json";
+	public static volatile String fontImagePath = "src/main/resources/assets/renderengine/font.png";
 	private static int maxLoops = 60;
 	private static volatile boolean debug = false;
+	
+	public static final RenderEngine RENDER_ENGINE_TEST = new RenderEngine();
+	public static final ObjectRenderTest OBJECT_RENDER_TEST = new ObjectRenderTest();
+	private static RenderTest activeTest;
 	
 	public static boolean isDebug()
 	{
 		return debug;
+	}
+	
+	public static void setActiveTest(RenderTest activeTest)
+	{
+		RenderEngine.activeTest.getWindow().hide();
+		RenderEngine.activeTest = activeTest;
+		RenderEngine.activeTest.restart();
+	}
+	
+	public static RenderTest getActiveTest()
+	{
+		return activeTest;
 	}
 	
 	public static void main(String[] args) throws Exception
@@ -106,16 +127,15 @@ public class Launch {
 				}
 			}
 		}
-		if (GLFW.glfwInit()) new Launch().render();
+		if (GLFW.glfwInit()) RENDER_ENGINE_TEST.render();
 	}
 	
-	Window window;
-	Vector2f cursor;
-	TimeThread thread;
+	private TimeThread thread;
 	
 	public void render() throws InterruptedException
 	{
-		thread = new TimeThread("Test", maxLoops, this::start, t -> !GLFW.glfwWindowShouldClose(window.getId()), this::loopMethod, GLFW::glfwTerminate);
+		activeTest = this;
+		thread = new TimeThread("Test", maxLoops, this::start, t -> !activeTest.getWindow().shouldClose(), this::loopMethod, GLFW::glfwTerminate);
 		thread.setDaemon(false);
 		thread.start();
 		synchronized (this)
@@ -158,7 +178,7 @@ public class Launch {
 	public void loopMethod(float partialTicks)
 	{
 		printError("origin");
-		loop(partialTicks);
+		activeTest.loop(partialTicks);
 		printError("loop");
 		while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
 		GL30.glEnable(GL30.GL_DEPTH_TEST);
@@ -168,18 +188,22 @@ public class Launch {
 		printError("renew");
 	}
 	
-	Shader shader, shaderTexture;
-	Renderer renderer;
-	FontRenderer fontRenderer;
-	TextureRenderer textureRenderer;
-	ColorRenderer colorRenderer;
-	Font font;
+	private Window window;
+	private Vector2f cursor;
+	private Shader shader, shaderTexture;
+	private Renderer renderer;
+	private FontRenderer fontRenderer;
+	private TextureRenderer textureRenderer;
+	private ColorRenderer colorRenderer;
+	private Font font;
 	
+	@Override
 	public void start()
 	{
+		Configuration.DEBUG.set(true);
 		window = new Window(1080, 720, "Test");
 		window.build();
-		GL.createCapabilities();
+		window.makeContextCurrent();
 		printError("window build");
 		cursor = Vector2f.getOrigin();
 		window.addEvent(new GLFWCursorPosCallbackI() {
@@ -204,21 +228,28 @@ public class Launch {
 			}
 		});
 		window.addEvent((GLFWWindowSizeCallbackI) (w, width, height) -> {
-			Launch.this.window.setWidth(width);
-			Launch.this.window.setHeight(height);
+			RenderEngine.this.window.setWidth(width);
+			RenderEngine.this.window.setHeight(height);
 		});
 		window.addEvent((GLFWKeyCallbackI) (id, key, scancode, action, mods) -> {
-			if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT) position = switch (key)
+			if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT)
 			{
-				case GLFW.GLFW_KEY_W -> position.add(new Vector3f(0, 0, partial));
-				case GLFW.GLFW_KEY_A -> position.add(new Vector3f(-partial, 0, 0));
-				case GLFW.GLFW_KEY_S -> position.add(new Vector3f(0, 0, -partial));
-				case GLFW.GLFW_KEY_D -> position.add(new Vector3f(partial, 0, 0));
-				case GLFW.GLFW_KEY_SPACE -> position.add(new Vector3f(0, partial, 0));
-				case GLFW.GLFW_KEY_LEFT_SHIFT -> position.add(new Vector3f(0, -partial, 0));
-				case GLFW.GLFW_KEY_P -> Vector3f.getOrigin();
-				default -> position;
-			};
+				switch (key)
+				{
+					case GLFW.GLFW_KEY_KP_7 -> setActiveTest(OBJECT_RENDER_TEST);
+					default -> position = switch (key)
+					{
+						case GLFW.GLFW_KEY_W -> position.add(new Vector3f(0, 0, partial));
+						case GLFW.GLFW_KEY_A -> position.add(new Vector3f(-partial, 0, 0));
+						case GLFW.GLFW_KEY_S -> position.add(new Vector3f(0, 0, -partial));
+						case GLFW.GLFW_KEY_D -> position.add(new Vector3f(partial, 0, 0));
+						case GLFW.GLFW_KEY_SPACE -> position.add(new Vector3f(0, partial, 0));
+						case GLFW.GLFW_KEY_LEFT_SHIFT -> position.add(new Vector3f(0, -partial, 0));
+						case GLFW.GLFW_KEY_P -> Vector3f.getOrigin();
+						default -> position;
+					};
+				}
+			}
 			else if (action == GLFW.GLFW_RELEASE && key == GLFW.GLFW_KEY_R)
 			{
 				rotating = !rotating;
@@ -226,15 +257,18 @@ public class Launch {
 			}
 		});
 		printError("events");
-		FrameBuffer.getNull();
+		FrameBuffer.getBinded();
 		printError("capabilities");
 		frameBuffer = new FrameBuffer();
 		printError("framebuffer");
+		ShaderStatus results;
 		shader = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED, ShaderInputDataType.UNUSUED);
 		try
 		{
-			shader.loadShaderFile(new File(colorShaderVertexPath), ShaderType.VERTEX);
-			shader.loadShaderFile(new File(colorShaderFragmentPath), ShaderType.FRAGMENT);
+			results = shader.loadShaderFile(new File(colorShaderVertexPath), ShaderType.VERTEX);
+			if (!results.isCompiled()) System.out.println(results);
+			results = shader.loadShaderFile(new File(colorShaderFragmentPath), ShaderType.FRAGMENT);
+			if (!results.isCompiled()) System.out.println(results);
 		}
 		catch (IOException e)
 		{
@@ -244,8 +278,10 @@ public class Launch {
 		shaderTexture = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED);
 		try
 		{
-			shaderTexture.loadShaderFile(new File(textureShaderVertexPath), ShaderType.VERTEX);
-			shaderTexture.loadShaderFile(new File(textureShaderFragmentPath), ShaderType.FRAGMENT);
+			results = shaderTexture.loadShaderFile(new File(textureShaderVertexPath), ShaderType.VERTEX);
+			if (!results.isCompiled()) System.out.println(results);
+			results = shaderTexture.loadShaderFile(new File(textureShaderFragmentPath), ShaderType.FRAGMENT);
+			if (!results.isCompiled()) System.out.println(results);
 		}
 		catch (IOException e)
 		{
@@ -260,8 +296,10 @@ public class Launch {
 		Shader fontShader = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED);
 		try
 		{
-			fontShader.loadShaderFile(new File(fontShaderVertexPath), ShaderType.VERTEX);
-			fontShader.loadShaderFile(new File(fontShaderFragmentPath), ShaderType.FRAGMENT);
+			results = fontShader.loadShaderFile(new File(fontShaderVertexPath), ShaderType.VERTEX);
+			if (!results.isCompiled()) System.out.println(results);
+			results = fontShader.loadShaderFile(new File(fontShaderFragmentPath), ShaderType.FRAGMENT);
+			if (!results.isCompiled()) System.out.println(results);
 		}
 		catch (IOException e)
 		{
@@ -303,22 +341,41 @@ public class Launch {
 		
 		frameBuffer.initializeDepthTextureBuffer(1024, 1024);
 		
-		textureRenderer.loadTexture(new ColorTexture(icon));
+		textureRenderer.loadImage(icon);
 		colorRenderer.loadQuad(0, 0, 0, 100, 100, 0, 255, 254, 2, 255);
+		
+		GL30.glEnable(GL43.GL_DEBUG_OUTPUT);
+		GL30.glEnable(GL43.GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		GL43.glDebugMessageCallback((source, type, id, severity, length, message, userParam) -> System.out.println(MemoryUtil.memASCII(message)), 0);
+		GL43.glDebugMessageControl(GL43.GL_DONT_CARE, GL43.GL_DONT_CARE, GL43.GL_DONT_CARE, new int[0], false);
+		
 		printError("renderer load");
+		System.out.print("FontRenderer{FloatArrayBuffer{values=[");
+		for (int i = 0; i < 4 * 14; i++)
+		{
+			System.out.print(" x ,   y  ,  z ,   r  ,  g ,  b ,     u     ,     v    |");
+		}
+		System.out.println();
 	}
 	
-	FrameBuffer frameBuffer;
-	Image icon;
-	Random random = new Random();
-	Integer iteration = 0;
-	double o = 0;
-	String s = "";
-	Vector3f position = new Vector3f(0, 0, 0);
-	float rotationX = 0, rotationY = 0, partial;
-	boolean rotating = false;
+	@Override
+	public void restart()
+	{
+		window.show();
+		window.makeContextCurrent();
+	}
 	
-	@SuppressWarnings("unused")
+	private FrameBuffer frameBuffer;
+	private Image icon;
+	private Random random = new Random();
+	private Integer iteration = 0;
+	private double o = 0;
+	private String s = "";
+	private Vector3f position = new Vector3f(0, 0, 0);
+	private float rotationX = 0, rotationY = 0, partial;
+	private boolean rotating = false;
+	
+	@Override
 	public void loop(float partialTicks)
 	{
 		partial = partialTicks * 0.1F;
@@ -339,8 +396,8 @@ public class Launch {
 		Vector3f end = new Vector3f(10, 10, 10);
 		printError("compact");
 		
-		fontRenderer.loadText(compact, new Text("ala.beta@delta"), new Vector2i(0, (int) o % 180), new Vector3f(255, 0, 0), 0.5F, 500, 0);
-		fontRenderer.loadText(compact, new Text(Util.toPointString(cursor)), new Vector2i(cursor.subtract(window.getSize().multiply(0.5F))), new Vector2f(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight()), 0.3F, 550, 0);
+		fontRenderer.loadText(new Text("ala.beta@delta"), new Vector2i(0, (int) o % 360), new Vector3f(255, 0, 0), 0.5F, 500, 0);
+		fontRenderer.loadText(new Text(Util.toPointString(cursor)), new Vector2i(cursor.subtract(window.getSize().multiply(0.5F))), new Vector2f(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight()), 0.003F, 550, 0);
 		Text text = new Text();
 		text.addLine(new TextLine("partialTicks " + partialTicks));
 		text.addLine(new TextLine("fps " + thread.getRunsPerSecond()));
@@ -359,24 +416,58 @@ public class Launch {
 		text.addLine(new TextLine("o " + o));
 		text.addLine(new TextLine(Double.toString(o % 180)));
 		text.addLine(new TextLine(Double.toString(o % 360)));
-		fontRenderer.loadText(compact, text, new Vector2i(-450, 500), 1, 1000, 0);
+		fontRenderer.loadText(text, new Vector2i(-window.getWidth() / 2, window.getHeight() / 2 - 40), 0.8F, 1000, 0);
 		printError("FontRender texting");
 		fontRenderer.draw(compact);
 		printError("FontRender draw");
 		
 		// frameBuffer.bind();
-		// printError("FrameBuffer draw");
+		printError("FrameBuffer draw");
 		
 		renderer.clear();
 		renderer.color(255, 255, 0, 255);
 		renderer.loadCube(identity, Vector3f.getOrigin(), end);
 		renderer.loadCube(viewer, end, end.add(end));
 		renderer.draw(GL30.GL_QUADS, projected);
-		// printError("TextureRender draw");
+		printError("TextureRender draw");
+		
+		textureRenderer.clear();
+		textureRenderer.loadQuad(0, 0, 256, 256, 0, 0, 0, 1, 1);
+		// System.out.println(textureRenderer);
+		textureRenderer.draw(GL30.GL_QUADS, compact);
 		
 		// frameBuffer.unbind();
 		window.update(compact, colorRenderer, textureRenderer, partialTicks);
 		printError("window update");
 		o += partialTicks * 1;
 	}
+	
+	@Override
+	public Window getWindow()
+	{
+		return window;
+	}
+	
+	/**
+	 * <h3>{@link BufferUtils}</h3>
+	 * <p>
+	 * <ol>
+	 * <i>
+	 * <li>It does not support on-heap Java arrays.</li>
+	 * <li>When a direct buffer is passed as an argument to an LWJGL method, no data is copied.</li>
+	 * <li>LWJGL never modifies the current position</li>
+	 * <li>Memory blocks are zeroed-out on allocation</li>
+	 * </i>
+	 * </ol>
+	 * <h3>{@link MemoryUtil}</h3>
+	 * <p>
+	 * <ol>
+	 * <i>
+	 * <li>It does not support on-heap Java arrays.</li>
+	 * <li>When a direct buffer is passed as an argument to an LWJGL method, no data is copied.</li>
+	 * <li>LWJGL never modifies the current position</li>
+	 * </i>
+	 * </ol>
+	 */
+	private Object info = null;
 }

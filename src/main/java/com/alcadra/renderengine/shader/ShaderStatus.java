@@ -3,13 +3,15 @@ package com.alcadra.renderengine.shader;
 public class ShaderStatus {
 	
 	private String code;
-	private boolean compiled;
+	private String info;
+	private boolean isCompiled;
 	private int id;
 	
-	public ShaderStatus(boolean compiled, int id, String code)
+	public ShaderStatus(boolean isCompiled, int id, String code, String info)
 	{
 		this.code = code;
-		this.compiled = compiled;
+		this.info = info;
+		this.isCompiled = isCompiled;
 		this.id = id;
 	}
 	
@@ -18,13 +20,25 @@ public class ShaderStatus {
 		return code;
 	}
 	
+	public String getInfo()
+	{
+		return info;
+	}
+	
 	public boolean isCompiled()
 	{
-		return compiled;
+		return isCompiled;
 	}
 	
 	public int getId()
 	{
 		return id;
+	}
+	
+	@Override
+	public String toString()
+	{
+		if (isCompiled) return "Shader compiled";
+		return code + "\n" + info;
 	}
 }

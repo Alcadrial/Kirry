@@ -9,6 +9,11 @@ import com.alcadra.renderengine.util.Image;
 
 public class Texture {
 	
+	public static void setActive(int x)
+	{
+		GL32.glActiveTexture(GL32.GL_TEXTURE0 + x);
+	}
+	
 	private final int id, target, internalFormat, textureFormat, dataType;
 	private Vector2i size;
 	
@@ -152,8 +157,9 @@ public class Texture {
 		return target;
 	}
 	
-	public static void setActive(int x)
+	@Override
+	public String toString()
 	{
-		GL32.glActiveTexture(GL32.GL_TEXTURE0 + x);
+		return "Texture{id=" + id + "}";
 	}
 }

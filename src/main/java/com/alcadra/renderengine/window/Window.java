@@ -15,6 +15,7 @@ import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWScrollCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
+import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.CallbackI;
 
@@ -81,7 +82,6 @@ public class Window {
 			windowId = GLFW.glfwCreateWindow(getWidth(), getHeight(), title, 0, 0);
 			if (isBuild = windowId != 0)
 			{
-				GLFW.glfwMakeContextCurrent(windowId);
 				GLFW.glfwSwapInterval(0);
 				GLFW.glfwSetCharCallback(windowId, charCallback);
 				GLFW.glfwSetCursorEnterCallback(windowId, cursorEnterCallback);
@@ -92,11 +92,6 @@ public class Window {
 				GLFW.glfwSetWindowSizeCallback(windowId, windowSizeCallback);
 			}
 		}
-	}
-	
-	public final boolean shouldClose()
-	{
-		return GLFW.glfwWindowShouldClose(windowId);
 	}
 	
 	public final void setIcon(Texture texture)
@@ -111,22 +106,6 @@ public class Window {
 		Buffer b = GLFWImage.malloc(1).put(0, GLFWImage.malloc().set(image.getBuffered().getWidth(), image.getBuffered().getHeight(), image.toByteBuffer()));
 		GLFW.glfwSetWindowIcon(windowId, b);
 		b.free();
-	}
-	
-	public final void show()
-	{
-		GLFW.glfwShowWindow(windowId);
-		onResize(getSize(), getSize());
-	}
-	
-	public final void pollEvents()
-	{
-		GLFW.glfwPollEvents();
-	}
-	
-	public final void swapBuffers()
-	{
-		GLFW.glfwSwapBuffers(windowId);
 	}
 	
 	public void update(Matrix4f matrix, ColorRenderer colorRenderer, TextureRenderer textureRenderer, float partialTicks)
@@ -173,7 +152,7 @@ public class Window {
 	protected void onResize(Vector2i oldSize, Vector2i newSize)
 	{
 		aspectRatio = (float) newSize.x() / newSize.y();
-		if (isBuild) FrameBuffer.getDefault().setDrawArea(Vector2i.getOrigin(), newSize);
+		if (isBuild) FrameBuffer.DEFAULT.setDrawArea(Vector2i.getOrigin(), newSize);
 	}
 	
 	public final long getId()
@@ -265,5 +244,43 @@ public class Window {
 	public final void setLockKeyModsInputMode(boolean value)
 	{
 		GLFW.glfwSetInputMode(windowId, GLFW.GLFW_LOCK_KEY_MODS, value ? 1 : 0);
+	}
+	
+	public final void makeContextCurrent()
+	{
+		GLFW.glfwMakeContextCurrent(windowId);
+		GL.createCapabilities();
+	}
+	
+	public final void detachCurrentContext()
+	{
+		GLFW.glfwMakeContextCurrent(0);
+	}
+	
+	public final boolean shouldClose()
+	{
+		return GLFW.glfwWindowShouldClose(windowId);
+	}
+	
+	public final void show()
+	{
+		GLFW.glfwShowWindow(windowId);
+		onResize(getSize(), getSize());
+	}
+	
+	public final void hide()
+	{
+		GLFW.glfwHideWindow(windowId);
+		onResize(getSize(), getSize());
+	}
+	
+	public final void pollEvents()
+	{
+		GLFW.glfwPollEvents();
+	}
+	
+	public final void swapBuffers()
+	{
+		GLFW.glfwSwapBuffers(windowId);
 	}
 }

@@ -3,20 +3,17 @@ package com.alcadra.renderengine.renderer;
 import org.lwjgl.opengl.GL30;
 
 import com.alcadra.math.Matrix4f;
-import com.alcadra.math.vector.IVector4f;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
 import com.alcadra.math.vector.complex.Quaternion;
-import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.shader.Shader;
 
-public class Renderer extends BaseRenderer {
+public class Renderer extends BaseRenderer<FloatArrayBuffer> implements ShaderRenderer, VertexBuilder<Renderer> {
 	
-	private FloatArrayBuffer arrayBuffer = new FloatArrayBuffer();
-	private IVector4f bindedColor = Vector4f.getOrigin();
+	private Vector4f bindedColor = Vector4f.getOrigin();
 	private Vector2f bindedUV = Vector2f.getOrigin();
 	private Vector3f bindedNormal = Vector3f.getOrigin();
 	private int offset;
@@ -29,37 +26,49 @@ public class Renderer extends BaseRenderer {
 	
 	protected void initializeArrayBuffer()
 	{
-		getVertexArray().bindBuffer(getArrayBuffer());
-		int size = 12 + (shader.useColor() ? 16 : 0) + (shader.useUV() ? 8 : 0) + (shader.useNormal() ? 12 : 0), offset = 0;
-		GL30.glVertexAttribPointer(0, 3, GL30.GL_FLOAT, false, size, offset);
-		GL30.glEnableVertexAttribArray(0);
+		VertexArray vertexArray = getVertexArray();
+		vertexArray.bindBuffer(getArrayBuffer());
+		int size = 12 + (shader.useColor() ? 16 : 0) + (shader.useUV() ? 8 : 0) + (shader.useNormal() ? 12 : 0);
+		int offset = 0;
+		vertexArray.vertexAttributePointer(0, 3, GL30.GL_FLOAT, false, size, offset);
+		vertexArray.enableVertexAttribute(0);
 		offset += 12;
 		if (shader.useColor())
 		{
-			GL30.glVertexAttribPointer(1, 4, GL30.GL_FLOAT, false, size, offset);
-			GL30.glEnableVertexAttribArray(1);
+			vertexArray.vertexAttributePointer(1, 4, GL30.GL_FLOAT, false, size, offset);
+			vertexArray.enableVertexAttribute(1);
 			offset += 16;
 		}
 		if (shader.useUV())
 		{
-			GL30.glVertexAttribPointer(2, 2, GL30.GL_FLOAT, false, size, offset);
-			GL30.glEnableVertexAttribArray(2);
+			vertexArray.vertexAttributePointer(2, 2, GL30.GL_FLOAT, false, size, offset);
+			vertexArray.enableVertexAttribute(2);
 			offset += 8;
 		}
 		if (shader.useNormal())
 		{
-			GL30.glVertexAttribPointer(3, 3, GL30.GL_FLOAT, false, size, offset);
-			GL30.glEnableVertexAttribArray(3);
+			vertexArray.vertexAttributePointer(3, 3, GL30.GL_FLOAT, false, size, offset);
+			vertexArray.enableVertexAttribute(3);
 			offset += 12;
 		}
 		VertexArray.unbind();
 	}
 	
-	public Renderer changeShader(Shader other)
+	protected void disableAttributes()
 	{
+		VertexArray vertexArray = getVertexArray();
+		vertexArray.bind();
+		if (shader.useColor()) vertexArray.disableVertexAttribute(1);
+		if (shader.useUV()) vertexArray.disableVertexAttribute(2);
+		if (shader.useNormal()) vertexArray.disableVertexAttribute(3);
+	}
+	
+	@Override
+	public void changeShader(Shader other)
+	{
+		disableAttributes();
 		shader = other;
 		initializeArrayBuffer();
-		return this;
 	}
 	
 	public Renderer loadPoint(int index)
@@ -76,7 +85,7 @@ public class Renderer extends BaseRenderer {
 	
 	public Renderer vertex(float x, float y, float z)
 	{
-		ArrayBuffer arrayBuffer = getArrayBuffer();
+		FloatArrayBuffer arrayBuffer = getArrayBuffer();
 		arrayBuffer.add(x);
 		arrayBuffer.add(y);
 		arrayBuffer.add(z);
@@ -102,33 +111,21 @@ public class Renderer extends BaseRenderer {
 		return this;
 	}
 	
-	public Renderer color(float r, float g, float b, float a)
-	{
-		return color(new Vector4f(r, g, b, a));
-	}
-	
+	@Override
 	public Renderer color(Vector4f color)
 	{
-		bindedColor = color.multiply(1 / 255F);
+		bindedColor = color.divide(255);
 		return this;
 	}
 	
-	public Renderer uv(float u, float v)
-	{
-		return uv(new Vector2f(u, v));
-	}
-	
+	@Override
 	public Renderer uv(Vector2f uv)
 	{
 		bindedUV = uv;
 		return this;
 	}
 	
-	public Renderer normal(float x, float y, float z)
-	{
-		return normal(new Vector3f(x, y, z));
-	}
-	
+	@Override
 	public Renderer normal(Vector3f normal)
 	{
 		bindedNormal = normal;
@@ -224,7 +221,7 @@ public class Renderer extends BaseRenderer {
 			shader.setUniform(matrix, "transformation");
 			if (shader.hasUniformColor()) shader.setUniform(bindedColor, "color");
 			if (shader.hasUniformUV()) shader.setUniform(bindedUV, "uv");
-			if (shader.hasUniformNormal()) shader.setUniform(bindedColor, "normal");
+			if (shader.hasUniformNormal()) shader.setUniform(bindedNormal, "normal");
 			if (shader.useUV() || shader.hasUniformUV()) shader.setUniform(0, "textureSampler");
 		}
 		drawIndices(mode);
@@ -253,12 +250,6 @@ public class Renderer extends BaseRenderer {
 		offset += renderer.getOffset();
 	}
 	
-	@Override
-	protected ArrayBuffer getArrayBuffer()
-	{
-		return arrayBuffer;
-	}
-	
 	public int getOffset()
 	{
 		return offset;
@@ -267,6 +258,6 @@ public class Renderer extends BaseRenderer {
 	@Override
 	public String toString()
 	{
-		return "Render{" + getArrayBuffer() + ", " + getElementArrayBuffer() + "}";
+		return "Renderer{" + getArrayBuffer() + ", " + getElementArrayBuffer() + "}";
 	}
 }

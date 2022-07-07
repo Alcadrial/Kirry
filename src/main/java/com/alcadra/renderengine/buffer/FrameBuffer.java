@@ -8,16 +8,36 @@ import org.lwjgl.opengl.GL32;
 
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector4i;
-import com.alcadra.renderengine.Launch;
+import com.alcadra.renderengine.RenderEngine;
 import com.alcadra.renderengine.textures.ColorTexture;
 import com.alcadra.renderengine.textures.DepthTexture;
 import com.alcadra.renderengine.textures.Texture;
 
 public class FrameBuffer extends SimpleBuffer {
 	
-	private static final FrameBuffer DEFAULT = new FrameBuffer(GL32.GL_FRAMEBUFFER, 0);
+	public static final FrameBuffer DEFAULT = new FrameBuffer(GL32.GL_FRAMEBUFFER, 0);
 	private static FrameBuffer binded = DEFAULT;
 	private static final Queue<FrameBuffer> BINDED_QUEUE = new LinkedList<>();
+	
+	public static FrameBuffer getBinded()
+	{
+		return binded;
+	}
+	
+	public static String getBindedError()
+	{
+		return switch (GL32.glCheckFramebufferStatus(binded.getTarget()))
+		{
+			case GL32.GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT -> "FRAMEBUFFER INCOMPLETE ATTACHMENT";
+			case GL32.GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT -> "FRAMEBUFFER INCOMPLETE MISSING ATTACHMENT";
+			case GL32.GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER -> "FRAMEBUFFER INCOMPLETE DRAW_BUFFER";
+			case GL32.GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER -> "FRAMEBUFFER INCOMPLETE READ_BUFFER";
+			case GL32.GL_FRAMEBUFFER_UNSUPPORTED -> "FRAMEBUFFER UNSUPPORTED";
+			case GL32.GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE -> "FRAMEBUFFER INCOMPLETE MULTISAMPLE";
+			case GL32.GL_FRAMEBUFFER_UNDEFINED -> "FRAMEBUFFER UNDEFINED";
+			default -> "";
+		};
+	}
 	
 	private Vector4i screen = new Vector4i(0, 0, 0, 0);
 	private ColorTexture colorTexture;
@@ -28,22 +48,22 @@ public class FrameBuffer extends SimpleBuffer {
 	{
 		this(GL32.GL_FRAMEBUFFER);
 		colorTexture = ColorTexture.getNull();
-		Launch.printError("[INTERNAL] framebuffer colorstep");
 		depthTexture = DepthTexture.getNull();
-		Launch.printError("[INTERNAL] framebuffer depthstep");
-		renderBuffer = RenderBuffer.getNull();
-		Launch.printError("[INTERNAL] framebuffer renderstep");
+		renderBuffer = RenderBuffer.NULL;
 	}
 	
 	protected FrameBuffer(int target)
 	{
-		super(target, GL32.glGenFramebuffers());
-		Launch.printError("[INTERNAL] framebuffer");
+		this(target, GL32.glGenFramebuffers());
 	}
 	
 	protected FrameBuffer(int target, int id)
 	{
 		super(target, id);
+		RenderEngine.printError("[INTERNAL] framebuffer");
+		colorTexture = ColorTexture.getNull();
+		depthTexture = DepthTexture.getNull();
+		renderBuffer = RenderBuffer.NULL;
 	}
 	
 	@Override
@@ -65,6 +85,7 @@ public class FrameBuffer extends SimpleBuffer {
 		}
 	}
 	
+	@Override
 	public void unbind()
 	{
 		if (isBinded())
@@ -87,6 +108,17 @@ public class FrameBuffer extends SimpleBuffer {
 	public boolean isBinded()
 	{
 		return binded.getId() == getId();
+	}
+	
+	public boolean notDefault()
+	{
+		return getId() != DEFAULT.getId();
+	}
+	
+	@Override
+	public SimpleBuffer getNull()
+	{
+		return DEFAULT;
 	}
 	
 	public void bindTexture(Texture texture, int attachment)
@@ -179,35 +211,5 @@ public class FrameBuffer extends SimpleBuffer {
 		String error = getBindedError();
 		unbind();
 		return error;
-	}
-	
-	public boolean notDefault()
-	{
-		return getId() != DEFAULT.getId();
-	}
-	
-	public static FrameBuffer getDefault()
-	{
-		return DEFAULT;
-	}
-	
-	public static FrameBuffer getBinded()
-	{
-		return binded;
-	}
-	
-	public static String getBindedError()
-	{
-		return switch (GL32.glCheckFramebufferStatus(binded.getTarget()))
-		{
-			case GL32.GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT -> "FRAMEBUFFER INCOMPLETE ATTACHMENT";
-			case GL32.GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT -> "FRAMEBUFFER INCOMPLETE MISSING ATTACHMENT";
-			case GL32.GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER -> "FRAMEBUFFER INCOMPLETE DRAW_BUFFER";
-			case GL32.GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER -> "FRAMEBUFFER INCOMPLETE READ_BUFFER";
-			case GL32.GL_FRAMEBUFFER_UNSUPPORTED -> "FRAMEBUFFER UNSUPPORTED";
-			case GL32.GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE -> "FRAMEBUFFER INCOMPLETE MULTISAMPLE";
-			case GL32.GL_FRAMEBUFFER_UNDEFINED -> "FRAMEBUFFER UNDEFINED";
-			default -> "";
-		};
 	}
 }
