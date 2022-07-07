@@ -8,10 +8,10 @@ import org.lwjgl.opengl.GL32;
 
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector4i;
-import com.alcadra.renderengine.RenderEngine;
 import com.alcadra.renderengine.textures.ColorTexture;
 import com.alcadra.renderengine.textures.DepthTexture;
 import com.alcadra.renderengine.textures.Texture;
+import com.alcadra.renderengine.util.Util;
 
 public class FrameBuffer extends SimpleBuffer {
 	
@@ -60,7 +60,7 @@ public class FrameBuffer extends SimpleBuffer {
 	protected FrameBuffer(int target, int id)
 	{
 		super(target, id);
-		RenderEngine.printError("[INTERNAL] framebuffer");
+		Util.printError("[INTERNAL] framebuffer");
 		colorTexture = ColorTexture.getNull();
 		depthTexture = DepthTexture.getNull();
 		renderBuffer = RenderBuffer.NULL;

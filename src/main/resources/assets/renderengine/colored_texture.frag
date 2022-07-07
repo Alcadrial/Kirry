@@ -13,7 +13,7 @@ void main()
 	if (v.a == 0) discard;
 	if (color0.r + color0.g + color0.b > 0) 
 	{
-	//	v = vec4(color0.rgb * color0.a + v.rgb * (1 - color0.a), v.a);
+		v = vec4(color0.rgb * color0.a + v.rgb * (1 - color0.a), v.a);
 	}
 	pixel = v;
 }

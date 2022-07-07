@@ -3,7 +3,7 @@ package com.alcadra.renderengine.buffer;
 import org.lwjgl.opengl.GL30;
 
 import com.alcadra.math.vector.Vector2i;
-import com.alcadra.renderengine.RenderEngine;
+import com.alcadra.renderengine.util.Util;
 
 public class RenderBuffer extends SimpleBuffer {
 	
@@ -23,14 +23,14 @@ public class RenderBuffer extends SimpleBuffer {
 	protected RenderBuffer(int target, int id, int format, Vector2i size)
 	{
 		super(target, id);
-		RenderEngine.printError("[INTERNAL] renderbuffer init");
+		Util.printError("[INTERNAL] renderbuffer init");
 		if (id != 0)
 		{
 			GL30.glRenderbufferStorage(target, format, size.x(), size.y());
 			this.size = size;
 		}
 		else this.size = null;
-		RenderEngine.printError("[INTERNAL] renderbuffer storage");
+		Util.printError("[INTERNAL] renderbuffer storage");
 	}
 	
 	public Vector2i getSize()

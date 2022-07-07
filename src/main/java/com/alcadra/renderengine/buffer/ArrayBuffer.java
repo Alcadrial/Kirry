@@ -54,6 +54,10 @@ public abstract class ArrayBuffer<B extends Buffer> extends SimpleBuffer {
 		{
 			return 0;
 		}
+		
+		@Override
+		public void clear()
+		{}
 	};
 	
 	protected boolean isModified = false;
@@ -85,6 +89,8 @@ public abstract class ArrayBuffer<B extends Buffer> extends SimpleBuffer {
 	protected abstract void syncModify(B buffer, int from, int to);
 	
 	protected abstract boolean equals(B buffer, B other);
+	
+	public abstract void clear();
 	
 	public void sync()
 	{

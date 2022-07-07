@@ -5,7 +5,7 @@ import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3i;
 import com.alcadra.renderengine.window.Window;
 
-public abstract class Widget {
+public abstract class Widget implements IWidget {
 	
 	private Window window;
 	private Vector3i pos;
@@ -18,14 +18,10 @@ public abstract class Widget {
 		this.size = size;
 	}
 	
-	public final boolean isMouseHovered()
+	@Override
+	public final boolean isMouseHover()
 	{
 		return isHovered(window.getMousePos());
-	}
-	
-	public boolean isHovered(Vector2i v)
-	{
-		return v.x() > pos.x() && v.x() < pos.x() + size.x() && v.y() > pos.y() && v.y() < pos.y() + size.y();
 	}
 	
 	protected Vector2i resize(Vector2i oldSize, Vector2i newSize)
@@ -43,21 +39,25 @@ public abstract class Widget {
 		return window;
 	}
 	
+	@Override
 	public final Vector3i getPos()
 	{
 		return pos;
 	}
 	
+	@Override
 	public final Vector2i getSize()
 	{
 		return size;
 	}
 	
+	@Override
 	public final int getWidth()
 	{
 		return size.x();
 	}
 	
+	@Override
 	public final int getHeight()
 	{
 		return size.y();
@@ -68,11 +68,13 @@ public abstract class Widget {
 		this.window = window;
 	}
 	
+	@Override
 	public final void setPos(Vector3i pos)
 	{
 		this.pos = pos;
 	}
 	
+	@Override
 	public final void setSize(Vector2i size)
 	{
 		Vector2i oldSize = this.size;

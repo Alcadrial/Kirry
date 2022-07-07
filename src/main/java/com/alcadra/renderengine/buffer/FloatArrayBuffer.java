@@ -44,6 +44,7 @@ public class FloatArrayBuffer extends ArrayBuffer<FloatBuffer> {
 		isModified = true;
 	}
 	
+	@Override
 	public void clear()
 	{
 		values.clear();

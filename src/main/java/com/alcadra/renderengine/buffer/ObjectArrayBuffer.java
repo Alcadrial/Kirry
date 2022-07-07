@@ -105,6 +105,7 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 		return j;
 	}
 	
+	@Override
 	public void clear()
 	{
 		values.clear();

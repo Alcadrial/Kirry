@@ -41,6 +41,7 @@ import com.alcadra.renderengine.window.widget.VisibleButton;
 import com.alcadra.threads.TimeThread;
 
 @SuppressWarnings("unused")
+@Test
 public class RenderEngine implements RenderTest {
 	
 	public static volatile String colorShaderVertexPath = "src/main/resources/assets/renderengine/colored_cube.vert";
@@ -54,16 +55,10 @@ public class RenderEngine implements RenderTest {
 	public static volatile String fontPath = "src/main/resources/assets/renderengine/Segoe UI.json";
 	public static volatile String fontImagePath = "src/main/resources/assets/renderengine/font.png";
 	private static int maxLoops = 60;
-	private static volatile boolean debug = false;
 	
 	public static final RenderEngine RENDER_ENGINE_TEST = new RenderEngine();
 	public static final ObjectRenderTest OBJECT_RENDER_TEST = new ObjectRenderTest();
 	private static RenderTest activeTest;
-	
-	public static boolean isDebug()
-	{
-		return debug;
-	}
 	
 	public static void setActiveTest(RenderTest activeTest)
 	{
@@ -81,7 +76,7 @@ public class RenderEngine implements RenderTest {
 	{
 		for (String string : args)
 		{
-			if (string.equalsIgnoreCase("debug")) debug = true;
+			if (string.equalsIgnoreCase("debug")) Util.enableDebug();
 			else if (string.startsWith("path"))
 			{
 				String key = string.substring(4, string.indexOf('='));
@@ -144,48 +139,17 @@ public class RenderEngine implements RenderTest {
 		}
 	}
 	
-	public static void printError()
-	{
-		printError("");
-	}
-	
-	public static void printError(String s)
-	{
-		int error = GL30.glGetError();
-		while (debug)
-		{
-			switch (error)
-			{
-				case GL30.GL_NO_ERROR:
-					return;
-				case GL30.GL_INVALID_ENUM:
-					System.out.println(s + " INVALID ENUM");
-					break;
-				case GL30.GL_INVALID_VALUE:
-					System.out.println(s + " INVALID VALUE");
-					break;
-				case GL30.GL_INVALID_OPERATION:
-					System.out.println(s + " INVALID OPERATION");
-					break;
-				case GL30.GL_INVALID_FRAMEBUFFER_OPERATION:
-					System.out.println(s + " INVALID FRAMEBUFFER OPERATION");
-					break;
-			}
-			error = GL30.glGetError();
-		}
-	}
-	
 	public void loopMethod(float partialTicks)
 	{
-		printError("origin");
+		Util.printError("origin");
 		activeTest.loop(partialTicks);
-		printError("loop");
+		Util.printError("loop");
 		while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
 		GL30.glEnable(GL30.GL_DEPTH_TEST);
 		GL30.glEnable(GL30.GL_BLEND);
 		GL30.glBlendFunc(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA);
 		GL30.glClearColor(0.6F, 0.7F, 1, 1);
-		printError("renew");
+		Util.printError("renew");
 	}
 	
 	private Window window;
@@ -204,7 +168,7 @@ public class RenderEngine implements RenderTest {
 		window = new Window(1080, 720, "Test");
 		window.build();
 		window.makeContextCurrent();
-		printError("window build");
+		Util.printError("window build");
 		cursor = Vector2f.getOrigin();
 		window.addEvent(new GLFWCursorPosCallbackI() {
 			
@@ -256,11 +220,11 @@ public class RenderEngine implements RenderTest {
 				GLFW.glfwSetInputMode(id, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL + (rotating ? 2 : 0));
 			}
 		});
-		printError("events");
+		Util.printError("events");
 		FrameBuffer.getBinded();
-		printError("capabilities");
+		Util.printError("capabilities");
 		frameBuffer = new FrameBuffer();
-		printError("framebuffer");
+		Util.printError("framebuffer");
 		ShaderStatus results;
 		shader = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED, ShaderInputDataType.UNUSUED);
 		try
@@ -288,11 +252,11 @@ public class RenderEngine implements RenderTest {
 			e.printStackTrace(System.out);
 		}
 		shaderTexture.build();
-		printError("shader init");
+		Util.printError("shader init");
 		renderer = new Renderer(shader);
 		colorRenderer = new ColorRenderer(shader);
 		textureRenderer = new TextureRenderer(shaderTexture);
-		printError("renderer init");
+		Util.printError("renderer init");
 		Shader fontShader = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED);
 		try
 		{
@@ -306,7 +270,7 @@ public class RenderEngine implements RenderTest {
 			e.printStackTrace(System.out);
 		}
 		fontShader.build();
-		printError("font shader");
+		Util.printError("font shader");
 		fontRenderer = new FontRenderer(fontShader, shaderTexture);
 		try
 		{
@@ -319,7 +283,7 @@ public class RenderEngine implements RenderTest {
 			e.printStackTrace();
 		}
 		fontRenderer.setFont(font);
-		printError("font renderer");
+		Util.printError("font renderer");
 		
 		window.setIcon(icon);
 		window.show();
@@ -336,8 +300,8 @@ public class RenderEngine implements RenderTest {
 			{
 				System.out.println("r");
 			}
-		});
-		printError("window");
+		}, colorRenderer);
+		Util.printError("window");
 		
 		frameBuffer.initializeDepthTextureBuffer(1024, 1024);
 		
@@ -349,7 +313,7 @@ public class RenderEngine implements RenderTest {
 		GL43.glDebugMessageCallback((source, type, id, severity, length, message, userParam) -> System.out.println(MemoryUtil.memASCII(message)), 0);
 		GL43.glDebugMessageControl(GL43.GL_DONT_CARE, GL43.GL_DONT_CARE, GL43.GL_DONT_CARE, new int[0], false);
 		
-		printError("renderer load");
+		Util.printError("renderer load");
 		System.out.print("FontRenderer{FloatArrayBuffer{values=[");
 		for (int i = 0; i < 4 * 14; i++)
 		{
@@ -394,7 +358,7 @@ public class RenderEngine implements RenderTest {
 		Matrix4f modeller = new Matrix4f(projected).multiply(compact);
 		Matrix4f viewed = new Matrix4f(viewer).multiply(compact);
 		Vector3f end = new Vector3f(10, 10, 10);
-		printError("compact");
+		Util.printError("compact");
 		
 		fontRenderer.loadText(new Text("ala.beta@delta"), new Vector2i(0, (int) o % 360), new Vector3f(255, 0, 0), 0.5F, 500, 0);
 		fontRenderer.loadText(new Text(Util.toPointString(cursor)), new Vector2i(cursor.subtract(window.getSize().multiply(0.5F))), new Vector2f(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight()), 0.003F, 550, 0);
@@ -417,19 +381,19 @@ public class RenderEngine implements RenderTest {
 		text.addLine(new TextLine(Double.toString(o % 180)));
 		text.addLine(new TextLine(Double.toString(o % 360)));
 		fontRenderer.loadText(text, new Vector2i(-window.getWidth() / 2, window.getHeight() / 2 - 40), 0.8F, 1000, 0);
-		printError("FontRender texting");
+		Util.printError("FontRender texting");
 		fontRenderer.draw(compact);
-		printError("FontRender draw");
+		Util.printError("FontRender draw");
 		
 		// frameBuffer.bind();
-		printError("FrameBuffer draw");
+		Util.printError("FrameBuffer draw");
 		
 		renderer.clear();
 		renderer.color(255, 255, 0, 255);
 		renderer.loadCube(identity, Vector3f.getOrigin(), end);
 		renderer.loadCube(viewer, end, end.add(end));
 		renderer.draw(GL30.GL_QUADS, projected);
-		printError("TextureRender draw");
+		Util.printError("TextureRender draw");
 		
 		textureRenderer.clear();
 		textureRenderer.loadQuad(0, 0, 256, 256, 0, 0, 0, 1, 1);
@@ -437,8 +401,9 @@ public class RenderEngine implements RenderTest {
 		textureRenderer.draw(GL30.GL_QUADS, compact);
 		
 		// frameBuffer.unbind();
-		window.update(compact, colorRenderer, textureRenderer, partialTicks);
-		printError("window update");
+		window.update(compact, partialTicks);
+		window.clear(true, true, false);
+		Util.printError("window update");
 		o += partialTicks * 1;
 	}
 	

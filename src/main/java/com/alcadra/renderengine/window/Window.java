@@ -1,9 +1,10 @@
 package com.alcadra.renderengine.window;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCharCallbackI;
@@ -24,11 +25,11 @@ import com.alcadra.math.vector.Vector2i;
 import com.alcadra.renderengine.buffer.FrameBuffer;
 import com.alcadra.renderengine.renderer.ColorRenderer;
 import com.alcadra.renderengine.renderer.TextureRenderer;
+import com.alcadra.renderengine.renderer.object.ObjectRenderer;
 import com.alcadra.renderengine.textures.Texture;
 import com.alcadra.renderengine.util.Image;
 import com.alcadra.renderengine.window.widget.ClickableWidget;
 import com.alcadra.renderengine.window.widget.RenderizableWidget;
-import com.alcadra.renderengine.window.widget.Widget;
 
 public class Window {
 	
@@ -40,11 +41,10 @@ public class Window {
 	private float aspectRatio;
 	private CursorInputMode cursorInputMode = CursorInputMode.NORMAL;
 	
-	private List<Widget> widgets = new LinkedList<>();
-	private List<RenderizableWidget> renderizableWidgets = new LinkedList<>();
-	private List<Widget> renderizableWidgets0 = new LinkedList<>();
+	private List<Entry<ColorRenderer, RenderizableWidget<ColorRenderer>>> renderizableColorWidgets = new LinkedList<>();
+	private List<Entry<TextureRenderer, RenderizableWidget<TextureRenderer>>> renderizableTextureWidgets = new LinkedList<>();
+	private List<Entry<ObjectRenderer, RenderizableWidget<ObjectRenderer>>> renderizableObjectWidgets = new LinkedList<>();
 	private List<ClickableWidget> clickableWidgets = new LinkedList<>();
-	private List<Widget> clickableWidgets0 = new LinkedList<>();
 	
 	private List<GLFWCharCallbackI> charCallbackList = new ArrayList<>(1);
 	private List<GLFWCursorPosCallbackI> cursorPosCallbackList = new ArrayList<>(1);
@@ -63,7 +63,7 @@ public class Window {
 	private GLFWKeyCallbackI keyCallback = (w, key, scancode, action, mode) -> keyCallbackList.forEach(callback -> callback.invoke(w, key, scancode, action, mode));
 	private GLFWMouseButtonCallbackI mouseButtonCallback = (w, button, action, mode) -> {
 		for (GLFWMouseButtonCallbackI callback : mouseButtonCallbackList) callback.invoke(w, button, action, mode);
-		if (action == GLFW.GLFW_PRESS) for (ClickableWidget clickableWidget : clickableWidgets) if (((Widget) clickableWidget).isMouseHovered()) clickableWidget.onClick(button, mousePos);
+		if (action == GLFW.GLFW_PRESS) for (ClickableWidget e : clickableWidgets) if (e.isMouseHover()) e.onClick(button, mousePos);
 	};
 	private GLFWWindowSizeCallbackI windowSizeCallback = (w, x, y) -> windowSizeCallbackList.forEach(callback -> callback.invoke(w, x, y));
 	private GLFWScrollCallbackI windowScrollCallback = (w, xOffset, yOffset) -> scrollCallbackList.forEach(callback -> callback.invoke(w, xOffset, yOffset));
@@ -108,19 +108,35 @@ public class Window {
 		b.free();
 	}
 	
-	public void update(Matrix4f matrix, ColorRenderer colorRenderer, TextureRenderer textureRenderer, float partialTicks)
+	public void update(Matrix4f matrix, float partialTicks)
 	{
-		Iterator<RenderizableWidget> i = renderizableWidgets.iterator();
-		Iterator<Widget> j = renderizableWidgets0.iterator();
-		while (i.hasNext())
+		for (Entry<ColorRenderer, RenderizableWidget<ColorRenderer>> entry : renderizableColorWidgets)
 		{
-			colorRenderer.clear();
-			i.next().render(new Matrix4f(matrix), colorRenderer, textureRenderer, j.next().getPos().xy(), partialTicks);
+			entry.getKey().clear();
+			entry.getValue().render(new Matrix4f(matrix), entry.getKey(), entry.getValue().getPos().xy(), partialTicks);
+		}
+		for (Entry<TextureRenderer, RenderizableWidget<TextureRenderer>> entry : renderizableTextureWidgets)
+		{
+			entry.getKey().clear();
+			entry.getValue().render(new Matrix4f(matrix), entry.getKey(), entry.getValue().getPos().xy(), partialTicks);
+		}
+		for (Entry<ObjectRenderer, RenderizableWidget<ObjectRenderer>> entry : renderizableObjectWidgets)
+		{
+			entry.getKey().clear();
+			entry.getValue().render(new Matrix4f(matrix), entry.getKey(), entry.getValue().getPos().xy(), partialTicks);
 		}
 		while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
 		pollEvents();
 		swapBuffers();
-		GL30.glClear(GL30.GL_COLOR_BUFFER_BIT | GL30.GL_DEPTH_BUFFER_BIT);
+	}
+	
+	public final void clear(boolean color, boolean depth, boolean stencil)
+	{
+		int mask = 0;
+		if (color) mask |= GL30.GL_COLOR_BUFFER_BIT;
+		if (depth) mask |= GL30.GL_DEPTH_BUFFER_BIT;
+		if (stencil) mask |= GL30.GL_STENCIL_BUFFER_BIT;
+		if (mask != 0) GL30.glClear(mask);
 	}
 	
 	public final void addEvent(CallbackI event)
@@ -134,19 +150,27 @@ public class Window {
 		if (event instanceof GLFWWindowSizeCallbackI callback) windowSizeCallbackList.add(callback);
 	}
 	
-	public final void addWidget(Widget widget)
+	public final void addWidget(RenderizableWidget<ColorRenderer> widget, ColorRenderer renderer)
 	{
-		widgets.add(widget);
-		if (widget instanceof RenderizableWidget w)
-		{
-			renderizableWidgets.add(w);
-			renderizableWidgets0.add(widget);
-		}
-		if (widget instanceof ClickableWidget w)
-		{
-			clickableWidgets.add(w);
-			clickableWidgets0.add(widget);
-		}
+		if (widget instanceof ClickableWidget w) addWidget(w);
+		renderizableColorWidgets.add(Map.entry(renderer, widget));
+	}
+	
+	public final void addWidget(RenderizableWidget<TextureRenderer> widget, TextureRenderer renderer)
+	{
+		if (widget instanceof ClickableWidget w) addWidget(w);
+		renderizableTextureWidgets.add(Map.entry(renderer, widget));
+	}
+	
+	public final void addWidget(RenderizableWidget<ObjectRenderer> widget, ObjectRenderer renderer)
+	{
+		if (widget instanceof ClickableWidget w) addWidget(w);
+		renderizableObjectWidgets.add(Map.entry(renderer, widget));
+	}
+	
+	public final void addWidget(ClickableWidget widget)
+	{
+		clickableWidgets.add(widget);
 	}
 	
 	protected void onResize(Vector2i oldSize, Vector2i newSize)

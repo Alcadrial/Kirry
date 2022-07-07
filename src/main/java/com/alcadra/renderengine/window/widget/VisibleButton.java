@@ -4,10 +4,9 @@ import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3i;
 import com.alcadra.renderengine.renderer.ColorRenderer;
-import com.alcadra.renderengine.renderer.TextureRenderer;
 import com.alcadra.renderengine.window.Window;
 
-public abstract class VisibleButton extends Button implements RenderizableWidget {
+public abstract class VisibleButton extends Button implements RenderizableWidget<ColorRenderer> {
 	
 	public VisibleButton(Vector3i pos, Vector2i size, Window window)
 	{
@@ -15,7 +14,7 @@ public abstract class VisibleButton extends Button implements RenderizableWidget
 	}
 	
 	@Override
-	public void render(Matrix4f matrix, ColorRenderer colorRenderer, TextureRenderer textureRenderer, Vector2i pos, float partialTicks)
+	public void render(Matrix4f matrix, ColorRenderer colorRenderer, Vector2i pos, float partialTicks)
 	{
 		colorRenderer.color(127, 127, 127, 255);
 		float w = getWindow().getWidth() / 2, h = getWindow().getHeight() / 2;

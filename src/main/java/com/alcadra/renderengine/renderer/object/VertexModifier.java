@@ -58,7 +58,7 @@ public class VertexModifier implements VertexBuilder<VertexModifier> {
 	@Override
 	public VertexModifier color(Vector4f color)
 	{
-		bindedColor = new Vector4i(Float.floatToIntBits(color.x()), Float.floatToIntBits(color.y()), Float.floatToIntBits(color.z()), Float.floatToIntBits(color.w()));
+		bindedColor = new Vector4i(Float.floatToIntBits(color.x() / 255), Float.floatToIntBits(color.y() / 255), Float.floatToIntBits(color.z() / 255), Float.floatToIntBits(color.w() / 255));
 		return this;
 	}
 	
