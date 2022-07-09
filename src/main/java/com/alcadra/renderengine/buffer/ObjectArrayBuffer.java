@@ -47,7 +47,7 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 		return values.get(index).element;
 	}
 	
-	public void disable(int index)
+	public boolean disable(int index)
 	{
 		Holder holder = values.get(index);
 		if (holder.enabled)
@@ -56,11 +56,13 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 			if (i == -1) modifieds.add(holder);
 			else modifieds.remove(i);
 			isModified = true;
+			holder.enabled = false;
+			return true;
 		}
-		holder.enabled = false;
+		return false;
 	}
 	
-	public void enable(int index)
+	public boolean enable(int index)
 	{
 		Holder holder = values.get(index);
 		if (!holder.enabled)
@@ -69,8 +71,10 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 			if (i == -1) modifieds.add(holder);
 			else modifieds.remove(i);
 			isModified = true;
+			holder.enabled = true;
+			return true;
 		}
-		holder.enabled = true;
+		return false;
 	}
 	
 	public E remove(int index)

@@ -12,6 +12,7 @@ import com.alcadra.math.vector.Vector4i;
 import com.alcadra.renderengine.buffer.Bufferable;
 import com.alcadra.renderengine.renderer.VertexBuilder;
 import com.alcadra.renderengine.shader.Shader;
+import com.alcadra.renderengine.util.Switch;
 
 public class ObjectBuilder {
 	
@@ -59,11 +60,11 @@ public class ObjectBuilder {
 		return new Builder();
 	}
 	
-	public int end()
+	public Switch end()
 	{
-		int id = renderer.end(this);
+		Switch switch0 = renderer.end(this);
 		modifiers.clear();
-		return id;
+		return switch0;
 	}
 	
 	public void next(Bufferable value)

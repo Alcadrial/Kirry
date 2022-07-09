@@ -12,7 +12,7 @@ import com.alcadra.renderengine.util.Util;
 public abstract class BaseRenderer<AB extends ArrayBuffer<?>> {
 	
 	private VertexArray vertexArray;
-	private AB buffer;
+	private AB arrayBuffer;
 	private ElementArrayBuffer elements;
 	protected Shader shader;
 	
@@ -20,7 +20,7 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> {
 	{
 		this.shader = shader;
 		this.vertexArray = vertexArray;
-		buffer = arrayBuffer;
+		this.arrayBuffer = arrayBuffer;
 		elements = elementArrayBuffer;
 	}
 	
@@ -28,21 +28,21 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> {
 	{
 		this.shader = shader.get();
 		this.vertexArray = vertexArray.get();
-		buffer = arrayBuffer.get();
+		this.arrayBuffer = arrayBuffer.get();
 		elements = elementArrayBuffer.get();
 	}
 	
 	protected void syncBuffers()
 	{
-		getVertexArray().bindBuffer(getArrayBuffer());
+		vertexArray.bindBuffer(arrayBuffer);
 		Util.printError("BaseRenderer[INTERNAL] sync binding");
-		getArrayBuffer().sync();
+		arrayBuffer.sync();
 		Util.printError("BaseRenderer[INTERNAL] array sync");
 	}
 	
 	protected void draw(int mode, int count)
 	{
-		getVertexArray().bind();
+		vertexArray.bind();
 		syncBuffers();
 		Util.printError("BaseRenderer[INTERNAL] sync");
 		GL30.glDrawArrays(mode, 0, count);
@@ -51,17 +51,17 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> {
 	
 	protected final void drawIndices(int mode)
 	{
-		getVertexArray().bind();
+		vertexArray.bind();
 		syncBuffers();
-		getVertexArray().bindBuffer(getElementArrayBuffer());
-		getElementArrayBuffer().sync();
-		GL30.glDrawElements(mode, getElementArrayBuffer().size(), GL30.GL_UNSIGNED_INT, 0);
+		vertexArray.bindBuffer(elements);
+		elements.sync();
+		GL30.glDrawElements(mode, elements.size(), GL30.GL_UNSIGNED_INT, 0);
 	}
 	
 	public void clear()
 	{
-		getArrayBuffer().clear();
-		getElementArrayBuffer().clear();
+		arrayBuffer.clear();
+		if (elements != null) elements.clear();
 	}
 	
 	protected VertexArray getVertexArray()
@@ -71,7 +71,7 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> {
 	
 	protected AB getArrayBuffer()
 	{
-		return buffer;
+		return arrayBuffer;
 	}
 	
 	protected ElementArrayBuffer getElementArrayBuffer()

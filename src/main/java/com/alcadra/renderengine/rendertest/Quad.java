@@ -1,10 +1,10 @@
 package com.alcadra.renderengine.rendertest;
 
 import com.alcadra.math.vector.Vector2f;
-import com.alcadra.renderengine.Test;
 import com.alcadra.renderengine.buffer.Bufferable;
 import com.alcadra.renderengine.renderer.object.ObjectBuilder;
 import com.alcadra.renderengine.renderer.object.VertexModifier;
+import com.alcadra.renderengine.util.Test;
 
 @Test
 public class Quad implements Bufferable {
