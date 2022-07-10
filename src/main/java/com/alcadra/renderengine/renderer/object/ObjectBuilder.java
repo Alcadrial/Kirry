@@ -12,7 +12,7 @@ import com.alcadra.math.vector.Vector4i;
 import com.alcadra.renderengine.buffer.Bufferable;
 import com.alcadra.renderengine.renderer.VertexBuilder;
 import com.alcadra.renderengine.shader.Shader;
-import com.alcadra.renderengine.util.Switch;
+import com.alcadra.renderengine.util.Tracker;
 
 public class ObjectBuilder {
 	
@@ -60,11 +60,11 @@ public class ObjectBuilder {
 		return new Builder();
 	}
 	
-	public Switch end()
+	public Tracker<Bufferable> end()
 	{
-		Switch switch0 = renderer.end(this);
+		Tracker<Bufferable> tracker = renderer.end(this);
 		modifiers.clear();
-		return switch0;
+		return tracker;
 	}
 	
 	public void next(Bufferable value)
@@ -125,5 +125,10 @@ public class ObjectBuilder {
 			bindedNormal = new Vector3i(Float.floatToIntBits(normal.x()), Float.floatToIntBits(normal.y()), Float.floatToIntBits(normal.z()));
 			return this;
 		}
+	}
+	
+	List<VertexModifier> getModifiers()
+	{
+		return modifiers;
 	}
 }
