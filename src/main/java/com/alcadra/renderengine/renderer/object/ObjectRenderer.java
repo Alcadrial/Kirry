@@ -122,9 +122,9 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 		}
 	}
 	
-	public Tracker<Bufferable> end(ObjectBuilder builder)
+	public <B extends Bufferable> Tracker<B> end(ObjectBuilder builder)
 	{
-		return new Tracker0(getArrayBuffer().add(buildingValue, buildData(builder.getModifiers(), buildingValue)), builder.getModifiers());
+		return new Tracker0<>(getArrayBuffer().add(buildingValue, buildData(builder.getModifiers(), buildingValue)), builder.getModifiers());
 	}
 	
 	private int[] buildData(List<VertexModifier> modifiers, Bufferable bufferable)
@@ -232,7 +232,7 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 		return "ObjectRenderer{" + getArrayBuffer() + ", " + getElementArrayBuffer() + "}";
 	}
 	
-	private class Tracker0 implements Tracker<Bufferable> {
+	private class Tracker0<B extends Bufferable> implements Tracker<B> {
 		
 		private Tracker<int[]> tracker;
 		private List<VertexModifier> modifiers;
@@ -244,7 +244,7 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 		}
 		
 		@Override
-		public void modify(Bufferable elementData)
+		public void modify(B elementData)
 		{
 			tracker.modify(buildData(modifiers, elementData));
 		}
