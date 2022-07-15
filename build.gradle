@@ -85,7 +85,7 @@ task export(type: AlcadrialTask) {
 	dependsOn("exportJar")
 	dependsOn("exportJavadoc")
 	dependsOn("exportSources")
-	//dependsOn("exportTestSources")
+	dependsOn("exportTestSources")
 }
 
 task exportJar(type: AlcadrialTask) {
@@ -101,9 +101,9 @@ task exportSources(type: AlcadrialTask) {
 }
 
 task exportTestSources(type: AlcadrialTask) {
-//	excludeTestFiles = false;
-//	tasks.named("sourcesJar") {getArchiveFileName().set("RenderEngine-test.jar")}
 	dependsOn("sourcesJar")
+	excludeTestFiles = false;
+	tasks.named("sourcesJar") {getArchiveFileName().set("RenderEngine-test.jar")}
 	doLast{
 		tasks.named("sourcesJar") {getArchiveFileName().set("RenderEngine.jar")}
 		excludeTestFiles = true
@@ -119,11 +119,11 @@ repositories {
 }
 
 dependencies {
-	implementation (":math")
+	implementation(":math")
 	
-	runtimeOnly(":Threads")
+	implementation(":Threads")
 	runtimeOnly(":Threads-sources")
-	runtimeOnly(":Tester")
+	implementation(":Tester")
 	runtimeOnly(":Tester-sources")
 	
     implementation ("com.google.guava:guava:31.0.1-jre")
