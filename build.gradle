@@ -5,6 +5,8 @@ plugins {
     id("java-library")
 }
 
+def version = "1.0.0"
+
 void printClass(Object obj) {
 	println(obj.class)
 }
@@ -126,28 +128,23 @@ dependencies {
 	implementation(":Tester")
 	runtimeOnly(":Tester-sources")
 	
-    implementation ("com.google.guava:guava:31.0.1-jre")
     implementation ("com.google.code.gson:gson:2.8.9")
-    implementation ("org.lwjgl:lwjgl:3.3.0")
-    implementation ("org.lwjgl:lwjgl-glfw:3.3.0")
-    implementation ("org.lwjgl:lwjgl-openal:3.3.0")
-    implementation ("org.lwjgl:lwjgl-opengl:3.3.0")
+    implementation ("org.lwjgl:lwjgl:$lwjglVersion")
+    implementation ("org.lwjgl:lwjgl-glfw:$lwjglVersion")
+    implementation ("org.lwjgl:lwjgl-openal:$lwjglVersion")
+    implementation ("org.lwjgl:lwjgl-opengl:$lwjglVersion")
 	runtimeOnly ("org.lwjgl:lwjgl::$lwjglNatives")
 	runtimeOnly ("org.lwjgl:lwjgl-glfw::$lwjglNatives")
 	runtimeOnly ("org.lwjgl:lwjgl-openal::$lwjglNatives")
 	runtimeOnly ("org.lwjgl:lwjgl-opengl::$lwjglNatives")
 }
 
-jar {
-    manifest {
-        attributes([
-                "Specification-Title"     : "Render Engine",
-                "Specification-Vendor"    : "Alcadrial",
-                "Specification-Version"   : "1",
-                "Implementation-Title"    : project.name,
-                "Implementation-Version"  : project.jar.archiveVersion,
-                "Implementation-Vendor"   : "alcadrial",
-                "Implementation-Timestamp": new Date().format("dd-MM-yyyy'T'HH:mm:ssZ")
-        ])
-    }
-}
+jar.manifest.attributes([
+	"Specification-Title"     : "Render Engine",
+	"Specification-Vendor"    : "Alcadrial",
+	"Specification-Version"   : version,
+	"Implementation-Title"    : project.name,
+	"Implementation-Version"  : project.jar.archiveVersion,
+	"Implementation-Vendor"   : "Alcadrial",
+	"Implementation-Timestamp": new Date().format("dd-MM-yyyy'T'HH:mm:ssZ")
+])

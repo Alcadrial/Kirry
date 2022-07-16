@@ -4,12 +4,14 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.textures.ColorTexture;
 import com.alcadra.renderengine.util.Image;
-import com.google.common.collect.HashBasedTable;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 
@@ -18,7 +20,7 @@ public class Font {
 	private String name;
 	private int lineHeight, lineOffset;
 	private List<Glyph> chars;
-	private HashBasedTable<Integer, Integer, Integer> extraOffset = HashBasedTable.create();
+	private HashMap<Entry<Integer, Integer>, Integer> extraOffset = new HashMap<>();
 	private ColorTexture texture;
 	
 	public Font(File json, File png) throws IOException
@@ -107,7 +109,7 @@ public class Font {
 									break;
 							}
 						}
-						extraOffset.put(before, after, offset);
+						extraOffset.put(Map.entry(before, after), offset);
 						reader.endObject();
 					}
 					reader.endArray();
@@ -136,7 +138,7 @@ public class Font {
 	
 	public int getExtraOffset(int before, int after)
 	{
-		Integer i = extraOffset.get(before, after);
+		Integer i = extraOffset.get(Map.entry(before, after));
 		return i == null ? 0 : i;
 	}
 	

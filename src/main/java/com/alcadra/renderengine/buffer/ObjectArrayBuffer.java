@@ -47,9 +47,12 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 		Holder holder = values.get(index);
 		if (holder.enabled)
 		{
-			int i = modifieds.indexOf(holder);
-			if (i == -1) modifieds.add(holder);
-			else modifieds.remove(i);
+			if (!needResize)
+			{
+				int i = modifieds.indexOf(holder);
+				if (i == -1) modifieds.add(holder);
+				else modifieds.remove(i);
+			}
 			isModified = true;
 			holder.enabled = false;
 			return true;
@@ -62,9 +65,12 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 		Holder holder = values.get(index);
 		if (!holder.enabled)
 		{
-			int i = modifieds.indexOf(holder);
-			if (i == -1) modifieds.add(holder);
-			else modifieds.remove(i);
+			if (!needResize)
+			{
+				int i = modifieds.indexOf(holder);
+				if (i == -1) modifieds.add(holder);
+				else modifieds.remove(i);
+			}
 			isModified = true;
 			holder.enabled = true;
 			return true;
@@ -250,9 +256,9 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 		{
 			if (valid)
 			{
-				if (!modifieds.contains(holder)) modifieds.add(holder);
-				isModified = holder.data != data;
-				needResize = holder.data.length != data.length;
+				if (!needResize && !modifieds.contains(holder)) modifieds.add(holder);
+				isModified |= holder.data != data;
+				needResize |= holder.data.length != data.length;
 				holder.data = data;
 			}
 		}
@@ -262,7 +268,7 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 		{
 			if (isOff())
 			{
-				if (!modifieds.contains(holder)) modifieds.add(holder);
+				if (!needResize && !modifieds.contains(holder)) modifieds.add(holder);
 				isModified = true;
 				holder.enabled = true;
 				return true;
@@ -275,7 +281,7 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 		{
 			if (isOn())
 			{
-				if (!modifieds.contains(holder)) modifieds.add(holder);
+				if (!needResize && !modifieds.contains(holder)) modifieds.add(holder);
 				isModified = true;
 				holder.enabled = false;
 				return true;
@@ -288,13 +294,12 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 		{
 			if (valid)
 			{
-				if (isOn())
+				if (!needResize)
 				{
 					int i = modifieds.indexOf(holder);
 					if (i > -1) modifieds.remove(i);
 				}
 				intSize -= holder.data.length;
-				if (oldLocalData.capacity() >= intSize) needResize = false;
 				values.remove(holder);
 				isModified = true;
 				valid = false;
