@@ -3,11 +3,14 @@ package com.alcadra.renderengine.util;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.imageio.ImageIO;
+import javax.imageio.stream.ImageInputStream;
 
 import org.lwjgl.BufferUtils;
 
@@ -22,6 +25,21 @@ public class Image {
 		image = ImageIO.read(file);
 	}
 	
+	public Image(ImageInputStream stream) throws IOException
+	{
+		image = ImageIO.read(stream);
+	}
+	
+	public Image(InputStream stream) throws IOException
+	{
+		image = ImageIO.read(stream);
+	}
+	
+	public Image(URL url) throws IOException
+	{
+		image = ImageIO.read(url);
+	}
+	
 	public Image(int[] pixels, int width, int height)
 	{
 		image = new BufferedImage(width, height, 2);
@@ -33,15 +51,13 @@ public class Image {
 	{
 		int[] data = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
 		ByteBuffer buffer = BufferUtils.createByteBuffer(data.length * 4);
-		for (int element : data) buffer.putInt(element);
-		return buffer.flip();
+		buffer.asIntBuffer().put(data).flip();
+		return buffer;
 	}
 	
 	public int[] loadToBuffer()
 	{
-		int[] buffer = new int[image.getWidth() * image.getHeight()];
-		for (int y = 0, i = 0; y < image.getHeight(); y++) for (int x = 0; x < image.getWidth(); x++) buffer[i++] = image.getRGB(x, y);
-		return buffer;
+		return image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
 	}
 	
 	public List<Integer> loadToListARGB()

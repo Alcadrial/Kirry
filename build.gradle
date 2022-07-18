@@ -5,8 +5,6 @@ plugins {
     id("java-library")
 }
 
-def version = "1.0.0"
-
 void printClass(Object obj) {
 	println(obj.class)
 }
@@ -18,19 +16,25 @@ boolean excludeTestFiles = true;
 
 java {
 	toolchain.languageVersion.set(JavaLanguageVersion.of(17))
-    withSourcesJar()
-    withJavadocJar()
+	withSourcesJar();
+	withJavadocJar();
 }
-printClass(sourceSets.main.java)
-
 sourceSets.main.java {
 	srcDir("src/main/java")
 	
 	exclude(e -> {
-		if (!excludeTestFiles || !e.getFile().isFile()) {
-			System.out.println("D " + e.getFile())
+		if (!excludeTestFiles || e.getFile().isDirectory()) {
+			File packageFile = new File(e.getFile().getPath() + "\\package-info.java")
+			if (packageFile.isFile())
+			{
+				boolean r = packageFile.text.contains("package com.alcadra.renderengine.util;") || packageFile.text.contains("@com.alcadra.renderengine.util.Test")
+				if (!r && printExportedFiles) System.out.println("D " + e.getFile())
+				return r;
+			}
+			if (printExportedFiles) System.out.println("D " + e.getFile())
 			return false
 		}
+		if (e.getFile().getPath().endsWith("\\package-info.java")) return true
 		boolean b = e.getFile().name.endsWith(".java")
 		String text = e.getFile().text
 		boolean b0 = text.contains("@Test")
@@ -38,7 +42,7 @@ sourceSets.main.java {
 		boolean b2 = text.contains("package com.alcadra.renderengine.util;")
 		boolean b3 = text.contains("@com.alcadra.renderengine.util.Test")
 		boolean result = b && ((b0 && (b1 || b2)) || b3)
-		if (!result && printExportedFiles) System.out.println("F " + e.getFile())
+		if (printExportedFiles && !result) System.out.println("F " + e.getFile())
 		return result
 	})
 }
@@ -67,13 +71,16 @@ switch (OperatingSystem.current()) {
 
 tasks.named("jar") {
 	getDestinationDirectory().set(new File("jar"))
+	getArchiveFileName().set("$fileName-$version" + ".jar")
 }
 tasks.named("javadocJar") {
 	getDestinationDirectory().set(new File("jar"))
+	getArchiveFileName().set("$fileName-$version-javadoc.jar")
 }
 tasks.named("sourcesJar") {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 	getDestinationDirectory().set(new File("jar"))
+	getArchiveFileName().set("$fileName-$version-sources.jar")
 }
 
 class AlcadrialTask extends DefaultTask {
@@ -87,7 +94,7 @@ task export(type: AlcadrialTask) {
 	dependsOn("exportJar")
 	dependsOn("exportJavadoc")
 	dependsOn("exportSources")
-	dependsOn("exportTestSources")
+//	dependsOn("exportTestSources")
 }
 
 task exportJar(type: AlcadrialTask) {
@@ -103,11 +110,11 @@ task exportSources(type: AlcadrialTask) {
 }
 
 task exportTestSources(type: AlcadrialTask) {
-	dependsOn("sourcesJar")
-	excludeTestFiles = false;
-	tasks.named("sourcesJar") {getArchiveFileName().set("RenderEngine-test.jar")}
-	doLast{
-		tasks.named("sourcesJar") {getArchiveFileName().set("RenderEngine.jar")}
+//	tasks.named("sourcesJar") {getArchiveFileName().set("$fileName-$version-test.jar")}
+//	dependsOn("sourcesJar")
+//	excludeTestFiles = false;
+	doLast {
+		tasks.named("sourcesJar") {getArchiveFileName().set("$fileName-$version-sources.jar")}
 		excludeTestFiles = true
 	}
 }
@@ -139,12 +146,16 @@ dependencies {
 	runtimeOnly ("org.lwjgl:lwjgl-opengl::$lwjglNatives")
 }
 
-jar.manifest.attributes([
-	"Specification-Title"     : "Render Engine",
-	"Specification-Vendor"    : "Alcadrial",
+def manifestAttributes = [
+	"Specification-Title"     : name,
 	"Specification-Version"   : version,
-	"Implementation-Title"    : project.name,
-	"Implementation-Version"  : project.jar.archiveVersion,
-	"Implementation-Vendor"   : "Alcadrial",
-	"Implementation-Timestamp": new Date().format("dd-MM-yyyy'T'HH:mm:ssZ")
-])
+	"Specification-Vendor"    : author,
+	"Implementation-Title"    : name,
+	"Implementation-Version"  : version,
+	"Implementation-Vendor"   : author,
+	"Implementation-Timestamp": new Date().format("dd/MM/yyyy HH:mm:ss")
+];
+
+jar.manifest.attributes(manifestAttributes)
+sourcesJar.manifest.attributes(manifestAttributes)
+javadocJar.manifest.attributes(manifestAttributes)
