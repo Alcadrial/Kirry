@@ -18,6 +18,7 @@ import org.lwjgl.glfw.GLFWScrollCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.system.CallbackI;
 
 import com.alcadra.math.Matrix4f;
@@ -68,6 +69,8 @@ public class Window {
 	};
 	private GLFWWindowSizeCallbackI windowSizeCallback = (w, x, y) -> windowSizeCallbackList.forEach(callback -> callback.invoke(w, x, y));
 	private GLFWScrollCallbackI windowScrollCallback = (w, xOffset, yOffset) -> scrollCallbackList.forEach(callback -> callback.invoke(w, xOffset, yOffset));
+	
+	private GLCapabilities glCapabilities;
 	
 	public Window(int w, int h, String title)
 	{
@@ -269,7 +272,8 @@ public class Window {
 	public final void makeContextCurrent()
 	{
 		GLFW.glfwMakeContextCurrent(windowId);
-		GL.createCapabilities();
+		if (glCapabilities == null) glCapabilities = GL.createCapabilities();
+		else GL.setCapabilities(glCapabilities);
 	}
 	
 	public final void detachCurrentContext()
@@ -292,6 +296,36 @@ public class Window {
 	{
 		GLFW.glfwHideWindow(windowId);
 		onResize(getSize(), getSize());
+	}
+	
+	public final void focus()
+	{
+		GLFW.glfwFocusWindow(windowId);
+	}
+	
+	public final void requestAttention()
+	{
+		GLFW.glfwRequestWindowAttention(windowId);
+	}
+	
+	public final void iconify()
+	{
+		GLFW.glfwIconifyWindow(windowId);
+	}
+	
+	public final void maximize()
+	{
+		GLFW.glfwMaximizeWindow(windowId);
+	}
+	
+	public final void restore()
+	{
+		GLFW.glfwRestoreWindow(windowId);
+	}
+	
+	public final void setOpacity(float alpha)
+	{
+		GLFW.glfwSetWindowOpacity(windowId, alpha / 255);
 	}
 	
 	public final void pollEvents()
