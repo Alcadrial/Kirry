@@ -26,6 +26,6 @@ public abstract class VisibleButton extends Button implements DrawableWidget<Col
 		float w = getWindow().getWidth() / 2, h = getWindow().getHeight() / 2;
 		Vector3i pos = getPos();
 		renderer.loadQuad(pos.x() - w, pos.y() - h, pos.x() - w + 16, pos.y() - h + 16, pos.z());
-		renderer.draw(7, matrix);
+		renderer.drawVertices(7, matrix);
 	}
 }
