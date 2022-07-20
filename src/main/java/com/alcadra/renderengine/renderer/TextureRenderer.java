@@ -64,9 +64,24 @@ public class TextureRenderer extends Renderer {
 	}
 	
 	@Override
+	public void drawVertices(int mode, Matrix4f matrix)
+	{
+		texture.bind();
+		super.drawVertices(mode, matrix);
+	}
+	
+	@Deprecated(since = "1.1", forRemoval = true)
+	@Override
 	public void draw(int mode, Matrix4f matrix)
 	{
 		texture.bind();
 		super.draw(mode, matrix);
+	}
+	
+	@Override
+	public void drawPoints(int mode, Matrix4f matrix)
+	{
+		texture.bind();
+		super.drawPoints(mode, matrix);
 	}
 }
