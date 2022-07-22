@@ -1,7 +1,7 @@
 package com.alcadra.renderengine.renderer.object;
 
-import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.IntFunction;
 
 import org.lwjgl.opengl.GL30;
 
@@ -26,10 +26,10 @@ import com.alcadra.renderengine.util.Tracker;
 
 public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> implements ShaderRenderer, VertexBuilder<ObjectRenderer> {
 	
-	private Vector4i bindedColor = Vector4i.getOrigin();
-	private Vector2i bindedUV = Vector2i.getOrigin();
-	private Vector3i bindedNormal = Vector3i.getOrigin();
-	private ColorTexture texture = ColorTexture.getNull();
+	private Vector4i bindedColor;
+	private Vector2i bindedUV;
+	private Vector3i bindedNormal;
+	private ColorTexture texture;
 	private int offset;
 	private Bufferable buildingValue;
 	private int vertexSize;
@@ -38,6 +38,10 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 	{
 		super(shader, new VertexArray(), new ObjectArrayBuffer<>(), new ElementArrayBuffer());
 		initializeArrayBuffer();
+		bindedColor = Vector4i.getOrigin();
+		bindedUV = Vector2i.getOrigin();
+		bindedNormal = Vector3i.getOrigin();
+		texture = ColorTexture.getNull();
 	}
 	
 	protected void initializeArrayBuffer()
@@ -124,10 +128,10 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 	
 	public <B extends Bufferable> Tracker<B> end(ObjectBuilder builder)
 	{
-		return new Tracker0<>(getArrayBuffer().add(buildingValue, buildData(builder.getModifiers(), buildingValue)), builder.getModifiers());
+		return new Tracker0<>(getArrayBuffer().add(buildingValue, buildData(builder::getModifier, buildingValue, builder.availableModifier())), builder::getModifier, builder.availableModifier());
 	}
 	
-	private int[] buildData(List<VertexModifier> modifiers, Bufferable bufferable)
+	private int[] buildData(IntFunction<VertexModifier> modifiers, Bufferable bufferable, int available)
 	{
 		int vertices = bufferable.vertices();
 		try
@@ -136,14 +140,14 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 			int[][] data = bufferable.getData();
 			for (int i = 0; i < vertices; i++)
 			{
-				int[] vertexData = bufferable.getVertexData(i, modifiers.get(i), data[i]);
+				int[] vertexData = bufferable.getVertexData(i, modifiers.apply(i), data[i]);
 				for (int j = 0; j < vertexData.length; j++) buildedData[i * vertexData.length + j] = vertexData[j];
 			}
 			return buildedData;
 		}
 		catch (IndexOutOfBoundsException e)
 		{
-			throw new InsufficientVertexDataException("Required " + vertices + " modifiers, available " + modifiers.size(), e);
+			throw new InsufficientVertexDataException("Required " + vertices + " modifiers, available " + available, e);
 		}
 	}
 	
@@ -235,18 +239,20 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 	private class Tracker0<B extends Bufferable> implements Tracker<B> {
 		
 		private Tracker<int[]> tracker;
-		private List<VertexModifier> modifiers;
+		private IntFunction<VertexModifier> modifiers;
+		private int available;
 		
-		public Tracker0(Tracker<int[]> tracker, List<VertexModifier> modifiers)
+		public Tracker0(Tracker<int[]> tracker, IntFunction<VertexModifier> modifiers, int available)
 		{
 			this.tracker = tracker;
-			this.modifiers = List.copyOf(modifiers);
+			this.modifiers = modifiers;
+			this.available = available;
 		}
 		
 		@Override
 		public void modify(B elementData)
 		{
-			tracker.modify(buildData(modifiers, elementData));
+			tracker.modify(buildData(modifiers, elementData, available));
 		}
 		
 		@Override
