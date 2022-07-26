@@ -17,6 +17,7 @@ import com.alcadra.renderengine.renderer.font.text.Text;
 import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.textures.Texture;
+import com.alcadra.renderengine.util.UseInstead;
 
 public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 	
@@ -24,6 +25,7 @@ public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 	private Vector3f lastColor;
 	
 	@Deprecated(since = "1.2", forRemoval = true)
+	@UseInstead(value = {"FontRenderer(Shader)"}, descriptions = {"Remove second shader parameter"})
 	public FontRenderer(Shader fontShader, Shader textureShader)
 	{
 		super(fontShader, new VertexArray(), new FloatArrayBuffer());
