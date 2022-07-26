@@ -13,7 +13,6 @@ import com.alcadra.math.vector.Vector3i;
 import com.alcadra.math.vector.Vector4f;
 import com.alcadra.math.vector.Vector4i;
 import com.alcadra.renderengine.buffer.Bufferable;
-import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.ObjectArrayBuffer;
 import com.alcadra.renderengine.renderer.BaseRenderer;
 import com.alcadra.renderengine.renderer.ShaderRenderer;
@@ -36,7 +35,7 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 	
 	public ObjectRenderer(Shader shader)
 	{
-		super(shader, new VertexArray(), new ObjectArrayBuffer<>(), new ElementArrayBuffer());
+		super(shader, new VertexArray(), new ObjectArrayBuffer<>());
 		initializeArrayBuffer();
 		bindedColor = Vector4i.getOrigin();
 		bindedUV = Vector2i.getOrigin();
@@ -46,8 +45,7 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 	
 	protected void initializeArrayBuffer()
 	{
-		VertexArray vertexArray = getVertexArray();
-		vertexArray.bindBuffer(getArrayBuffer());
+		vertexArray.bindBuffer(arrayBuffer);
 		vertexSize = 12 + (shader.useColor() ? 16 : 0) + (shader.useUV() ? 8 : 0) + (shader.useNormal() ? 12 : 0);
 		int offset = 0;
 		vertexArray.vertexAttributePointer(0, 3, GL30.GL_FLOAT, false, vertexSize, offset);
@@ -76,7 +74,6 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 	
 	protected void disableAttributes()
 	{
-		VertexArray vertexArray = getVertexArray();
 		vertexArray.bind();
 		if (shader.useColor()) vertexArray.disableVertexAttribute(1);
 		if (shader.useUV()) vertexArray.disableVertexAttribute(2);
@@ -104,7 +101,7 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 	
 	public void startIfAbsent(Bufferable value, Consumer<ObjectBuilder> consumer)
 	{
-		if (!getArrayBuffer().contains(value))
+		if (!arrayBuffer.contains(value))
 		{
 			buildingValue = value;
 			consumer.accept(new ObjectBuilder(this));
@@ -119,7 +116,7 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 	
 	void startIfAbsent(Bufferable value, ObjectBuilder builder, Consumer<ObjectBuilder> consumer)
 	{
-		if (!getArrayBuffer().contains(value))
+		if (!arrayBuffer.contains(value))
 		{
 			buildingValue = value;
 			consumer.accept(builder);
@@ -128,7 +125,7 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 	
 	public <B extends Bufferable> Tracker<B> end(ObjectBuilder builder)
 	{
-		return new Tracker0<>(getArrayBuffer().add(buildingValue, buildData(builder::getModifier, buildingValue, builder.availableModifier())), builder::getModifier, builder.availableModifier());
+		return new Tracker0<>(arrayBuffer.add(buildingValue, buildData(builder::getModifier, buildingValue, builder.availableModifier())), builder::getModifier, builder.availableModifier());
 	}
 	
 	private int[] buildData(IntFunction<VertexModifier> modifiers, Bufferable bufferable, int available)
@@ -153,12 +150,12 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 	
 	public void enable(int index)
 	{
-		getArrayBuffer().enable(index);
+		arrayBuffer.enable(index);
 	}
 	
 	public void disable(int index)
 	{
-		getArrayBuffer().disable(index);
+		arrayBuffer.disable(index);
 	}
 	
 	@Override
@@ -198,7 +195,7 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 			if (shader.hasUniformNormal()) shader.setUniformFloat(bindedNormal, "normal");
 			if (shader.useUV() || shader.hasUniformUV()) shader.setUniform(0, "textureSampler");
 		}
-		draw(mode, getArrayBuffer().intSize());
+		draw(mode, arrayBuffer.intSize());
 		Shader.disableShaders();
 	}
 	
@@ -213,15 +210,13 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 	@Override
 	public void clear()
 	{
-		getArrayBuffer().clear();
-		getElementArrayBuffer().clear();
+		arrayBuffer.clear();
 		offset = 0;
 	}
 	
 	public void merge(ObjectRenderer renderer)
 	{
-		getArrayBuffer().merge(renderer.getArrayBuffer());
-		getElementArrayBuffer().merge(renderer.getElementArrayBuffer(), offset);
+		arrayBuffer.merge(renderer.arrayBuffer);
 		offset += renderer.getOffset();
 	}
 	
@@ -233,7 +228,7 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 	@Override
 	public String toString()
 	{
-		return "ObjectRenderer{" + getArrayBuffer() + ", " + getElementArrayBuffer() + "}";
+		return "ObjectRenderer{" + arrayBuffer + "}";
 	}
 	
 	private class Tracker0<B extends Bufferable> implements Tracker<B> {

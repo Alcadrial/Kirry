@@ -7,15 +7,35 @@ import org.lwjgl.opengl.GL30;
 import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.shader.Shader;
+import com.alcadra.renderengine.util.ToRename;
 import com.alcadra.renderengine.util.Util;
 
-public abstract class BaseRenderer<AB extends ArrayBuffer<?>> {
+@ToRename(name = "BaseShaderRenderer")
+public abstract class BaseRenderer<AB extends ArrayBuffer<?>> implements ShaderRenderer {
 	
-	private VertexArray vertexArray;
-	private AB arrayBuffer;
-	private ElementArrayBuffer elements;
+	protected final VertexArray vertexArray;
+	protected final AB arrayBuffer;
+	@Deprecated(since = "1.2", forRemoval = true)
+	protected ElementArrayBuffer elements;
 	protected Shader shader;
 	
+	public BaseRenderer(Shader shader, VertexArray vertexArray, AB arrayBuffer)
+	{
+		this.shader = shader;
+		this.vertexArray = vertexArray;
+		this.arrayBuffer = arrayBuffer;
+		elements = null;
+	}
+	
+	public BaseRenderer(Supplier<Shader> shader, Supplier<? extends VertexArray> vertexArray, Supplier<? extends AB> arrayBuffer)
+	{
+		this.shader = shader.get();
+		this.vertexArray = vertexArray.get();
+		this.arrayBuffer = arrayBuffer.get();
+		elements = null;
+	}
+	
+	@Deprecated(since = "1.2", forRemoval = true)
 	public BaseRenderer(Shader shader, VertexArray vertexArray, AB arrayBuffer, ElementArrayBuffer elementArrayBuffer)
 	{
 		this.shader = shader;
@@ -24,12 +44,19 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> {
 		elements = elementArrayBuffer;
 	}
 	
+	@Deprecated(since = "1.2", forRemoval = true)
 	public BaseRenderer(Supplier<Shader> shader, Supplier<? extends VertexArray> vertexArray, Supplier<? extends AB> arrayBuffer, Supplier<? extends ElementArrayBuffer> elementArrayBuffer)
 	{
 		this.shader = shader.get();
 		this.vertexArray = vertexArray.get();
 		this.arrayBuffer = arrayBuffer.get();
 		elements = elementArrayBuffer.get();
+	}
+	
+	@Override
+	public void changeShader(Shader other)
+	{
+		
 	}
 	
 	protected void syncBuffers()
@@ -49,7 +76,7 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> {
 		Util.printError("BaseRenderer[INTERNAL] draw");
 	}
 	
-	protected final void drawIndices(int mode)
+	protected void drawIndices(int mode)
 	{
 		vertexArray.bind();
 		syncBuffers();
@@ -64,21 +91,25 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> {
 		if (elements != null) elements.clear();
 	}
 	
+	@Deprecated(since = "1.2", forRemoval = true)
 	protected VertexArray getVertexArray()
 	{
 		return vertexArray;
 	}
 	
+	@Deprecated(since = "1.2", forRemoval = true)
 	protected AB getArrayBuffer()
 	{
 		return arrayBuffer;
 	}
 	
+	@Deprecated(since = "1.2", forRemoval = true)
 	protected ElementArrayBuffer getElementArrayBuffer()
 	{
 		return elements;
 	}
 	
+	@Override
 	public Shader getShader()
 	{
 		return shader;

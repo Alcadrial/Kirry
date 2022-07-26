@@ -23,11 +23,11 @@ public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 	private Font font;
 	private Vector3f lastColor;
 	
+	@Deprecated(since = "1.2", forRemoval = true)
 	public FontRenderer(Shader fontShader, Shader textureShader)
 	{
-		super(fontShader, new VertexArray(), new FloatArrayBuffer(), null);
-		VertexArray vertexArray = getVertexArray();
-		vertexArray.bindBuffer(getArrayBuffer());
+		super(fontShader, new VertexArray(), new FloatArrayBuffer());
+		vertexArray.bindBuffer(arrayBuffer);
 		vertexArray.vertexAttributePointer(0, 3, GL30.GL_FLOAT, false, 32, 0);
 		vertexArray.vertexAttributePointer(1, 3, GL30.GL_FLOAT, false, 32, 12);
 		vertexArray.vertexAttributePointer(2, 2, GL30.GL_FLOAT, false, 32, 24);
@@ -40,9 +40,8 @@ public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 	
 	public FontRenderer(Shader shader)
 	{
-		super(shader, new VertexArray(), new FloatArrayBuffer(), null);
-		VertexArray vertexArray = getVertexArray();
-		vertexArray.bindBuffer(getArrayBuffer());
+		super(shader, new VertexArray(), new FloatArrayBuffer());
+		vertexArray.bindBuffer(arrayBuffer);
 		int size = shader.useColor() ? 32 : 20;
 		int offset = 0, id = 0;
 		vertexArray.vertexAttributePointer(id, 3, GL30.GL_FLOAT, false, size, offset);
@@ -117,7 +116,7 @@ public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 			advanced = 0;
 			line += font.getLineHeight();
 		}
-		getArrayBuffer().addAll(vertices);
+		arrayBuffer.addAll(vertices);
 		lastColor = color;
 	}
 	
@@ -182,7 +181,7 @@ public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 			advanced = 0;
 			line += font.getLineHeight();
 		}
-		getArrayBuffer().addAll(vertices);
+		arrayBuffer.addAll(vertices);
 		lastColor = color;
 	}
 	
@@ -196,24 +195,23 @@ public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 	{
 		if (fontRenderer.shader.useColor() == shader.useColor())
 		{
-			getArrayBuffer().merge(fontRenderer.getArrayBuffer());
+			arrayBuffer.merge(fontRenderer.arrayBuffer);
 			return;
 		}
-		List<Float> data = fontRenderer.getArrayBuffer().asList();
-		FloatArrayBuffer buffer = getArrayBuffer();
+		List<Float> data = fontRenderer.arrayBuffer.asList();
 		if (shader.useColor())
 		{
 			int size = data.size() / 5;
 			for (int i = 0; i < size; i++)
 			{
-				buffer.add(data.get(i * 5));
-				buffer.add(data.get(i * 5 + 1));
-				buffer.add(data.get(i * 5 + 2));
-				buffer.add(lastColor.x());
-				buffer.add(lastColor.y());
-				buffer.add(lastColor.z());
-				buffer.add(data.get(i * 5 + 3));
-				buffer.add(data.get(i * 5 + 4));
+				arrayBuffer.add(data.get(i * 5));
+				arrayBuffer.add(data.get(i * 5 + 1));
+				arrayBuffer.add(data.get(i * 5 + 2));
+				arrayBuffer.add(lastColor.x());
+				arrayBuffer.add(lastColor.y());
+				arrayBuffer.add(lastColor.z());
+				arrayBuffer.add(data.get(i * 5 + 3));
+				arrayBuffer.add(data.get(i * 5 + 4));
 			}
 		}
 		else
@@ -221,11 +219,11 @@ public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 			int size = data.size() / 8;
 			for (int i = 0; i < size; i++)
 			{
-				buffer.add(data.get(i * 8));
-				buffer.add(data.get(i * 8 + 1));
-				buffer.add(data.get(i * 8 + 2));
-				buffer.add(data.get(i * 8 + 6));
-				buffer.add(data.get(i * 8 + 7));
+				arrayBuffer.add(data.get(i * 8));
+				arrayBuffer.add(data.get(i * 8 + 1));
+				arrayBuffer.add(data.get(i * 8 + 2));
+				arrayBuffer.add(data.get(i * 8 + 6));
+				arrayBuffer.add(data.get(i * 8 + 7));
 			}
 		}
 	}
@@ -237,7 +235,7 @@ public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 		shader.enable();
 		shader.setUniform(0, "atlas");
 		shader.setUniform(matrix, "transformation");
-		draw(GL30.GL_QUADS, getArrayBuffer().size());
+		draw(GL30.GL_QUADS, arrayBuffer.size());
 		Shader.disableShaders();
 		clear();
 	}
@@ -255,6 +253,6 @@ public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 	@Override
 	public String toString()
 	{
-		return "FontRenderer{" + getArrayBuffer() + "}";
+		return "FontRenderer{" + arrayBuffer + "}";
 	}
 }

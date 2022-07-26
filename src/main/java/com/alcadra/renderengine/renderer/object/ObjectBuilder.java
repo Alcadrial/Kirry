@@ -129,6 +129,6 @@ public class ObjectBuilder {
 	
 	List<VertexModifier> getModifiers()
 	{
-		return modifiers;
+		return List.copyOf(modifiers);
 	}
 }
