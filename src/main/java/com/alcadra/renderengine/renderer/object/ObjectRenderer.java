@@ -43,6 +43,7 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 		texture = ColorTexture.getNull();
 	}
 	
+	@Override
 	protected void initializeArrayBuffer()
 	{
 		vertexArray.bindBuffer(arrayBuffer);
@@ -72,20 +73,13 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 		VertexArray.unbind();
 	}
 	
+	@Override
 	protected void disableAttributes()
 	{
 		vertexArray.bind();
 		if (shader.useColor()) vertexArray.disableVertexAttribute(1);
 		if (shader.useUV()) vertexArray.disableVertexAttribute(2);
 		if (shader.useNormal()) vertexArray.disableVertexAttribute(3);
-	}
-	
-	@Override
-	public void changeShader(Shader other)
-	{
-		disableAttributes();
-		shader = other;
-		initializeArrayBuffer();
 	}
 	
 	public void loadTexture(ColorTexture texture)

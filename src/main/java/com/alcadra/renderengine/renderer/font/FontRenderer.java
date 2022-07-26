@@ -25,7 +25,7 @@ public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 	private Vector3f lastColor;
 	
 	@Deprecated(since = "1.2", forRemoval = true)
-	@UseInstead(value = {"FontRenderer(Shader)"}, descriptions = {"Remove second shader parameter"})
+	@UseInstead(value = {"FontRenderer(Shader)"}, descriptions = {"Remove second shader parameter, when creating the shader make sure to set Shader.colorInputDataType to PER_VERTEX"})
 	public FontRenderer(Shader fontShader, Shader textureShader)
 	{
 		super(fontShader, new VertexArray(), new FloatArrayBuffer());
@@ -43,6 +43,13 @@ public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 	public FontRenderer(Shader shader)
 	{
 		super(shader, new VertexArray(), new FloatArrayBuffer());
+		lastColor = Vector3f.getOrigin();
+		initializeArrayBuffer();
+	}
+	
+	@Override
+	protected void initializeArrayBuffer()
+	{
 		vertexArray.bindBuffer(arrayBuffer);
 		int size = shader.useColor() ? 32 : 20;
 		int offset = 0, id = 0;
@@ -58,7 +65,15 @@ public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 		vertexArray.vertexAttributePointer(id, 2, GL30.GL_FLOAT, false, size, offset);
 		vertexArray.enableVertexAttribute(id);
 		VertexArray.unbind();
-		lastColor = Vector3f.getOrigin();
+	}
+	
+	@Override
+	protected void disableAttributes()
+	{
+		vertexArray.bind();
+		if (shader.useColor()) vertexArray.disableVertexAttribute(1);
+		if (shader.useUV()) vertexArray.disableVertexAttribute(2);
+		if (shader.useNormal()) vertexArray.disableVertexAttribute(3);
 	}
 	
 	public void loadText(Text text, Vector2i position, float size, int maxLength, float z)

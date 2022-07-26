@@ -2,6 +2,9 @@ package com.alcadra.renderengine.buffer;
 
 import java.nio.ByteBuffer;
 
+import com.alcadra.renderengine.util.WorkInProgress;
+
+@WorkInProgress
 public abstract class PrimitiveArrayBuffer extends ArrayBuffer<ByteBuffer> {
 	
 	private PrimitiveArrayBuffer()
