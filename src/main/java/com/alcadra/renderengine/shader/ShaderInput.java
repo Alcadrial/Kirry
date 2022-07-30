@@ -1,99 +1,39 @@
 package com.alcadra.renderengine.shader;
 
-import com.alcadra.math.vector.Vector2f;
-import com.alcadra.math.vector.Vector2i;
-import com.alcadra.math.vector.Vector3f;
-import com.alcadra.math.vector.Vector3i;
-import com.alcadra.math.vector.Vector4f;
-import com.alcadra.math.vector.Vector4i;
+import java.util.Objects;
+
 import com.alcadra.renderengine.util.WorkInProgress;
 
 @WorkInProgress
-public class ShaderInput<I> {
+public class ShaderInput {
 	
-	public static final String VERTEX_POSITION = "vertexPosition";
-	public static final String UV = "uv";
-	public static final String UV_EXTRA_1 = "uv1";
-	public static final String UV_EXTRA_2 = "uv2";
-	public static final String NORMAL_POSITION = "normalPosition";
-	public static final String POSITION = "position";
-	public static final String POSITION_EXTRA_1 = "position1";
-	public static final String POSITION_EXTRA_2 = "position2";
+	public static final ShaderInput VERTEX_POSITION = of(ShaderInputType.VECTOR_FLOAT_3, "vertexPosition");
+	public static final ShaderInput COLOR_RGB = of(ShaderInputType.VECTOR_FLOAT_3, "colorRGB");
+	public static final ShaderInput COLOR_RGBA = of(ShaderInputType.VECTOR_FLOAT_4, "color");
+	public static final ShaderInput COLOR = COLOR_RGBA;
+	public static final ShaderInput UV = of(ShaderInputType.VECTOR_FLOAT_2, "uv");
+	public static final ShaderInput UV_EXTRA_1 = of(ShaderInputType.VECTOR_FLOAT_2, "uv1");
+	public static final ShaderInput UV_EXTRA_2 = of(ShaderInputType.VECTOR_FLOAT_2, "uv2");
+	public static final ShaderInput NORMAL_POSITION = of(ShaderInputType.VECTOR_FLOAT_3, "normalPosition");
+	public static final ShaderInput POSITION = of(ShaderInputType.VECTOR_FLOAT_3, "position");
+	public static final ShaderInput POSITION_EXTRA_1 = of(ShaderInputType.VECTOR_FLOAT_3, "position1");
+	public static final ShaderInput POSITION_EXTRA_2 = of(ShaderInputType.VECTOR_FLOAT_3, "position2");
 	
-	public static ShaderInput<Byte> of(String name, byte value)
+	public static ShaderInput of(ShaderInputType type, String name)
 	{
-		return new ShaderInput<>(name, value, 1);
+		Objects.requireNonNull(type);
+		Objects.requireNonNull(name);
+		if (name.isBlank()) throw new IllegalArgumentException("ShaderInput name cannot be blank!");
+		return new ShaderInput(type, name);
 	}
 	
-	public static ShaderInput<Short> of(String name, short value)
-	{
-		return new ShaderInput<>(name, value, 2);
-	}
-	
-	public static ShaderInput<Character> of(String name, char value)
-	{
-		return new ShaderInput<>(name, value, 2);
-	}
-	
-	public static ShaderInput<Integer> of(String name, int value)
-	{
-		return new ShaderInput<>(name, value, 4);
-	}
-	
-	public static ShaderInput<Float> of(String name, float value)
-	{
-		return new ShaderInput<>(name, value, 4);
-	}
-	
-	public static ShaderInput<Long> of(String name, long value)
-	{
-		return new ShaderInput<>(name, value, 8);
-	}
-	
-	public static ShaderInput<Double> of(String name, double value)
-	{
-		return new ShaderInput<>(name, value, 8);
-	}
-	
-	public static ShaderInput<Vector2i> of(String name, Vector2i value)
-	{
-		return new ShaderInput<>(name, value, 8);
-	}
-	
-	public static ShaderInput<Vector2f> of(String name, Vector2f value)
-	{
-		return new ShaderInput<>(name, value, 8);
-	}
-	
-	public static ShaderInput<Vector3i> of(String name, Vector3i value)
-	{
-		return new ShaderInput<>(name, value, 12);
-	}
-	
-	public static ShaderInput<Vector3f> of(String name, Vector3f value)
-	{
-		return new ShaderInput<>(name, value, 12);
-	}
-	
-	public static ShaderInput<Vector4i> of(String name, Vector4i value)
-	{
-		return new ShaderInput<>(name, value, 16);
-	}
-	
-	public static ShaderInput<Vector4f> of(String name, Vector4f value)
-	{
-		return new ShaderInput<>(name, value, 16);
-	}
-	
+	private ShaderInputType type;
 	private String name;
-	private I input;
-	private int length;
 	
-	ShaderInput(String name, I input, int length)
+	ShaderInput(ShaderInputType type, String name)
 	{
+		this.type = type;
 		this.name = name;
-		this.input = input;
-		this.length = length;
 	}
 	
 	public String getName()
@@ -101,13 +41,34 @@ public class ShaderInput<I> {
 		return name;
 	}
 	
-	public I getInput()
+	public ShaderInputType getType()
 	{
-		return input;
+		return type;
 	}
 	
-	public int getLength()
+	@Override
+	public int hashCode()
 	{
-		return length;
+		int result = 1;
+		result = 31 * result + (name == null ? 0 : name.hashCode());
+		result = 31 * result + (type == null ? 0 : type.hashCode());
+		return result;
+	}
+	
+	@Override
+	public boolean equals(Object obj)
+	{
+		return this == obj || obj instanceof ShaderInput input && equals(input);
+	}
+	
+	public boolean equals(ShaderInput input)
+	{
+		return name.equals(input.name) && type == input.type;
+	}
+	
+	@Override
+	public String toString()
+	{
+		return type + " " + name;
 	}
 }

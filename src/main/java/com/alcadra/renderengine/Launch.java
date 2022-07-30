@@ -3,6 +3,7 @@ package com.alcadra.renderengine;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL15.*;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
@@ -15,6 +16,10 @@ import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.buffer.SimpleBuffer;
+import com.alcadra.renderengine.shader.ShaderInput;
+import com.alcadra.renderengine.shader.ShaderProgram;
+import com.alcadra.renderengine.shader.ShaderType;
+import com.alcadra.renderengine.shader.ShaderUpdate;
 import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.window.Window;
 import com.alcadra.tester.UltimateTester;
@@ -447,6 +452,55 @@ public class Launch {
 				}), new ElementArrayBuffer());
 				return true;
 			}));
+			t.test("Shader", enclosiveContext(() -> {
+				
+				ShaderUpdate shader = new ShaderUpdate(new File("src/main/resources/assets/renderengine/colored_texture.vert"));
+				
+				t.println("Type = " + shader.getType());
+				
+				if (shader.getType() != ShaderType.VERTEX) return false;
+				if (shader.getStatus().isCompiled()) return false;
+				if (shader.getStatus().getId() != shader.getId()) return false;
+				
+				try
+				{
+					shader.loadShader();
+				}
+				catch (IOException e)
+				{
+					return false;
+				}
+				
+				t.println("Status = " + shader.getStatus());
+
+				if (!shader.getStatus().isCompiled()) return false;
+				if (shader.getStatus().getId() != shader.getId()) return false;
+				
+				ShaderProgram program = new ShaderProgram(ShaderInput.VERTEX_POSITION, ShaderInput.COLOR, ShaderInput.UV);
+
+				t.println("Known Inputs = " + program.getKnownInputs());
+				
+				if (program.getKnownInputs().size() != 3) return false;
+				if (program.getProgramInputs().size() != 0) return false;
+				if (program.isBuilded()) return false;
+				for (ShaderType type : ShaderType.values()) if (program.getShaders(type).size() != 0) return false;
+				
+				program.attachShader(shader);
+				
+				t.println("Vertex Shaders = " + program.getShaders(ShaderType.VERTEX));
+
+				if (program.getShaders(ShaderType.VERTEX).size() != 1) return false;
+				
+				program.build();
+				
+				t.println("Real Inputs = " + program.getProgramInputs());
+				
+				if (!program.isBuilded()) return false;
+				if (program.getProgramInputs().size() != 3) return false;
+				if (!program.getProgramInputs().equals(program.getKnownInputs())) return false;
+				
+				return true;
+			}));
 		}));
 		stream.close();
 		GLFW.glfwTerminate();
@@ -504,6 +558,7 @@ public class Launch {
 			}
 			catch (Exception e)
 			{
+				e.printStackTrace();
 				throw e;
 			}
 			finally

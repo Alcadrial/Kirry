@@ -32,8 +32,10 @@ import com.alcadra.renderengine.rendertest.ObjectRenderTest;
 import com.alcadra.renderengine.rendertest.RenderTest;
 import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.shader.ShaderInputDataType;
+import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.ShaderStatus;
 import com.alcadra.renderengine.shader.ShaderType;
+import com.alcadra.renderengine.shader.ShaderUpdate;
 import com.alcadra.renderengine.util.Image;
 import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.util.Util;
@@ -171,6 +173,7 @@ public class RenderEngine implements RenderTest {
 	private Window window;
 	private Vector2f cursor;
 	private Shader shader, shaderTexture;
+	private ShaderProgram colorProgram, textureProgram;
 	private Renderer renderer;
 	private FontRenderer fontRenderer;
 	private TextureRenderer textureRenderer;
@@ -243,6 +246,7 @@ public class RenderEngine implements RenderTest {
 		frameBuffer = new FrameBuffer();
 		Util.printError("framebuffer");
 		ShaderStatus results;
+		ShaderUpdate shader0;
 		shader = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED, ShaderInputDataType.UNUSUED);
 		try
 		{
@@ -269,6 +273,38 @@ public class RenderEngine implements RenderTest {
 			e.printStackTrace(System.out);
 		}
 		shaderTexture.build();
+		
+		colorProgram = new ShaderProgram();
+		try
+		{
+			shader0 = new ShaderUpdate(new File(colorShaderVertexPath));
+			shader0.loadShader();
+			colorProgram.attachShader(shader0);
+			shader0 = new ShaderUpdate(new File(colorShaderFragmentPath));
+			shader0.loadShader();
+			colorProgram.attachShader(shader0);
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace(System.out);
+		}
+		colorProgram.build();
+		textureProgram = new ShaderProgram();
+		try
+		{
+			shader0 = new ShaderUpdate(new File(textureShaderVertexPath));
+			shader0.loadShader();
+			textureProgram.attachShader(shader0);
+			shader0 = new ShaderUpdate(new File(textureShaderFragmentPath));
+			shader0.loadShader();
+			textureProgram.attachShader(shader0);
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace(System.out);
+		}
+		textureProgram.build();
+		
 		Util.printError("shader init");
 		renderer = new Renderer(shader);
 		colorRenderer = new ColorRenderer(shader);

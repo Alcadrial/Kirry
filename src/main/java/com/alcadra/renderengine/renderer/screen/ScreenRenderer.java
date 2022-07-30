@@ -2,26 +2,29 @@ package com.alcadra.renderengine.renderer.screen;
 
 import org.lwjgl.opengl.GL30;
 
+import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.ObjectArrayBuffer;
 import com.alcadra.renderengine.renderer.BaseRenderer;
 import com.alcadra.renderengine.renderer.VertexArray;
 import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.util.NotYetImplemented;
 import com.alcadra.renderengine.window.widget.DrawableWidget;
-import com.alcadra.renderengine.window.widget.Widget;
 
 @NotYetImplemented
-class ScreenRenderer extends BaseRenderer<ObjectArrayBuffer<Widget>> {
+class ScreenRenderer extends BaseRenderer<ArrayBuffer<?>> {
+	
+	private ArrayBuffer<?> currentArrayBuffer;
 	
 	public ScreenRenderer(Shader shader)
 	{
 		super(shader, new VertexArray(), new ObjectArrayBuffer<>());
+		currentArrayBuffer = arrayBuffer;
 	}
 	
 	@Override
 	protected void initializeArrayBuffer()
 	{
-		vertexArray.bindBuffer(arrayBuffer);
+		vertexArray.bindBuffer(currentArrayBuffer);
 		int vertexSize = 12 + (shader.useColor() ? 16 : 0) + (shader.useUV() ? 8 : 0) + (shader.useNormal() ? 12 : 0);
 		int offset = 0;
 		vertexArray.vertexAttributePointer(0, 3, GL30.GL_FLOAT, false, vertexSize, offset);
@@ -60,5 +63,10 @@ class ScreenRenderer extends BaseRenderer<ObjectArrayBuffer<Widget>> {
 	public void drawWidget(DrawableWidget<ScreenRenderer> widget)
 	{
 		
+	}
+	
+	public void useBuffer(ArrayBuffer<?> buffer)
+	{
+		currentArrayBuffer = buffer;
 	}
 }
