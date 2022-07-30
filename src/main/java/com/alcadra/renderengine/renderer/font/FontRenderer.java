@@ -25,7 +25,7 @@ public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 	private Vector3f lastColor;
 	
 	@Deprecated(since = "1.2", forRemoval = true)
-	@UseInstead(value = {"FontRenderer(Shader)"}, descriptions = {"Remove second shader parameter, when creating the shader make sure to set Shader.colorInputDataType to PER_VERTEX"})
+	@UseInstead(name = "FontRenderer(Shader)", descriptions = "Remove second shader parameter, when creating the shader make sure to set Shader.colorInputDataType to PER_VERTEX")
 	public FontRenderer(Shader fontShader, Shader textureShader)
 	{
 		super(fontShader, new VertexArray(), new FloatArrayBuffer());

@@ -11,7 +11,7 @@ public class ShaderStatus {
 	private int id;
 	
 	@Deprecated(since = "1.2", forRemoval = true)
-	@UseInstead(value = "ShaderStatus(boolean, int, String[], String)", descriptions = "Break code into a String[] containing a String for every line")
+	@UseInstead(name = "ShaderStatus(boolean, int, String[], String)", descriptions = "Break code into a String[] containing a String for every line")
 	public ShaderStatus(boolean isCompiled, int id, String code, String info)
 	{
 		this.code = code;
