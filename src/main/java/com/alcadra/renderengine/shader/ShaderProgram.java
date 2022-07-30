@@ -16,7 +16,7 @@ public class ShaderProgram {
 	private List<ShaderInput> knownInputs;
 	private List<ShaderInput> programInputs;
 	private int id;
-	private boolean isBuilded;
+	private ProgramStatus status;
 	
 	@SuppressWarnings("unchecked")
 	public ShaderProgram(@NotUsed ShaderInput... knownInputs)
@@ -26,7 +26,7 @@ public class ShaderProgram {
 		this.knownInputs = List.of(knownInputs);
 		programInputs = List.of();
 		id = GL20.glCreateProgram();
-		isBuilded = false;
+		status = ProgramStatus.of(id, "Needs to be builded!");
 	}
 	
 	public void attachShader(ShaderUpdate shader)
@@ -51,12 +51,22 @@ public class ShaderProgram {
 	
 	public void build()
 	{
-		if (!isBuilded)
+		if (!status.isBuilded())
 		{
 			GL20.glLinkProgram(id);
+			if (GL20.glGetProgrami(id, GL20.GL_LINK_STATUS) == 0)
+			{
+				status = ProgramStatus.ofLinkFail(id);
+				return;
+			}
 			GL20.glValidateProgram(id);
+			if (GL20.glGetProgrami(id, GL20.GL_VALIDATE_STATUS) == 0)
+			{
+				status = ProgramStatus.ofValidationFail(id);
+				return;
+			}
 			learnInputs();
-			isBuilded = true;
+			status = ProgramStatus.ofSuccess(id);
 		}
 	}
 	
@@ -94,11 +104,6 @@ public class ShaderProgram {
 		programInputs = List.copyOf(programInputs);
 	}
 	
-	public boolean isBuilded()
-	{
-		return isBuilded;
-	}
-	
 	@SuppressWarnings("unchecked")
 	public void delete()
 	{
@@ -124,5 +129,10 @@ public class ShaderProgram {
 	public List<ShaderInput> getProgramInputs()
 	{
 		return programInputs;
+	}
+	
+	public ProgramStatus getStatus()
+	{
+		return status;
 	}
 }
