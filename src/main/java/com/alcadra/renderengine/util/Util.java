@@ -1,6 +1,7 @@
 package com.alcadra.renderengine.util;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.lwjgl.opengl.GL30;
 
@@ -25,10 +26,22 @@ public class Util {
 	
 	public static String toPointString(Vector4f vector)
 	{
-		if (vector instanceof Vector1f) return "{x=" + vector.x() + "}";
-		if (vector instanceof Vector2f) return "{x=" + vector.x() + ", y= " + vector.y() + "}";
-		if (vector instanceof Vector3f) return "{x=" + vector.x() + ", y= " + vector.y() + ", z= " + vector.z() + "}";
 		return "{x=" + vector.x() + ", y= " + vector.y() + ", z= " + vector.z() + ", w= " + vector.w() + "}";
+	}
+	
+	public static String toPointString(Vector3f vector)
+	{
+		return "{x=" + vector.x() + ", y= " + vector.y() + ", z= " + vector.z() + "}";
+	}
+	
+	public static String toPointString(Vector2f vector)
+	{
+		return "{x=" + vector.x() + ", y= " + vector.y() + "}";
+	}
+	
+	public static String toPointString(Vector1f vector)
+	{
+		return "{x=" + vector.x() + "}";
 	}
 	
 	public static String newParamerizedString(String base, String parametertrigger, List<Object> parameters)
@@ -63,32 +76,64 @@ public class Util {
 	
 	public static void printError(String s)
 	{
-		int error = GL30.glGetError();
-		while (debug)
+		if (debug)
 		{
-			switch (error)
+			int error = GL30.glGetError();
+			while (true)
 			{
-				case GL30.GL_NO_ERROR:
-					return;
-				case GL30.GL_INVALID_ENUM:
-					System.out.println(s + " INVALID ENUM");
-					break;
-				case GL30.GL_INVALID_VALUE:
-					System.out.println(s + " INVALID VALUE");
-					break;
-				case GL30.GL_INVALID_OPERATION:
-					System.out.println(s + " INVALID OPERATION");
-					break;
-				case GL30.GL_INVALID_FRAMEBUFFER_OPERATION:
-					System.out.println(s + " INVALID FRAMEBUFFER OPERATION");
-					break;
+				switch (error)
+				{
+					case GL30.GL_NO_ERROR:
+						return;
+					case GL30.GL_INVALID_ENUM:
+						System.out.println(s + " INVALID ENUM");
+						break;
+					case GL30.GL_INVALID_VALUE:
+						System.out.println(s + " INVALID VALUE");
+						break;
+					case GL30.GL_INVALID_OPERATION:
+						System.out.println(s + " INVALID OPERATION");
+						break;
+					case GL30.GL_INVALID_FRAMEBUFFER_OPERATION:
+						System.out.println(s + " INVALID FRAMEBUFFER OPERATION");
+						break;
+				}
+				error = GL30.glGetError();
 			}
-			error = GL30.glGetError();
 		}
+	}
+	
+	public static void printError(Supplier<String> x)
+	{
+		if (debug) printError(x.get());
 	}
 	
 	public static void printError()
 	{
-		printError("");
+		if (debug)
+		{
+			int error = GL30.glGetError();
+			while (true)
+			{
+				switch (error)
+				{
+					case GL30.GL_NO_ERROR:
+						return;
+					case GL30.GL_INVALID_ENUM:
+						System.out.println("INVALID ENUM");
+						break;
+					case GL30.GL_INVALID_VALUE:
+						System.out.println("INVALID VALUE");
+						break;
+					case GL30.GL_INVALID_OPERATION:
+						System.out.println("INVALID OPERATION");
+						break;
+					case GL30.GL_INVALID_FRAMEBUFFER_OPERATION:
+						System.out.println("INVALID FRAMEBUFFER OPERATION");
+						break;
+				}
+				error = GL30.glGetError();
+			}
+		}
 	}
 }

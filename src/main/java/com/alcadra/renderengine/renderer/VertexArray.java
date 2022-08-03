@@ -6,6 +6,7 @@ import java.util.Map;
 import org.lwjgl.opengl.GL30;
 
 import com.alcadra.renderengine.buffer.SimpleBuffer;
+import com.alcadra.renderengine.util.Nonnull;
 
 public class VertexArray {
 	
@@ -17,6 +18,7 @@ public class VertexArray {
 		NULL.bind();
 	}
 	
+	@Nonnull
 	public static VertexArray getBinded()
 	{
 		return binded;

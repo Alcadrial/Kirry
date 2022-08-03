@@ -10,9 +10,11 @@ import com.alcadra.math.vector.complex.Quaternion;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.shader.Shader;
-import com.alcadra.renderengine.util.UseInstead;
+import com.alcadra.renderengine.util.update.UseInstead;
 
-public class Renderer extends BaseIndicesRenderer<FloatArrayBuffer> implements IndicesRenderer, VertexBuilder<Renderer> {
+@Deprecated(since = "2.0-migration", forRemoval = true)
+@UseInstead(name = ".universal.UniversalRenderer")
+public class Renderer extends BaseIndicesRenderer<FloatArrayBuffer> implements VertexBuilder<Renderer> {
 	
 	private Vector4f bindedColor = Vector4f.getOrigin();
 	private Vector2f bindedUV = Vector2f.getOrigin();
@@ -221,7 +223,7 @@ public class Renderer extends BaseIndicesRenderer<FloatArrayBuffer> implements I
 	}
 	
 	@Deprecated(since = "1.1", forRemoval = true)
-	@UseInstead({"drawPoints(int, Matrix4f)"})
+	@UseInstead(name = "drawPoints(int, Matrix4f)")
 	public void draw(int mode, Matrix4f matrix)
 	{
 		drawPoints(mode, matrix);

@@ -1,6 +1,6 @@
 package com.alcadra.renderengine.shader;
 
-import com.alcadra.renderengine.util.UseInstead;
+import com.alcadra.renderengine.util.update.UseInstead;
 
 public class ShaderStatus {
 	

@@ -1,4 +1,4 @@
-package com.alcadra.renderengine.util;
+package com.alcadra.renderengine.util.update;
 
 public @interface UseInstead {
 	

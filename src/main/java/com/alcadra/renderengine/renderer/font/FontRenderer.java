@@ -17,8 +17,11 @@ import com.alcadra.renderengine.renderer.font.text.Text;
 import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.textures.Texture;
-import com.alcadra.renderengine.util.UseInstead;
+import com.alcadra.renderengine.util.update.UpdatedTo;
+import com.alcadra.renderengine.util.update.UseInstead;
 
+@UpdatedTo("FontRendererUpdate")
+@Deprecated(since = "2.0-migration", forRemoval = true)
 public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 	
 	private Font font;
