@@ -10,7 +10,7 @@ import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
-import com.alcadra.renderengine.renderer.BaseIndicesRendererUpdate;
+import com.alcadra.renderengine.renderer.AbstractIndicesRendererUpdate;
 import com.alcadra.renderengine.renderer.VertexArray;
 import com.alcadra.renderengine.renderer.object.IllegalBuildingState;
 import com.alcadra.renderengine.shader.ShaderInput;
@@ -18,9 +18,10 @@ import com.alcadra.renderengine.shader.ShaderInputType;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.uniform.ShaderUniform;
 import com.alcadra.renderengine.util.Nonnull;
+import com.alcadra.renderengine.util.Util;
 
 @Nonnull
-public class UniversalRenderer extends BaseIndicesRendererUpdate<FloatArrayBuffer> {
+public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayBuffer> {
 	
 	private static final ShaderUniform<Matrix4f> TRANSFORMATION = ShaderUniform.ofMatrix4f("TRANSFORMATION");
 	private static final ShaderUniform<Vector4f> COLOR = ShaderUniform.ofVector4f("COLOR");
@@ -29,12 +30,14 @@ public class UniversalRenderer extends BaseIndicesRendererUpdate<FloatArrayBuffe
 	
 	private Vector4f color;
 	private int textureSampler;
+	private int offset;
 	
 	public UniversalRenderer(ShaderProgram program)
 	{
 		super(program, new FloatArrayBuffer());
 		color = Vector4f.getOrigin();
 		textureSampler = 0;
+		offset = 0;
 		initializeArrayBuffer();
 	}
 	
@@ -43,10 +46,11 @@ public class UniversalRenderer extends BaseIndicesRendererUpdate<FloatArrayBuffe
 	{
 		List<ShaderInput> inputs = program.getProgramInputs();
 		int size = 0;
-		for (ShaderInput input : inputs) size += input.getType().getSize();
+		for (ShaderInput input : inputs) size += input.getType().getLength();
 		int index = 0;
 		int stride = 0;
 		vertexArray.bind();
+		vertexArray.bindBuffer(arrayBuffer);
 		for (ShaderInput input : inputs)
 		{
 			ShaderInputType type = input.getType();
@@ -69,17 +73,30 @@ public class UniversalRenderer extends BaseIndicesRendererUpdate<FloatArrayBuffe
 	@Override
 	public void drawPoints(int mode, Matrix4f matrix)
 	{
+		// System.out.println(arrayBuffer);
 		program.enable();
 		program.setUniform(TRANSFORMATION, matrix);
 		program.setUniform(TEXTURE_SAMPLER, textureSampler);
 		program.setUniform(COLOR, color);
 		program.setUniform(COLOR_RGB, color.xyz());
-		draw(mode);
+		Util.printError(() -> "[UniversalRenderer] setting program uniforms");
+		drawIndices(mode);
 	}
 	
 	public VertexBuilder vertex(float x, float y, float z)
 	{
 		return new VertexBuilder(x, y, z);
+	}
+	
+	public UniversalRenderer vertex(int index)
+	{
+		elements.add(index);
+		return this;
+	}
+	
+	public int getOffset()
+	{
+		return offset;
 	}
 	
 	public void setUniformColor(Vector4f color)
@@ -101,6 +118,13 @@ public class UniversalRenderer extends BaseIndicesRendererUpdate<FloatArrayBuffe
 	public void setUniformTextureSampler(int textureSampler)
 	{
 		if (textureSampler >= 0 && textureSampler < 32) this.textureSampler = textureSampler;
+	}
+	
+	@Override
+	public void clear()
+	{
+		super.clear();
+		offset = 0;
 	}
 	
 	public class VertexBuilder {
@@ -222,6 +246,17 @@ public class UniversalRenderer extends BaseIndicesRendererUpdate<FloatArrayBuffe
 				List<Float> data = map.get(input);
 				if (data != null) arrayBuffer.addAll(data);
 			}
+			elements.add(offset++);
+		}
+		
+		public void end(int index)
+		{
+			for (ShaderInput input : program.getProgramInputs())
+			{
+				List<Float> data = map.get(input);
+				if (data != null) arrayBuffer.addAll(data);
+			}
+			elements.add(index);
 		}
 	}
 }

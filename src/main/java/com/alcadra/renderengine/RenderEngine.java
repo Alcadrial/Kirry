@@ -22,12 +22,12 @@ import com.alcadra.math.vector.Vector3i;
 import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.buffer.FrameBuffer;
 import com.alcadra.renderengine.renderer.ColorRenderer;
-import com.alcadra.renderengine.renderer.Renderer;
 import com.alcadra.renderengine.renderer.TextureRenderer;
 import com.alcadra.renderengine.renderer.font.Font;
 import com.alcadra.renderengine.renderer.font.FontRenderer;
 import com.alcadra.renderengine.renderer.font.text.Text;
 import com.alcadra.renderengine.renderer.font.text.TextLine;
+import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
 import com.alcadra.renderengine.rendertest.ObjectRenderTest;
 import com.alcadra.renderengine.rendertest.RenderTest;
 import com.alcadra.renderengine.shader.Shader;
@@ -37,6 +37,7 @@ import com.alcadra.renderengine.shader.ShaderStatus;
 import com.alcadra.renderengine.shader.ShaderType;
 import com.alcadra.renderengine.shader.ShaderUpdate;
 import com.alcadra.renderengine.util.Image;
+import com.alcadra.renderengine.util.RendererUtil;
 import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.util.Util;
 import com.alcadra.renderengine.window.Window;
@@ -174,7 +175,7 @@ public class RenderEngine implements RenderTest {
 	private Vector2f cursor;
 	private Shader shader, shaderTexture;
 	private ShaderProgram colorProgram, textureProgram;
-	private Renderer renderer;
+	private UniversalRenderer renderer;
 	private FontRenderer fontRenderer;
 	private TextureRenderer textureRenderer;
 	private ColorRenderer colorRenderer;
@@ -306,7 +307,7 @@ public class RenderEngine implements RenderTest {
 		textureProgram.build();
 		
 		Util.printError("shader init");
-		renderer = new Renderer(shader);
+		renderer = new UniversalRenderer(colorProgram);
 		colorRenderer = new ColorRenderer(shader);
 		textureRenderer = new TextureRenderer(shaderTexture);
 		Util.printError("renderer init");
@@ -445,9 +446,8 @@ public class RenderEngine implements RenderTest {
 		Util.printError("FrameBuffer draw");
 		
 		renderer.clear();
-		renderer.color(255, 255, 0, 255);
-		renderer.loadCube(identity, Vector3f.getOrigin(), end);
-		renderer.loadCube(viewer, end, end.add(end));
+		RendererUtil.loadOrthoCube(renderer, Vector3f.getOrigin(), end, new Vector4f(255, 255, 0, 255));
+		RendererUtil.loadOrthoCube(renderer, viewer, end, end.add(end), new Vector4f(255, 255, 0, 255));
 		renderer.drawPoints(GL30.GL_QUADS, projected);
 		Util.printError("TextureRender draw");
 		

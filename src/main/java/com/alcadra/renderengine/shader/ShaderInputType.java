@@ -75,24 +75,26 @@ public enum ShaderInputType {
 			case "dvec3" -> VECTOR_DOUBLE_3;
 			case "dvec4" -> VECTOR_DOUBLE_4;
 		
-			case "mat2x2" -> MATRIX_FLOAT_2X2;
+			case "mat2x2", "mat2" -> MATRIX_FLOAT_2X2;
 			case "mat2x3" -> MATRIX_FLOAT_2X3;
 			case "mat2x4" -> MATRIX_FLOAT_2X4;
 			case "mat3x2" -> MATRIX_FLOAT_3X2;
-			case "mat3x3" -> MATRIX_FLOAT_3X3;
+			case "mat3x3", "mat3" -> MATRIX_FLOAT_3X3;
 			case "mat3x4" -> MATRIX_FLOAT_3X4;
 			case "mat4x2" -> MATRIX_FLOAT_4X2;
 			case "mat4x3" -> MATRIX_FLOAT_4X3;
-			case "mat4x4" -> MATRIX_FLOAT_4X4;
-			case "dmat2x2" -> MATRIX_DOUBLE_2X2;
+			case "mat4x4", "mat4" -> MATRIX_FLOAT_4X4;
+		
+			case "dmat2x2", "dmat2" -> MATRIX_DOUBLE_2X2;
 			case "dmat2x3" -> MATRIX_DOUBLE_2X3;
 			case "dmat2x4" -> MATRIX_DOUBLE_2X4;
 			case "dmat3x2" -> MATRIX_DOUBLE_3X2;
-			case "dmat3x3" -> MATRIX_DOUBLE_3X3;
+			case "dmat3x3", "dmat3" -> MATRIX_DOUBLE_3X3;
 			case "dmat3x4" -> MATRIX_DOUBLE_3X4;
 			case "dmat4x2" -> MATRIX_DOUBLE_4X2;
 			case "dmat4x3" -> MATRIX_DOUBLE_4X3;
-			case "dmat4x4" -> MATRIX_DOUBLE_4X4;
+			case "dmat4x4", "dmat4" -> MATRIX_DOUBLE_4X4;
+		
 			default -> null;
 		};
 	}

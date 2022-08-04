@@ -73,7 +73,9 @@ public class FloatArrayBuffer extends ArrayBuffer<FloatBuffer> {
 	{
 		FloatBuffer buffer = MemoryUtil.memAllocFloat(values.size());
 		for (Float i : values) buffer.put(i);
-		return buffer.flip();
+		buffer.flip();
+		// if (buffer.capacity() == 336) System.out.println(Arrays.toString(getGlFloatData()));
+		return buffer;
 	}
 	
 	@Override
