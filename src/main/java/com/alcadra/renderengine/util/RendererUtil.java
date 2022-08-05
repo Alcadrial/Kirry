@@ -1,6 +1,7 @@
 package com.alcadra.renderengine.util;
 
 import com.alcadra.math.Matrix4f;
+import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
@@ -49,5 +50,23 @@ public class RendererUtil {
 		renderer.vertex(eX, sY, sZ).color(r, g, b, a).normal(0, -1, 0).end();
 		renderer.vertex(eX, sY, eZ).color(r, g, b, a).normal(0, -1, 0).end();
 		renderer.vertex(sX, sY, eZ).color(r, g, b, a).normal(0, -1, 0).end();
+	}
+	
+	public static void loadSquare(UniversalRenderer renderer, Matrix4f matrix, Vector3f start, Vector3f end, float z, Vector4f color)
+	{
+		loadSquare(renderer, matrix.multiply(new Vector4f(start, 1)).xy(), matrix.multiply(new Vector4f(end, 1)).xy(), z, color);
+	}
+	
+	public static void loadSquare(UniversalRenderer renderer, Vector2f start, Vector2f end, float z, Vector4f color)
+	{
+		loadSquare(renderer, start.x(), start.y(), end.x(), end.y(), z, color.x(), color.y(), color.z(), color.w());
+	}
+	
+	public static void loadSquare(UniversalRenderer renderer, float sX, float sY, float eX, float eY, float z, float r, float g, float b, float a)
+	{
+		renderer.vertex(sX, eY, z).color(r, g, b, a).end();
+		renderer.vertex(eX, eY, z).color(r, g, b, a).end();
+		renderer.vertex(eX, sY, z).color(r, g, b, a).end();
+		renderer.vertex(sX, sY, z).color(r, g, b, a).end();
 	}
 }

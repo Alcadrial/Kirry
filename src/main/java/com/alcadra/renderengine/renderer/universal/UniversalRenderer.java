@@ -18,7 +18,6 @@ import com.alcadra.renderengine.shader.ShaderInputType;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.uniform.ShaderUniform;
 import com.alcadra.renderengine.util.Nonnull;
-import com.alcadra.renderengine.util.Util;
 
 @Nonnull
 public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayBuffer> {
@@ -54,7 +53,7 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 		for (ShaderInput input : inputs)
 		{
 			ShaderInputType type = input.getType();
-			vertexArray.vertexAttributePointer(index, type.getSize(), type.getType(), false, stride, size);
+			vertexArray.vertexAttributePointer(index, type.getSize(), type.getType(), false, size, stride);
 			vertexArray.enableVertexAttribute(index);
 			stride += type.getLength();
 			index++;
@@ -73,13 +72,11 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 	@Override
 	public void drawPoints(int mode, Matrix4f matrix)
 	{
-		// System.out.println(arrayBuffer);
 		program.enable();
 		program.setUniform(TRANSFORMATION, matrix);
 		program.setUniform(TEXTURE_SAMPLER, textureSampler);
 		program.setUniform(COLOR, color);
 		program.setUniform(COLOR_RGB, color.xyz());
-		Util.printError(() -> "[UniversalRenderer] setting program uniforms");
 		drawIndices(mode);
 	}
 	
@@ -183,12 +180,12 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 		
 		public VertexBuilder color(float r, float g, float b)
 		{
-			return vec3(ShaderInput.COLOR_RGB, r, g, b);
+			return vec3(ShaderInput.COLOR_RGB, r / 255, g / 255, b / 255);
 		}
 		
 		public VertexBuilder color(float r, float g, float b, float a)
 		{
-			return vec4(ShaderInput.COLOR, r, g, b, a);
+			return vec4(ShaderInput.COLOR, r / 255, g / 255, b / 255, a / 255);
 		}
 		
 		public VertexBuilder normal(float x, float y, float z)
@@ -246,6 +243,7 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 				List<Float> data = map.get(input);
 				if (data != null) arrayBuffer.addAll(data);
 			}
+			map.clear();
 			elements.add(offset++);
 		}
 		
@@ -256,6 +254,7 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 				List<Float> data = map.get(input);
 				if (data != null) arrayBuffer.addAll(data);
 			}
+			map.clear();
 			elements.add(index);
 		}
 	}
