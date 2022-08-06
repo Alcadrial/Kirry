@@ -14,19 +14,22 @@ import com.alcadra.math.vector.axis.Axis;
 import com.alcadra.renderengine.RenderEngine;
 import com.alcadra.renderengine.buffer.Bufferable;
 import com.alcadra.renderengine.renderer.font.Font;
-import com.alcadra.renderengine.renderer.font.FontRenderer;
+import com.alcadra.renderengine.renderer.font.FontRendererUpdate;
 import com.alcadra.renderengine.renderer.font.text.Text;
 import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.renderer.object.ObjectBuilder;
 import com.alcadra.renderengine.renderer.object.ObjectRenderer;
 import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.shader.ShaderInputDataType;
+import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.ShaderStatus;
 import com.alcadra.renderengine.shader.ShaderType;
+import com.alcadra.renderengine.shader.ShaderUpdate;
 import com.alcadra.renderengine.textures.ColorTexture;
 import com.alcadra.renderengine.util.Image;
 import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.util.Tracker;
+import com.alcadra.renderengine.util.color.Color;
 import com.alcadra.renderengine.window.Window;
 
 @Test
@@ -35,7 +38,7 @@ public class ObjectRenderTest implements RenderTest {
 	private Window window;
 	private Font font;
 	
-	private FontRenderer fontRenderer;
+	private FontRendererUpdate fontRenderer;
 	private ObjectRenderer objectColorRenderer;
 	private ObjectRenderer objectTexturedRenderer;
 	private ObjectRenderer cubeRenderer;
@@ -76,22 +79,25 @@ public class ObjectRenderTest implements RenderTest {
 			e.printStackTrace(System.out);
 		}
 		
-		Shader fontShader = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED);
+		ShaderProgram fontProgram = new ShaderProgram();
 		try
 		{
-			ShaderStatus results = fontShader.loadShaderFile(new File(RenderEngine.fontShaderVertexPath), ShaderType.VERTEX);
-			if (!results.isCompiled()) System.out.println(results);
-			results = fontShader.loadShaderFile(new File(RenderEngine.fontShaderFragmentPath), ShaderType.FRAGMENT);
-			if (!results.isCompiled()) System.out.println(results);
+			ShaderUpdate shader = new ShaderUpdate(new File(RenderEngine.fontShaderVertexPath));
+			shader.loadShader();
+			if (!shader.getStatus().isCompiled()) System.out.println(shader.getStatus());
+			fontProgram.attachShader(shader);
+			shader = new ShaderUpdate(new File(RenderEngine.fontShaderFragmentPath));
+			shader.loadShader();
+			if (!shader.getStatus().isCompiled()) System.out.println(shader.getStatus());
+			fontProgram.attachShader(shader);
 		}
 		catch (IOException e)
 		{
 			e.printStackTrace(System.out);
 		}
-		fontShader.build();
+		fontProgram.build();
 		
-		fontRenderer = new FontRenderer(fontShader);
-		fontRenderer.setFont(font);
+		fontRenderer = new FontRendererUpdate(fontProgram, font);
 		
 		Shader objectColorShader = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED, ShaderInputDataType.UNUSUED);
 		try
@@ -206,7 +212,7 @@ public class ObjectRenderTest implements RenderTest {
 		Text text = new Text();
 		text.addLine(new TextLine("partialticks " + partialTicks));
 		text.addLine(new TextLine("time " + o));
-		fontRenderer.loadText(text, new Vector2i(0, window.getHeight() - font.getLineHeight()), 1, window.getWidth(), 0);
+		fontRenderer.loadText(text, new Vector2i(0, window.getHeight() - font.getLineHeight()), Color.BLACK, 1, window.getWidth(), 0);
 		fontRenderer.draw(orthographicPositive);
 		
 		int i = o / 10 % 14;
