@@ -22,7 +22,10 @@ import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.textures.ColorTexture;
 import com.alcadra.renderengine.textures.Texture;
 import com.alcadra.renderengine.util.Tracker;
+import com.alcadra.renderengine.util.update.UpdatedTo;
 
+@Deprecated(since = "2.0-migration", forRemoval = true)
+@UpdatedTo("ObjectRendererUpdate")
 public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> implements ShaderRenderer, VertexBuilder<ObjectRenderer> {
 	
 	private Vector4i bindedColor;

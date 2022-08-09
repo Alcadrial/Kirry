@@ -13,7 +13,11 @@ import com.alcadra.renderengine.buffer.Bufferable;
 import com.alcadra.renderengine.renderer.VertexBuilder;
 import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.util.Tracker;
+import com.alcadra.renderengine.util.update.NoReplacement;
+import com.alcadra.renderengine.util.update.UpdatedTo;
 
+@Deprecated(since = "2.0-migration", forRemoval = true)
+@UpdatedTo("ObjectBuilderUpdate")
 public class ObjectBuilder {
 	
 	private Vector4i bindedColor;
@@ -67,12 +71,16 @@ public class ObjectBuilder {
 		return tracker;
 	}
 	
+	@Deprecated(since = "2.0-migration", forRemoval = true)
+	@NoReplacement
 	public void next(Bufferable value)
 	{
 		renderer.end(this);
 		renderer.start(value, this);
 	}
 	
+	@Deprecated(since = "2.0-migration", forRemoval = true)
+	@UpdatedTo("ObjectBuilderUpdate.Builder")
 	public class Builder implements VertexBuilder<Builder> {
 		
 		private Vector4i bindedColor;

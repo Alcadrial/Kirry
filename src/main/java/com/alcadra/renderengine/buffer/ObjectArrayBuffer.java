@@ -143,7 +143,7 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 	}
 	
 	@Override
-	public void sync()// effettua le modifiche senza poi azzerare la lista delle modifiche
+	public void sync()// effettua le modifiche senza poi azzerare la lista delle modifiche (è ancora vero?)
 	{
 		if (isModified)
 		{
