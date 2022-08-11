@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 import com.alcadra.math.Matrix4f;
 import com.alcadra.renderengine.buffer.ObjectArrayBuffer;
 import com.alcadra.renderengine.renderer.AbstractShaderRendererUpdate;
+import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.shader.ShaderInput;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.util.NotYetImplemented;
@@ -64,7 +65,7 @@ public class ObjectRendererUpdate extends AbstractShaderRendererUpdate<ObjectArr
 		arrayBuffer.disable(index);
 	}
 	
-	public void draw(int mode, Matrix4f matrix)
+	public void draw(RenderingMode mode, Matrix4f matrix)
 	{
 		
 		draw(mode, arrayBuffer.intSize());

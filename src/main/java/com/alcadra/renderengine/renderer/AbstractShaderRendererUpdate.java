@@ -80,21 +80,21 @@ public abstract class AbstractShaderRendererUpdate<AB extends ArrayBuffer<?>> im
 		Util.printError("BaseRenderer[INTERNAL] array sync");
 	}
 	
-	protected void draw(int mode)
+	protected void draw(RenderingMode mode)
 	{
 		draw(mode, 0, arrayBuffer.size());
 	}
 	
-	protected void draw(int mode, int count)
+	protected void draw(RenderingMode mode, int count)
 	{
 		draw(mode, 0, count);
 	}
 	
-	protected void draw(int mode, int start, int count)
+	protected void draw(RenderingMode mode, int start, int count)
 	{
 		vertexArray.bind();
 		syncBuffers();
-		GL30.glDrawArrays(mode, start, count);
+		GL30.glDrawArrays(mode.ordinal(), start, count);
 		Util.printError("BaseRenderer[INTERNAL] draw");
 	}
 	

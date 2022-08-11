@@ -1,7 +1,7 @@
 package com.alcadra.renderengine.rendertest;
 
 import com.alcadra.renderengine.util.Test;
-import com.alcadra.renderengine.window.Window;
+import com.alcadra.renderengine.window.WindowUpdate;
 
 @Test
 public interface RenderTest {
@@ -10,5 +10,5 @@ public interface RenderTest {
 	public void restart();
 	public void loop(float partialTicks);
 	
-	public Window getWindow();
+	public WindowUpdate getWindow();
 }

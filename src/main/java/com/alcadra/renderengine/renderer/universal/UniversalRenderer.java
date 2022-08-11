@@ -9,7 +9,8 @@ import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.buffer.FloatArrayBufferStack;
 import com.alcadra.renderengine.renderer.AbstractIndicesRendererUpdate;
 import com.alcadra.renderengine.renderer.AbstractVertexBuilder;
-import com.alcadra.renderengine.renderer.IndicesRenderer;
+import com.alcadra.renderengine.renderer.IndicesRendererUpdate;
+import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.uniform.ShaderUniform;
 import com.alcadra.renderengine.util.Nonnull;
@@ -35,7 +36,7 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 	}
 	
 	@Override
-	public void drawPoints(int mode, Matrix4f matrix)
+	public void drawPoints(RenderingMode mode, Matrix4f matrix)
 	{
 		program.enable();
 		program.setUniform(TRANSFORMATION, matrix);
@@ -50,10 +51,15 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 		return new VertexBuilder(x, y, z);
 	}
 	
-	public IndicesRenderer vertex(int index)
+	public IndicesRendererUpdate vertex(int index)
 	{
 		elements.add(index);
 		return this;
+	}
+	
+	public void pushBuffer()
+	{
+		pushBuffer(new FloatArrayBuffer());
 	}
 	
 	public void pushBuffer(FloatArrayBuffer buffer)

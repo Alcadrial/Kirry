@@ -10,7 +10,7 @@ import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.util.update.UpdatedFrom;
 
 @UpdatedFrom("BaseIndicesRenderer")
-public abstract class AbstractIndicesRendererUpdate<AB extends ArrayBuffer<?>> extends AbstractShaderRendererUpdate<AB> implements IndicesRenderer {
+public abstract class AbstractIndicesRendererUpdate<AB extends ArrayBuffer<?>> extends AbstractShaderRendererUpdate<AB> implements IndicesRendererUpdate {
 	
 	protected final ElementArrayBuffer elements;
 	
@@ -38,18 +38,18 @@ public abstract class AbstractIndicesRendererUpdate<AB extends ArrayBuffer<?>> e
 		elements = new ElementArrayBuffer();
 	}
 	
-	protected void drawIndices(int mode)
+	protected void drawIndices(RenderingMode mode)
 	{
 		drawIndices(mode, elements.size());
 	}
 	
-	protected void drawIndices(int mode, int count)
+	protected void drawIndices(RenderingMode mode, int count)
 	{
 		vertexArray.bind();
 		syncBuffers();
 		vertexArray.bindBuffer(elements);
 		elements.sync();
-		GL11.glDrawElements(mode, count, GL11.GL_UNSIGNED_INT, 0);
+		GL11.glDrawElements(mode.ordinal(), count, GL11.GL_UNSIGNED_INT, 0);
 	}
 	
 	@Override

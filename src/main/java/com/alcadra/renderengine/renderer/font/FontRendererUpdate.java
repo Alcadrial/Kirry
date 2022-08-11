@@ -4,8 +4,6 @@ import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.lwjgl.opengl.GL30;
-
 import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector2i;
@@ -13,6 +11,7 @@ import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.renderer.AbstractShaderRendererUpdate;
+import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.renderer.font.text.Text;
 import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.shader.ShaderInput;
@@ -277,7 +276,7 @@ public class FontRendererUpdate extends AbstractShaderRendererUpdate<FloatArrayB
 		program.setUniform(COLOR, color);
 		program.setUniform(ALFA_MASK, alfaMask);
 		program.setUniform(TEXTURE_SAMPLER, textureSampler);
-		draw(GL30.GL_QUADS);
+		draw(RenderingMode.QUADS);
 		clear();
 	}
 	
