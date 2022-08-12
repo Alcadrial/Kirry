@@ -5,18 +5,19 @@ import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
+import com.alcadra.renderengine.util.color.Color;
 
 @Test
 public class RendererUtil {
 	
-	public static void loadOrthoCube(UniversalRenderer renderer, Matrix4f matrix, Vector3f start, Vector3f end, Vector4f color)
+	public static void loadOrthoCube(UniversalRenderer renderer, Matrix4f matrix, Vector3f start, Vector3f end, Color color)
 	{
 		loadOrthoCube(renderer, matrix.multiply(new Vector4f(start, 1)).xyz(), matrix.multiply(new Vector4f(end, 1)).xyz(), color);
 	}
 	
-	public static void loadOrthoCube(UniversalRenderer renderer, Vector3f start, Vector3f end, Vector4f color)
+	public static void loadOrthoCube(UniversalRenderer renderer, Vector3f start, Vector3f end, Color color)
 	{
-		loadOrthoCube(renderer, start.x(), start.y(), start.z(), end.x(), end.y(), end.z(), color.x(), color.y(), color.z(), color.w());
+		loadOrthoCube(renderer, start.x(), start.y(), start.z(), end.x(), end.y(), end.z(), color.r(), color.g(), color.b(), color.a());
 	}
 	
 	public static void loadOrthoCube(UniversalRenderer renderer, float sX, float sY, float sZ, float eX, float eY, float eZ, float r, float g, float b, float a)
@@ -52,14 +53,14 @@ public class RendererUtil {
 		renderer.vertex(sX, sY, eZ).color(r, g, b, a).normal(0, -1, 0).end();
 	}
 	
-	public static void loadSquare(UniversalRenderer renderer, Matrix4f matrix, Vector3f start, Vector3f end, float z, Vector4f color)
+	public static void loadSquare(UniversalRenderer renderer, Matrix4f matrix, Vector3f start, Vector3f end, float z, Color color)
 	{
 		loadSquare(renderer, matrix.multiply(new Vector4f(start, 1)).xy(), matrix.multiply(new Vector4f(end, 1)).xy(), z, color);
 	}
 	
-	public static void loadSquare(UniversalRenderer renderer, Vector2f start, Vector2f end, float z, Vector4f color)
+	public static void loadSquare(UniversalRenderer renderer, Vector2f start, Vector2f end, float z, Color color)
 	{
-		loadSquare(renderer, start.x(), start.y(), end.x(), end.y(), z, color.x(), color.y(), color.z(), color.w());
+		loadSquare(renderer, start.x(), start.y(), end.x(), end.y(), z, color.r(), color.g(), color.b(), color.a());
 	}
 	
 	public static void loadSquare(UniversalRenderer renderer, float sX, float sY, float eX, float eY, float z, float r, float g, float b, float a)

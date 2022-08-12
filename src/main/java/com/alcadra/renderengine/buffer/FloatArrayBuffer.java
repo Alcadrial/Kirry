@@ -10,7 +10,7 @@ import org.lwjgl.system.MemoryUtil;
 
 public class FloatArrayBuffer extends ArrayBuffer<FloatBuffer> {
 	
-	protected List<Float> values = new ArrayList<>();
+	protected ArrayList<Float> values = new ArrayList<>();
 	
 	public FloatArrayBuffer()
 	{}
@@ -29,6 +29,7 @@ public class FloatArrayBuffer extends ArrayBuffer<FloatBuffer> {
 	
 	public void addAll(float[] f)
 	{
+		values.ensureCapacity(values.size() + f.length);
 		for (float f0 : f) values.add(f0);
 		isModified = true;
 	}
