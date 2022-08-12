@@ -45,7 +45,7 @@ public class ObjectBuilderUpdate {
 		data.add(vertexData);
 	}
 	
-	public class VertexBuilder extends AbstractVertexBuilder {
+	public class VertexBuilder extends AbstractVertexBuilder<VertexBuilder> {
 		
 		private boolean building;
 		
@@ -60,7 +60,7 @@ public class ObjectBuilderUpdate {
 		{
 			if (building)
 			{
-				addVertex(new FloatListVertexData(map, 0));
+				map.clear();
 				building = false;
 			}
 		}
@@ -68,7 +68,8 @@ public class ObjectBuilderUpdate {
 		public VertexBuilder next()
 		{
 			if (!building) throw new IllegalBuildingState("Cannot build more vertex after #end()!");
-			
+			addVertex(new FloatListVertexData(map, 0));
+			map.clear();
 			return this;
 		}
 	}

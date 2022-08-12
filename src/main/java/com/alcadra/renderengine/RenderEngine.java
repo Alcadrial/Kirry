@@ -41,7 +41,6 @@ import com.alcadra.renderengine.util.RendererUtil;
 import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.util.Util;
 import com.alcadra.renderengine.util.color.Color;
-import com.alcadra.renderengine.util.color.VectorColorRGB;
 import com.alcadra.renderengine.window.WindowUpdate;
 import com.alcadra.renderengine.window.cursor.StandardCursor;
 import com.alcadra.renderengine.window.widget.VisibleButtonUpdate;
@@ -427,7 +426,7 @@ public class RenderEngine implements RenderTest {
 		Util.printError("compact");
 		
 		fontRenderer.loadText(new Text("ala.beta@delta"), new Vector2i(0, (int) o % 360), Color.LIGHT_RED, 0.5F, 500, 0);
-		fontRenderer.loadText(new Text(Util.toPointString(cursor)), new Vector2i(cursor.subtract(window.getSize().multiply(0.5F))), new VectorColorRGB(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight(), 0), 0.003F, 550, 0);
+		fontRenderer.loadText(new Text(Util.toPointString(cursor)), new Vector2i(cursor.subtract(window.getSize().multiply(0.5F))), Color.ofVector(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight(), 0), 0.003F, 550, 0);
 		Text text = new Text();
 		text.addLine(new TextLine("partialTicks " + partialTicks));
 		text.addLine(new TextLine("fps " + thread.getRunsPerSecond()));

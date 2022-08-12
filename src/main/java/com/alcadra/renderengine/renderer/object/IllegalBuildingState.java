@@ -1,5 +1,8 @@
 package com.alcadra.renderengine.renderer.object;
 
+import com.alcadra.renderengine.util.update.ToMove;
+
+@ToMove("com.alcadra.renderengine.renderer.IllegalBuildingState")
 public class IllegalBuildingState extends RuntimeException {
 	
 	public IllegalBuildingState()
