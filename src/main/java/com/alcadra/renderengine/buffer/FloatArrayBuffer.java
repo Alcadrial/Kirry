@@ -8,6 +8,10 @@ import java.util.List;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.system.MemoryUtil;
 
+import com.alcadra.renderengine.util.update.UpdatedTo;
+
+@Deprecated(since = "2.0-migration", forRemoval = true)
+@UpdatedTo("FloatArrayBufferUpdate")
 public class FloatArrayBuffer extends ArrayBuffer<FloatBuffer> {
 	
 	protected ArrayList<Float> values = new ArrayList<>();

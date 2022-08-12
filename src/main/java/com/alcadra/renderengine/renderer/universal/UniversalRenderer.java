@@ -7,8 +7,8 @@ import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBufferStack;
-import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.buffer.FloatArrayBufferStack;
+import com.alcadra.renderengine.buffer.FloatArrayBufferUpdate;
 import com.alcadra.renderengine.renderer.AbstractIndicesRendererUpdate;
 import com.alcadra.renderengine.renderer.AbstractVertexBuilder;
 import com.alcadra.renderengine.renderer.RenderingMode;
@@ -77,29 +77,29 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 	
 	public void pushBuffer()
 	{
-		pushBuffer(new FloatArrayBuffer());
+		pushBuffer(new FloatArrayBufferUpdate());
 	}
 	
-	public void pushBuffer(FloatArrayBuffer arrayBuffer)
+	public void pushBuffer(FloatArrayBufferUpdate arrayBuffer)
 	{
 		pushBuffer(arrayBuffer, new ElementArrayBuffer());
 	}
 	
-	public void pushBuffer(FloatArrayBuffer arrayBuffer, ElementArrayBuffer elementBuffer)
+	public void pushBuffer(FloatArrayBufferUpdate arrayBuffer, ElementArrayBuffer elementBuffer)
 	{
 		this.arrayBuffer.push(arrayBuffer);
 		elementStack.push(elementBuffer);
 		offset = elementStack.getMax();
 	}
 	
-	public void pushBufferMerge(FloatArrayBuffer buffer)
+	public void pushBufferMerge(FloatArrayBufferUpdate buffer)
 	{
 		pushBufferMerge(buffer, new ElementArrayBuffer());
 	}
 	
-	public void pushBufferMerge(FloatArrayBuffer buffer, ElementArrayBuffer elementBuffer)
+	public void pushBufferMerge(FloatArrayBufferUpdate buffer, ElementArrayBuffer elementBuffer)
 	{
-		FloatArrayBuffer b = arrayBuffer.current();
+		FloatArrayBufferUpdate b = arrayBuffer.current();
 		buffer.merge(b);
 		arrayBuffer.push(buffer);
 		ElementArrayBuffer e = elementStack.current();

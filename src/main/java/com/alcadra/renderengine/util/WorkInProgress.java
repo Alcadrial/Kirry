@@ -14,6 +14,7 @@ import java.lang.annotation.Target;
  * 
  * @author Alcadrial
  */
+@Instable
 @Target({TYPE, CONSTRUCTOR, METHOD, PACKAGE})
 public @interface WorkInProgress {
 	

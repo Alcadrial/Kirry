@@ -5,7 +5,8 @@ import java.util.Objects;
 
 import org.lwjgl.opengl.GL30;
 
-import com.alcadra.renderengine.buffer.ArrayBuffer;
+import com.alcadra.renderengine.buffer.ArrayBufferUpdate;
+import com.alcadra.renderengine.buffer.SyncronizableArrayBuffer;
 import com.alcadra.renderengine.shader.ShaderInput;
 import com.alcadra.renderengine.shader.ShaderInputType;
 import com.alcadra.renderengine.shader.ShaderProgram;
@@ -15,7 +16,7 @@ import com.alcadra.renderengine.util.update.UpdatedFrom;
 
 @UpdatedFrom("BaseRenderer")
 @Nonnull
-public abstract class AbstractShaderRendererUpdate<AB extends ArrayBuffer<?>> implements ShaderRendererUpdate {
+public abstract class AbstractShaderRendererUpdate<AB extends ArrayBufferUpdate<?>> implements ShaderRendererUpdate {
 	
 	protected final VertexArray vertexArray;
 	protected final AB arrayBuffer;
@@ -73,10 +74,11 @@ public abstract class AbstractShaderRendererUpdate<AB extends ArrayBuffer<?>> im
 		initializeArrayBuffer();
 	}
 	
+	@SuppressWarnings("rawtypes")
 	protected void syncBuffers()
 	{
 		vertexArray.bindBuffer(arrayBuffer);
-		arrayBuffer.sync();
+		if (arrayBuffer instanceof SyncronizableArrayBuffer s) s.sync();
 		Util.printError("BaseRenderer[INTERNAL] array sync");
 	}
 	

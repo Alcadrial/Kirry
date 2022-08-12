@@ -1,27 +1,25 @@
 package com.alcadra.renderengine.renderer.object;
 
-import java.util.function.Consumer;
-
 import com.alcadra.math.Matrix4f;
-import com.alcadra.renderengine.buffer.ObjectArrayBuffer;
+import com.alcadra.renderengine.buffer.ObjectArrayBufferUpdate;
 import com.alcadra.renderengine.renderer.AbstractShaderRendererUpdate;
 import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.shader.ShaderInput;
 import com.alcadra.renderengine.shader.ShaderProgram;
-import com.alcadra.renderengine.util.NotYetImplemented;
 import com.alcadra.renderengine.util.Tracker;
+import com.alcadra.renderengine.util.WorkInProgress;
 import com.alcadra.renderengine.util.update.UpdatedFrom;
 
-@NotYetImplemented
+@WorkInProgress
 @UpdatedFrom("ObjectRenderer")
-public class ObjectRendererUpdate extends AbstractShaderRendererUpdate<ObjectArrayBuffer<Object>> {
+public class ObjectRendererUpdate extends AbstractShaderRendererUpdate<ObjectArrayBufferUpdate<Object>> {
 	
 	private int offset;
 	private BufferableModel buildingValue;
 	
 	public ObjectRendererUpdate(ShaderProgram program)
 	{
-		super(program, new ObjectArrayBuffer<>());
+		super(program, new ObjectArrayBufferUpdate<>());
 	}
 	
 	public ObjectBuilderUpdate start(BufferableModel value)
@@ -29,26 +27,21 @@ public class ObjectRendererUpdate extends AbstractShaderRendererUpdate<ObjectArr
 		return new ObjectBuilderUpdate(this);
 	}
 	
-	public void startIfAbsent(BufferableModel value, Consumer<ObjectBuilderUpdate> consumer)
-	{
-		
-	}
-	
 	protected <B extends BufferableModel> Tracker<B> build(ObjectBuilderUpdate builder)
 	{
 		return new Tracker0<>(arrayBuffer.add(buildingValue, buildData(buildingValue)));
 	}
 	
-	private int[] buildData(BufferableModel bufferable)
+	private int[] buildData(BufferableModel model)
 	{
-		int vertices = bufferable.vertices();
+		int vertices = model.vertices();
 		int vertexSize = vertexSize() / 4;
 		int[] buildedData = new int[vertexSize * vertices];
 		for (int i = 0, j = 0; i < vertices; i++, j = 0)
 		{
 			for (ShaderInput input : program.getProgramInputs())
 			{
-				int[] vertexData = bufferable.getVertexData(i, input).getData();
+				int[] vertexData = model.getVertexData(i, input).getData();
 				for (int k = 0; k < vertexData.length; k++, j++) buildedData[i * vertexSize + j] = vertexData[k];
 			}
 		}

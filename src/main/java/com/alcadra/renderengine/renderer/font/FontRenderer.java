@@ -20,8 +20,8 @@ import com.alcadra.renderengine.textures.Texture;
 import com.alcadra.renderengine.util.update.UpdatedTo;
 import com.alcadra.renderengine.util.update.UseInstead;
 
-@UpdatedTo("FontRendererUpdate")
 @Deprecated(since = "2.0-migration", forRemoval = true)
+@UpdatedTo("FontRendererUpdate")
 public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 	
 	private Font font;

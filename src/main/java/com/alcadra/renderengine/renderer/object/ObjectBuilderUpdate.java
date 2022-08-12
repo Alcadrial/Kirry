@@ -7,11 +7,11 @@ import com.alcadra.renderengine.renderer.AbstractVertexBuilder;
 import com.alcadra.renderengine.renderer.data.FloatListVertexData;
 import com.alcadra.renderengine.renderer.data.VertexData;
 import com.alcadra.renderengine.shader.ShaderProgram;
-import com.alcadra.renderengine.util.NotYetImplemented;
 import com.alcadra.renderengine.util.Tracker;
+import com.alcadra.renderengine.util.WorkInProgress;
 import com.alcadra.renderengine.util.update.UpdatedFrom;
 
-@NotYetImplemented
+@WorkInProgress
 @UpdatedFrom("ObjectBuilder")
 public class ObjectBuilderUpdate {
 	

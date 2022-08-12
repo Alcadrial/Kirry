@@ -14,6 +14,7 @@ package com.alcadra.renderengine.util;
  * 		for now is enough having the annotation used in the file, same with package-info file. 
  */
 @Test
+@Instable
 public @interface Test {
 	
 }

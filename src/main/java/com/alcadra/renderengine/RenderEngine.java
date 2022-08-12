@@ -20,7 +20,7 @@ import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector3i;
 import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
-import com.alcadra.renderengine.buffer.FloatArrayBuffer;
+import com.alcadra.renderengine.buffer.FloatArrayBufferUpdate;
 import com.alcadra.renderengine.buffer.FrameBuffer;
 import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.renderer.font.Font;
@@ -178,7 +178,7 @@ public class RenderEngine implements RenderTest {
 	private Shader shader, shaderTexture;
 	private ShaderProgram colorProgram, textureProgram;
 	private UniversalRenderer universalRenderer, widgetRenderer;
-	private FloatArrayBuffer buffer0, buffer1;
+	private FloatArrayBufferUpdate buffer0, buffer1;
 	private ElementArrayBuffer element0, element1;
 	private FontRendererUpdate fontRenderer;
 	private Font font;
@@ -368,11 +368,11 @@ public class RenderEngine implements RenderTest {
 		Matrix4f viewer = new Matrix4f(projection).multiply(view);
 		Vector3f end = new Vector3f(10, 10, 10);
 		
-		universalRenderer.pushBuffer(buffer0 = new FloatArrayBuffer(), element0 = new ElementArrayBuffer());
+		universalRenderer.pushBuffer(buffer0 = new FloatArrayBufferUpdate(), element0 = new ElementArrayBuffer());
 		RendererUtil.loadOrthoCube(universalRenderer, Vector3f.getOrigin(), end, Color.LIGHT_YELLOW);
 		RendererUtil.loadOrthoCube(universalRenderer, viewer, end, end.add(end), Color.LIGHT_YELLOW);
 		universalRenderer.pullBuffer();
-		universalRenderer.pushBuffer(buffer1 = new FloatArrayBuffer(), element1 = new ElementArrayBuffer());
+		universalRenderer.pushBuffer(buffer1 = new FloatArrayBufferUpdate(), element1 = new ElementArrayBuffer());
 		RendererUtil.loadSquare(universalRenderer, 100, 100, 128, 128, 1, 255, 255, 0, 255);
 		universalRenderer.pullBuffer();
 		
