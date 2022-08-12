@@ -429,11 +429,6 @@ public class RenderEngine implements RenderTest {
 		universalRenderer.pullBuffer();
 		Util.printError("TextureRender draw");
 		
-		// textureRenderer.clear();
-		// textureRenderer.loadQuad(0, 0, 256, 256, 0, 0, 0, 1, 1);
-		// System.out.println(textureRenderer);
-		// textureRenderer.drawVertices(GL30.GL_QUADS, compact);
-		
 		// frameBuffer.unbind();
 		window.update(compact, partialTicks);
 		window.clear(true, true, false);

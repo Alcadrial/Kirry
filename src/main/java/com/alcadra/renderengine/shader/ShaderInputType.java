@@ -118,8 +118,7 @@ public enum ShaderInputType {
 	}
 	
 	/**
-	 * Returns the number of primitives contained, e.g. for {@link ShaderInputType.VECTOR_INT_3} the value returned is 3.
-	 * {@link ShaderType}
+	 * Returns the number of primitives contained, e.g. for {@link VECTOR_INT_3} the value returned is 3.
 	 * 
 	 * @return the number of values
 	 */
