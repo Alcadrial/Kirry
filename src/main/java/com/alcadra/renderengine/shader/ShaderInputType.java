@@ -2,9 +2,6 @@ package com.alcadra.renderengine.shader;
 
 import org.lwjgl.opengl.GL11;
 
-import com.alcadra.renderengine.util.WorkInProgress;
-
-@WorkInProgress
 public enum ShaderInputType {
 	
 	BOOL(GL11.GL_UNSIGNED_BYTE, 1, 4),
@@ -110,11 +107,22 @@ public enum ShaderInputType {
 		this.length = length;
 	}
 	
+	/**
+	 * Returns the primitive type of data of this input and can be unsigned byte, int, unsigned int, float or double.
+	 * 
+	 * @return the type of data
+	 */
 	public int getType()
 	{
 		return type;
 	}
 	
+	/**
+	 * Returns the number of primitives contained, e.g. for {@link ShaderInputType.VECTOR_INT_3} the value returned is 3.
+	 * {@link ShaderType}
+	 * 
+	 * @return the number of values
+	 */
 	public int getSize()
 	{
 		return size;

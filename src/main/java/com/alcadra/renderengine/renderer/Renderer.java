@@ -10,10 +10,12 @@ import com.alcadra.math.vector.complex.Quaternion;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.shader.Shader;
+import com.alcadra.renderengine.util.update.NoReplacement;
 import com.alcadra.renderengine.util.update.UseInstead;
 
 @Deprecated(since = "2.0-migration", forRemoval = true)
 @UseInstead(name = ".universal.UniversalRenderer")
+@NoReplacement
 public class Renderer extends BaseIndicesRenderer<FloatArrayBuffer> implements VertexBuilder<Renderer> {
 	
 	private Vector4f bindedColor = Vector4f.getOrigin();

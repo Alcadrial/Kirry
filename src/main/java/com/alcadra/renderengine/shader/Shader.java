@@ -16,8 +16,9 @@ import com.alcadra.math.vector.Vector4i;
 import com.alcadra.renderengine.util.update.NoReplacement;
 import com.alcadra.renderengine.util.update.UseInstead;
 
-@NoReplacement
+@Deprecated(since = "2.0-migration", forRemoval = true)
 @UseInstead(name = "ShaderProgram", descriptions = "Shader logic is now divided in ShaderProgram and ShaderUpdate, a ShaderUpdate will handle a single shader file and a ShaderProgram will use ShaderUpdates to handle a program")
+@NoReplacement
 public class Shader {
 	
 	private static int programInUse = 0;
@@ -156,7 +157,6 @@ public class Shader {
 		return loadShaderFile(file, ShaderType.fromExtension(pathname.substring(pathname.lastIndexOf('.'))));
 	}
 	
-	@SuppressWarnings("removal")
 	public ShaderStatus loadShaderFile(File file, ShaderType type) throws IOException
 	{
 		if (type == ShaderType.UNKNOWN) return new ShaderStatus(false, 0, new String[0], "Unknown shader cannot be loaded!");
