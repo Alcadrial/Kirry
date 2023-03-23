@@ -7,6 +7,7 @@ import com.alcadra.renderengine.renderer.BaseRenderer;
 import com.alcadra.renderengine.renderer.VertexArray;
 import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.util.NotYetImplemented;
+import com.alcadra.renderengine.window.widget.DrawableWidget;
 import com.alcadra.renderengine.window.widget.Widget;
 
 @NotYetImplemented
@@ -54,5 +55,10 @@ class ScreenRenderer extends BaseRenderer<ObjectArrayBuffer<Widget>> {
 		if (shader.useColor()) vertexArray.disableVertexAttribute(1);
 		if (shader.useUV()) vertexArray.disableVertexAttribute(2);
 		if (shader.useNormal()) vertexArray.disableVertexAttribute(3);
+	}
+	
+	public void drawWidget(DrawableWidget<ScreenRenderer> widget)
+	{
+		
 	}
 }

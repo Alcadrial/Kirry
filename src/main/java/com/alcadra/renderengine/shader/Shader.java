@@ -38,6 +38,9 @@ public class Shader {
 		program = GL20.glCreateProgram();
 	}
 	
+	Shader()
+	{}
+	
 	public boolean useColor()
 	{
 		return colorInputDataType == ShaderInputDataType.PER_VERTEX;
