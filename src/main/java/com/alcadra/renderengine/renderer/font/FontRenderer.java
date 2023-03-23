@@ -12,8 +12,9 @@ import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.renderer.AbstractShaderRenderer;
 import com.alcadra.renderengine.renderer.RenderingMode;
+import com.alcadra.renderengine.renderer.font.text.Glyph;
+import com.alcadra.renderengine.renderer.font.text.NonStyledTextLine;
 import com.alcadra.renderengine.renderer.font.text.Text;
-import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.shader.ShaderInput;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.uniform.ShaderUniform;
@@ -83,7 +84,7 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 		if (text.isEmpty()) return;
 		List<List<RenderCharacter>> fontText = new ArrayList<>(text.rows());
 		int textSize = 0;
-		for (TextLine textLine : text)
+		for (NonStyledTextLine textLine : text)
 		{
 			List<RenderCharacter> fontString = new ArrayList<>(textLine.length());
 			Glyph fontCharBefore = font.getGlyph(textLine.get(0));
@@ -138,7 +139,7 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 		if (text.isEmpty()) return;
 		List<List<RenderCharacter>> fontText = new ArrayList<>(text.rows());
 		int textSize = 0;
-		for (TextLine textLine : text)
+		for (NonStyledTextLine textLine : text)
 		{
 			List<RenderCharacter> fontString = new ArrayList<>(textLine.length());
 			Glyph fontCharBefore = font.getGlyph(textLine.get(0));

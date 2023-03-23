@@ -16,7 +16,7 @@ import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.renderer.font.Font;
 import com.alcadra.renderengine.renderer.font.FontRenderer;
 import com.alcadra.renderengine.renderer.font.text.Text;
-import com.alcadra.renderengine.renderer.font.text.TextLine;
+import com.alcadra.renderengine.renderer.font.text.NonStyledTextLine;
 import com.alcadra.renderengine.renderer.object.BufferableModel;
 import com.alcadra.renderengine.renderer.object.ObjectBuilder;
 import com.alcadra.renderengine.renderer.object.ObjectRenderer;
@@ -225,8 +225,8 @@ public class ObjectRenderTest implements RenderTest {
 		Matrix4f projection = new Matrix4f().project(10, 100, 8, window.getAspectRatio());
 		
 		Text text = new Text();
-		text.addLine(new TextLine("partialticks " + partialTicks));
-		text.addLine(new TextLine("time " + o));
+		text.addLine(new NonStyledTextLine("partialticks " + partialTicks));
+		text.addLine(new NonStyledTextLine("time " + o));
 		fontRenderer.loadText(text, new Vector2i(0, window.getHeight() - font.getLineHeight()), Color.BLACK, 1, window.getWidth(), 0);
 		fontRenderer.draw(orthographicPositive);
 		

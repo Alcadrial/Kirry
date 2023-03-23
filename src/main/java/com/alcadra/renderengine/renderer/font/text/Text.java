@@ -11,22 +11,22 @@ import java.util.stream.StreamSupport;
 
 import com.alcadra.renderengine.util.Nonnull;
 
-public class Text implements Iterable<TextLine> {
+public class Text implements Iterable<NonStyledTextLine> {
 	
-	private List<TextLine> lines;
+	private List<NonStyledTextLine> lines;
 	private boolean isBlank;
 	private int length;
 	
 	public Text(String line)
 	{
-		this(new TextLine(line));
+		this(new NonStyledTextLine(line));
 	}
 	
-	public Text(TextLine... lines)
+	public Text(NonStyledTextLine... lines)
 	{
 		this.lines = Arrays.asList(lines);
 		length = this.lines.parallelStream().collect(() -> 0, (i, l) -> i += l.length(), (i, j) -> i += j);
-		isBlank = this.lines.parallelStream().allMatch(TextLine::isBlank);
+		isBlank = this.lines.parallelStream().allMatch(NonStyledTextLine::isBlank);
 	}
 	
 	public Text()
@@ -36,7 +36,7 @@ public class Text implements Iterable<TextLine> {
 		isBlank = true;
 	}
 	
-	public void addLine(@Nonnull TextLine line)
+	public void addLine(@Nonnull NonStyledTextLine line)
 	{
 		try
 		{
@@ -53,26 +53,26 @@ public class Text implements Iterable<TextLine> {
 	
 	public void addNewLine()
 	{
-		addLine(new TextLine());
+		addLine(new NonStyledTextLine());
 	}
 	
-	public TextLine setLine(int index, @Nonnull TextLine line)
+	public NonStyledTextLine setLine(int index, @Nonnull NonStyledTextLine line)
 	{
-		TextLine oldLine = lines.set(index, line);
+		NonStyledTextLine oldLine = lines.set(index, line);
 		length += line.length() - oldLine.length();
 		if (line.isBlank()) isBlank = true;
-		else if (oldLine.isBlank()) isBlank = lines.parallelStream().allMatch(TextLine::isBlank);
+		else if (oldLine.isBlank()) isBlank = lines.parallelStream().allMatch(NonStyledTextLine::isBlank);
 		return oldLine;
 	}
 	
-	public TextLine getLine(int index)
+	public NonStyledTextLine getLine(int index)
 	{
 		return lines.get(index);
 	}
 	
 	public boolean isEmpty()
 	{
-		return rows() == 0 || lines.parallelStream().allMatch(TextLine::isEmpty);
+		return rows() == 0 || lines.parallelStream().allMatch(NonStyledTextLine::isEmpty);
 	}
 	
 	public boolean isBlank()
@@ -91,23 +91,23 @@ public class Text implements Iterable<TextLine> {
 	}
 	
 	@Override
-	public Iterator<TextLine> iterator()
+	public Iterator<NonStyledTextLine> iterator()
 	{
 		return lines.iterator();
 	}
 	
 	@Override
-	public Spliterator<TextLine> spliterator()
+	public Spliterator<NonStyledTextLine> spliterator()
 	{
 		return Spliterators.spliterator(lines, 0);
 	}
 	
-	public Stream<TextLine> stream()
+	public Stream<NonStyledTextLine> stream()
 	{
 		return StreamSupport.stream(spliterator(), false);
 	}
 	
-	public Stream<TextLine> parallelStream()
+	public Stream<NonStyledTextLine> parallelStream()
 	{
 		return StreamSupport.stream(spliterator(), true);
 	}

@@ -2,21 +2,24 @@ package com.alcadra.renderengine.renderer.font.text;
 
 import java.util.Iterator;
 
-public class TextLine implements Iterable<Character> {
+import com.alcadra.renderengine.renderer.font.StyledCharacter;
+import com.alcadra.renderengine.renderer.font.TextLine;
+
+public class NonStyledTextLine implements TextLine {
 	
 	private String line;
 	
-	public TextLine()
+	public NonStyledTextLine()
 	{
 		line = "";
 	}
 	
-	public TextLine(String line)
+	public NonStyledTextLine(String line)
 	{
 		this.line = String.valueOf(line);
 	}
 	
-	public TextLine(Object obj)
+	public NonStyledTextLine(Object obj)
 	{
 		line = String.valueOf(obj);
 	}
@@ -42,7 +45,7 @@ public class TextLine implements Iterable<Character> {
 	}
 	
 	@Override
-	public Iterator<Character> iterator()
+	public Iterator<StyledCharacter> iterator()
 	{
 		return new Iterator<>() {
 			
@@ -55,7 +58,7 @@ public class TextLine implements Iterable<Character> {
 			}
 			
 			@Override
-			public Character next()
+			public StyledCharacter next()
 			{
 				return line.charAt(i++);
 			}

@@ -1,5 +1,7 @@
 package com.alcadra.renderengine.renderer.font;
 
+import com.alcadra.renderengine.renderer.font.text.Glyph;
+
 public class RenderCharacter {
 	
 	private Glyph character;
@@ -18,41 +20,41 @@ public class RenderCharacter {
 	
 	public int getName()
 	{
-		return character.getName();
+		return character.name();
 	}
 	
 	public int getX()
 	{
-		return character.getX();
+		return character.x();
 	}
 	
 	public int getY()
 	{
-		return character.getY();
+		return character.y();
 	}
 	
 	public int getWidth()
 	{
-		return character.getWidth();
+		return character.width();
 	}
 	
 	public int getHeight()
 	{
-		return character.getHeight();
+		return character.height();
 	}
 	
 	public int getXOffset()
 	{
-		return character.getXOffset();
+		return character.xOffset();
 	}
 	
 	public int getYOffset()
 	{
-		return character.getYOffset();
+		return character.yOffset();
 	}
 	
 	public int getAdvance()
 	{
-		return character.getAdvance();
+		return character.advance();
 	}
 }
