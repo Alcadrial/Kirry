@@ -1,8 +1,8 @@
-#version 330//for every pixel
+#version 450
 
 layout (location = 0) in vec4 color0;
 
-layout () out vec4 tex;
+layout (location = 1) out vec4 tex;
 
 void main()
 {

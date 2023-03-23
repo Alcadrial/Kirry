@@ -57,7 +57,7 @@ public class VulkanErrorUtils {
 	
 	public static void assertNoError(int error, String details)
 	{
-		if (error < 0) throw new AssertionError(details);
+		if (error < 0) throw new AssertionError(details + ": " + getErrorString(error));
 	}
 	
 	public static void assertNoError(int error)

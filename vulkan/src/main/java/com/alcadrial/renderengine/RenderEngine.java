@@ -50,7 +50,7 @@ public class RenderEngine {
 		long windowId = VulkanErrorUtils.nonNull(GLFW.glfwCreateWindow(1080, 720, "Test", 0, 0), "Cannot create window");
 		
 		Vulkan instance;
-		
+		Device device;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			{
@@ -103,9 +103,8 @@ public class RenderEngine {
 			}
 			instance.createSurface(windowId);
 			instance.pickPhysicalDevices();
-			Device device = instance.getDevice();
-			device.getSwapChain();
-			
+			device = instance.getDevice();
+			SwapChain swapChain = device.getSwapChain();
 			Shader vertexShader;
 			Shader fragmentShader;
 			try
@@ -122,12 +121,15 @@ public class RenderEngine {
 				return;
 			}
 			
-			instance.buildGraphicPipeline(vertexShader, fragmentShader);
+			device.buildGraphicPipeline(vertexShader, fragmentShader);
+			swapChain.createFrameBuffers();
+			device.createSwappingBuffers(2);
 		}
 		
 		while (!GLFW.glfwWindowShouldClose(windowId))
 		{
 			GLFW.glfwPollEvents();
+			device.draw();
 		}
 		
 		instance.close();

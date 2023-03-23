@@ -1,6 +1,5 @@
 package com.alcadrial.renderengine;
 
-import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,11 +18,6 @@ import org.lwjgl.vulkan.VkInstance;
 import org.lwjgl.vulkan.VkInstanceCreateInfo;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
-import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
-
-import com.alcadrial.renderengine.shader.CompiledShader;
-import com.alcadrial.renderengine.shader.Shader;
-import com.alcadrial.renderengine.shader.ShaderType;
 
 public class Vulkan implements AutoCloseable {
 	
@@ -153,49 +147,6 @@ public class Vulkan implements AutoCloseable {
 			}
 		}
 		return device;
-	}
-	
-	public void buildGraphicPipeline(Shader vertexShader, Shader fragmentShader)
-	{
-		VulkanErrorUtils.match(vertexShader.getType(), ShaderType.VERTEX, "Not a vertex shader");
-		VulkanErrorUtils.match(fragmentShader.getType(), ShaderType.FRAGMENT, "Not a fragment shader");
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			CompiledShader vertexCompiled = vertexShader.getOrCompile();
-			CompiledShader fragmentCompiled = fragmentShader.getOrCompile();
-			
-			if (vertexCompiled.hasErrors()) throw new IllegalStateException("Shader " + vertexShader.getFile() + " cannot be used ");
-			if (fragmentCompiled.hasErrors()) throw new IllegalStateException("Shader " + fragmentShader.getFile() + " cannot be used ");
-			
-			long vertShaderModule = createShaderModule(vertexCompiled.getBinary());
-			long fragShaderModule = createShaderModule(fragmentCompiled.getBinary());
-			
-			ByteBuffer entryPoint = stack.UTF8("main");
-			
-			VkPipelineShaderStageCreateInfo.Buffer shaderStages = VkPipelineShaderStageCreateInfo.calloc(2, stack);
-			
-			VkPipelineShaderStageCreateInfo vertShaderStageInfo = shaderStages.get(0);
-			
-			vertShaderStageInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
-			vertShaderStageInfo.stage(VK10.VK_SHADER_STAGE_VERTEX_BIT);
-			vertShaderStageInfo.module(vertShaderModule);
-			vertShaderStageInfo.pName(entryPoint);
-			
-			VkPipelineShaderStageCreateInfo fragShaderStageInfo = shaderStages.get(1);
-			
-			fragShaderStageInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
-			fragShaderStageInfo.stage(VK10.VK_SHADER_STAGE_FRAGMENT_BIT);
-			fragShaderStageInfo.module(fragShaderModule);
-			fragShaderStageInfo.pName(entryPoint);
-			
-			VK10.vkDestroyShaderModule(device.getDevice(), vertShaderModule, null);
-			VK10.vkDestroyShaderModule(device.getDevice(), fragShaderModule, null);
-		}
-	}
-	
-	private long createShaderModule(byte[] binary)
-	{
-		return 0;
 	}
 	
 	@Override
