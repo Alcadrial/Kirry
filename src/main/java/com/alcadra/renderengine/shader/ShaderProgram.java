@@ -50,7 +50,7 @@ public class ShaderProgram {
 	
 	public void build()
 	{
-		if (!status.isBuilded())
+		if (!status.isBuilded() && id != -1)
 		{
 			GL20.glLinkProgram(id);
 			if (GL20.glGetProgrami(id, GL20.GL_LINK_STATUS) == 0)
@@ -107,22 +107,26 @@ public class ShaderProgram {
 	@SuppressWarnings("unchecked")
 	public void delete()
 	{
-		for (List<Shader> list : attachedShaders) for (Shader shader : list) shader.removeProgram(this);
-		attachedShaders = new List[0];
-		knownInputs = List.of();
-		programInputs = knownInputs;
-		GL20.glDeleteProgram(id);
+		if (id != -1)
+		{
+			
+			for (List<Shader> list : attachedShaders) for (Shader shader : list) shader.removeProgram(this);
+			attachedShaders = new List[0];
+			knownInputs = List.of();
+			programInputs = knownInputs;
+			GL20.glDeleteProgram(id);
+		}
 		id = -1;
 	}
 	
 	public <T> void setUniform(ShaderUniform<T> uniform, T value)
 	{
-		uniform.setValue(GL20.glGetUniformLocation(id, uniform.getName()), value);
+		if (id != -1) uniform.setValue(GL20.glGetUniformLocation(id, uniform.getName()), value);
 	}
 	
 	public List<Shader> getShaders(ShaderType type)
 	{
-		if (id == -1 || type.ordinal() < ShaderType.COMPUTE.ordinal()) return List.of();
+		if (id == -1 || type.ordinal() >= ShaderType.COMPUTE.ordinal()) return List.of();
 		return List.copyOf(attachedShaders[type.ordinal()]);
 	}
 	
@@ -139,5 +143,10 @@ public class ShaderProgram {
 	public ProgramStatus getStatus()
 	{
 		return status;
+	}
+	
+	public int getId()
+	{
+		return id;
 	}
 }

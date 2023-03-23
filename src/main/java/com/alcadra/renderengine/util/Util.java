@@ -9,6 +9,7 @@ import com.alcadra.math.vector.Vector1f;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
+import com.alcadra.renderengine.RenderEngine;
 
 public class Util {
 	
@@ -74,6 +75,31 @@ public class Util {
 		return string;
 	}
 	
+	public static void printErrorAsync(String s)
+	{
+		Thread t = new Thread(() -> {
+			RenderEngine.getActiveTest().getWindow().makeContextCurrent();
+			printError(s);
+		});
+		t.start();
+	}
+	
+	public static void printErrorSync(String s)
+	{
+		Thread t = new Thread(() -> {
+			RenderEngine.getActiveTest().getWindow().makeContextCurrent();
+			printError(s);
+		});
+		t.start();
+		try
+		{
+			t.join();
+		}
+		catch (InterruptedException e)
+		{}
+		RenderEngine.getActiveTest().getWindow().makeContextCurrent();
+	}
+	
 	public static void printError(String s)
 	{
 		if (debug)
@@ -93,6 +119,15 @@ public class Util {
 						break;
 					case GL30.GL_INVALID_OPERATION:
 						System.out.println(s + " INVALID OPERATION");
+						break;
+					case GL30.GL_STACK_OVERFLOW:
+						System.out.println(s + " STACK OVERFLOW");
+						break;
+					case GL30.GL_STACK_UNDERFLOW:
+						System.out.println(s + " STACK UNDERFLOW");
+						break;
+					case GL30.GL_OUT_OF_MEMORY:
+						System.out.println(s + " OUT OF MEMORY");
 						break;
 					case GL30.GL_INVALID_FRAMEBUFFER_OPERATION:
 						System.out.println(s + " INVALID FRAMEBUFFER OPERATION");

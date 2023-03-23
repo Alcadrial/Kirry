@@ -11,7 +11,6 @@ import com.alcadra.renderengine.shader.ShaderInput;
 import com.alcadra.renderengine.shader.ShaderInputType;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.util.Nonnull;
-import com.alcadra.renderengine.util.Util;
 
 @Nonnull
 public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> implements ShaderRenderer {
@@ -77,7 +76,6 @@ public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> implemen
 	{
 		arrayBuffer.bind();
 		if (arrayBuffer instanceof SyncronizableArrayBuffer s) s.sync();
-		Util.printError("BaseRenderer[INTERNAL] array sync");
 	}
 	
 	protected void draw(RenderingMode mode)
@@ -95,8 +93,6 @@ public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> implemen
 		vertexArray.bind();
 		syncBuffers();
 		GL30.glDrawArrays(mode.ordinal(), start, count);
-		arrayBuffer.unbind();
-		Util.printError("BaseRenderer[INTERNAL] draw");
 	}
 	
 	protected int vertexSize()
