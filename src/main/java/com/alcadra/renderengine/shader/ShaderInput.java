@@ -21,9 +21,9 @@ public class ShaderInput {
 	
 	public static ShaderInput of(ShaderInputType type, String name)
 	{
-		Objects.requireNonNull(name);
-		if (name.isBlank()) throw new IllegalArgumentException("ShaderInput name cannot be blank!");
-		return new ShaderInput(Objects.requireNonNull(type), name);
+		Objects.requireNonNull(name, "ShaderInput name must not be null!");
+		if (name.isBlank()) throw new IllegalArgumentException("ShaderInput name must not be blank!");
+		return new ShaderInput(Objects.requireNonNull(type, "ShaderInput type must not be null!"), name);
 	}
 	
 	private ShaderInputType type;

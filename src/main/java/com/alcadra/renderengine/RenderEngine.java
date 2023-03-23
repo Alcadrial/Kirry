@@ -30,11 +30,7 @@ import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
 import com.alcadra.renderengine.rendertest.ObjectRenderTest;
 import com.alcadra.renderengine.rendertest.RenderTest;
-import com.alcadra.renderengine.shader.Shader;
-import com.alcadra.renderengine.shader.ShaderInputDataType;
 import com.alcadra.renderengine.shader.ShaderProgram;
-import com.alcadra.renderengine.shader.ShaderStatus;
-import com.alcadra.renderengine.shader.ShaderType;
 import com.alcadra.renderengine.shader.ShaderUpdate;
 import com.alcadra.renderengine.util.Image;
 import com.alcadra.renderengine.util.RendererUtil;
@@ -174,7 +170,6 @@ public class RenderEngine implements RenderTest {
 	
 	private WindowUpdate window;
 	private Vector2f cursor;
-	private Shader shader, shaderTexture;
 	private ShaderProgram colorProgram, textureProgram;
 	private UniversalRenderer universalRenderer, widgetRenderer;
 	private FloatArrayBufferUpdate buffer0, buffer1;
@@ -247,35 +242,8 @@ public class RenderEngine implements RenderTest {
 		Util.printError("capabilities");
 		frameBuffer = new FrameBuffer();
 		Util.printError("framebuffer");
-		ShaderStatus results;
-		ShaderUpdate shader0;
-		shader = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED, ShaderInputDataType.UNUSUED);
-		try
-		{
-			results = shader.loadShaderFile(new File(colorShaderVertexPath), ShaderType.VERTEX);
-			if (!results.isCompiled()) System.out.println(results);
-			results = shader.loadShaderFile(new File(colorShaderFragmentPath), ShaderType.FRAGMENT);
-			if (!results.isCompiled()) System.out.println(results);
-		}
-		catch (IOException e)
-		{
-			e.printStackTrace(System.out);
-		}
-		shader.build();
-		shaderTexture = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED);
-		try
-		{
-			results = shaderTexture.loadShaderFile(new File(textureShaderVertexPath), ShaderType.VERTEX);
-			if (!results.isCompiled()) System.out.println(results);
-			results = shaderTexture.loadShaderFile(new File(textureShaderFragmentPath), ShaderType.FRAGMENT);
-			if (!results.isCompiled()) System.out.println(results);
-		}
-		catch (IOException e)
-		{
-			e.printStackTrace(System.out);
-		}
-		shaderTexture.build();
 		
+		ShaderUpdate shader0;
 		colorProgram = new ShaderProgram();
 		try
 		{

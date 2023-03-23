@@ -9,10 +9,12 @@ import com.alcadra.math.vector.complex.Quaternion;
 import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.textures.ColorTexture;
 import com.alcadra.renderengine.util.Image;
+import com.alcadra.renderengine.util.update.NoReplacement;
 import com.alcadra.renderengine.util.update.UseInstead;
 
 @Deprecated(since = "2.0-migration", forRemoval = true)
 @UseInstead(name = "UniversalRenderer")
+@NoReplacement
 public class TextureRenderer extends Renderer {
 	
 	private ColorTexture texture;
