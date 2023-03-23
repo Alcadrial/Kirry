@@ -46,24 +46,25 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 	}
 	
 	@Override
-	public void drawPoints(RenderingMode mode, Matrix4f matrix)
+	public void drawPoints(RenderingMode mode, Matrix4f matrix, int count, int offset)
 	{
 		program.enable();
 		program.setUniform(TRANSFORMATION, matrix);
 		program.setUniform(TEXTURE_SAMPLER, textureSampler);
 		program.setUniform(COLOR, color);
 		program.setUniform(COLOR_RGB, color.xyz());
-		drawIndices(mode);
+		drawIndices(mode, count, offset);
 	}
 	
-	public void drawVertices(RenderingMode mode, Matrix4f matrix)
+	@Override
+	public void drawVertices(RenderingMode mode, Matrix4f matrix, int count, int offset)
 	{
 		program.enable();
 		program.setUniform(TRANSFORMATION, matrix);
 		program.setUniform(TEXTURE_SAMPLER, textureSampler);
 		program.setUniform(COLOR, color);
 		program.setUniform(COLOR_RGB, color.xyz());
-		draw(mode);
+		draw(mode, count, offset);
 	}
 	
 	public VertexBuilder vertex(float x, float y, float z)

@@ -53,21 +53,29 @@ public class RendererUtil {
 		renderer.vertex(sX, sY, eZ).color(r, g, b, a).normal(0, -1, 0).end();
 	}
 	
-	public static void loadSquare(UniversalRenderer renderer, Matrix4f matrix, Vector3f start, Vector3f end, float z, Color color)
+	public static void loadRectangle(UniversalRenderer renderer, Matrix4f matrix, Vector3f start, Vector3f end, float z, Color color)
 	{
-		loadSquare(renderer, matrix.multiply(new Vector4f(start, 1)).xy(), matrix.multiply(new Vector4f(end, 1)).xy(), z, color);
+		loadRectangle(renderer, matrix.multiply(new Vector4f(start, 1)).xy(), matrix.multiply(new Vector4f(end, 1)).xy(), z, color);
 	}
 	
-	public static void loadSquare(UniversalRenderer renderer, Vector2f start, Vector2f end, float z, Color color)
+	public static void loadRectangle(UniversalRenderer renderer, Vector2f start, Vector2f end, float z, Color color)
 	{
-		loadSquare(renderer, start.x(), start.y(), end.x(), end.y(), z, color.r(), color.g(), color.b(), color.a());
+		loadRectangle(renderer, start.x(), start.y(), end.x(), end.y(), z, color.r(), color.g(), color.b(), color.a());
 	}
 	
-	public static void loadSquare(UniversalRenderer renderer, float sX, float sY, float eX, float eY, float z, float r, float g, float b, float a)
+	public static void loadRectangle(UniversalRenderer renderer, float sX, float sY, float eX, float eY, float z, float r, float g, float b, float a)
 	{
 		renderer.vertex(sX, eY, z).color(r, g, b, a).end();
 		renderer.vertex(eX, eY, z).color(r, g, b, a).end();
 		renderer.vertex(eX, sY, z).color(r, g, b, a).end();
 		renderer.vertex(sX, sY, z).color(r, g, b, a).end();
+	}
+	
+	public static void loadTexturedRectangle(UniversalRenderer renderer, float sX, float sY, float eX, float eY, float z, float u0, float v0, float u1, float v1)
+	{
+		renderer.vertex(sX, eY, z).uv(u0, v1).end();
+		renderer.vertex(eX, eY, z).uv(u1, v1).end();
+		renderer.vertex(eX, sY, z).uv(u1, v0).end();
+		renderer.vertex(sX, sY, z).uv(u0, v0).end();
 	}
 }

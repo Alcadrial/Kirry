@@ -168,6 +168,8 @@ public class RenderEngine implements RenderTest {
 		GL30.glEnable(GL30.GL_BLEND);
 		GL30.glBlendFunc(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA);
 		GL30.glEnable(GL30.GL_CULL_FACE);
+		GL30.glCullFace(GL30.GL_BACK);
+		GL30.glFrontFace(GL30.GL_CW);
 		GL30.glClearColor(0.6F, 0.7F, 1, 1);
 		Util.printError("renew");
 	}
@@ -175,9 +177,9 @@ public class RenderEngine implements RenderTest {
 	private Window window;
 	private Vector2f cursor;
 	private ShaderProgram colorProgram, textureProgram;
-	private UniversalRenderer universalRenderer, widgetRenderer;
-	private FloatArrayBuffer buffer0, buffer1;
-	private ElementArrayBuffer element0, element1;
+	private UniversalRenderer universalRenderer, widgetRenderer, textureRenderer;
+	private FloatArrayBuffer buffer0, buffer1, buffer2;
+	private ElementArrayBuffer element0, element1, element2;
 	private FontRenderer fontRenderer;
 	private Font font;
 	
@@ -282,6 +284,7 @@ public class RenderEngine implements RenderTest {
 		Util.printError("shader init");
 		universalRenderer = new UniversalRenderer(colorProgram);
 		widgetRenderer = new UniversalRenderer(colorProgram);
+		textureRenderer = new UniversalRenderer(textureProgram);
 		Util.printError("renderer init");
 		ShaderProgram fontProgram = new ShaderProgram();
 		try
@@ -352,8 +355,17 @@ public class RenderEngine implements RenderTest {
 		buffer1 = new FloatArrayBuffer();
 		element1 = new ElementArrayBuffer();
 		universalRenderer.pushBuffer(buffer1, element1);
-		RendererUtil.loadSquare(universalRenderer, 100, 100, 128, 128, 1, 255, 255, 0, 255);
+		RendererUtil.loadRectangle(universalRenderer, 100, 100, 128, 128, 1, 255, 255, 0, 255);
 		universalRenderer.pullBuffer();
+		
+		buffer2 = new FloatArrayBuffer();
+		element2 = new ElementArrayBuffer();
+		textureRenderer.pushBuffer(buffer2, element2);
+		RendererUtil.loadRectangle(textureRenderer, -1, -1, 0, 0, 1, 0, 0, 1, 1);
+		RendererUtil.loadRectangle(textureRenderer, 0, -1, 1, 0, 1, 0, 0, 1, 1);
+		RendererUtil.loadRectangle(textureRenderer, -1, 0, 0, 1, 1, 0, 0, 1, 1);
+		RendererUtil.loadRectangle(textureRenderer, 0, 0, 1, 1, 1, 0, 0, 1, 1);
+		textureRenderer.pullBuffer();
 		
 		window.render(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
 		
@@ -436,6 +448,10 @@ public class RenderEngine implements RenderTest {
 		Util.printError("TextureRender draw");
 		
 		// frameBuffer.unbind();
+		
+		textureRenderer.pushBuffer(buffer2, element2);
+		textureRenderer.drawVertices(RenderingMode.QUADS, identity);
+		textureRenderer.pullBuffer();
 		
 		window.update(compact, partialTicks);
 		window.clear(true, true, false);

@@ -81,7 +81,7 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	public void loadText(Text text, Vector2f position, Color color, float size, int maxLength, float z)
 	{
 		if (text.isEmpty()) return;
-		List<List<RenderCharacter>> fontText = new ArrayList<>(text.lines());
+		List<List<RenderCharacter>> fontText = new ArrayList<>(text.rows());
 		int textSize = 0;
 		for (TextLine textLine : text)
 		{
@@ -136,7 +136,7 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	public void loadText(Matrix4f matrix, Text text, Vector2f position, Color color, float size, int maxLength, float z)
 	{
 		if (text.isEmpty()) return;
-		List<List<RenderCharacter>> fontText = new ArrayList<>(text.lines());
+		List<List<RenderCharacter>> fontText = new ArrayList<>(text.rows());
 		int textSize = 0;
 		for (TextLine textLine : text)
 		{
@@ -303,14 +303,26 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	
 	public void draw(Matrix4f matrix)
 	{
+		drawVertices(RenderingMode.QUADS, matrix);
+		clear();
+	}
+	
+	@Override
+	public void drawVertices(RenderingMode mode, Matrix4f matrix)
+	{
+		drawVertices(mode, matrix, arrayBuffer.size() / vertexSize());
+	}
+	
+	@Override
+	public void drawVertices(RenderingMode mode, Matrix4f matrix, int count, int offset)
+	{
 		font.getTexture().bind();
 		program.enable();
 		program.setUniform(TRANSFORMATION, matrix);
 		program.setUniform(COLOR, color);
 		program.setUniform(ALFA_MASK, alfaMask);
 		program.setUniform(TEXTURE_SAMPLER, textureSampler);
-		draw(RenderingMode.QUADS);
-		clear();
+		draw(mode, count * 4, offset * 4);
 	}
 	
 	public Font getFont()

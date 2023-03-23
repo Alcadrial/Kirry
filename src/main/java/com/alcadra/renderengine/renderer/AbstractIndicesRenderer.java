@@ -4,6 +4,7 @@ import java.util.Objects;
 
 import org.lwjgl.opengl.GL11;
 
+import com.alcadra.math.Matrix4f;
 import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.shader.ShaderProgram;
@@ -43,13 +44,28 @@ public abstract class AbstractIndicesRenderer<AB extends ArrayBuffer<?>> extends
 	
 	protected void drawIndices(RenderingMode mode, int count)
 	{
+		drawIndices(mode, count, 0);
+	}
+	
+	protected void drawIndices(RenderingMode mode, int count, int offset)
+	{
 		vertexArray.bind();
 		syncBuffers();
 		elements.bind();
 		elements.sync();
-		GL11.glDrawElements(mode.ordinal(), count, GL11.GL_UNSIGNED_INT, 0);
-		arrayBuffer.unbind();
-		elements.unbind();
+		GL11.glDrawElements(mode.ordinal(), count, GL11.GL_UNSIGNED_INT, offset);
+	}
+	
+	@Override
+	public void drawPoints(RenderingMode mode, Matrix4f matrix)
+	{
+		drawPoints(mode, matrix, elements.size());
+	}
+	
+	@Override
+	public void drawPoints(RenderingMode mode, Matrix4f matrix, int count)
+	{
+		drawPoints(mode, matrix, count, 0);
 	}
 	
 	@Override

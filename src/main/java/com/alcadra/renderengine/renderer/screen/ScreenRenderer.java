@@ -1,7 +1,9 @@
 package com.alcadra.renderengine.renderer.screen;
 
+import com.alcadra.math.Matrix4f;
 import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.renderer.AbstractShaderRenderer;
+import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.window.widget.DrawableWidget;
 
@@ -37,4 +39,8 @@ class ScreenRenderer extends AbstractShaderRenderer<DataModel> {
 	{
 		currentArrayBuffer = buffer;
 	}
+	
+	@Override
+	public void drawVertices(RenderingMode mode, Matrix4f matrix, int count, int offset)
+	{}
 }

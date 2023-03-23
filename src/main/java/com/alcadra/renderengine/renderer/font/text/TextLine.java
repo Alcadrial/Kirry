@@ -26,6 +26,11 @@ public class TextLine implements Iterable<Character> {
 		return line.isBlank();
 	}
 	
+	public boolean isEmpty()
+	{
+		return line.isEmpty();
+	}
+	
 	public char get(int index)
 	{
 		return line.charAt(index);

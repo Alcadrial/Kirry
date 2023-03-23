@@ -5,6 +5,7 @@ import java.util.Objects;
 
 import org.lwjgl.opengl.GL30;
 
+import com.alcadra.math.Matrix4f;
 import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.SyncronizableArrayBuffer;
 import com.alcadra.renderengine.shader.ShaderInput;
@@ -13,26 +14,22 @@ import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.util.Nonnull;
 
 @Nonnull
-public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> implements ShaderRenderer {
+public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> extends AbstractRenderer<AB> implements ShaderRenderer {
 	
-	protected final VertexArray vertexArray;
-	protected final AB arrayBuffer;
 	protected ShaderProgram program;
 	private int vertexSize;
 	
 	protected AbstractShaderRenderer(ShaderProgram program, AB arrayBuffer)
 	{
+		super(arrayBuffer);
 		this.program = Objects.requireNonNull(program);
-		this.vertexArray = new VertexArray();
-		this.arrayBuffer = Objects.requireNonNull(arrayBuffer);
 		initializeArrayBuffer();
 	}
 	
 	protected AbstractShaderRenderer(ShaderProgram program, VertexArray vertexArray, AB arrayBuffer)
 	{
+		super(vertexArray, arrayBuffer);
 		this.program = Objects.requireNonNull(program);
-		this.vertexArray = Objects.requireNonNull(vertexArray);
-		this.arrayBuffer = Objects.requireNonNull(arrayBuffer);
 		initializeArrayBuffer();
 	}
 	
@@ -80,19 +77,25 @@ public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> implemen
 	
 	protected void draw(RenderingMode mode)
 	{
- 		draw(mode, 0, arrayBuffer.size() / vertexSize() * 4);
+		draw(mode, arrayBuffer.size() / vertexSize() * 4);
 	}
 	
 	protected void draw(RenderingMode mode, int count)
 	{
-		draw(mode, 0, count);
+		draw(mode, count, 0);
 	}
 	
-	protected void draw(RenderingMode mode, int start, int count)
+	protected void draw(RenderingMode mode, int count, int offset)
 	{
 		vertexArray.bind();
 		syncBuffers();
-		GL30.glDrawArrays(mode.ordinal(), start, count);
+		GL30.glDrawArrays(mode.ordinal(), offset, count);
+	}
+	
+	@Override
+	public void drawVertices(RenderingMode mode, Matrix4f matrix)
+	{
+		drawVertices(mode, matrix, arrayBuffer.size() / vertexSize() * 4);
 	}
 	
 	protected int vertexSize()
