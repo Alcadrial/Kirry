@@ -7,7 +7,7 @@ import com.alcadra.renderengine.renderer.ColorRenderer;
 import com.alcadra.renderengine.renderer.TextureRenderer;
 import com.alcadra.renderengine.window.Window;
 
-public class VisibleButton extends Button implements RenderizableWidget {
+public abstract class VisibleButton extends Button implements RenderizableWidget {
 	
 	public VisibleButton(Vector3i pos, Vector2i size, Window window)
 	{
