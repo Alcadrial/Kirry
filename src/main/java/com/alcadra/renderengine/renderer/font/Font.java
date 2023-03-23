@@ -10,7 +10,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import com.alcadra.renderengine.renderer.font.text.TextLine;
-import com.alcadra.renderengine.textures.ColorTexture;
+import com.alcadra.renderengine.textures.Texture;
+import com.alcadra.renderengine.textures.TextureTemplate;
 import com.alcadra.renderengine.util.Image;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
@@ -21,7 +22,7 @@ public class Font {
 	private int lineHeight, lineOffset;
 	private List<Glyph> chars;
 	private HashMap<Entry<Integer, Integer>, Integer> extraOffset = new HashMap<>();
-	private ColorTexture texture;
+	private Texture texture;
 	
 	public Font(File json, File png) throws IOException
 	{
@@ -120,7 +121,9 @@ public class Font {
 		}
 		reader.endObject();
 		chars.sort((g, p) -> g.getName() - p.getName());
-		texture = new ColorTexture(new Image(png));
+		texture = new Texture(TextureTemplate.RGBA_2D_TEXTURE);
+		Image image = new Image(png);
+		texture.setData2D(image.loadToBuffer(), image.getBuffered().getWidth(), image.getBuffered().getHeight(), 0);
 	}
 	
 	public Glyph getGlyph(char c)
@@ -164,7 +167,7 @@ public class Font {
 		return lineOffset;
 	}
 	
-	public ColorTexture getTexture()
+	public Texture getTexture()
 	{
 		return texture;
 	}

@@ -1,108 +1,356 @@
 package com.alcadra.renderengine.textures;
 
+import java.lang.ref.Cleaner.Cleanable;
 import java.nio.IntBuffer;
 
-import org.lwjgl.opengl.GL32;
+import org.lwjgl.opengl.GL45;
 
-import com.alcadra.math.vector.Vector2i;
-import com.alcadra.renderengine.util.Image;
+import com.alcadra.renderengine.util.WorkInProgress;
 
-public class Texture {
+public final class Texture implements Cleanable {
+	
+	private static final int[][] POINTERS = new int[64][];
+	private static int pointersNextIndex = 0;
 	
 	public static void setActive(int x)
 	{
-		GL32.glActiveTexture(GL32.GL_TEXTURE0 + x);
+		GL45.glActiveTexture(GL45.GL_TEXTURE0 + x);
 	}
 	
-	private final int id, target, internalFormat, textureFormat, dataType;
-	private Vector2i size;
+	private final TextureTemplate template;
+	private final int id;
+	private int length;
+	private int width;
+	private int height;
+	private int depth;
+	private int mipmapLevels;
 	
-	protected Texture(int width, int height, int target, int internalFormat, int textureFormat, int dataType, int[] pixels)
+	/**
+	 * Creates a texture using the given {@link TextureTemplate}.
+	 * 
+	 * @param template the {@link TextureTemplate} to use
+	 */
+	public Texture(TextureTemplate template)
 	{
-		this(width, height, target, internalFormat, textureFormat, dataType);
-		bind();
-		disableAntiAlias();
-		setData(pixels);
-	}
-	
-	protected Texture(int width, int height, int target, int internalFormat, int textureFormat, int dataType, int[] pixels, int detailLevel)
-	{
-		this(width, height, target, internalFormat, textureFormat, dataType);
-		bind();
-		disableAntiAlias();
-		setData(pixels);
-	}
-	
-	protected Texture(int width, int height, int target, int internalFormat, int textureFormat, int dataType)
-	{
-		this(width, height, GL32.glGenTextures(), target, internalFormat, textureFormat, dataType);
-	}
-	
-	protected Texture(int width, int height, int id, int target, int internalFormat, int textureFormat, int dataType)
-	{
-		size = new Vector2i(width, height);
-		this.id = id;
-		this.target = target;
-		this.internalFormat = internalFormat;
-		this.textureFormat = textureFormat;
-		this.dataType = dataType;
+		this.template = template;
+		id = GL45.glCreateTextures(template.target());
 	}
 	
 	public void bind()
 	{
-		GL32.glBindTexture(getTarget(), id);
+		GL45.glBindTexture(template.target(), id);
+	}
+	
+	/**
+	 * Generate a new 1D texture of length <code>width</code> using mipmap if <code>mipmapLevels</code> is greater than 0, and, 
+	 * if data isn't null, with <code>width</code> ints from data.
+	 * 
+	 * @param data used to initialize the texture if not null
+	 * @param width the witdh of the texture
+	 * @param mipmapLevels the level-of-detail of the texture or 0
+	 */
+	public void setData1D(int[] data, int width, int mipmapLevels)
+	{
+		if (mipmapLevels < 0) return;
+		GL45.glTexImage1D(template.target(), mipmapLevels, template.internalFormat(), width, 0, template.textureFormat(), template.dataType(), data);
+		length = width;
+		this.width = width;
+		height = 1;
+		depth = 1;
+		this.mipmapLevels = mipmapLevels;
+	}
+	
+	/**
+	 * Generate a new 2D texture of length <code>width * height</code> using mipmap if <code>mipmapLevels</code> is greater than 0, and, 
+	 * if data isn't null, with <code>width * height</code> ints from data.
+	 * 
+	 * @param data used to initialize the texture if not null
+	 * @param width the witdh of the texture
+	 * @param height the height of the texture
+	 * @param mipmapLevels the level-of-detail of the texture or 0
+	 */
+	public void setData2D(int[] data, int width, int height, int mipmapLevels)
+	{
+		if (mipmapLevels < 0) return;
+		GL45.glTexImage2D(template.target(), mipmapLevels, template.internalFormat(), width, height, 0, template.textureFormat(), template.dataType(), data);
+		length = width * height;
+		this.width = width;
+		this.height = height;
+		depth = 1;
+		this.mipmapLevels = mipmapLevels;
+	}
+	
+	/**
+	 * Generate a new 3D texture of length <code>width * height * depth</code> using mipmap if <code>mipmapLevels</code> is greater than 0, and, 
+	 * if data isn't null, with <code>width * height * depth</code> ints from data.
+	 * 
+	 * @param data used to initialize the texture if not null
+	 * @param width the witdh of the texture
+	 * @param height the height of the texture
+	 * @param depth the depth of the texture
+	 * @param mipmapLevels the level-of-detail of the texture or 0
+	 */
+	public void setData3D(int[] data, int width, int height, int depth, int mipmapLevels)
+	{
+		if (mipmapLevels < 0) return;
+		GL45.glTexImage3D(template.target(), mipmapLevels, template.internalFormat(), width, height, depth, 0, template.textureFormat(), template.dataType(), data);
+		length = width * height * depth;
+		this.width = width;
+		this.height = height;
+		this.depth = depth;
+		this.mipmapLevels = mipmapLevels;
+	}
+	
+	/**
+	 * Sets the values of the texture from <code>x</code> to <code>x + width</code> (excluded) to the specified value.
+	 * 
+	 * @param value the value to set
+	 * @param x
+	 * @param width
+	 */
+	public void clearRegion1D(int value, int x, int width)
+	{
+		clearRegion3D(value, x, 0, 0, width, 1, 1);
+	}
+	
+	/**
+	 * Sets the values of the texture from <code>(x; y)</code> to <code>(x + width; y + height)</code> (excluded) to the specified value.
+	 * 
+	 * @param value the value to set
+	 * @param x
+	 * @param y
+	 * @param width
+	 * @param height
+	 */
+	public void clearRegion2D(int value, int x, int y, int width, int height)
+	{
+		clearRegion3D(value, x, y, 0, width, height, 1);
+	}
+	
+	/**
+	 * Sets the values of the texture from <code>(x; y; z)</code> to <code>(x + width; y + height; z + depth)</code> (excluded) to the specified value.
+	 * 
+	 * @param value the value to set
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @param width
+	 * @param height
+	 * @param depth
+	 */
+	public void clearRegion3D(int value, int x, int y, int z, int width, int height, int depth)
+	{
+		synchronized (POINTERS)
+		{
+			GL45.glClearTexSubImage(id, mipmapLevels, x, y, z, width, height, depth, template.textureFormat(), template.dataType(), pushSlot(value));
+		}
+	}
+	
+	/**
+	 * Resize this texture to the specified dimensions.
+	 * <p>
+	 * If this texture is bigger than <code>width</code>, the resulting texture will have less data than the original.
+	 * 
+	 * @param width
+	 */
+	@WorkInProgress
+	public void resize1D(int width)
+	{
+		resize1D(width, mipmapLevels);
+	}
+	
+	/**
+	 * Resize this texture to the specified dimensions.
+	 * <p>
+	 * If this texture is bigger than <code>width</code>, the resulting texture will have less data than the original.
+	 * 
+	 * @param width
+	 * @param mipmapLevels the level-of-detail of the texture or 0
+	 */
+	@WorkInProgress
+	public void resize1D(int width, int mipmapLevels)
+	{
+		setData1D(getDataArray(), width, mipmapLevels);
+	}
+	
+	/**
+	 * Resize this texture to the specified dimensions.
+	 * <p>
+	 * If this texture has any dimension bigger than the given one, the resulting texture will have less data than the original.
+	 * 
+	 * @param width
+	 * @param height
+	 */
+	public void resize2D(int width, int height)
+	{
+		resize2D(width, height, mipmapLevels);
+	}
+	
+	/**
+	 * Resize this texture to the specified dimensions.
+	 * <p>
+	 * If this texture has any dimension bigger than the given one, the resulting texture will have less data than the original.
+	 * 
+	 * @param width
+	 * @param height
+	 * @param mipmapLevels the level-of-detail of the texture or 0
+	 */
+	public void resize2D(int width, int height, int mipmapLevels)
+	{
+		int[] pixels = getDataArray();
+		int[] newPixels = new int[width * height];
+		for (int i = 0; i < this.height; i++) for (int j = 0; j < this.width; j++) newPixels[i * width + j] = pixels[i * this.width + j];
+		setData2D(newPixels, width, height, mipmapLevels);
+	}
+	
+	/**
+	 * Resize this texture to the specified dimensions.
+	 * <p>
+	 * If this texture has any dimension bigger than the given one, the resulting texture will have less data than the original.
+	 * 
+	 * @param width
+	 * @param height
+	 * @param depth
+	 */
+	public void resize3D(int width, int height, int depth)
+	{
+		resize3D(width, height, depth, mipmapLevels);
+	}
+	
+	/**
+	 * Resize this texture to the specified dimensions.
+	 * <p>
+	 * If this texture has any dimension bigger than the given one, the resulting texture will have less data than the original.
+	 * 
+	 * @param width
+	 * @param height
+	 * @param depth
+	 * @param mipmapLevels the level-of-detail of the texture or 0
+	 */
+	public void resize3D(int width, int height, int depth, int mipmapLevels)
+	{
+		int length2D = width * height;
+		int length2D0 = this.width * this.height;
+		int[] pixels = getDataArray();
+		int[] newPixels = new int[length2D * depth];
+		for (int i = 0; i < this.depth; i++) for (int j = 0; j < this.height; j++) for (int k = 0; k < this.width; k++) newPixels[i * length2D + j * width + k] = pixels[i * length2D0 + j * this.width + k];
+		setData3D(newPixels, width, height, depth, mipmapLevels);
+	}
+	
+	/**
+	 * Copy this texture to the specified one.
+	 * <p>
+	 * If this texture is bigger in any dimension than the specified one, than will be copied the data that fits in that texture.
+	 * 
+	 * @param texture the destination of the copy
+	 */
+	public void copyTo1D(Texture texture)
+	{
+		GL45.glCopyTextureSubImage1D(id, 0, 0, 0, 0, width);
+	}
+	
+	/**
+	 * Copy this texture from <code>x</code> to <code>x + width</code> (excluded) to the specified one.
+	 * <p>
+	 * If this texture is bigger in any dimension than the specified one, than will be copied the data that fits in that texture.
+	 * 
+	 * @param texture the destination of the copy
+	 * @param x
+	 * @param width
+	 */
+	public void copyTo1D(Texture texture, int x, int width)
+	{
+		GL45.glCopyTextureSubImage1D(id, 0, x, 0, 0, width);
+	}
+	
+	/**
+	 * Copy this texture to the specified one.
+	 * <p>
+	 * If this texture is bigger in any dimension than the specified one, than will be copied the data that fits in that texture.
+	 * 
+	 * @param texture the destination of the copy
+	 */
+	public void copyTo2D(Texture texture)
+	{
+		GL45.glCopyTextureSubImage2D(id, 0, 0, 0, 0, 0, width, height);
+	}
+	
+	/**
+	 * Copy this texture from <code>(x; y)</code> to <code>(x + width; y + height)</code> (excluded) to the specified one.
+	 * <p>
+	 * If this texture is bigger in any dimension than the specified one, than will be copied the data that fits in that texture.
+	 * 
+	 * @param texture the destination of the copy
+	 * @param x
+	 * @param y
+	 * @param width
+	 * @param height
+	 */
+	public void copyTo2D(Texture texture, int x, int y, int width, int height)
+	{
+		GL45.glCopyTextureSubImage2D(id, 0, x, y, 0, 0, width, height);
+	}
+	
+	/**
+	 * Copy this texture to the specified one.
+	 * <p>
+	 * If this texture is bigger in any dimension than the specified one, than will be copied the data that fits in that texture.
+	 * 
+	 * @param texture the destination of the copy
+	 */
+	public void copyTo3D(Texture texture)
+	{
+		for (int i = 0; i < depth; i++) GL45.glCopyTextureSubImage3D(id, 0, 0, 0, i, 0, 0, width, height);
+	}
+	
+	/**
+	 * Copy this texture from <code>(x; y; z)</code> to <code>(x + width; y + height; z + depth)</code> (excluded) to the specified one.
+	 * <p>
+	 * If this texture is bigger in any dimension than the specified one, than will be copied the data that fits in that texture.
+	 * 
+	 * @param texture the destination of the copy
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @param width
+	 * @param height
+	 * @param depth
+	 */
+	public void copyTo3D(Texture texture, int x, int y, int z, int width, int height, int depth)
+	{
+		while (z < depth) GL45.glCopyTextureSubImage3D(id, 0, x, y, z++, 0, 0, width, height);
 	}
 	
 	public void enableAntiAlias()
 	{
-		GL32.glTexParameteri(target, GL32.GL_TEXTURE_MIN_FILTER, GL32.GL_LINEAR);
-		GL32.glTexParameteri(target, GL32.GL_TEXTURE_MAG_FILTER, GL32.GL_LINEAR);
+		GL45.glTexParameteri(template.target(), GL45.GL_TEXTURE_MIN_FILTER, GL45.GL_LINEAR);
+		GL45.glTexParameteri(template.target(), GL45.GL_TEXTURE_MAG_FILTER, GL45.GL_LINEAR);
 	}
 	
 	public void disableAntiAlias()
 	{
-		GL32.glTexParameteri(target, GL32.GL_TEXTURE_MIN_FILTER, GL32.GL_NEAREST);
-		GL32.glTexParameteri(target, GL32.GL_TEXTURE_MAG_FILTER, GL32.GL_NEAREST);
+		GL45.glTexParameteri(template.target(), GL45.GL_TEXTURE_MIN_FILTER, GL45.GL_NEAREST);
+		GL45.glTexParameteri(template.target(), GL45.GL_TEXTURE_MAG_FILTER, GL45.GL_NEAREST);
 	}
 	
-	public void resize(Vector2i size)
-	{
-		int[] pixels = getDataArray();
-		int[] newPixels = new int[size.x() * size.y()];
-		for (int i = 0; i < getHeight(); i++) for (int j = 0; j < getWidth(); j++) newPixels[i * size.x() + j] = pixels[i * getWidth() + j];
-		this.size = size;
-		setData(newPixels);
-	}
-	
-	public int getImagePixel(Vector2i position)
-	{
-		int[] pixel = new int[1];
-		GL32.glReadPixels(position.x(), position.y(), 1, 1, textureFormat, dataType, pixel);
-		return pixel[0];
-	}
-	
-	public Image getImage()
-	{
-		if (!nonNull()) return null;
-		return new Image(getDataArrayARGB(), getWidth(), getHeight());
-	}
-	
+	/**
+	 * Returns an array containing all the pixels of this texture.
+	 * @return this texture as array
+	 */
 	public int[] getDataArray()
 	{
-		if (!nonNull()) return new int[0];
-		int[] pixels = new int[getLength()];
-		bind();
-		GL32.glGetTexImage(getTarget(), 0, textureFormat, dataType, pixels);
-		return pixels;
+		return getDataArray(template);
 	}
 	
-	public int[] getDataArrayARGB()
+	/**
+	 * Returns an array containing all the pixels of this texture using the specified {@link TextureTemplate}.
+	 * @param template
+	 * @return this texture as array
+	 */
+	public int[] getDataArray(TextureTemplate template)
 	{
-		if (!nonNull()) return new int[0];
-		int[] pixels = new int[getLength()];
-		bind();
-		GL32.glGetTexImage(getTarget(), 0, textureFormat, dataType, pixels);
-		for (int i = 0; i < pixels.length; i++) pixels[i] = pixels[i] >>> 24 | pixels[i] << 8;
+		int[] pixels = new int[length];
+		GL45.glGetTexImage(template.target(), mipmapLevels, template.textureFormat(), template.dataType(), pixels);
 		return pixels;
 	}
 	
@@ -111,40 +359,9 @@ public class Texture {
 		return IntBuffer.wrap(getDataArray());
 	}
 	
-	public void setData(int[] pixels)
+	public TextureTemplate getTemplate()
 	{
-		GL32.glTexImage2D(target, 0, internalFormat, getWidth(), getHeight(), 0, textureFormat, dataType, pixels);
-	}
-	
-	public void setData(int[] pixels, Vector2i size)
-	{
-		this.size = size;
-		GL32.glTexImage2D(target, 0, internalFormat, getWidth(), getHeight(), 0, textureFormat, dataType, pixels);
-	}
-	
-	public boolean nonNull()
-	{
-		return id != 0;
-	}
-	
-	public Vector2i getSize()
-	{
-		return size;
-	}
-	
-	public int getLength()
-	{
-		return getWidth() * getHeight();
-	}
-	
-	public int getWidth()
-	{
-		return size.x();
-	}
-	
-	public int getHeight()
-	{
-		return size.y();
+		return template;
 	}
 	
 	public int getId()
@@ -152,9 +369,67 @@ public class Texture {
 		return id;
 	}
 	
-	public int getTarget()
+	public int getLength()
 	{
-		return target;
+		return length;
+	}
+	
+	public int getWidth()
+	{
+		return width;
+	}
+	
+	public int getHeight()
+	{
+		return height;
+	}
+	
+	public int getDepth()
+	{
+		return depth;
+	}
+	
+	public int getMipmapLevels()
+	{
+		return mipmapLevels;
+	}
+	
+	@Override
+	public void clean()
+	{
+		GL45.glDeleteTextures(id);
+	}
+	
+	@SuppressWarnings("unused")
+	private int[] pushSlot()
+	{
+		if (pointersNextIndex >= 64) pointersNextIndex = 0;
+		return POINTERS[pointersNextIndex++];
+	}
+	
+	private int[] pushSlot(int value)
+	{
+		if (pointersNextIndex >= 64) pointersNextIndex = 0;
+		int[] pointer = POINTERS[pointersNextIndex++];
+		pointer[0] = value;
+		return pointer;
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return id;
+	}
+	
+	@Override
+	public boolean equals(Object obj)
+	{
+		return obj instanceof Texture t && equals(t);
+	}
+	
+	public boolean equals(Texture texture)
+	{
+		return id == texture.id;
 	}
 	
 	@Override

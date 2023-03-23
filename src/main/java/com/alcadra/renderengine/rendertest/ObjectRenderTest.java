@@ -22,7 +22,8 @@ import com.alcadra.renderengine.renderer.object.ObjectBuilder;
 import com.alcadra.renderengine.renderer.object.ObjectRenderer;
 import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.shader.ShaderProgram;
-import com.alcadra.renderengine.textures.ColorTexture;
+import com.alcadra.renderengine.textures.Texture;
+import com.alcadra.renderengine.textures.TextureTemplate;
 import com.alcadra.renderengine.util.Image;
 import com.alcadra.renderengine.util.Tracker;
 import com.alcadra.renderengine.util.color.Color;
@@ -40,7 +41,7 @@ public class ObjectRenderTest implements RenderTest {
 	private ObjectRenderer objectColorRenderer;
 	private ObjectRenderer objectTexturedRenderer;
 	private ObjectRenderer cubeRenderer;
-	private ColorTexture texture;
+	private Texture texture;
 	
 	@Override
 	public void start()
@@ -70,7 +71,9 @@ public class ObjectRenderTest implements RenderTest {
 		{
 			font = new Font(new File(RenderEngine.fontPath), new File(RenderEngine.fontImagePath));
 			window.setIcon(new Image(new File(RenderEngine.iconPath)));
-			texture = new ColorTexture(new Image(new File(RenderEngine.texturePath)));
+			texture = new Texture(TextureTemplate.RGBA_2D_TEXTURE);
+			Image image = new Image(new File(RenderEngine.texturePath));
+			texture.setData2D(image.loadToBuffer(), image.getBuffered().getWidth(), image.getBuffered().getHeight(), 0);
 		}
 		catch (IOException e)
 		{

@@ -1,5 +1,6 @@
 package com.alcadra.renderengine.window;
 
+import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -19,10 +20,11 @@ import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.system.CallbackI;
+import org.lwjgl.system.MemoryUtil;
 
 import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector2i;
-import com.alcadra.renderengine.buffer.FrameBuffer;
+import com.alcadra.renderengine.framebuffer.FrameBuffer;
 import com.alcadra.renderengine.renderer.object.ObjectRenderer;
 import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
 import com.alcadra.renderengine.textures.Texture;
@@ -101,15 +103,20 @@ public class Window {
 	
 	public final void setIcon(Texture texture)
 	{
-		Buffer b = GLFWImage.malloc(1).put(0, GLFWImage.malloc().set(texture.getWidth(), texture.getHeight(), texture.getImage().toByteBuffer()));
+		IntBuffer buffer = MemoryUtil.memAllocInt(texture.getLength());
+		buffer.put(texture.getDataArray()).flip();
+		Buffer b = GLFWImage.malloc(1).put(0, GLFWImage.malloc().set(texture.getWidth(), texture.getHeight(), MemoryUtil.memByteBuffer(buffer)));
 		GLFW.glfwSetWindowIcon(windowId, b);
+		b.get().free();
 		b.free();
+		MemoryUtil.memFree(buffer);
 	}
 	
 	public final void setIcon(Image image)
 	{
 		Buffer b = GLFWImage.malloc(1).put(0, GLFWImage.malloc().set(image.getBuffered().getWidth(), image.getBuffered().getHeight(), image.toByteBuffer()));
 		GLFW.glfwSetWindowIcon(windowId, b);
+		b.get().free();
 		b.free();
 	}
 	
