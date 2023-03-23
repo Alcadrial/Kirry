@@ -56,9 +56,9 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	}
 	
 	@Override
-	protected void initializeArrayBuffer()
+	protected void initializeVertexArray()
 	{
-		super.initializeArrayBuffer();
+		super.initializeVertexArray();
 		vertexPositionOffset = -1;
 		colorOffset = -1;
 		colorRGBOffset = -1;

@@ -101,7 +101,7 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 		this.arrayBuffer.push(arrayBuffer);
 		elementStack.push(elementBuffer);
 		offset = elementBuffer.getMax() + 1;
-		initializeArrayBuffer();
+		initializeVertexArray();
 	}
 	
 	public void pushBufferMerge(FloatArrayBuffer buffer)
@@ -125,7 +125,7 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 		elementBuffer.merge(e, elementBuffer.getMax());
 		elementStack.push(elementBuffer);
 		offset = elementStack.getMax() + 1;
-		initializeArrayBuffer();
+		initializeVertexArray();
 	}
 	
 	private <B extends SimpleBuffer> B pushNewBuffer(B buffer)

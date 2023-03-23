@@ -541,5 +541,5 @@ public class UniversalRenderTest implements RenderTest {
 	 * </i>
 	 * </ol>
 	 */
-	private Object info = null;
+	private static final Object INFO = null;
 }

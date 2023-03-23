@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
 
 import com.alcadra.renderengine.shader.uniform.ShaderUniform;
 import com.alcadra.renderengine.util.Deletable;
@@ -34,7 +34,7 @@ public class ShaderProgram implements Deletable {
 		for (int i = 0; i < attachedShaders.length; i++) attachedShaders[i] = new LinkedList<>();
 		this.knownInputs = List.of(knownInputs);
 		programInputs = List.of();
-		id = GL20.glCreateProgram();
+		id = GL30.glCreateProgram();
 		status = ProgramStatus.of(id, "Needs to be builded!");
 	}
 	
@@ -45,8 +45,8 @@ public class ShaderProgram implements Deletable {
 			ShaderType type = shader.getType();
 			if (type.ordinal() < ShaderType.COMPUTE.ordinal())
 			{
-				GL20.glAttachShader(id, shader.getId());
-				GL20.glDeleteShader(shader.getId());
+				GL30.glAttachShader(id, shader.getId());
+				GL30.glDeleteShader(shader.getId());
 				attachedShaders[type.ordinal()].add(shader);
 				shader.addProgram(this);
 			}
@@ -55,22 +55,22 @@ public class ShaderProgram implements Deletable {
 	
 	public void enable()
 	{
-		if (id != -1) GL20.glUseProgram(id);
+		if (id != -1) GL30.glUseProgram(id);
 	}
 	
 	public ProgramStatus build()
 	{
 		if (!status.isBuilded() && id != -1)
 		{
-			GL20.glLinkProgram(id);
-			if (GL20.glGetProgrami(id, GL20.GL_LINK_STATUS) == 0)
+			GL30.glLinkProgram(id);
+			if (GL30.glGetProgrami(id, GL30.GL_LINK_STATUS) == 0)
 			{
 				status = ProgramStatus.ofLinkFail(id);
 				programInputs = DEFAULT.programInputs;
 				return status;
 			}
-			GL20.glValidateProgram(id);
-			if (GL20.glGetProgrami(id, GL20.GL_VALIDATE_STATUS) == 0)
+			GL30.glValidateProgram(id);
+			if (GL30.glGetProgrami(id, GL30.GL_VALIDATE_STATUS) == 0)
 			{
 				status = ProgramStatus.ofValidationFail(id);
 				programInputs = DEFAULT.programInputs;
@@ -126,14 +126,19 @@ public class ShaderProgram implements Deletable {
 			attachedShaders = new List[0];
 			knownInputs = List.of();
 			programInputs = knownInputs;
-			GL20.glDeleteProgram(id);
+			GL30.glDeleteProgram(id);
 		}
 		id = -1;
 	}
 	
 	public <T> void setUniform(ShaderUniform<T> uniform, T value)
 	{
-		if (id != -1) uniform.setValue(GL20.glGetUniformLocation(id, uniform.getName()), value);
+		if (id != -1) uniform.setValue(GL30.glGetUniformLocation(id, uniform.getName()), value);
+	}
+	
+	public <T> void setFragmentData(String name, int colorNumber)
+	{
+		if (id != -1) GL30.glBindFragDataLocation(id, colorNumber, name);
 	}
 	
 	public List<Shader> getShaders(ShaderType type)

@@ -1,7 +1,6 @@
 package com.alcadra.renderengine.renderer;
 
 import java.util.List;
-import java.util.Objects;
 
 import org.lwjgl.opengl.GL30;
 
@@ -11,6 +10,7 @@ import com.alcadra.renderengine.buffer.SyncronizableArrayBuffer;
 import com.alcadra.renderengine.shader.ShaderInput;
 import com.alcadra.renderengine.shader.ShaderInputType;
 import com.alcadra.renderengine.shader.ShaderProgram;
+import com.alcadra.renderengine.shader.ShaderUtil;
 import com.alcadra.renderengine.util.Nonnull;
 
 @Nonnull
@@ -22,18 +22,18 @@ public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> extends 
 	protected AbstractShaderRenderer(ShaderProgram program, AB arrayBuffer)
 	{
 		super(arrayBuffer);
-		this.program = Objects.requireNonNull(program);
-		initializeArrayBuffer();
+		this.program = ShaderUtil.assertBuildedProgram(program);
+		initializeVertexArray();
 	}
 	
 	protected AbstractShaderRenderer(ShaderProgram program, VertexArray vertexArray, AB arrayBuffer)
 	{
 		super(vertexArray, arrayBuffer);
-		this.program = Objects.requireNonNull(program);
-		initializeArrayBuffer();
+		this.program = ShaderUtil.assertBuildedProgram(program);
+		initializeVertexArray();
 	}
 	
-	protected void initializeArrayBuffer()
+	protected void initializeVertexArray()
 	{
 		List<ShaderInput> inputs = program.getProgramInputs();
 		vertexSize = 0;
@@ -64,8 +64,8 @@ public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> extends 
 	public void setShaderProgram(ShaderProgram program)
 	{
 		disableAttributes();
-		this.program = Objects.requireNonNull(program);
-		initializeArrayBuffer();
+		this.program = ShaderUtil.assertBuildedProgram(program);
+		initializeVertexArray();
 	}
 	
 	@SuppressWarnings("rawtypes")

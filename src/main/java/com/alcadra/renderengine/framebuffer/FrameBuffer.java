@@ -16,7 +16,7 @@ import com.alcadra.renderengine.util.Util;
 
 public class FrameBuffer extends SimpleBuffer {
 	
-	public static final FrameBuffer DEFAULT = new FrameBuffer(GL32.GL_FRAMEBUFFER, 0);
+	public static final FrameBuffer DEFAULT = new FrameBuffer(FrameBufferTarget.BOTH, 0);
 	private static FrameBuffer binded = DEFAULT;
 	private static final Queue<FrameBuffer> BINDED_QUEUE = new LinkedList<>();
 	
@@ -43,6 +43,7 @@ public class FrameBuffer extends SimpleBuffer {
 	}
 	
 	private final Vector4i screen;
+	private FrameBufferTarget target;
 	private TextureHolder[] colorTexture;
 	private TextureHolder depthTexture;
 	private TextureHolder stencilTexture;
@@ -50,23 +51,25 @@ public class FrameBuffer extends SimpleBuffer {
 	
 	public FrameBuffer()
 	{
-		this(GL32.GL_FRAMEBUFFER);
+		this(FrameBufferTarget.BOTH);
 	}
 	
-	protected FrameBuffer(int target)
+	public FrameBuffer(FrameBufferTarget target)
 	{
-		super(target, GL32.glGenFramebuffers());
+		super(target.getTarget(), GL32.glGenFramebuffers());
 		Util.printError("[INTERNAL] framebuffer");
 		screen = Vector4i.of(0, 0, 0, 0);
+		this.target = target;
 		colorTexture = new TextureHolder[GL32.glGetInteger(GL32.GL_MAX_COLOR_ATTACHMENTS)];
 		depthTexture = null;
 		stencilTexture = null;
 		renderBuffer = null;
 	}
 	
-	private FrameBuffer(int target, int id)
+	private FrameBuffer(FrameBufferTarget target, int id)
 	{
-		super(target, id);
+		super(target.getTarget(), id);
+		this.target = target;
 		screen = Vector4i.of(0, 0, 0, 0);
 		colorTexture = null;
 		depthTexture = null;
@@ -302,6 +305,18 @@ public class FrameBuffer extends SimpleBuffer {
 		{
 			unbind();
 		}
+	}
+	
+	@Override
+	public int getTarget()
+	{
+		return target.getTarget();
+	}
+	
+	public void setTarget(FrameBufferTarget target)
+	{
+		this.target = target;
+		if (isBinded()) GL32.glBindFramebuffer(target.getTarget(), getId());
 	}
 	
 	private final class TextureHolder {
