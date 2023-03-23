@@ -9,6 +9,8 @@ import java.util.List;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
+import com.alcadra.renderengine.util.Util;
+
 public class Shader {
 	
 	private final int id;
@@ -59,8 +61,10 @@ public class Shader {
 			code = Files.lines(file.toPath()).toArray(i -> new String[i]);
 			StringBuilder builder = new StringBuilder();
 			for (String s : code) builder.append(s).append('\n');
+			Util.printError("shader loaded");
 			GL20.glShaderSource(id, builder);
 			GL20.glCompileShader(id);
+			Util.printError("shader compiled");
 			status = new ShaderStatus(GL20.glGetShaderi(id, GL20.GL_COMPILE_STATUS) == 1, id, code, GL20.glGetShaderInfoLog(id));
 			if (status.isCompiled()) for (ShaderProgram program : programs) if (program.getStatus().isBuilded()) program.build();
 		}
@@ -102,6 +106,7 @@ public class Shader {
 		if (!status.isDeleted())
 		{
 			GL30.glDeleteProgram(id);
+			Util.printError("program d " + id);
 			status = new ShaderStatus(status.isCompiled(), -1, status.getCode(), status.getInfo());
 		}
 	}

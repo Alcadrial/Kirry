@@ -8,25 +8,9 @@ import org.lwjgl.opengl.GL30;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
+import com.alcadra.renderengine.RenderEngine;
 
 public class Util {
-	
-	private static volatile boolean debug = false;
-	
-	public static boolean isDebug()
-	{
-		return debug;
-	}
-	
-	public static void enableDebug()
-	{
-		debug = true;
-	}
-	
-	public static void disableDebug()
-	{
-		debug = false;
-	}
 	
 	public static String toPointString(Vector4f vector)
 	{
@@ -80,37 +64,22 @@ public class Util {
 	
 	public static void printError(String s)
 	{
-		if (debug)
+		if (RenderEngine.isDebug())
 		{
 			int error = GL30.glGetError();
-			while (true)
+			while (error != GL30.GL_NO_ERROR)
 			{
-				switch (error)
+				System.out.println(switch (error)
 				{
-					case GL30.GL_NO_ERROR:
-						return;
-					case GL30.GL_INVALID_ENUM:
-						System.out.println(s + " INVALID ENUM");
-						break;
-					case GL30.GL_INVALID_VALUE:
-						System.out.println(s + " INVALID VALUE");
-						break;
-					case GL30.GL_INVALID_OPERATION:
-						System.out.println(s + " INVALID OPERATION");
-						break;
-					case GL30.GL_STACK_OVERFLOW:
-						System.out.println(s + " STACK OVERFLOW");
-						break;
-					case GL30.GL_STACK_UNDERFLOW:
-						System.out.println(s + " STACK UNDERFLOW");
-						break;
-					case GL30.GL_OUT_OF_MEMORY:
-						System.out.println(s + " OUT OF MEMORY");
-						break;
-					case GL30.GL_INVALID_FRAMEBUFFER_OPERATION:
-						System.out.println(s + " INVALID FRAMEBUFFER OPERATION");
-						break;
-				}
+					case GL30.GL_INVALID_ENUM -> s + " INVALID ENUM";
+					case GL30.GL_INVALID_VALUE -> s + " INVALID VALUE";
+					case GL30.GL_INVALID_OPERATION -> s + " INVALID OPERATION";
+					case GL30.GL_STACK_OVERFLOW -> s + " STACK OVERFLOW";
+					case GL30.GL_STACK_UNDERFLOW -> s + " STACK UNDERFLOW";
+					case GL30.GL_OUT_OF_MEMORY -> s + " OUT OF MEMORY";
+					case GL30.GL_INVALID_FRAMEBUFFER_OPERATION -> s + " INVALID FRAMEBUFFER OPERATION";
+					default -> s + " UNKNOWN";
+				});
 				error = GL30.glGetError();
 			}
 		}
@@ -118,33 +87,27 @@ public class Util {
 	
 	public static void printError(Supplier<String> x)
 	{
-		if (debug) printError(x.get());
+		if (RenderEngine.isDebug()) printError(x.get());
 	}
 	
 	public static void printError()
 	{
-		if (debug)
+		if (RenderEngine.isDebug())
 		{
 			int error = GL30.glGetError();
-			while (true)
+			while (error != GL30.GL_NO_ERROR)
 			{
-				switch (error)
+				System.out.println(switch (error)
 				{
-					case GL30.GL_NO_ERROR:
-						return;
-					case GL30.GL_INVALID_ENUM:
-						System.out.println("INVALID ENUM");
-						break;
-					case GL30.GL_INVALID_VALUE:
-						System.out.println("INVALID VALUE");
-						break;
-					case GL30.GL_INVALID_OPERATION:
-						System.out.println("INVALID OPERATION");
-						break;
-					case GL30.GL_INVALID_FRAMEBUFFER_OPERATION:
-						System.out.println("INVALID FRAMEBUFFER OPERATION");
-						break;
-				}
+					case GL30.GL_INVALID_ENUM -> "INVALID ENUM";
+					case GL30.GL_INVALID_VALUE -> "INVALID VALUE";
+					case GL30.GL_INVALID_OPERATION -> "INVALID OPERATION";
+					case GL30.GL_STACK_OVERFLOW -> "STACK OVERFLOW";
+					case GL30.GL_STACK_UNDERFLOW -> "STACK UNDERFLOW";
+					case GL30.GL_OUT_OF_MEMORY -> "OUT OF MEMORY";
+					case GL30.GL_INVALID_FRAMEBUFFER_OPERATION -> "INVALID FRAMEBUFFER OPERATION";
+					default -> "UNKNOWN";
+				});
 				error = GL30.glGetError();
 			}
 		}

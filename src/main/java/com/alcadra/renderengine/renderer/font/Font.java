@@ -134,8 +134,9 @@ public class Font {
 	
 	public Glyph getGlyph(char c)
 	{
+		if (c < 0 || c > chars.size()) return Glyph.INVALID_GLYPH;
+		if (c > ' ' - spaceIndex)
 		{
-			if (c < 0 || c > chars.size()) return Glyph.INVALID_GLYPH;
 			Glyph glyph = chars.get(c + spaceIndex - ' ');
 			if (glyph.getName() == c) return glyph;
 		}

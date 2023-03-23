@@ -9,6 +9,7 @@ import org.lwjgl.opengl.GL30;
 import com.alcadra.renderengine.shader.uniform.ShaderUniform;
 import com.alcadra.renderengine.util.Deletable;
 import com.alcadra.renderengine.util.NotUsed;
+import com.alcadra.renderengine.util.Util;
 
 public class ShaderProgram implements Deletable {
 	
@@ -23,6 +24,7 @@ public class ShaderProgram implements Deletable {
 	
 	static
 	{
+		Util.printError("default program pre-build");
 		DEFAULT.attachShader(new Shader("""
 				#version 460
 				
@@ -35,6 +37,7 @@ public class ShaderProgram implements Deletable {
 				""", ShaderType.VERTEX));
 		DEFAULT.build();
 		DEFAULT.attachedShaders[0].get(0).delete();
+		Util.printError("default program build");
 	}
 	
 	private List<Shader>[] attachedShaders;
@@ -62,7 +65,9 @@ public class ShaderProgram implements Deletable {
 			ShaderType type = shader.getType();
 			if (type.ordinal() < ShaderType.COMPUTE.ordinal())
 			{
+				Util.printError("shader pre-attach");
 				GL30.glAttachShader(id, shader.getId());
+				Util.printError("shader attach");
 				attachedShaders[type.ordinal()].add(shader);
 				shader.addProgram(this);
 			}
@@ -78,6 +83,7 @@ public class ShaderProgram implements Deletable {
 	{
 		if (!status.isBuilded() && id != -1)
 		{
+			Util.printError("shader pre-build");
 			GL30.glLinkProgram(id);
 			if (GL30.glGetProgrami(id, GL30.GL_LINK_STATUS) == 0)
 			{
@@ -85,6 +91,7 @@ public class ShaderProgram implements Deletable {
 				programInputs = DEFAULT.programInputs;
 				return status;
 			}
+			Util.printError("shader linking");
 			GL30.glValidateProgram(id);
 			if (GL30.glGetProgrami(id, GL30.GL_VALIDATE_STATUS) == 0)
 			{
@@ -92,6 +99,7 @@ public class ShaderProgram implements Deletable {
 				programInputs = DEFAULT.programInputs;
 				return status;
 			}
+			Util.printError("shader validating");
 			learnInputs();
 			status = ProgramStatus.ofSuccess(id);
 		}

@@ -7,6 +7,7 @@ import org.lwjgl.opengl.GL45;
 
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3i;
+import com.alcadra.renderengine.RenderEngine;
 import com.alcadra.renderengine.framebuffer.FrameBuffer;
 import com.alcadra.renderengine.util.Broken;
 import com.alcadra.renderengine.util.Deletable;
@@ -504,8 +505,8 @@ public final class Texture implements Deletable {
 	{
 		GL45.glDeleteTextures(id);
 		if (valid) valid = false;
-		else if (Util.isDebug()) System.err.println("Recleaning");
-		if (Util.isDebug()) System.out.println("Clean");
+		else if (RenderEngine.isDebug()) System.err.println("Recleaning");
+		if (RenderEngine.isDebug()) System.out.println("Clean");
 	}
 	
 	private int[] point(int value)

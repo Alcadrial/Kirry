@@ -36,7 +36,6 @@ import com.alcadra.renderengine.textures.TextureTemplate;
 import com.alcadra.renderengine.textures.TextureTemplateException;
 import com.alcadra.renderengine.util.Deletable;
 import com.alcadra.renderengine.util.Test;
-import com.alcadra.renderengine.util.Util;
 import com.alcadra.renderengine.window.Window;
 import com.alcadra.tester.UltimateTester;
 
@@ -51,7 +50,7 @@ public class Launch {
 		if (args.length == 0) pattern = Pattern.compile(".*");
 		else pattern = Pattern.compile(args[0]);
 		
-		Util.enableDebug();
+		RenderEngine.enableDebug();
 		if (!GLFW.glfwInit()) return;
 		window = new Window(1080, 720, "Test");
 		window.create();

@@ -36,8 +36,10 @@ import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
 import com.alcadra.renderengine.rendertest.object.ObjectRenderTest;
 import com.alcadra.renderengine.rendertest.object.RenderTest;
+import com.alcadra.renderengine.shader.ProgramStatus;
 import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.shader.ShaderProgram;
+import com.alcadra.renderengine.shader.ShaderStatus;
 import com.alcadra.renderengine.shader.uniform.ShaderUniform;
 import com.alcadra.renderengine.util.Image;
 import com.alcadra.renderengine.util.RendererUtil;
@@ -87,7 +89,7 @@ public class UniversalRenderTest implements RenderTest {
 		System.out.println("args=" + Arrays.toString(args));
 		for (String string : args)
 		{
-			if (string.equalsIgnoreCase("debug")) Util.enableDebug();
+			if (string.equalsIgnoreCase("debug")) RenderEngine.enableDebug();
 			else if (string.equalsIgnoreCase("exe"))
 			{
 				colorShaderVertexPath = colorShaderVertexPath.substring(19);
@@ -263,36 +265,48 @@ public class UniversalRenderTest implements RenderTest {
 		Util.printError("framebuffer");
 		
 		Shader shader0;
+		ShaderStatus shaderStatus;
+		ProgramStatus programStatus;
 		colorProgram = new ShaderProgram();
+		Util.printError("shader p");
 		try
 		{
 			shader0 = new Shader(new File(colorShaderVertexPath));
-			shader0.loadShader();
+			shaderStatus = shader0.loadShader();
+			if (!shaderStatus.isCompiled()) System.out.println(shaderStatus);
 			colorProgram.attachShader(shader0);
+			
 			shader0 = new Shader(new File(colorShaderFragmentPath));
-			shader0.loadShader();
+			shaderStatus = shader0.loadShader();
+			if (!shaderStatus.isCompiled()) System.out.println(shaderStatus);
 			colorProgram.attachShader(shader0);
 		}
 		catch (IOException e)
 		{
 			e.printStackTrace(System.out);
 		}
-		colorProgram.build();
+		programStatus = colorProgram.build();
+		if (!programStatus.isBuilded()) System.out.println(programStatus);
+		
 		textureProgram = new ShaderProgram();
 		try
 		{
 			shader0 = new Shader(new File(textureShaderVertexPath));
-			shader0.loadShader();
+			shaderStatus = shader0.loadShader();
+			if (!shaderStatus.isCompiled()) System.out.println(shaderStatus);
 			textureProgram.attachShader(shader0);
+			
 			shader0 = new Shader(new File(textureShaderFragmentPath));
-			shader0.loadShader();
+			shaderStatus = shader0.loadShader();
+			if (!shaderStatus.isCompiled()) System.out.println(shaderStatus);
 			textureProgram.attachShader(shader0);
 		}
 		catch (IOException e)
 		{
 			e.printStackTrace(System.out);
 		}
-		textureProgram.build();
+		programStatus = textureProgram.build();
+		if (!programStatus.isBuilded()) System.out.println(programStatus);
 		
 		Util.printError("shader init");
 		universalRenderer = new UniversalRenderer(colorProgram);
@@ -413,7 +427,7 @@ public class UniversalRenderTest implements RenderTest {
 		Matrix4f identity = new Matrix4f();
 		Matrix4f compact = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
 		Matrix4f positive = new Matrix4f().orthographicPositive(window.getWidth(), window.getHeight());
-		Matrix4f projection = new Matrix4f().project(10, 100, 8, window.getAspectRatio());
+		Matrix4f projection = new Matrix4f().project(70, 100, 1, window.getAspectRatio());
 		Matrix4f view = new Matrix4f().view(position, rotationX, rotationY);
 		Matrix4f camera = new Matrix4f().view(Vector3f.origin(), (float) o, (float) (o / 2));
 		// Matrix4f projectional = new Matrix4f(compact).multiply(projection);
