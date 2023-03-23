@@ -119,6 +119,14 @@ public class Shader {
 		GL20.glDeleteProgram(program);
 	}
 	
+	public ShaderStatus reload(File file, ShaderType type) throws IOException
+	{
+		delete();
+		ShaderStatus shaderStatus = loadShaderFile(file, type);
+		if (shaderStatus.isCompiled()) build();
+		return shaderStatus;
+	}
+	
 	public ShaderStatus loadShaderFile(File file) throws IOException
 	{
 		String pathname = file.getPath();
