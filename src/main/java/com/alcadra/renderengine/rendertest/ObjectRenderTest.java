@@ -12,43 +12,42 @@ import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.axis.Axis;
 import com.alcadra.renderengine.RenderEngine;
-import com.alcadra.renderengine.buffer.Bufferable;
+import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.renderer.font.Font;
 import com.alcadra.renderengine.renderer.font.FontRendererUpdate;
 import com.alcadra.renderengine.renderer.font.text.Text;
 import com.alcadra.renderengine.renderer.font.text.TextLine;
-import com.alcadra.renderengine.renderer.object.ObjectBuilder;
-import com.alcadra.renderengine.renderer.object.ObjectRenderer;
-import com.alcadra.renderengine.shader.Shader;
-import com.alcadra.renderengine.shader.ShaderInputDataType;
+import com.alcadra.renderengine.renderer.object.BufferableModel;
+import com.alcadra.renderengine.renderer.object.ObjectBuilderUpdate;
+import com.alcadra.renderengine.renderer.object.ObjectRendererUpdate;
 import com.alcadra.renderengine.shader.ShaderProgram;
-import com.alcadra.renderengine.shader.ShaderStatus;
-import com.alcadra.renderengine.shader.ShaderType;
 import com.alcadra.renderengine.shader.ShaderUpdate;
 import com.alcadra.renderengine.textures.ColorTexture;
 import com.alcadra.renderengine.util.Image;
 import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.util.Tracker;
 import com.alcadra.renderengine.util.color.Color;
-import com.alcadra.renderengine.window.Window;
+import com.alcadra.renderengine.util.color.VectorColorRGB;
+import com.alcadra.renderengine.util.color.VectorColorRGBA;
 import com.alcadra.renderengine.window.WindowUpdate;
 
+@SuppressWarnings("deprecation")
 @Test
 public class ObjectRenderTest implements RenderTest {
 	
-	private Window window;
+	private WindowUpdate window;
 	private Font font;
 	
 	private FontRendererUpdate fontRenderer;
-	private ObjectRenderer objectColorRenderer;
-	private ObjectRenderer objectTexturedRenderer;
-	private ObjectRenderer cubeRenderer;
+	private ObjectRendererUpdate objectColorRenderer;
+	private ObjectRendererUpdate objectTexturedRenderer;
+	private ObjectRendererUpdate cubeRenderer;
 	private ColorTexture texture;
 	
 	@Override
 	public void start()
 	{
-		window = new Window(1080, 720, "ObjectRenderTest");
+		window = new WindowUpdate(1080, 720, "ObjectRenderTest");
 		window.build();
 		window.makeContextCurrent();
 		
@@ -80,10 +79,11 @@ public class ObjectRenderTest implements RenderTest {
 			e.printStackTrace(System.out);
 		}
 		
+		ShaderUpdate shader;
 		ShaderProgram fontProgram = new ShaderProgram();
 		try
 		{
-			ShaderUpdate shader = new ShaderUpdate(new File(RenderEngine.fontShaderVertexPath));
+			shader = new ShaderUpdate(new File(RenderEngine.fontShaderVertexPath));
 			shader.loadShader();
 			if (!shader.getStatus().isCompiled()) System.out.println(shader.getStatus());
 			fontProgram.attachShader(shader);
@@ -100,29 +100,33 @@ public class ObjectRenderTest implements RenderTest {
 		
 		fontRenderer = new FontRendererUpdate(fontProgram, font);
 		
-		Shader objectColorShader = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED, ShaderInputDataType.UNUSUED);
+		ShaderProgram colorProgram = new ShaderProgram();
 		try
 		{
-			ShaderStatus results = objectColorShader.loadShaderFile(new File(RenderEngine.colorShaderVertexPath), ShaderType.VERTEX);
-			if (!results.isCompiled()) System.out.println(results);
-			results = objectColorShader.loadShaderFile(new File(RenderEngine.colorShaderFragmentPath), ShaderType.FRAGMENT);
-			if (!results.isCompiled()) System.out.println(results);
+			shader = new ShaderUpdate(new File(RenderEngine.colorShaderVertexPath));
+			shader.loadShader();
+			colorProgram.attachShader(shader);
+			shader = new ShaderUpdate(new File(RenderEngine.colorShaderFragmentPath));
+			shader.loadShader();
+			colorProgram.attachShader(shader);
 		}
 		catch (IOException e)
 		{
 			e.printStackTrace(System.out);
 		}
-		objectColorShader.build();
+		colorProgram.build();
 		
-		objectColorRenderer = new ObjectRenderer(objectColorShader);
+		objectColorRenderer = new ObjectRendererUpdate(colorProgram);
 		
-		Shader objectTexturedShader = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED);
+		ShaderProgram objectTexturedShader = new ShaderProgram();
 		try
 		{
-			ShaderStatus results = objectTexturedShader.loadShaderFile(new File(RenderEngine.textureShaderVertexPath), ShaderType.VERTEX);
-			if (!results.isCompiled()) System.out.println(results);
-			results = objectTexturedShader.loadShaderFile(new File(RenderEngine.textureShaderFragmentPath), ShaderType.FRAGMENT);
-			if (!results.isCompiled()) System.out.println(results);
+			shader = new ShaderUpdate(new File(RenderEngine.textureShaderVertexPath));
+			shader.loadShader();
+			objectTexturedShader.attachShader(shader);
+			shader = new ShaderUpdate(new File(RenderEngine.textureShaderFragmentPath));
+			shader.loadShader();
+			objectTexturedShader.attachShader(shader);
 		}
 		catch (IOException e)
 		{
@@ -130,11 +134,9 @@ public class ObjectRenderTest implements RenderTest {
 		}
 		objectTexturedShader.build();
 		
-		objectTexturedRenderer = new ObjectRenderer(objectTexturedShader);
-		objectTexturedRenderer.loadTexture(texture);
+		objectTexturedRenderer = new ObjectRendererUpdate(objectTexturedShader);
 		
-		cubeRenderer = new ObjectRenderer(objectTexturedShader);
-		cubeRenderer.loadTexture(texture);
+		cubeRenderer = new ObjectRendererUpdate(objectTexturedShader);
 		
 		init();
 	}
@@ -158,11 +160,11 @@ public class ObjectRenderTest implements RenderTest {
 	
 	private void init()
 	{
-		trackers[0] = objectColorRenderer.start(quad0).vertex().color(0xFF, 0xFF, 0x00, 0xFF).next().next().next().end().end();
-		trackers[1] = objectTexturedRenderer.start(quad1).vertex().color(0x00, 0x00, 0x00, 0x7F).next().next().next().end().end();
-		trackers[2] = objectTexturedRenderer.start(quad2).vertex().color(0xFF, 0x00, 0x00, 0x7F).next().next().next().end().end();
-		trackers[3] = objectTexturedRenderer.start(quad3).vertex().color(0x00, 0x00, 0xFF, 0x7F).next().next().next().end().end();
-		trackers[4] = objectTexturedRenderer.start(quad4).vertex().color(0xFF, 0xFF, 0x00, 0x7F).next().next().next().end().end();
+		trackers[0] = buildQuad(quad0, Color.LIGHT_YELLOW);
+		trackers[1] = buildQuad(quad1, Color.ofVector(0x00, 0x00, 0x00, 0x7F));
+		trackers[2] = buildQuad(quad2, Color.ofVector(0xFF, 0x00, 0x00, 0x7F));
+		trackers[3] = buildQuad(quad3, Color.ofVector(0x00, 0x00, 0xFF, 0x7F));
+		trackers[4] = buildQuad(quad4, Color.ofVector(0xFF, 0xFF, 0x00, 0x7F));
 		trackers[5] = track(cube0, cubeRenderer);
 		trackers[6] = track(cube1, cubeRenderer);
 		trackers[6].disable();
@@ -174,9 +176,23 @@ public class ObjectRenderTest implements RenderTest {
 		window.render(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
 	}
 	
-	private Tracker<Bufferable> track(Cube cube, ObjectRenderer renderer)
+	private Tracker<BufferableModel> buildQuad(Quad quad, VectorColorRGBA color)
 	{
-		ObjectBuilder builder = renderer.start(cube);
+		ObjectBuilderUpdate builder = objectColorRenderer.start(quad);
+		builder.vertex().color(color.r(), color.g(), color.b()).color(color.r(), color.g(), color.b(), color.a()).next().next().next().end();
+		return builder.end();
+	}
+	
+	private Tracker<BufferableModel> buildQuad(Quad quad, VectorColorRGB color)
+	{
+		ObjectBuilderUpdate builder = objectColorRenderer.start(quad);
+		builder.vertex().color(color.r(), color.g(), color.b()).next().next().next().end();
+		return builder.end();
+	}
+	
+	private Tracker<BufferableModel> track(Cube cube, ObjectRendererUpdate renderer)
+	{
+		ObjectBuilderUpdate builder = renderer.start(cube);
 		builder.vertex().color(0x00, 0x00, 0x00, 0x7F).next().next().next().end();
 		builder.vertex().color(0x00, 0x00, 0xFF, 0x7F).next().next().next().end();
 		builder.vertex().color(0x00, 0xFF, 0x00, 0x7F).next().next().next().end();
@@ -219,17 +235,18 @@ public class ObjectRenderTest implements RenderTest {
 		int i = o / 10 % 14;
 		if (i == 0) trackers[0].disable();
 		else if (i == 5) trackers[0].enable();
-		objectColorRenderer.draw(7, orthographicPositive);
+		objectColorRenderer.draw(RenderingMode.QUADS, orthographicPositive);
 		
 		if (i > 0 && i < 5) trackers[i].disable();
 		else if (i > 5 && i < 10) trackers[i - 5].enable();
-		objectTexturedRenderer.draw(7, orthographicPositive);
+		texture.bind();
+		objectTexturedRenderer.draw(RenderingMode.QUADS, orthographicPositive);
 		
 		if (i == 10) trackers[5].modify(cubes[1]);
 		else if (i == 11) trackers[5].modify(cubes[2]);
 		else if (i == 12) trackers[5].modify(cubes[3]);
 		else if (i == 13) trackers[5].modify(cubes[0]);
-		cubeRenderer.draw(7, new Matrix4f(projection).multiply(new Matrix4f().view(new Vector3f(10, 0, 10), 0, 0).multiply(new Matrix4f().rotate(Axis.Y, o * 8 / 13F % 360))));
+		cubeRenderer.draw(RenderingMode.QUADS, new Matrix4f(projection).multiply(new Matrix4f().view(new Vector3f(10, 0, 10), 0, 0).multiply(new Matrix4f().rotate(Axis.Y, o * 8 / 13F % 360))));
 		
 		window.update(orthographic, partialTicks);
 		window.clear(true, true, false);
@@ -239,6 +256,6 @@ public class ObjectRenderTest implements RenderTest {
 	@Override
 	public WindowUpdate getWindow()
 	{
-		return null;
+		return window;
 	}
 }

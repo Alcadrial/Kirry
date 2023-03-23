@@ -65,8 +65,6 @@ public class FontRendererUpdate extends AbstractShaderRendererUpdate<FloatArrayB
 			else if (input.equals(ShaderInput.UV)) uvOffset = offset;
 			offset += input.getType().getSize();
 		}
-		vertexArray.vertexAttributePointer(10, 1, 0, false, offset, 12);
-		
 	}
 	
 	public void loadText(Text text, Vector2i position, Color color, float size, int maxLength, float z)
@@ -292,7 +290,7 @@ public class FontRendererUpdate extends AbstractShaderRendererUpdate<FloatArrayB
 	
 	public void setUniformColor(float r, float g, float b)
 	{
-		setUniformColor(new VectorColorRGB(r, g, b));
+		setUniformColor(Color.ofVector(r, g, b));
 	}
 	
 	public void setUniformColor(VectorColorRGB color)

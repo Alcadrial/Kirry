@@ -34,6 +34,7 @@ import com.alcadra.renderengine.window.cursor.ICursor;
 import com.alcadra.renderengine.window.widget.ClickableWidget;
 import com.alcadra.renderengine.window.widget.DrawableWidgetUpdate;
 
+@SuppressWarnings("deprecation")
 @UpdatedFrom("Window")
 public class WindowUpdate {
 	

@@ -2,6 +2,26 @@ package com.alcadra.renderengine.util.color;
 
 public interface Color {
 	
+	public static Color of(float r, float g, float b)
+	{
+		return new ImmutableColorRGB(r, g, b);
+	}
+	
+	public static Color of(float r, float g, float b, float a)
+	{
+		return new ImmutableColor(r, g, b, a);
+	}
+	
+	public static VectorColorRGB ofVector(float r, float g, float b)
+	{
+		return new VectorColorRGB(r, g, b);
+	}
+	
+	public static VectorColorRGBA ofVector(float r, float g, float b, float a)
+	{
+		return new VectorColorRGBA(r, g, b, a);
+	}
+	
 	VectorColorRGB LIGHT_RED = new VectorColorRGB(255, 0, 0);
 	VectorColorRGB LIGHT_GREEN = new VectorColorRGB(0, 255, 0);
 	VectorColorRGB LIGHT_BLUE = new VectorColorRGB(0, 0, 255);

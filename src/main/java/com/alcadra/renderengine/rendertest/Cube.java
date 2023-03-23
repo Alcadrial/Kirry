@@ -1,23 +1,27 @@
 package com.alcadra.renderengine.rendertest;
 
+import java.util.Arrays;
+import java.util.Map;
+
 import com.alcadra.math.vector.Vector3f;
-import com.alcadra.renderengine.buffer.Bufferable;
-import com.alcadra.renderengine.renderer.object.VertexModifier;
+import com.alcadra.renderengine.renderer.object.BufferableModel;
+import com.alcadra.renderengine.renderer.object.DataGetter;
+import com.alcadra.renderengine.shader.ShaderInput;
 import com.alcadra.renderengine.util.Test;
 
+@SuppressWarnings("deprecation")
 @Test
-public class Cube implements Bufferable {
+public class Cube implements BufferableModel {
 	
+	private Map<ShaderInput, float[]> map;
 	private Vector3f start;
 	private Vector3f end;
-	private int[][] data;
-	private int[] uvData;
 	
 	public Cube(Vector3f start, Vector3f end)
 	{
 		this.start = start;
 		this.end = end;
-		float[] dataFloat = new float[] {
+		map = Map.of(ShaderInput.VERTEX_POSITION, new float[] {
 			start.x(), end.y(), start.z(),
 			end.x(), end.y(), start.z(),
 			end.x(), start.y(), start.z(),
@@ -47,14 +51,7 @@ public class Cube implements Bufferable {
 			end.x(), start.y(), end.z(),
 			end.x(), start.y(), start.z(),
 			end.x(), end.y(), start.z(),
-		};
-		data = new int[dataFloat.length / 3][];
-		for (int i = 0; i < data.length; i++)
-		{
-			data[i] = new int[3];
-			for (int j = 0; j < 3; j++) data[i][j] = Float.floatToIntBits(dataFloat[i * 3 + j]);
-		}
-		uvData = new int[] {
+		}, ShaderInput.UV, new float[] {
 			0, 1,
 			1, 1,
 			1, 0,
@@ -84,7 +81,7 @@ public class Cube implements Bufferable {
 			1, 1,
 			1, 0,
 			0, 0,
-		};
+		});
 	}
 	
 	public Vector3f getStart()
@@ -98,20 +95,11 @@ public class Cube implements Bufferable {
 	}
 	
 	@Override
-	public int[][] getData()
+	public DataGetter getVertexData(int vertex, ShaderInput shaderInput)
 	{
-		return data;
-	}
-	
-	@Override
-	public int[] getVertexData(int index, VertexModifier modifier, int[] minimalData)
-	{
-		int[] data = new int[3 + modifier.getModifierSize()];
-		data[0] = minimalData[0];
-		data[1] = minimalData[1];
-		data[2] = minimalData[2];
-		modifier.uv(uvData[index * 2], uvData[index * 2 + 1]);
-		return modifier.insertModifier(data, 3);
+		int size = shaderInput.getType().getSize();
+		float[] vertexData = Arrays.copyOfRange(map.getOrDefault(shaderInput, new float[size * vertices()]), vertex * size, vertex * size + size);
+		return () -> vertexData;
 	}
 	
 	@Override

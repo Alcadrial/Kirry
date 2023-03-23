@@ -15,6 +15,8 @@ import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.uniform.ShaderUniform;
 import com.alcadra.renderengine.util.Nonnull;
+import com.alcadra.renderengine.util.color.Color;
+import com.alcadra.renderengine.util.color.VectorColorRGBA;
 
 @Nonnull
 public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayBufferStack> {
@@ -38,7 +40,7 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 	{
 		super(program, new FloatArrayBufferStack(), elementStack);
 		this.elementStack = elementStack;
-		color = Vector4f.getOrigin();
+		color = Color.BLACK;
 		textureSampler = 0;
 		offset = 0;
 	}
@@ -120,20 +122,19 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 		return offset;
 	}
 	
-	public void setUniformColor(Vector4f color)
+	public void setUniformColor(VectorColorRGBA color)
 	{
-		Objects.requireNonNull(color);
-		this.color = color;
+		this.color = Objects.requireNonNull(color);
 	}
 	
 	public void setUniformColor(float r, float g, float b)
 	{
-		color = new Vector4f(r / 255, g / 255, b / 255, 1);
+		color = Color.ofVector(r, g, b);
 	}
 	
 	public void setUniformColor(float r, float g, float b, float a)
 	{
-		color = new Vector4f(r / 255, g / 255, b / 255, a / 255);
+		color = Color.ofVector(r, g, b, a);
 	}
 	
 	public void setUniformTextureSampler(int textureSampler)
@@ -148,7 +149,7 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 		offset = 0;
 	}
 	
-	public class VertexBuilder extends AbstractVertexBuilder {
+	public class VertexBuilder extends AbstractVertexBuilder<VertexBuilder> {
 		
 		public VertexBuilder(float x, float y, float z)
 		{
