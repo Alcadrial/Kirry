@@ -31,6 +31,7 @@ import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.util.Tracker;
 import com.alcadra.renderengine.util.color.Color;
 import com.alcadra.renderengine.window.Window;
+import com.alcadra.renderengine.window.WindowUpdate;
 
 @Test
 public class ObjectRenderTest implements RenderTest {
@@ -236,8 +237,8 @@ public class ObjectRenderTest implements RenderTest {
 	}
 	
 	@Override
-	public Window getWindow()
+	public WindowUpdate getWindow()
 	{
-		return window;
+		return null;
 	}
 }

@@ -4,8 +4,11 @@ import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector3i;
+import com.alcadra.renderengine.util.update.UpdatedTo;
 import com.alcadra.renderengine.window.Window;
 
+@Deprecated(since = "2.0-migration", forRemoval = true)
+@UpdatedTo("WidgetUpdate")
 public abstract class Widget implements IWidget {
 	
 	private Window window;

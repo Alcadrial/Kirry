@@ -19,7 +19,9 @@ import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector3i;
 import com.alcadra.math.vector.Vector4f;
+import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.buffer.FrameBuffer;
+import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.renderer.font.Font;
 import com.alcadra.renderengine.renderer.font.FontRendererUpdate;
 import com.alcadra.renderengine.renderer.font.text.Text;
@@ -39,7 +41,7 @@ import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.util.Util;
 import com.alcadra.renderengine.util.color.Color;
 import com.alcadra.renderengine.util.color.VectorColorRGB;
-import com.alcadra.renderengine.window.Window;
+import com.alcadra.renderengine.window.WindowUpdate;
 import com.alcadra.renderengine.window.cursor.StandardCursor;
 import com.alcadra.renderengine.window.widget.VisibleButtonUpdate;
 import com.alcadra.threads.TimeThread;
@@ -170,11 +172,12 @@ public class RenderEngine implements RenderTest {
 		Util.printError("renew");
 	}
 	
-	private Window window;
+	private WindowUpdate window;
 	private Vector2f cursor;
 	private Shader shader, shaderTexture;
 	private ShaderProgram colorProgram, textureProgram;
-	private UniversalRenderer renderer;
+	private UniversalRenderer universalRenderer, widgetRenderer;
+	private FloatArrayBuffer buffer0, buffer1;
 	private FontRendererUpdate fontRenderer;
 	private Font font;
 	
@@ -182,7 +185,7 @@ public class RenderEngine implements RenderTest {
 	public void start()
 	{
 		Configuration.DEBUG.set(true);
-		window = new Window(1080, 720, "Test");
+		window = new WindowUpdate(1080, 720, "Test");
 		window.build();
 		window.makeContextCurrent();
 		Util.printError("window build");
@@ -304,7 +307,8 @@ public class RenderEngine implements RenderTest {
 		textureProgram.build();
 		
 		Util.printError("shader init");
-		renderer = new UniversalRenderer(colorProgram);
+		universalRenderer = new UniversalRenderer(colorProgram);
+		widgetRenderer = new UniversalRenderer(colorProgram);
 		Util.printError("renderer init");
 		ShaderProgram fontProgram = new ShaderProgram();
 		try
@@ -352,10 +356,23 @@ public class RenderEngine implements RenderTest {
 			{
 				System.out.println("r");
 			}
-		}, renderer);
+		}, widgetRenderer);
 		Util.printError("window");
 		
 		frameBuffer.initializeDepthTextureBuffer(1024, 1024);
+		
+		Matrix4f projection = new Matrix4f().project(10, 100, 8, window.getAspectRatio());
+		Matrix4f view = new Matrix4f().view(position, rotationX, rotationY);
+		Matrix4f viewer = new Matrix4f(projection).multiply(view);
+		Vector3f end = new Vector3f(10, 10, 10);
+		
+		universalRenderer.pushBuffer(buffer0 = new FloatArrayBuffer());
+		RendererUtil.loadOrthoCube(universalRenderer, Vector3f.getOrigin(), end, new Vector4f(255, 255, 0, 255));
+		RendererUtil.loadOrthoCube(universalRenderer, viewer, end, end.add(end), new Vector4f(255, 255, 0, 255));
+		universalRenderer.pullBuffer();
+		universalRenderer.pushBuffer(buffer1 = new FloatArrayBuffer());
+		RendererUtil.loadSquare(universalRenderer, 100, 100, 128, 128, 1, 255, 255, 0, 255);
+		universalRenderer.pullBuffer();
 		
 		window.render(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
 		
@@ -434,14 +451,13 @@ public class RenderEngine implements RenderTest {
 		
 		// frameBuffer.bind();
 		Util.printError("FrameBuffer draw");
-		
-		renderer.clear();
-		RendererUtil.loadOrthoCube(renderer, Vector3f.getOrigin(), end, new Vector4f(255, 255, 0, 255));
-		RendererUtil.loadOrthoCube(renderer, viewer, end, end.add(end), new Vector4f(255, 255, 0, 255));
-		renderer.drawPoints(GL30.GL_QUADS, projected);
-		renderer.clear();
-		RendererUtil.loadSquare(renderer, 100, 100, 128, 128, 1, 255, 255, 0, 255);
-		renderer.drawPoints(GL30.GL_QUADS, compact);
+		window.pollEvents();
+		// renderer.pushBuffer(buffer0);
+		universalRenderer.drawPoints(RenderingMode.QUADS, projected);
+		// renderer.pullBuffer();
+		// renderer.pushBuffer(buffer1);
+		// renderer.drawPoints(GL30.GL_QUADS, compact);
+		// renderer.pullBuffer();
 		Util.printError("TextureRender draw");
 		
 		// textureRenderer.clear();
@@ -457,7 +473,7 @@ public class RenderEngine implements RenderTest {
 	}
 	
 	@Override
-	public Window getWindow()
+	public WindowUpdate getWindow()
 	{
 		return window;
 	}
