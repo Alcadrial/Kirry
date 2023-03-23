@@ -28,6 +28,7 @@ import com.alcadra.renderengine.renderer.TextureRenderer;
 import com.alcadra.renderengine.renderer.object.ObjectRenderer;
 import com.alcadra.renderengine.textures.Texture;
 import com.alcadra.renderengine.util.Image;
+import com.alcadra.renderengine.window.cursor.ICursor;
 import com.alcadra.renderengine.window.widget.ClickableWidget;
 import com.alcadra.renderengine.window.widget.DrawableWidget;
 
@@ -301,5 +302,15 @@ public class Window {
 	public final void swapBuffers()
 	{
 		GLFW.glfwSwapBuffers(windowId);
+	}
+	
+	public final void setCursor(ICursor cursor)
+	{
+		GLFW.glfwSetCursor(windowId, cursor.getId());
+	}
+	
+	public final void removeCursor()
+	{
+		GLFW.glfwSetCursor(windowId, 0);
 	}
 }

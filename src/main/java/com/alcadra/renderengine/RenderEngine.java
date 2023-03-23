@@ -38,6 +38,7 @@ import com.alcadra.renderengine.util.Image;
 import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.util.Util;
 import com.alcadra.renderengine.window.Window;
+import com.alcadra.renderengine.window.cursor.StandardCursor;
 import com.alcadra.renderengine.window.widget.VisibleButton;
 import com.alcadra.threads.TimeThread;
 
@@ -235,6 +236,7 @@ public class RenderEngine implements RenderTest {
 				GLFW.glfwSetInputMode(id, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL + (rotating ? 2 : 0));
 			}
 		});
+		window.setCursor(StandardCursor.CROSSHAIR);
 		Util.printError("events");
 		FrameBuffer.getBinded();
 		Util.printError("capabilities");
