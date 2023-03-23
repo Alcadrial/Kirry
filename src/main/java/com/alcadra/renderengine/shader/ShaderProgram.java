@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.lwjgl.opengl.GL20;
 
+import com.alcadra.renderengine.shader.uniform.ShaderUniform;
 import com.alcadra.renderengine.util.NotUsed;
 import com.alcadra.renderengine.util.WorkInProgress;
 
@@ -21,7 +22,7 @@ public class ShaderProgram {
 	@SuppressWarnings("unchecked")
 	public ShaderProgram(@NotUsed ShaderInput... knownInputs)
 	{
-		attachedShaders = new List[6];
+		attachedShaders = new List[3];
 		for (int i = 0; i < attachedShaders.length; i++) attachedShaders[i] = new LinkedList<>();
 		this.knownInputs = List.of(knownInputs);
 		programInputs = List.of();
@@ -34,7 +35,7 @@ public class ShaderProgram {
 		if (id != -1)
 		{
 			ShaderType type = shader.getType();
-			if (type != ShaderType.UNKNOWN)
+			if (type.ordinal() < ShaderType.COMPUTE.ordinal())
 			{
 				GL20.glAttachShader(id, shader.getId());
 				GL20.glDeleteShader(shader.getId());
@@ -115,9 +116,14 @@ public class ShaderProgram {
 		id = -1;
 	}
 	
+	public <T> void setUniform(ShaderUniform<T> uniform, T value)
+	{
+		uniform.setValue(GL20.glGetUniformLocation(id, uniform.getName()), value);
+	}
+	
 	public List<ShaderUpdate> getShaders(ShaderType type)
 	{
-		if (id == -1 || type == ShaderType.UNKNOWN) return List.of();
+		if (id == -1 || type.ordinal() < ShaderType.COMPUTE.ordinal()) return List.of();
 		return List.copyOf(attachedShaders[type.ordinal()]);
 	}
 	

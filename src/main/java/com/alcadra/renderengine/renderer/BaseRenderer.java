@@ -18,7 +18,7 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> implements ShaderR
 	protected final VertexArray vertexArray;
 	protected final AB arrayBuffer;
 	@Deprecated(since = "1.2", forRemoval = true)
-	@UseInstead(value = {"BaseIndicesRenderer.elements"}, descriptions = {"For indices extend BaseIndicesRenderer instead"})
+	@UseInstead(name = "BaseIndicesRenderer.elements", descriptions = "For indices extend BaseIndicesRenderer instead")
 	protected ElementArrayBuffer elements;
 	protected Shader shader;
 	
@@ -31,7 +31,7 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> implements ShaderR
 	}
 	
 	@Deprecated(since = "1.2", forRemoval = true)
-	@UseInstead(value = {"BaseRenderer(Shader, VertexArray, AB)"}, descriptions = {"For indices extend BaseIndicesRenderer instead"})
+	@UseInstead(name = "BaseRenderer(Shader, VertexArray, AB)", descriptions = "For indices extend BaseIndicesRenderer instead")
 	public BaseRenderer(Shader shader, VertexArray vertexArray, AB arrayBuffer, ElementArrayBuffer elementArrayBuffer)
 	{
 		this.shader = shader;
@@ -86,7 +86,7 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> implements ShaderR
 	}
 	
 	@Deprecated(since = "1.2", forRemoval = true)
-	@UseInstead(value = {"BaseIndicesRenderer#drawIndices(int)"}, descriptions = {"For indices extend BaseIndicesRenderer instead"})
+	@UseInstead(name = "BaseIndicesRenderer#drawIndices(int)", descriptions = "For indices extend BaseIndicesRenderer instead")
 	protected void drawIndices(int mode)
 	{
 		vertexArray.bind();

@@ -13,7 +13,9 @@ import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector3i;
 import com.alcadra.math.vector.Vector4i;
+import com.alcadra.renderengine.util.UseInstead;
 
+@UseInstead(name = "ShaderProgram", descriptions = "Shader logic is now divided in ShaderProgram and ShaderUpdate, a ShaderUpdate will handle a single shader file and a ShaderProgram will use ShaderUpdates to handle a program")
 public class Shader {
 	
 	private static int programInUse = 0;
@@ -37,9 +39,6 @@ public class Shader {
 		this.normalInputDataType = normalInputDataType;
 		program = GL20.glCreateProgram();
 	}
-	
-	Shader()
-	{}
 	
 	public boolean useColor()
 	{
@@ -155,9 +154,10 @@ public class Shader {
 		return loadShaderFile(file, ShaderType.fromExtension(pathname.substring(pathname.lastIndexOf('.'))));
 	}
 	
+	@SuppressWarnings("removal")
 	public ShaderStatus loadShaderFile(File file, ShaderType type) throws IOException
 	{
-		if (type == ShaderType.UNKNOWN) return new ShaderStatus(false, 0, "unknown", "Unknown shader cannot be loaded!");
+		if (type == ShaderType.UNKNOWN) return new ShaderStatus(false, 0, new String[0], "Unknown shader cannot be loaded!");
 		String code = Files.readString(file.toPath());
 		int shader = GL20.glCreateShader(type.getId());
 		GL20.glShaderSource(shader, code);

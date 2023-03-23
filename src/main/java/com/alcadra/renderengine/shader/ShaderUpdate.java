@@ -11,7 +11,7 @@ import org.lwjgl.opengl.GL20;
 import com.alcadra.renderengine.util.WorkInProgress;
 
 @WorkInProgress
-public class ShaderUpdate extends Shader {
+public class ShaderUpdate {
 	
 	private final int id;
 	private File file;
