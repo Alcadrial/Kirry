@@ -50,10 +50,22 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> implements ShaderR
 		elements = elementArrayBuffer.get();
 	}
 	
+	protected void initializeArrayBuffer()
+	{
+		
+	}
+	
+	protected void disableAttributes()
+	{
+		
+	}
+	
 	@Override
 	public void changeShader(Shader other)
 	{
-		
+		disableAttributes();
+		shader = other;
+		initializeArrayBuffer();
 	}
 	
 	protected void syncBuffers()
