@@ -23,6 +23,7 @@ public class Font {
 	private List<Glyph> chars;
 	private HashMap<Entry<Integer, Integer>, Integer> extraOffset = new HashMap<>();
 	private Texture texture;
+	private int spaceIndex;
 	
 	public Font(File json, File png) throws IOException
 	{
@@ -121,15 +122,24 @@ public class Font {
 		}
 		reader.endObject();
 		chars.sort(Glyph::compareTo);
+		for (int i = 0; i < chars.size(); i++) if (chars.get(i).getName() == ' ')
+		{
+			spaceIndex = i;
+			break;
+		}
 		texture = new Texture(TextureTemplate.RGBA_2D_TEXTURE);
 		Image image = new Image(png);
-		texture.setData2D(texture.getTemplate(), image.loadToBuffer(), image.getBuffered().getWidth(), image.getBuffered().getHeight(), 0);
-		// System.out.println(texture.getId() + " " + texture);
-		// System.out.println(Arrays.toString(texture.getDataArray()));
+		texture.bind();
+		texture.setData2D(texture.getTemplate(), image.loadToRGBABuffer(), image.getBuffered().getWidth(), image.getBuffered().getHeight(), 0);
 	}
 	
 	public Glyph getGlyph(char c)
 	{
+		{
+			if (c < 0 || c > chars.size()) return Glyph.INVALID_GLYPH;
+			Glyph glyph = chars.get(c + spaceIndex - ' ');
+			if (glyph.getName() == c) return glyph;
+		}
 		for (int i = 0, j = chars.size() - 1; i <= j;)
 		{
 			int k = j + i >>> 1;

@@ -63,9 +63,17 @@ public class Image {
 		return buffer;
 	}
 	
-	public int[] loadToBuffer()
+	public int[] loadToARGBBuffer()
 	{
 		return image.getRGB(0, 0, size.x(), size.y(), null, 0, size.x());
+	}
+	
+	public int[] loadToRGBABuffer()
+	{
+		int[] data = image.getRGB(0, 0, size.x(), size.y(), null, 0, size.x());
+		int[] buffer = new int[data.length];
+		for (int i = 0; i < buffer.length; i++) buffer[i] = fromARGBtoRGBA(data[i]);
+		return buffer;
 	}
 	
 	public List<Integer> loadToListARGB()

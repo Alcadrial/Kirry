@@ -72,7 +72,7 @@ public class ObjectRenderTest implements RenderTest {
 			window.setIcon(new Image(new File(UniversalRenderTest.iconPath)));
 			texture = new Texture(TextureTemplate.RGBA_2D_TEXTURE);
 			Image image = new Image(new File(UniversalRenderTest.texturePath));
-			texture.setData2D(texture.getTemplate(), image.loadToBuffer(), image.getBuffered().getWidth(), image.getBuffered().getHeight(), 0);
+			texture.setData2D(texture.getTemplate(), image.loadToRGBABuffer(), image.getBuffered().getWidth(), image.getBuffered().getHeight(), 0);
 		}
 		catch (IOException e)
 		{

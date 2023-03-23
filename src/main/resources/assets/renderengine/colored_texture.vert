@@ -1,4 +1,4 @@
-#version 330//for every vertices
+#version 330//for every vertex
 
 in vec3 vertexPosition;
 in vec4 color;
@@ -9,7 +9,7 @@ uniform mat4 TRANSFORMATION;
 out vec4 color0;
 out vec2 uv0;
 
-void main(void)
+void main()
 {
 	gl_Position = TRANSFORMATION * vec4(vertexPosition, 1);
 	color0 = color;

@@ -376,7 +376,7 @@ public final class Texture implements Deletable {
 		int glLength = getGlLength();
 		int[] pixels = glLength == 1 ? POINTER : new int[glLength];
 		GL45.glGetTexImage(this.template.target(), mipmapLevels, template.textureFormat(), template.dataType(), pixels);
-		return Arrays.copyOf(pixels, glLength);
+		return glLength == 1 ? Arrays.copyOf(pixels, glLength) : pixels;
 	}
 	
 	public int getGlLength()
@@ -447,7 +447,7 @@ public final class Texture implements Deletable {
 		GL45.glDeleteTextures(id);
 		if (valid) valid = false;
 		else if (Util.isDebug()) System.err.println("Recleaning");
-		if (Util.isDebug()) System.err.println("Clean");
+		if (Util.isDebug()) System.out.println("Clean");
 	}
 	
 	private int[] point(int value)

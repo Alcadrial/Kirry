@@ -450,6 +450,9 @@ public class UniversalRenderTest implements RenderTest {
 		Util.printError("FontRender texting");
 		fontRenderer.draw(compact);
 		Util.printError("FontRender draw");
+		fontRenderer.clear();
+		fontRenderer.drawFontTexture(identity, 0, 0, 0, 1, 1);
+		fontRenderer.clear();
 		
 		// frameBuffer.bind();
 		Util.printError("FrameBuffer draw");

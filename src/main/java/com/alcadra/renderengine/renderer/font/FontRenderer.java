@@ -18,6 +18,7 @@ import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.uniform.ShaderUniform;
 import com.alcadra.renderengine.shader.uniform.extra.ColorUniform;
 import com.alcadra.renderengine.textures.Texture;
+import com.alcadra.renderengine.util.Broken;
 import com.alcadra.renderengine.util.color.Color;
 import com.alcadra.renderengine.util.color.ColorFormat;
 
@@ -305,7 +306,6 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	public void draw(Matrix4f matrix)
 	{
 		drawVertices(RenderingMode.QUADS, matrix);
-		clear();
 	}
 	
 	@Override
@@ -324,6 +324,22 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 		program.setUniform(ALFA_MASK, alfaMask);
 		program.setUniform(TEXTURE_SAMPLER, textureSampler);
 		draw(mode, count * 4, offset * 4);
+	}
+	
+	/**
+	 * Draw the texture containing the font using the uniform color
+	 * @param matrix
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @param width
+	 * @param height
+	 */
+	@Broken
+	public void drawFontTexture(Matrix4f matrix, float x, float y, float z, float width, float height)
+	{
+		arrayBuffer.addAll(asList(color, x, y, z, width, height, 0, 0, 1, 1));
+		draw(matrix);
 	}
 	
 	public Font getFont()

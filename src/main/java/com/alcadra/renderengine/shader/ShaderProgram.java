@@ -58,7 +58,7 @@ public class ShaderProgram implements Deletable {
 		if (id != -1) GL20.glUseProgram(id);
 	}
 	
-	public void build()
+	public ProgramStatus build()
 	{
 		if (!status.isBuilded() && id != -1)
 		{
@@ -66,17 +66,20 @@ public class ShaderProgram implements Deletable {
 			if (GL20.glGetProgrami(id, GL20.GL_LINK_STATUS) == 0)
 			{
 				status = ProgramStatus.ofLinkFail(id);
-				return;
+				programInputs = DEFAULT.programInputs;
+				return status;
 			}
 			GL20.glValidateProgram(id);
 			if (GL20.glGetProgrami(id, GL20.GL_VALIDATE_STATUS) == 0)
 			{
 				status = ProgramStatus.ofValidationFail(id);
-				return;
+				programInputs = DEFAULT.programInputs;
+				return status;
 			}
 			learnInputs();
 			status = ProgramStatus.ofSuccess(id);
 		}
+		return status;
 	}
 	
 	void learnInputs()
