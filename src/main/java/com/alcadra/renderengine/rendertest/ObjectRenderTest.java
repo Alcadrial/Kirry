@@ -14,7 +14,7 @@ import com.alcadra.math.vector.axis.Axis;
 import com.alcadra.renderengine.RenderEngine;
 import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.renderer.font.Font;
-import com.alcadra.renderengine.renderer.font.FontRendererUpdate;
+import com.alcadra.renderengine.renderer.font.FontRenderer;
 import com.alcadra.renderengine.renderer.font.text.Text;
 import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.renderer.object.BufferableModel;
@@ -38,7 +38,7 @@ public class ObjectRenderTest implements RenderTest {
 	private Window window;
 	private Font font;
 	
-	private FontRendererUpdate fontRenderer;
+	private FontRenderer fontRenderer;
 	private ObjectRenderer objectColorRenderer;
 	private ObjectRenderer objectTexturedRenderer;
 	private ObjectRenderer cubeRenderer;
@@ -98,7 +98,7 @@ public class ObjectRenderTest implements RenderTest {
 		}
 		fontProgram.build();
 		
-		fontRenderer = new FontRendererUpdate(fontProgram, font);
+		fontRenderer = new FontRenderer(fontProgram, font);
 		
 		ShaderProgram colorProgram = new ShaderProgram();
 		try

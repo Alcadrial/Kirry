@@ -24,7 +24,7 @@ import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.buffer.FrameBuffer;
 import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.renderer.font.Font;
-import com.alcadra.renderengine.renderer.font.FontRendererUpdate;
+import com.alcadra.renderengine.renderer.font.FontRenderer;
 import com.alcadra.renderengine.renderer.font.text.Text;
 import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
@@ -174,7 +174,7 @@ public class RenderEngine implements RenderTest {
 	private UniversalRenderer universalRenderer, widgetRenderer;
 	private FloatArrayBuffer buffer0, buffer1;
 	private ElementArrayBuffer element0, element1;
-	private FontRendererUpdate fontRenderer;
+	private FontRenderer fontRenderer;
 	private Font font;
 	
 	@Override
@@ -307,7 +307,7 @@ public class RenderEngine implements RenderTest {
 		{
 			e.printStackTrace();
 		}
-		fontRenderer = new FontRendererUpdate(fontProgram, font);
+		fontRenderer = new FontRenderer(fontProgram, font);
 		Util.printError("font renderer");
 		
 		window.setIcon(icon);

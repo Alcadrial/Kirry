@@ -21,7 +21,7 @@ import com.alcadra.renderengine.textures.Texture;
 import com.alcadra.renderengine.util.color.Color;
 import com.alcadra.renderengine.util.color.VectorColorRGB;
 
-public class FontRendererUpdate extends AbstractShaderRenderer<FloatArrayBuffer> {
+public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	
 	private static final ShaderUniform<Matrix4f> TRANSFORMATION = ShaderUniform.ofMatrix4f("TRANSFORMATION");
 	private static final ShaderUniform<Vector3f> COLOR = ShaderUniform.ofVector3f("COLOR");
@@ -38,7 +38,7 @@ public class FontRendererUpdate extends AbstractShaderRenderer<FloatArrayBuffer>
 	private int colorRGBOffset;
 	private int uvOffset;
 	
-	public FontRendererUpdate(ShaderProgram program, Font font)
+	public FontRenderer(ShaderProgram program, Font font)
 	{
 		super(program, new FloatArrayBuffer());
 		this.font = font;
