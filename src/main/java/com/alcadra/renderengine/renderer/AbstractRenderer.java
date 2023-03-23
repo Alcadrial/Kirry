@@ -23,8 +23,8 @@ public abstract class AbstractRenderer<AB extends ArrayBuffer<?>> implements Ren
 	}
 	
 	@Override
-	public void drawVertices(RenderingMode mode, Matrix4f matrix, int count)
+	public void draw(RenderingMode mode, Matrix4f matrix, int count)
 	{
-		drawVertices(mode, matrix, count, 0);
+		draw(mode, matrix, count, 0);
 	}
 }

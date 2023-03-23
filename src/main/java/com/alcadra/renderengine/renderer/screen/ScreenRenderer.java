@@ -41,6 +41,8 @@ class ScreenRenderer extends AbstractShaderRenderer<DataModel> {
 	}
 	
 	@Override
-	public void drawVertices(RenderingMode mode, Matrix4f matrix, int count, int offset)
-	{}
+	public void draw(RenderingMode mode, Matrix4f matrix, int count, int offset)
+	{
+		
+	}
 }

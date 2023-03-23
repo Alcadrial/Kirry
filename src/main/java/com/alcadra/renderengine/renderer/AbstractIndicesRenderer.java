@@ -12,6 +12,7 @@ import com.alcadra.renderengine.shader.ShaderProgram;
 public abstract class AbstractIndicesRenderer<AB extends ArrayBuffer<?>> extends AbstractShaderRenderer<AB> implements IndicesRenderer {
 	
 	protected ElementArrayBuffer elements;
+	protected boolean useIndices;
 	
 	protected AbstractIndicesRenderer(ShaderProgram shader, VertexArray vertexArray, AB arrayBuffer, ElementArrayBuffer elementArrayBuffer)
 	{
@@ -57,15 +58,29 @@ public abstract class AbstractIndicesRenderer<AB extends ArrayBuffer<?>> extends
 	}
 	
 	@Override
-	public void drawPoints(RenderingMode mode, Matrix4f matrix)
+	public void draw(RenderingMode mode, Matrix4f matrix)
 	{
-		drawPoints(mode, matrix, elements.size());
+		if (useIndices) draw(mode, matrix, elements.size());
+		else super.draw(mode, matrix);
 	}
 	
 	@Override
-	public void drawPoints(RenderingMode mode, Matrix4f matrix, int count)
+	public void draw(RenderingMode mode, Matrix4f matrix, int count, int offset)
 	{
-		drawPoints(mode, matrix, count, 0);
+		if (useIndices) drawIndices(mode, count, offset);
+		else draw(mode, count, offset);
+	}
+	
+	@Override
+	public boolean useIndices()
+	{
+		return useIndices;
+	}
+	
+	@Override
+	public void setIndicesUse(boolean useIndices)
+	{
+		this.useIndices = useIndices;
 	}
 	
 	@Override

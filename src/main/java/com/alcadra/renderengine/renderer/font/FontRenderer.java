@@ -305,17 +305,17 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	
 	public void draw(Matrix4f matrix)
 	{
-		drawVertices(RenderingMode.QUADS, matrix);
+		draw(RenderingMode.QUADS, matrix);
 	}
 	
 	@Override
-	public void drawVertices(RenderingMode mode, Matrix4f matrix)
+	public void draw(RenderingMode mode, Matrix4f matrix)
 	{
-		drawVertices(mode, matrix, arrayBuffer.size() / vertexSize());
+		draw(mode, matrix, arrayBuffer.size() / vertexSize());
 	}
 	
 	@Override
-	public void drawVertices(RenderingMode mode, Matrix4f matrix, int count, int offset)
+	public void draw(RenderingMode mode, Matrix4f matrix, int count, int offset)
 	{
 		font.getTexture().bind();
 		program.enable();

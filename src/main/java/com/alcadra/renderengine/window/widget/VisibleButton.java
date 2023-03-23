@@ -24,12 +24,13 @@ public abstract class VisibleButton extends Button implements DrawableWidget<Uni
 	public void draw(Matrix4f matrix, UniversalRenderer renderer, float partialTicks)
 	{
 		renderer.clear();
+		renderer.setIndicesUse(false);
 		float w = window.getWidth() / 2;
 		float h = window.getHeight() / 2;
 		renderer.vertex(pos.x() - w, pos.y() - h + 16, pos.z()).color(127, 127, 127).color(127, 127, 127, 255).end();
 		renderer.vertex(pos.x() - w + 16, pos.y() - h + 16, pos.z()).color(127, 127, 127).color(127, 127, 127, 255).end();
 		renderer.vertex(pos.x() - w + 16, pos.y() - h, pos.z()).color(127, 127, 127).color(127, 127, 127, 255).end();
 		renderer.vertex(pos.x() - w, pos.y() - h, pos.z()).color(127, 127, 127).color(127, 127, 127, 255).end();
-		renderer.drawPoints(RenderingMode.QUADS, matrix);
+		renderer.draw(RenderingMode.QUADS, matrix);
 	}
 }

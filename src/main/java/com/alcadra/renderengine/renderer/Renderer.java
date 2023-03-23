@@ -4,7 +4,7 @@ import com.alcadra.math.Matrix4f;
 
 public interface Renderer {
 	
-	void drawVertices(RenderingMode mode, Matrix4f matrix);
-	void drawVertices(RenderingMode mode, Matrix4f matrix, int count);
-	void drawVertices(RenderingMode mode, Matrix4f matrix, int count, int offset);
+	void draw(RenderingMode mode, Matrix4f matrix);
+	void draw(RenderingMode mode, Matrix4f matrix, int count);
+	void draw(RenderingMode mode, Matrix4f matrix, int count, int offset);
 }

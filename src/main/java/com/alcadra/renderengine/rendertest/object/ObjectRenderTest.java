@@ -49,14 +49,20 @@ public class ObjectRenderTest implements RenderTest {
 		window.create();
 		window.makeContextCurrent();
 		window.init();
+		window.setLockKeyModsInputMode(true);
 		window.addEvent((GLFWKeyCallbackI) (id, key, scancode, action, mods) -> {
 			if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT)
 			{
-				switch (key)
+				if ((mods & GLFW.GLFW_MOD_NUM_LOCK) == 0)
 				{
-					case GLFW.GLFW_KEY_KP_7 ->
+					if (key == GLFW.GLFW_KEY_KP_8)
 					{
 						UniversalRenderTest.setActiveTest(UniversalRenderTest.RENDER_ENGINE_TEST);
+						return;
+					}
+					if (key == GLFW.GLFW_KEY_KP_2)
+					{
+						return;
 					}
 				}
 			}
@@ -235,18 +241,18 @@ public class ObjectRenderTest implements RenderTest {
 		int i = o / 10 % 14;
 		if (i == 0) trackers[0].disable();
 		else if (i == 5) trackers[0].enable();
-		objectColorRenderer.drawVertices(RenderingMode.QUADS, orthographicPositive);
+		objectColorRenderer.draw(RenderingMode.QUADS, orthographicPositive);
 		
 		if (i > 0 && i < 5) trackers[i].disable();
 		else if (i > 5 && i < 10) trackers[i - 5].enable();
 		texture.bind();
-		objectTexturedRenderer.drawVertices(RenderingMode.QUADS, orthographicPositive);
+		objectTexturedRenderer.draw(RenderingMode.QUADS, orthographicPositive);
 		
 		if (i == 10) trackers[5].modify(cubes[1]);
 		else if (i == 11) trackers[5].modify(cubes[2]);
 		else if (i == 12) trackers[5].modify(cubes[3]);
 		else if (i == 13) trackers[5].modify(cubes[0]);
-		cubeRenderer.drawVertices(RenderingMode.QUADS, new Matrix4f(projection).multiply(new Matrix4f().view(Vector3f.of(10, 0, 10), 0, 0).multiply(new Matrix4f().rotate(Axis.Y, o * 8 / 13F % 360))));
+		cubeRenderer.draw(RenderingMode.QUADS, new Matrix4f(projection).multiply(new Matrix4f().view(Vector3f.of(10, 0, 10), 0, 0).multiply(new Matrix4f().rotate(Axis.Y, o * 8 / 13F % 360))));
 		
 		window.draw(orthographic, partialTicks);
 		window.update();

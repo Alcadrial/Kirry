@@ -72,7 +72,7 @@ public class ObjectRenderer extends AbstractShaderRenderer<ObjectArrayBuffer<Obj
 	}
 	
 	@Override
-	public void drawVertices(RenderingMode mode, Matrix4f matrix, int count, int offset)
+	public void draw(RenderingMode mode, Matrix4f matrix, int count, int offset)
 	{
 		program.enable();
 		program.setUniform(TRANSFORMATION, matrix);

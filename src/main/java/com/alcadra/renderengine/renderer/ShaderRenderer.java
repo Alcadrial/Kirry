@@ -5,6 +5,5 @@ import com.alcadra.renderengine.shader.ShaderProgram;
 public interface ShaderRenderer extends Renderer {
 	
 	ShaderProgram getShaderProgram();
-	
-	public void setShaderProgram(ShaderProgram other);
+	void setShaderProgram(ShaderProgram other);
 }

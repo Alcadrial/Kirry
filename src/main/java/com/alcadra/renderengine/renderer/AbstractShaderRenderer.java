@@ -63,9 +63,12 @@ public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> extends 
 	@Override
 	public void setShaderProgram(ShaderProgram program)
 	{
-		disableAttributes();
-		this.program = ShaderUtil.assertBuildedProgram(program);
-		initializeVertexArray();
+		if (this.program != program)
+		{
+			disableAttributes();
+			this.program = ShaderUtil.assertBuildedProgram(program);
+			initializeVertexArray();
+		}
 	}
 	
 	@SuppressWarnings("rawtypes")
@@ -93,9 +96,9 @@ public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> extends 
 	}
 	
 	@Override
-	public void drawVertices(RenderingMode mode, Matrix4f matrix)
+	public void draw(RenderingMode mode, Matrix4f matrix)
 	{
-		drawVertices(mode, matrix, arrayBuffer.size() * 4 / vertexSize());
+		draw(mode, matrix, arrayBuffer.size() * 4 / vertexSize());
 	}
 	
 	protected int vertexSize()

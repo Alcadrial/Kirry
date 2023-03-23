@@ -202,6 +202,7 @@ public class UniversalRenderTest implements RenderTest {
 		window.create();
 		window.makeContextCurrent();
 		window.init();
+		window.setLockKeyModsInputMode(true);
 		Util.printError("window build");
 		cursor = Vector2f.of(0, 0);
 		window.addEvent(new GLFWCursorPosCallbackI() {
@@ -232,28 +233,26 @@ public class UniversalRenderTest implements RenderTest {
 		window.addEvent((GLFWKeyCallbackI) (id, key, scancode, action, mods) -> {
 			if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT)
 			{
+				if ((mods & GLFW.GLFW_MOD_NUM_LOCK) == 0 && key == GLFW.GLFW_KEY_KP_2)
+				{
+					setActiveTest(OBJECT_RENDER_TEST);
+					return;
+				}
 				switch (key)
 				{
-					case GLFW.GLFW_KEY_KP_7 -> setActiveTest(OBJECT_RENDER_TEST);
-					default ->
-					{
-						switch (key)
-						{
-							case GLFW.GLFW_KEY_W -> position.add(0, 0, currentTime);
-							case GLFW.GLFW_KEY_A -> position.add(-currentTime, 0, 0);
-							case GLFW.GLFW_KEY_S -> position.add(0, 0, -currentTime);
-							case GLFW.GLFW_KEY_D -> position.add(currentTime, 0, 0);
-							case GLFW.GLFW_KEY_SPACE -> position.add(0, currentTime, 0);
-							case GLFW.GLFW_KEY_LEFT_SHIFT -> position.add(0, -currentTime, 0);
-							case GLFW.GLFW_KEY_P -> position.setAll(0, 0, 0);
-						}
-					}
+					case GLFW.GLFW_KEY_W -> position.add(0, 0, currentTime);
+					case GLFW.GLFW_KEY_A -> position.add(-currentTime, 0, 0);
+					case GLFW.GLFW_KEY_S -> position.add(0, 0, -currentTime);
+					case GLFW.GLFW_KEY_D -> position.add(currentTime, 0, 0);
+					case GLFW.GLFW_KEY_SPACE -> position.add(0, currentTime, 0);
+					case GLFW.GLFW_KEY_LEFT_SHIFT -> position.add(0, -currentTime, 0);
+					case GLFW.GLFW_KEY_P -> position.setAll(0, 0, 0);
 				}
 			}
 			else if (action == GLFW.GLFW_RELEASE && key == GLFW.GLFW_KEY_R)
 			{
 				rotating = !rotating;
-				GLFW.glfwSetInputMode(id, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL + (rotating ? 2 : 0));
+				GLFW.glfwSetInputMode(id, GLFW.GLFW_CURSOR, rotating ? GLFW.GLFW_CURSOR_DISABLED : GLFW.GLFW_CURSOR_NORMAL);
 			}
 		});
 		window.setCursor(StandardCursor.CROSSHAIR);
@@ -460,56 +459,56 @@ public class UniversalRenderTest implements RenderTest {
 		
 		// frameBuffer.bind();
 		Util.printError("FrameBuffer draw");
-		
+		universalRenderer.setIndicesUse(true);
 		universalRenderer.pushBuffer(buffer0, element0);
-		universalRenderer.drawVertices(RenderingMode.QUADS, projected);
+		universalRenderer.draw(RenderingMode.QUADS, projected);
 		universalRenderer.pullBuffer();
 		universalRenderer.pushBuffer(buffer1, element1);
-		universalRenderer.drawVertices(RenderingMode.QUADS, compact);
+		universalRenderer.draw(RenderingMode.QUADS, compact);
 		universalRenderer.pullBuffer();
 		universalRenderer.pushBuffer();
 		B\u00e8zierCurve.renderCurve(universalRenderer, 100, Color.RED, Vector2f.of(0, -400), Vector2f.of(0, -100), Vector2f.of(300, -100), Vector2f.of(300, -400), Vector2f.of(0, -400), Vector2f.of(0, -300), Vector2f.of(100, -300), Vector2f.of(100, -400), Vector2f.of(0, -400));
-		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.draw(RenderingMode.LINE_STRIP, compact);
 		universalRenderer.clear();
 		EllipseCurve.renderCurve(universalRenderer, cursor, 300, 300, 50, Color.BLUE);
 		EllipseCurve.renderCurve(universalRenderer, cursor, 100, 100, 50, Color.BLUE);
-		universalRenderer.drawVertices(RenderingMode.LINE_LOOP, positive);
+		universalRenderer.draw(RenderingMode.LINE_LOOP, positive);
 		universalRenderer.clear();
 		RhodoneaCurve.renderCurve(universalRenderer, cursor, 100, 2, 0, 750, Color.GREEN);
-		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, positive);
+		universalRenderer.draw(RenderingMode.LINE_STRIP, positive);
 		universalRenderer.clear();
 		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> x, 3, Color.LIGHT_BLUE);
-		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.draw(RenderingMode.LINE_STRIP, compact);
 		universalRenderer.clear();
 		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> 1 - x, 3, Color.LIGHT_GRAY);
-		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.draw(RenderingMode.LINE_STRIP, compact);
 		universalRenderer.clear();
 		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> (Math.cos(x * Math.PIF) + 1) / 2, 30, Color.LIGHT_CYAN);
-		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.draw(RenderingMode.LINE_STRIP, compact);
 		universalRenderer.clear();
 		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> (Math.cos((x + 1) * Math.PIF) + 1) / 2, 32, Color.LIGHT_GREEN);
-		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.draw(RenderingMode.LINE_STRIP, compact);
 		universalRenderer.clear();
 		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> x * x, 50, Color.LIGHT_MAGENTA);
-		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.draw(RenderingMode.LINE_STRIP, compact);
 		universalRenderer.clear();
 		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> (float) (Math.log10(x + 1) / Math.log10(2)), 50, Color.LIGHT_RED);
-		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.draw(RenderingMode.LINE_STRIP, compact);
 		universalRenderer.clear();
 		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> (float) (x * Math.pow(Math.E, x - 1)), 50, Color.LIGHT_YELLOW);
-		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.draw(RenderingMode.LINE_STRIP, compact);
 		universalRenderer.clear();
 		KochCurve.renderCurve(universalRenderer, Vector2f.of(200, 0), Vector2f.of(400, 0), 5, Color.DARK_CYAN);
 		KochCurve.renderCurve(universalRenderer, Vector2f.of(400, 0), Vector2f.of(300, -200), 5, Color.DARK_CYAN);
 		KochCurve.renderCurve(universalRenderer, Vector2f.of(300, -200), Vector2f.of(200, 0), 5, Color.DARK_CYAN);
-		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.draw(RenderingMode.LINE_STRIP, compact);
 		universalRenderer.pullBuffer();
 		Util.printError("TextureRender draw");
 		
 		// frameBuffer.unbind();
 		
 		textureRenderer.pushBuffer(buffer2, element2);
-		textureRenderer.drawVertices(RenderingMode.QUADS, identity);
+		textureRenderer.draw(RenderingMode.QUADS, identity);
 		textureRenderer.pullBuffer();
 		
 		window.draw(compact, currentTime);
