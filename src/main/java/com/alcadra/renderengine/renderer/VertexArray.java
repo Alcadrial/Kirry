@@ -46,12 +46,8 @@ public class VertexArray {
 	
 	public void bindBuffer(SimpleBuffer buffer)
 	{
-		// if (!getBinded(buffer.getTarget()).equals(buffer))
-		// {
 		bind();
 		buffer.bind();
-		// binds.put(buffer.getTarget(), buffer);
-		// }
 	}
 	
 	public void vertexAttributePointer(int index, int size, int type, boolean normalized, int stride, int offset)

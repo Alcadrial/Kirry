@@ -1,9 +1,9 @@
 package com.alcadra.renderengine.shader;
 
-public class CustomShaderInput<I> extends ShaderInput<I> {
+public class CustomShaderInput extends ShaderInput {
 	
-	CustomShaderInput(String name, I input, int length)
+	CustomShaderInput(ShaderInputType type, String name)
 	{
-		super(name, input, length);
+		super(type, name);
 	}
 }

@@ -3,6 +3,7 @@ package com.alcadra.renderengine.shader;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.LinkedList;
 import java.util.List;
 
 import org.lwjgl.opengl.GL20;
@@ -12,37 +13,50 @@ import com.alcadra.renderengine.util.WorkInProgress;
 @WorkInProgress
 public class ShaderUpdate extends Shader {
 	
-	private List<ShaderInput<?>> knownInputs;
-	private List<ShaderInput<?>> programInputs;
+	private final int id;
 	private File file;
 	private ShaderType type;
-	private final int id;
+	private String[] code;
+	private ShaderStatus status;
+	private List<ShaderProgram> programs;
 	
-	public ShaderUpdate(File file, ShaderInput<?>... knownInputs)
+	public ShaderUpdate(File file)
 	{
-		this.knownInputs = List.of(knownInputs);
 		this.file = file;
 		String pathname = file.getPath();
-		type = ShaderType.fromExtension(pathname.substring(pathname.lastIndexOf('.')));
+		type = ShaderType.fromExtension(pathname.substring(pathname.lastIndexOf('.') + 1));
 		id = GL20.glCreateShader(type.getId());
+		code = new String[0];
+		status = new ShaderStatus(false, id, new String[0], "Needs to be compiled!");
+		programs = new LinkedList<>();
 	}
 	
-	public ShaderUpdate(File file, ShaderType type, ShaderInput<?>... knownInputs)
+	public ShaderUpdate(File file, ShaderType type)
 	{
-		this.knownInputs = List.of(knownInputs);
 		this.file = file;
 		this.type = type;
 		id = GL20.glCreateShader(type.getId());
+		code = new String[0];
+		status = new ShaderStatus(false, id, new String[0], "Needs to be compiled!");
+		programs = new LinkedList<>();
 	}
 	
 	public ShaderStatus loadShader() throws IOException
 	{
-		if (type == ShaderType.UNKNOWN) return new ShaderStatus(false, 0, "unknown", "Unknown shader cannot be loaded!");
-		String code = Files.readString(file.toPath());
-		GL20.glShaderSource(id, code);
+		if (type == ShaderType.UNKNOWN) return new ShaderStatus(false, 0, new String[0], "Unknown shader cannot be loaded!");
+		code = Files.lines(file.toPath()).toArray(i -> new String[i]);
+		StringBuilder builder = new StringBuilder();
+		for (String s : code) builder.append(s).append('\n');
+		GL20.glShaderSource(id, builder);
 		GL20.glCompileShader(id);
-		if (GL20.glGetShaderi(id, GL20.GL_COMPILE_STATUS) == 0) return new ShaderStatus(false, id, code, GL20.glGetShaderInfoLog(id));
-		return new ShaderStatus(true, id, code, GL20.glGetShaderInfoLog(id));
+		status = new ShaderStatus(GL20.glGetShaderi(id, GL20.GL_COMPILE_STATUS) == GL20.GL_TRUE, id, code, GL20.glGetShaderInfoLog(id));
+		if (status.isCompiled()) for (ShaderProgram program : programs) if (program.isBuilded()) program.build();
+		return status;
+	}
+	
+	public int getId()
+	{
+		return id;
 	}
 	
 	public ShaderType getType()
@@ -50,8 +64,29 @@ public class ShaderUpdate extends Shader {
 		return type;
 	}
 	
-	public int getId()
+	public String[] getCode()
 	{
-		return id;
+		return code;
+	}
+	
+	public ShaderStatus getStatus()
+	{
+		return status;
+	}
+	
+	void addProgram(ShaderProgram program)
+	{
+		programs.add(program);
+	}
+	
+	void removeProgram(ShaderProgram program)
+	{
+		programs.remove(program);
+	}
+	
+	@Override
+	public String toString()
+	{
+		return "Shader{id=" + id + ", type=" + type + "}";
 	}
 }

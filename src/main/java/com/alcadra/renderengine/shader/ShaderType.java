@@ -14,7 +14,7 @@ public enum ShaderType {
 	
 	public static ShaderType fromExtension(String extension)
 	{
-		for (ShaderType shaderType : values()) if (shaderType.extension.equals(extension)) return shaderType;
+		for (int i = 5; i >= 0; i--) if (values()[i].extension.equals(extension)) return values()[i];
 		return UNKNOWN;
 	}
 	
