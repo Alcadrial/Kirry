@@ -277,10 +277,10 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	{
 		if (colorOffset > -1)
 		{
-			vertex[colorOffset + offset] = c.r();
-			vertex[colorOffset + offset + 1] = c.g();
-			vertex[colorOffset + offset + 2] = c.b();
-			vertex[colorOffset + offset + 3] = c.a();
+			vertex[colorOffset + offset] = c.r() / 255;
+			vertex[colorOffset + offset + 1] = c.g() / 255;
+			vertex[colorOffset + offset + 2] = c.b() / 255;
+			vertex[colorOffset + offset + 3] = c.a() / 255;
 		}
 	}
 	
@@ -288,9 +288,9 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	{
 		if (colorRGBOffset > -1)
 		{
-			vertex[colorRGBOffset + offset] = c.r();
-			vertex[colorRGBOffset + offset + 1] = c.g();
-			vertex[colorRGBOffset + offset + 2] = c.b();
+			vertex[colorRGBOffset + offset] = c.r() / 255;
+			vertex[colorRGBOffset + offset + 1] = c.g() / 255;
+			vertex[colorRGBOffset + offset + 2] = c.b() / 255;
 		}
 	}
 	
