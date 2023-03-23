@@ -77,7 +77,7 @@ public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> extends 
 	
 	protected void draw(RenderingMode mode)
 	{
-		draw(mode, arrayBuffer.size() / vertexSize() * 4);
+		draw(mode, arrayBuffer.size() * 4 / vertexSize());
 	}
 	
 	protected void draw(RenderingMode mode, int count)
@@ -95,7 +95,7 @@ public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> extends 
 	@Override
 	public void drawVertices(RenderingMode mode, Matrix4f matrix)
 	{
-		drawVertices(mode, matrix, arrayBuffer.size() / vertexSize() * 4);
+		drawVertices(mode, matrix, arrayBuffer.size() * 4 / vertexSize());
 	}
 	
 	protected int vertexSize()
