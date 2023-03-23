@@ -61,7 +61,7 @@ public class Window {
 	{
 		this.title = title;
 		size = Vector2i.of(width, height);
-		aspectRatio = (float) size.y() / size.x();
+		aspectRatio = (float) size.x() / size.y();
 		isCreated = false;
 		mousePos = Vector2i.of(0, 0);
 		cursorInputMode = CursorInputMode.NORMAL;
@@ -72,7 +72,7 @@ public class Window {
 	{
 		this.title = title;
 		this.size = Vector2i.copyOf(size);
-		aspectRatio = (float) size.y() / size.x();
+		aspectRatio = (float) size.x() / size.y();
 		isCreated = false;
 		mousePos = Vector2i.of(0, 0);
 		cursorInputMode = CursorInputMode.NORMAL;
@@ -268,7 +268,7 @@ public class Window {
 	
 	protected void resize(Vector2i newSize)
 	{
-		aspectRatio = (float) newSize.y() / newSize.x();
+		aspectRatio = (float) newSize.x() / newSize.y();
 		if (isCreated) FrameBuffer.DEFAULT.setDrawArea(Vector2i.origin(), newSize);
 	}
 	

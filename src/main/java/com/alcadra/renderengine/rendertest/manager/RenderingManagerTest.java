@@ -250,6 +250,27 @@ public class RenderingManagerTest implements RenderTest {
 			renderer.loadText(text, Vector2f.of(0, 256), Color.BLUE, -1, 128, 8, 0);
 			renderingManager.endFont(RenderingMode.QUADS, matrix);
 		}
+		{
+			Matrix4f matrix = new Matrix4f();
+			matrix.orthographicPositive(window.getWidth(), window.getHeight());
+			
+			Matrix4f projection = new Matrix4f();
+			projection.project(Angle.of(60, AngleUnit.DEGREES), 1000, 1, window.getAspectRatio());
+			projection.multiply(new Matrix4f().view(position, rotationX, rotationY));
+			float[] m = projection.toArray();
+			
+			Text text = new Text();
+			text.addLine(new TextLine("\u250C "));
+			text.addLine(new TextLine("\u2502 " + m[0] + " " + m[1] + " " + m[2] + " " + m[3] + " \u2502"));
+			text.addLine(new TextLine("\u2502 " + m[4] + " " + m[5] + " " + m[6] + " " + m[7] + " \u2502"));
+			text.addLine(new TextLine("\u2502 " + m[8] + " " + m[9] + " " + m[10] + " " + m[11] + " \u2502"));
+			text.addLine(new TextLine("\u2502 " + m[12] + " " + m[13] + " " + m[14] + " " + m[15] + " \u2502"));
+			text.addLine(new TextLine("\u250C"));
+			
+			FontRenderer renderer = renderingManager.startFont(RenderingMode.QUADS, fontProgram, font);
+			renderer.loadText(text, Vector2f.of(0, 512), Color.DARK_MAGENTA, -1, -1, -1, 20);
+			renderingManager.endFont(RenderingMode.QUADS, matrix);
+		}
 		
 		// window.draw(compact, currentTime);
 		window.update();
