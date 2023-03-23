@@ -12,20 +12,20 @@ import com.alcadra.renderengine.util.update.UpdatedFrom;
 
 @UpdatedFrom("BaseRenderer")
 @Nonnull
-public abstract class BaseRendererUpdate<AB extends ArrayBuffer<?>> implements ShaderRendererUpdate {
+public abstract class AbstractShaderRendererUpdate<AB extends ArrayBuffer<?>> implements ShaderRendererUpdate {
 	
 	protected final VertexArray vertexArray;
 	protected final AB arrayBuffer;
 	protected ShaderProgram program;
 	
-	public BaseRendererUpdate(ShaderProgram program, AB arrayBuffer)
+	public AbstractShaderRendererUpdate(ShaderProgram program, AB arrayBuffer)
 	{
 		this.program = Objects.requireNonNull(program);
 		this.vertexArray = new VertexArray();
 		this.arrayBuffer = Objects.requireNonNull(arrayBuffer);
 	}
 	
-	public BaseRendererUpdate(ShaderProgram program, VertexArray vertexArray, AB arrayBuffer)
+	public AbstractShaderRendererUpdate(ShaderProgram program, VertexArray vertexArray, AB arrayBuffer)
 	{
 		this.program = Objects.requireNonNull(program);
 		this.vertexArray = Objects.requireNonNull(vertexArray);

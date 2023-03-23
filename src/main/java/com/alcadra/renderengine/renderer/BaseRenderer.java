@@ -12,7 +12,7 @@ import com.alcadra.renderengine.util.update.NoReplacement;
 import com.alcadra.renderengine.util.update.UpdatedTo;
 import com.alcadra.renderengine.util.update.UseInstead;
 
-@UpdatedTo("BaseShaderRenderer")
+@UpdatedTo("AbstractShaderRendererUpdate")
 @Deprecated(since = "2.0-migration", forRemoval = true)
 public abstract class BaseRenderer<AB extends ArrayBuffer<?>> implements ShaderRenderer {
 	

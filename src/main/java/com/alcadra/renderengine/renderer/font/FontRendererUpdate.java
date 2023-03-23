@@ -7,7 +7,7 @@ import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
-import com.alcadra.renderengine.renderer.BaseRendererUpdate;
+import com.alcadra.renderengine.renderer.AbstractShaderRendererUpdate;
 import com.alcadra.renderengine.renderer.font.text.Text;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.textures.Texture;
@@ -16,7 +16,7 @@ import com.alcadra.renderengine.util.update.UpdatedFrom;
 
 @NotYetImplemented
 @UpdatedFrom("FontRenderer")
-public class FontRendererUpdate extends BaseRendererUpdate<FloatArrayBuffer> {
+public class FontRendererUpdate extends AbstractShaderRendererUpdate<FloatArrayBuffer> {
 	
 	private Font font;
 	
