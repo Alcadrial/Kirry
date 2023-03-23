@@ -131,11 +131,12 @@ public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB>
 	
 	protected List<Float> gatherProgramData()
 	{
-		List<Float> list = new ArrayList<>(map.size() * 4);
+		List<Float> list = new ArrayList<>(program.getProgramInputs().size() * 4);
 		for (ShaderInput input : program.getProgramInputs())
 		{
 			List<Float> data = map.get(input);
 			if (data != null) list.addAll(data);
+			else for (int i = input.getType().getSize(); i > 0; i--) list.add(0F);
 		}
 		return List.copyOf(list);
 	}
