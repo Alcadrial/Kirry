@@ -10,7 +10,6 @@ import org.lwjgl.glfw.GLFWCursorPosCallbackI;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.opengl.GL30;
-import org.lwjgl.system.Configuration;
 import org.lwjgl.system.MemoryUtil;
 
 import com.alcadra.math.Matrix4f;
@@ -30,8 +29,9 @@ import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
 import com.alcadra.renderengine.rendertest.ObjectRenderTest;
 import com.alcadra.renderengine.rendertest.RenderTest;
-import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.Shader;
+import com.alcadra.renderengine.shader.ShaderProgram;
+import com.alcadra.renderengine.shader.uniform.ShaderUniform;
 import com.alcadra.renderengine.util.Image;
 import com.alcadra.renderengine.util.RendererUtil;
 import com.alcadra.renderengine.util.Test;
@@ -56,11 +56,14 @@ public class RenderEngine implements RenderTest {
 	public static volatile String texturePath = "src/main/resources/assets/renderengine/grass1.png";
 	public static volatile String fontPath = "src/main/resources/assets/renderengine/Segoe UI.json";
 	public static volatile String fontImagePath = "src/main/resources/assets/renderengine/font.png";
-	private static int maxLoops = 60;
 	
 	public static final RenderEngine RENDER_ENGINE_TEST = new RenderEngine();
 	public static final ObjectRenderTest OBJECT_RENDER_TEST = new ObjectRenderTest();
 	private static RenderTest activeTest;
+	
+	private static int maxLoops = 60;
+	private static final ShaderUniform<Matrix4f> TRANSFORMATION = ShaderUniform.ofMatrix4f("TRANSFORMATION");
+	private static final ShaderUniform<Integer> STATE = ShaderUniform.ofInt("STATE");
 	
 	public static void setActiveTest(RenderTest activeTest)
 	{
@@ -180,7 +183,6 @@ public class RenderEngine implements RenderTest {
 	@Override
 	public void start()
 	{
-		Configuration.DEBUG.set(true);
 		window = new Window(1080, 720, "Test");
 		window.build();
 		window.makeContextCurrent();
@@ -335,23 +337,21 @@ public class RenderEngine implements RenderTest {
 		Matrix4f viewer = new Matrix4f(projection).multiply(view);
 		Vector3f end = new Vector3f(10, 10, 10);
 		
-		universalRenderer.pushBuffer(buffer0 = new FloatArrayBuffer(), element0 = new ElementArrayBuffer());
+		buffer0 = new FloatArrayBuffer();
+		element0 = new ElementArrayBuffer();
+		universalRenderer.pushBuffer(buffer0, element0);
 		RendererUtil.loadOrthoCube(universalRenderer, Vector3f.getOrigin(), end, Color.LIGHT_YELLOW);
 		RendererUtil.loadOrthoCube(universalRenderer, viewer, end, end.add(end), Color.LIGHT_YELLOW);
 		universalRenderer.pullBuffer();
-		universalRenderer.pushBuffer(buffer1 = new FloatArrayBuffer(), element1 = new ElementArrayBuffer());
+		buffer1 = new FloatArrayBuffer();
+		element1 = new ElementArrayBuffer();
+		universalRenderer.pushBuffer(buffer1, element1);
 		RendererUtil.loadSquare(universalRenderer, 100, 100, 128, 128, 1, 255, 255, 0, 255);
 		universalRenderer.pullBuffer();
 		
 		window.render(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
 		
 		Util.printError("renderer load");
-		System.out.print("FontRenderer{FloatArrayBuffer{values=[");
-		for (int i = 0; i < 4 * 14; i++)
-		{
-			System.out.print(" x ,   y  ,  z ,   r  ,  g ,  b ,     u     ,     v    |");
-		}
-		System.out.println();
 	}
 	
 	@Override
@@ -422,10 +422,10 @@ public class RenderEngine implements RenderTest {
 		Util.printError("FrameBuffer draw");
 		
 		universalRenderer.pushBuffer(buffer0, element0);
-		universalRenderer.drawPoints(RenderingMode.QUADS, projected);
+		universalRenderer.drawVertices(RenderingMode.QUADS, projected);
 		universalRenderer.pullBuffer();
 		universalRenderer.pushBuffer(buffer1, element1);
-		universalRenderer.drawPoints(RenderingMode.QUADS, compact);
+		universalRenderer.drawVertices(RenderingMode.QUADS, compact);
 		universalRenderer.pullBuffer();
 		Util.printError("TextureRender draw");
 		

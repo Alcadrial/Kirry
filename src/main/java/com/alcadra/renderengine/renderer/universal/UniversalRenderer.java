@@ -7,8 +7,8 @@ import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBufferStack;
-import com.alcadra.renderengine.buffer.FloatArrayBufferStack;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
+import com.alcadra.renderengine.buffer.FloatArrayBufferStack;
 import com.alcadra.renderengine.renderer.AbstractIndicesRenderer;
 import com.alcadra.renderengine.renderer.AbstractVertexBuilder;
 import com.alcadra.renderengine.renderer.RenderingMode;
@@ -91,7 +91,8 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 	{
 		this.arrayBuffer.push(arrayBuffer);
 		elementStack.push(elementBuffer);
-		offset = elementStack.getMax();
+		offset = elementBuffer.getMax() + 1;
+		initializeArrayBuffer();
 	}
 	
 	public void pushBufferMerge(FloatArrayBuffer buffer)
@@ -107,14 +108,15 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 		ElementArrayBuffer e = elementStack.current();
 		elementBuffer.merge(e, elementBuffer.getMax());
 		elementStack.push(elementBuffer);
-		offset = elementStack.getMax();
+		offset = elementStack.getMax() + 1;
+		initializeArrayBuffer();
 	}
 	
 	public void pullBuffer()
 	{
 		arrayBuffer.pull();
 		elementStack.pull();
-		offset = 0;
+		offset = elementStack.getMax() + 1;
 	}
 	
 	public int getOffset()
@@ -147,6 +149,11 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 	{
 		super.clear();
 		offset = 0;
+	}
+	
+	public void bind()
+	{
+		vertexArray.bind();
 	}
 	
 	public class VertexBuilder extends AbstractVertexBuilder<VertexBuilder> {
