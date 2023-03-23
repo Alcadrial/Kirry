@@ -2,9 +2,9 @@ package com.alcadra.renderengine.renderer.screen;
 
 import java.nio.FloatBuffer;
 
-import com.alcadra.renderengine.buffer.ArrayBuffer;
+import com.alcadra.renderengine.buffer.ArrayBufferUpdate;
 
-abstract class DataModel extends ArrayBuffer<FloatBuffer> {
+abstract class DataModel extends ArrayBufferUpdate<FloatBuffer> {
 	
 	public static final DataModel EMPTY = new EmptyDataModel();
 	
@@ -18,32 +18,6 @@ abstract class DataModel extends ArrayBuffer<FloatBuffer> {
 	public int byteSize()
 	{
 		return 0;
-	}
-	
-	@Override
-	protected FloatBuffer nativeBuffer()
-	{
-		return null;
-	}
-	
-	@Override
-	protected FloatBuffer nativeGlBuffer()
-	{
-		return null;
-	}
-	
-	@Override
-	protected void syncRewrite(FloatBuffer buffer)
-	{}
-	
-	@Override
-	protected void syncModify(FloatBuffer buffer, int from, int to)
-	{}
-	
-	@Override
-	protected boolean equals(FloatBuffer buffer, FloatBuffer other)
-	{
-		return false;
 	}
 	
 	@Override

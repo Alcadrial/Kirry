@@ -4,13 +4,13 @@ import java.util.Objects;
 
 import org.lwjgl.opengl.GL11;
 
-import com.alcadra.renderengine.buffer.ArrayBuffer;
+import com.alcadra.renderengine.buffer.ArrayBufferUpdate;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.util.update.UpdatedFrom;
 
 @UpdatedFrom("BaseIndicesRenderer")
-public abstract class AbstractIndicesRendererUpdate<AB extends ArrayBuffer<?>> extends AbstractShaderRendererUpdate<AB> implements IndicesRendererUpdate {
+public abstract class AbstractIndicesRendererUpdate<AB extends ArrayBufferUpdate<?>> extends AbstractShaderRendererUpdate<AB> implements IndicesRendererUpdate {
 	
 	protected final ElementArrayBuffer elements;
 	

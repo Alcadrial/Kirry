@@ -9,7 +9,7 @@ import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
-import com.alcadra.renderengine.buffer.FloatArrayBuffer;
+import com.alcadra.renderengine.buffer.FloatArrayBufferUpdate;
 import com.alcadra.renderengine.renderer.AbstractShaderRendererUpdate;
 import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.renderer.font.text.Text;
@@ -23,7 +23,7 @@ import com.alcadra.renderengine.util.color.VectorColorRGB;
 import com.alcadra.renderengine.util.update.UpdatedFrom;
 
 @UpdatedFrom("FontRenderer")
-public class FontRendererUpdate extends AbstractShaderRendererUpdate<FloatArrayBuffer> {
+public class FontRendererUpdate extends AbstractShaderRendererUpdate<FloatArrayBufferUpdate> {
 	
 	private static final ShaderUniform<Matrix4f> TRANSFORMATION = ShaderUniform.ofMatrix4f("TRANSFORMATION");
 	private static final ShaderUniform<Vector3f> COLOR = ShaderUniform.ofVector3f("COLOR");
@@ -42,7 +42,7 @@ public class FontRendererUpdate extends AbstractShaderRendererUpdate<FloatArrayB
 	
 	public FontRendererUpdate(ShaderProgram program, Font font)
 	{
-		super(program, new FloatArrayBuffer());
+		super(program, new FloatArrayBufferUpdate());
 		this.font = font;
 		color = Color.BLACK;
 		alfaMask = 1;

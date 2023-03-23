@@ -7,6 +7,10 @@ import java.nio.IntBuffer;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.system.MemoryUtil;
 
+import com.alcadra.renderengine.util.update.UpdatedTo;
+
+@Deprecated(since = "2.0-migration", forRemoval = true)
+@UpdatedTo("ArrayBufferUpdate")
 public abstract class ArrayBuffer<B extends Buffer> extends SimpleBuffer {
 	
 	public static final ArrayBuffer<Buffer> NULL = new ArrayBuffer<>(0) {
