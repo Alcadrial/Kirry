@@ -7,6 +7,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
 
 public class Shader {
 	
@@ -16,6 +17,18 @@ public class Shader {
 	private String[] code;
 	private ShaderStatus status;
 	private List<ShaderProgram> programs;
+	
+	Shader(String file, ShaderType type)
+	{
+		this.file = null;
+		this.type = type;
+		id = GL20.glCreateShader(type.getId());
+		code = file.split("[\r\n,\n,\r]");
+		programs = new LinkedList<>();
+		GL20.glShaderSource(id, file);
+		GL20.glCompileShader(id);
+		status = new ShaderStatus(GL20.glGetShaderi(id, GL20.GL_COMPILE_STATUS) == 1, id, code, GL20.glGetShaderInfoLog(id));
+	}
 	
 	public Shader(File file)
 	{
@@ -41,19 +54,22 @@ public class Shader {
 	public ShaderStatus loadShader() throws IOException
 	{
 		if (type == ShaderType.UNKNOWN) return new ShaderStatus(false, 0, new String[0], "Unknown shader cannot be loaded!");
-		code = Files.lines(file.toPath()).toArray(i -> new String[i]);
-		StringBuilder builder = new StringBuilder();
-		for (String s : code) builder.append(s).append('\n');
-		GL20.glShaderSource(id, builder);
-		GL20.glCompileShader(id);
-		status = new ShaderStatus(GL20.glGetShaderi(id, GL20.GL_COMPILE_STATUS) == 1, id, code, GL20.glGetShaderInfoLog(id));
-		if (status.isCompiled()) for (ShaderProgram program : programs) if (program.getStatus().isBuilded()) program.build();
+		if (!status.isDeleted())
+		{
+			code = Files.lines(file.toPath()).toArray(i -> new String[i]);
+			StringBuilder builder = new StringBuilder();
+			for (String s : code) builder.append(s).append('\n');
+			GL20.glShaderSource(id, builder);
+			GL20.glCompileShader(id);
+			status = new ShaderStatus(GL20.glGetShaderi(id, GL20.GL_COMPILE_STATUS) == 1, id, code, GL20.glGetShaderInfoLog(id));
+			if (status.isCompiled()) for (ShaderProgram program : programs) if (program.getStatus().isBuilded()) program.build();
+		}
 		return status;
 	}
 	
 	public int getId()
 	{
-		return id;
+		return status.getId();
 	}
 	
 	public ShaderType getType()
@@ -79,6 +95,15 @@ public class Shader {
 	void removeProgram(ShaderProgram program)
 	{
 		programs.remove(program);
+	}
+	
+	public void delete()
+	{
+		if (!status.isDeleted())
+		{
+			GL30.glDeleteProgram(id);
+			status = new ShaderStatus(status.isCompiled(), -1, status.getCode(), status.getInfo());
+		}
 	}
 	
 	@Override

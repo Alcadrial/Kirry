@@ -30,6 +30,11 @@ public class ShaderStatus {
 		return isCompiled;
 	}
 	
+	public boolean isDeleted()
+	{
+		return id == -1;
+	}
+	
 	public int getId()
 	{
 		return id;
@@ -38,6 +43,7 @@ public class ShaderStatus {
 	@Override
 	public String toString()
 	{
+		if (id == -1) return "Shader Deleted";
 		if (isCompiled) return "Shader compiled";
 		String s = "";
 		for (String line : code) s += line + "\n";

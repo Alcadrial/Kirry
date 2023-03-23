@@ -122,6 +122,8 @@ public class Window {
 	
 	protected void windowSizeCallback(long id, int width, int height)
 	{
+		size.setAll(width, height);
+		FrameBuffer.DEFAULT.setDrawArea(0, 0, width, height);
 		for (GLFWWindowSizeCallbackI callback : windowSizeCallbackList) callback.invoke(id, width, height);
 	}
 	

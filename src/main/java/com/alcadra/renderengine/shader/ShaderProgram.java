@@ -12,12 +12,29 @@ import com.alcadra.renderengine.util.NotUsed;
 
 public class ShaderProgram implements Deletable {
 	
-	public static final ShaderProgram DEFAULT = new ShaderProgram();
+	public static final ShaderProgram DEFAULT = new ShaderProgram() {
+		
+		@Override
+		public void delete()
+		{
+			
+		}
+	};
 	
 	static
 	{
+		DEFAULT.attachShader(new Shader("""
+				#version 460
+				
+				layout (location = 0) in vec3 position;
+				
+				void main()
+				{
+					gl_Position = vec4(position, 1);
+				}
+				""", ShaderType.VERTEX));
 		DEFAULT.build();
-		DEFAULT.programInputs = List.of(ShaderInput.VERTEX_POSITION);
+		DEFAULT.attachedShaders[0].get(0).delete();
 	}
 	
 	private List<Shader>[] attachedShaders;
@@ -46,7 +63,6 @@ public class ShaderProgram implements Deletable {
 			if (type.ordinal() < ShaderType.COMPUTE.ordinal())
 			{
 				GL30.glAttachShader(id, shader.getId());
-				GL30.glDeleteShader(shader.getId());
 				attachedShaders[type.ordinal()].add(shader);
 				shader.addProgram(this);
 			}
