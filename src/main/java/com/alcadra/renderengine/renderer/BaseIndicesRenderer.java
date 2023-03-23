@@ -5,7 +5,10 @@ import org.lwjgl.opengl.GL30;
 import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.shader.Shader;
+import com.alcadra.renderengine.util.update.UpdatedTo;
 
+@UpdatedTo("BaseIndicesRendererUpdate")
+@Deprecated(since = "2.0-migration", forRemoval = true)
 public abstract class BaseIndicesRenderer<AB extends ArrayBuffer<?>> extends BaseRenderer<AB> implements IndicesRenderer {
 	
 	protected final ElementArrayBuffer elements;
@@ -16,8 +19,7 @@ public abstract class BaseIndicesRenderer<AB extends ArrayBuffer<?>> extends Bas
 		elements = elementArrayBuffer;
 	}
 	
-	@Override
-	protected void drawIndices(int mode)
+	protected void drawIndices(int mode, int count)
 	{
 		vertexArray.bind();
 		syncBuffers();

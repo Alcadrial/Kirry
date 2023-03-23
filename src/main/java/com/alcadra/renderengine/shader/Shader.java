@@ -13,8 +13,10 @@ import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector3i;
 import com.alcadra.math.vector.Vector4i;
-import com.alcadra.renderengine.util.UseInstead;
+import com.alcadra.renderengine.util.update.NoReplacement;
+import com.alcadra.renderengine.util.update.UseInstead;
 
+@NoReplacement
 @UseInstead(name = "ShaderProgram", descriptions = "Shader logic is now divided in ShaderProgram and ShaderUpdate, a ShaderUpdate will handle a single shader file and a ShaderProgram will use ShaderUpdates to handle a program")
 public class Shader {
 	

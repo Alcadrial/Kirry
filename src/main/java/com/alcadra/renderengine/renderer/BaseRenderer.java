@@ -7,12 +7,13 @@ import org.lwjgl.opengl.GL30;
 import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.shader.Shader;
-import com.alcadra.renderengine.util.NoReplacement;
-import com.alcadra.renderengine.util.ToRename;
-import com.alcadra.renderengine.util.UseInstead;
 import com.alcadra.renderengine.util.Util;
+import com.alcadra.renderengine.util.update.NoReplacement;
+import com.alcadra.renderengine.util.update.UpdatedTo;
+import com.alcadra.renderengine.util.update.UseInstead;
 
-@ToRename(name = "BaseShaderRenderer")
+@UpdatedTo("BaseShaderRenderer")
+@Deprecated(since = "2.0-migration", forRemoval = true)
 public abstract class BaseRenderer<AB extends ArrayBuffer<?>> implements ShaderRenderer {
 	
 	protected final VertexArray vertexArray;
