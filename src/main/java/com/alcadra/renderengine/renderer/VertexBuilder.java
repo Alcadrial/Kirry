@@ -3,7 +3,10 @@ package com.alcadra.renderengine.renderer;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
+import com.alcadra.renderengine.util.update.NoReplacement;
 
+@Deprecated(since = "2.0-migration", forRemoval = true)
+@NoReplacement
 public interface VertexBuilder<R extends VertexBuilder<R>> {
 	
 	default R color(float r, float g, float b, float a)

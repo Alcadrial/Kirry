@@ -9,6 +9,7 @@ import com.alcadra.math.vector.Vector4i;
 import com.alcadra.renderengine.renderer.VertexBuilder;
 import com.alcadra.renderengine.shader.Shader;
 
+@Deprecated(since = "2.0-migration", forRemoval = true)
 public class VertexModifier implements VertexBuilder<VertexModifier> {
 	
 	private Vector4i bindedColor;
