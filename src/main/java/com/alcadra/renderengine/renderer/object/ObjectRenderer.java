@@ -1,11 +1,16 @@
 package com.alcadra.renderengine.renderer.object;
 
+import java.util.function.Consumer;
+
 import org.lwjgl.opengl.GL30;
 
 import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector2f;
+import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
+import com.alcadra.math.vector.Vector3i;
 import com.alcadra.math.vector.Vector4f;
+import com.alcadra.math.vector.Vector4i;
 import com.alcadra.renderengine.buffer.Bufferable;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.ObjectArrayBuffer;
@@ -19,9 +24,9 @@ import com.alcadra.renderengine.textures.Texture;
 
 public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> implements ShaderRenderer, VertexBuilder<ObjectRenderer> {
 	
-	private Vector4f bindedColor = Vector4f.getOrigin();
-	private Vector2f bindedUV = Vector2f.getOrigin();
-	private Vector3f bindedNormal = Vector3f.getOrigin();
+	private Vector4i bindedColor = Vector4i.getOrigin();
+	private Vector2i bindedUV = Vector2i.getOrigin();
+	private Vector3i bindedNormal = Vector3i.getOrigin();
 	private ColorTexture texture = ColorTexture.getNull();
 	private int offset;
 	private Bufferable buildingValue;
@@ -88,13 +93,31 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 	public ObjectBuilder start(Bufferable value)
 	{
 		buildingValue = value;
-		return new ObjectBuilder(this);
+		return new ObjectBuilder(this, bindedColor, bindedUV, bindedNormal);
+	}
+	
+	public void startIfAbsent(Bufferable value, Consumer<ObjectBuilder> consumer)
+	{
+		if (!getArrayBuffer().contains(value))
+		{
+			buildingValue = value;
+			consumer.accept(new ObjectBuilder(this));
+		}
 	}
 	
 	ObjectBuilder start(Bufferable value, ObjectBuilder builder)
 	{
 		buildingValue = value;
 		return builder;
+	}
+	
+	void startIfAbsent(Bufferable value, ObjectBuilder builder, Consumer<ObjectBuilder> consumer)
+	{
+		if (!getArrayBuffer().contains(value))
+		{
+			buildingValue = value;
+			consumer.accept(builder);
+		}
 	}
 	
 	public int end(ObjectBuilder builder)
@@ -133,21 +156,21 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 	@Override
 	public ObjectRenderer color(Vector4f color)
 	{
-		bindedColor = color.divide(255);
+		bindedColor = new Vector4i(Float.floatToIntBits(color.x() / 255), Float.floatToIntBits(color.y() / 255), Float.floatToIntBits(color.z() / 255), Float.floatToIntBits(color.w() / 255));
 		return this;
 	}
 	
 	@Override
 	public ObjectRenderer uv(Vector2f uv)
 	{
-		bindedUV = uv;
+		bindedUV = new Vector2i(Float.floatToIntBits(uv.x()), Float.floatToIntBits(uv.y()));
 		return this;
 	}
 	
 	@Override
 	public ObjectRenderer normal(Vector3f normal)
 	{
-		bindedNormal = normal;
+		bindedNormal = new Vector3i(Float.floatToIntBits(normal.x()), Float.floatToIntBits(normal.y()), Float.floatToIntBits(normal.z()));
 		return this;
 	}
 	
@@ -162,9 +185,9 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 		{
 			shader.enable();
 			shader.setUniform(matrix, "transformation");
-			if (shader.hasUniformColor()) shader.setUniform(bindedColor, "color");
-			if (shader.hasUniformUV()) shader.setUniform(bindedUV, "uv");
-			if (shader.hasUniformNormal()) shader.setUniform(bindedNormal, "normal");
+			if (shader.hasUniformColor()) shader.setUniformFloat(bindedColor, "color");
+			if (shader.hasUniformUV()) shader.setUniformFloat(bindedUV, "uv");
+			if (shader.hasUniformNormal()) shader.setUniformFloat(bindedNormal, "normal");
 			if (shader.useUV() || shader.hasUniformUV()) shader.setUniform(0, "textureSampler");
 		}
 		draw(mode, getArrayBuffer().intSize());
@@ -173,9 +196,9 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 	
 	public void reset()
 	{
-		bindedColor = Vector4f.getOrigin();
-		bindedUV = Vector2f.getOrigin();
-		bindedNormal = Vector3f.getOrigin();
+		bindedColor = Vector4i.getOrigin();
+		bindedUV = Vector2i.getOrigin();
+		bindedNormal = Vector3i.getOrigin();
 		clear();
 	}
 	

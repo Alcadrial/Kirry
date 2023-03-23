@@ -9,7 +9,10 @@ import org.lwjgl.opengl.GL20;
 import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.IVector4f;
 import com.alcadra.math.vector.Vector2f;
+import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
+import com.alcadra.math.vector.Vector3i;
+import com.alcadra.math.vector.Vector4i;
 
 public class Shader {
 	
@@ -93,6 +96,21 @@ public class Shader {
 	public void setUniform(IVector4f value, String name)
 	{
 		GL20.glUniform4f(GL20.glGetUniformLocation(program, name), value.x(), value.y(), value.z(), value.w());
+	}
+	
+	public void setUniformFloat(Vector2i value, String name)
+	{
+		GL20.glUniform2f(GL20.glGetUniformLocation(program, name), Float.intBitsToFloat(value.x()), Float.intBitsToFloat(value.y()));
+	}
+	
+	public void setUniformFloat(Vector3i value, String name)
+	{
+		GL20.glUniform3f(GL20.glGetUniformLocation(program, name), Float.intBitsToFloat(value.x()), Float.intBitsToFloat(value.y()), Float.intBitsToFloat(value.z()));
+	}
+	
+	public void setUniformFloat(Vector4i value, String name)
+	{
+		GL20.glUniform4f(GL20.glGetUniformLocation(program, name), Float.intBitsToFloat(value.x()), Float.intBitsToFloat(value.y()), Float.intBitsToFloat(value.z()), Float.intBitsToFloat(value.w()));
 	}
 	
 	public void setUniform(Matrix4f value, String variableName)

@@ -2,12 +2,26 @@ package com.alcadra.renderengine.util;
 
 import java.util.List;
 
+import org.lwjgl.opengl.GL30;
+
 import com.alcadra.math.vector.Vector1f;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
 
 public class Util {
+	
+	private static volatile boolean debug = false;
+	
+	public static boolean isDebug()
+	{
+		return debug;
+	}
+	
+	public static void enableDebug()
+	{
+		debug = true;
+	}
 	
 	public static String toPointString(Vector4f vector)
 	{
@@ -45,5 +59,36 @@ public class Util {
 		}
 		string += base;
 		return string;
+	}
+	
+	public static void printError(String s)
+	{
+		int error = GL30.glGetError();
+		while (debug)
+		{
+			switch (error)
+			{
+				case GL30.GL_NO_ERROR:
+					return;
+				case GL30.GL_INVALID_ENUM:
+					System.out.println(s + " INVALID ENUM");
+					break;
+				case GL30.GL_INVALID_VALUE:
+					System.out.println(s + " INVALID VALUE");
+					break;
+				case GL30.GL_INVALID_OPERATION:
+					System.out.println(s + " INVALID OPERATION");
+					break;
+				case GL30.GL_INVALID_FRAMEBUFFER_OPERATION:
+					System.out.println(s + " INVALID FRAMEBUFFER OPERATION");
+					break;
+			}
+			error = GL30.glGetError();
+		}
+	}
+	
+	public static void printError()
+	{
+		printError("");
 	}
 }

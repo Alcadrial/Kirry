@@ -236,10 +236,10 @@ public class Renderer extends BaseRenderer<FloatArrayBuffer> implements ShaderRe
 		clear();
 	}
 	
+	@Override
 	public void clear()
 	{
-		getArrayBuffer().clear();
-		getElementArrayBuffer().clear();
+		super.clear();
 		offset = 0;
 	}
 	

@@ -4,10 +4,10 @@ import java.util.function.Supplier;
 
 import org.lwjgl.opengl.GL30;
 
-import com.alcadra.renderengine.RenderEngine;
 import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.shader.Shader;
+import com.alcadra.renderengine.util.Util;
 
 public abstract class BaseRenderer<AB extends ArrayBuffer<?>> {
 	
@@ -35,18 +35,18 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> {
 	protected void syncBuffers()
 	{
 		getVertexArray().bindBuffer(getArrayBuffer());
-		RenderEngine.printError("BaseRenderer[INTERNAL] sync binding");
+		Util.printError("BaseRenderer[INTERNAL] sync binding");
 		getArrayBuffer().sync();
-		RenderEngine.printError("BaseRenderer[INTERNAL] array sync");
+		Util.printError("BaseRenderer[INTERNAL] array sync");
 	}
 	
 	protected void draw(int mode, int count)
 	{
 		getVertexArray().bind();
 		syncBuffers();
-		RenderEngine.printError("BaseRenderer[INTERNAL] sync");
+		Util.printError("BaseRenderer[INTERNAL] sync");
 		GL30.glDrawArrays(mode, 0, count);
-		RenderEngine.printError("BaseRenderer[INTERNAL] draw");
+		Util.printError("BaseRenderer[INTERNAL] draw");
 	}
 	
 	protected final void drawIndices(int mode)
@@ -56,6 +56,12 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> {
 		getVertexArray().bindBuffer(getElementArrayBuffer());
 		getElementArrayBuffer().sync();
 		GL30.glDrawElements(mode, getElementArrayBuffer().size(), GL30.GL_UNSIGNED_INT, 0);
+	}
+	
+	public void clear()
+	{
+		getArrayBuffer().clear();
+		getElementArrayBuffer().clear();
 	}
 	
 	protected VertexArray getVertexArray()

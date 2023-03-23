@@ -239,7 +239,7 @@ public class FontRenderer extends BaseRenderer<FloatArrayBuffer> {
 		shader.setUniform(matrix, "transformation");
 		draw(GL30.GL_QUADS, getArrayBuffer().size());
 		Shader.disableShaders();
-		getArrayBuffer().clear();
+		clear();
 	}
 	
 	public Font getFont()

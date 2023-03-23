@@ -15,6 +15,9 @@ import com.alcadra.renderengine.shader.Shader;
 
 public class ObjectBuilder {
 	
+	private Vector4i bindedColor;
+	private Vector2i bindedUV;
+	private Vector3i bindedNormal;
 	private ObjectRenderer renderer;
 	private List<VertexModifier> modifiers;
 	
@@ -22,6 +25,18 @@ public class ObjectBuilder {
 	{
 		this.renderer = renderer;
 		modifiers = new ArrayList<>();
+		bindedColor = Vector4i.getOrigin();
+		bindedUV = Vector2i.getOrigin();
+		bindedNormal = Vector3i.getOrigin();
+	}
+	
+	public ObjectBuilder(ObjectRenderer renderer, Vector4i bindedColor, Vector2i bindedUV, Vector3i bindedNormal)
+	{
+		this.renderer = renderer;
+		modifiers = new ArrayList<>();
+		this.bindedColor = bindedColor;
+		this.bindedUV = bindedUV;
+		this.bindedNormal = bindedNormal;
 	}
 	
 	public Shader getShader()
@@ -59,14 +74,17 @@ public class ObjectBuilder {
 	
 	public class Builder implements VertexBuilder<Builder> {
 		
-		private Vector4i bindedColor = Vector4i.getOrigin();
-		private Vector2i bindedUV = Vector2i.getOrigin();
-		private Vector3i bindedNormal = Vector3i.getOrigin();
+		private Vector4i bindedColor;
+		private Vector2i bindedUV;
+		private Vector3i bindedNormal;
 		private boolean building;
 		
 		private Builder()
 		{
 			building = true;
+			bindedColor = ObjectBuilder.this.bindedColor;
+			bindedUV = ObjectBuilder.this.bindedUV;
+			bindedNormal = ObjectBuilder.this.bindedNormal;
 		}
 		
 		public ObjectBuilder end()
@@ -89,7 +107,7 @@ public class ObjectBuilder {
 		@Override
 		public Builder color(Vector4f color)
 		{
-			bindedColor = new Vector4i(Float.floatToIntBits(color.x()), Float.floatToIntBits(color.y()), Float.floatToIntBits(color.z()), Float.floatToIntBits(color.w()));
+			bindedColor = new Vector4i(Float.floatToIntBits(color.x() / 255), Float.floatToIntBits(color.y() / 255), Float.floatToIntBits(color.z() / 255), Float.floatToIntBits(color.w() / 255));
 			return this;
 		}
 		

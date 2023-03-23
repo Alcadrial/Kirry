@@ -127,11 +127,11 @@ public class ObjectRenderTest implements RenderTest {
 		cubeRenderer.loadTexture(texture);
 		
 		ids[0] = objectColorRenderer.start(quad0).vertex().color(255, 255, 0, 255).next().next().next().end().end();
-		ids[1] = objectTexturedRenderer.start(quad1).vertex().color(0, 0, 0, 1).next().next().next().end().end();
-		ids[2] = objectTexturedRenderer.start(quad2).vertex().color(1, 0, 0, 1).next().next().next().end().end();
-		ids[3] = objectTexturedRenderer.start(quad3).vertex().color(0, 0, 1, 1).next().next().next().end().end();
-		ids[4] = objectTexturedRenderer.start(quad4).vertex().color(1, 1, 0, 1).next().next().next().end().end();
-		ids[5] = cubeRenderer.start(cube).vertex().color(1, 1, 0, 1).next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().end().end();
+		ids[1] = objectTexturedRenderer.start(quad1).vertex().color(0, 0, 0, 127).next().next().next().end().end();
+		ids[2] = objectTexturedRenderer.start(quad2).vertex().color(255, 0, 0, 127).next().next().next().end().end();
+		ids[3] = objectTexturedRenderer.start(quad3).vertex().color(0, 0, 255, 127).next().next().next().end().end();
+		ids[4] = objectTexturedRenderer.start(quad4).vertex().color(255, 255, 0, 127).next().next().next().end().end();
+		ids[5] = cubeRenderer.start(cube).vertex().color(0, 0, 0, 0).next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().next().end().end();
 	}
 	
 	@Override
@@ -191,7 +191,8 @@ public class ObjectRenderTest implements RenderTest {
 		
 		cubeRenderer.draw(7, new Matrix4f(projection).multiply(new Matrix4f().view(new Vector3f(10, 0, 10), 0, 0).multiply(new Matrix4f().rotate(Axis.Y, o * 8 / 13F % 360))));
 		
-		window.update(orthographic, null, null, partialTicks);
+		window.update(orthographic, partialTicks);
+		window.clear(true, true, false);
 		o++;
 	}
 	
