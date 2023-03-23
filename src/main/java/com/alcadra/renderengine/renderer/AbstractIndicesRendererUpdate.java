@@ -14,25 +14,25 @@ public abstract class AbstractIndicesRendererUpdate<AB extends ArrayBuffer<?>> e
 	
 	protected final ElementArrayBuffer elements;
 	
-	public AbstractIndicesRendererUpdate(ShaderProgram shader, VertexArray vertexArray, AB arrayBuffer, ElementArrayBuffer elementArrayBuffer)
+	protected AbstractIndicesRendererUpdate(ShaderProgram shader, VertexArray vertexArray, AB arrayBuffer, ElementArrayBuffer elementArrayBuffer)
 	{
 		super(shader, vertexArray, arrayBuffer);
 		elements = Objects.requireNonNull(elementArrayBuffer);
 	}
 	
-	public AbstractIndicesRendererUpdate(ShaderProgram shader, AB arrayBuffer, ElementArrayBuffer elementArrayBuffer)
+	protected AbstractIndicesRendererUpdate(ShaderProgram shader, AB arrayBuffer, ElementArrayBuffer elementArrayBuffer)
 	{
 		super(shader, arrayBuffer);
 		elements = Objects.requireNonNull(elementArrayBuffer);
 	}
 	
-	public AbstractIndicesRendererUpdate(ShaderProgram shader, VertexArray vertexArray, AB arrayBuffer)
+	protected AbstractIndicesRendererUpdate(ShaderProgram shader, VertexArray vertexArray, AB arrayBuffer)
 	{
 		super(shader, vertexArray, arrayBuffer);
 		elements = new ElementArrayBuffer();
 	}
 	
-	public AbstractIndicesRendererUpdate(ShaderProgram shader, AB arrayBuffer)
+	protected AbstractIndicesRendererUpdate(ShaderProgram shader, AB arrayBuffer)
 	{
 		super(shader, arrayBuffer);
 		elements = new ElementArrayBuffer();
