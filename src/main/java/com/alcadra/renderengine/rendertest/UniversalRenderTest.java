@@ -46,6 +46,7 @@ import com.alcadra.renderengine.util.Image;
 import com.alcadra.renderengine.util.RendererUtil;
 import com.alcadra.renderengine.util.Util;
 import com.alcadra.renderengine.util.color.Color;
+import com.alcadra.renderengine.util.wrapper.CullFaceMode;
 import com.alcadra.renderengine.window.Window;
 import com.alcadra.renderengine.window.cursor.StandardCursor;
 import com.alcadra.renderengine.window.widget.VisibleButton;
@@ -180,13 +181,13 @@ public class UniversalRenderTest implements RenderTest {
 		activeTest.loop(partialTicks);
 		Util.printError("loop");
 		while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
-		GL30.glEnable(GL30.GL_DEPTH_TEST);
-		GL30.glEnable(GL30.GL_BLEND);
-		GL30.glBlendFunc(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA);
-		GL30.glEnable(GL30.GL_CULL_FACE);
-		GL30.glCullFace(GL30.GL_BACK);
-		GL30.glFrontFace(GL30.GL_CW);
-		GL30.glClearColor(0.6F, 0.7F, 1, 1);
+		RenderEngine.enableDepthTest();
+		RenderEngine.enableBlend();
+		RenderEngine.enableCullFace();
+		RenderEngine.setBlendFactors(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA);
+		RenderEngine.setCullFace(CullFaceMode.BACK);
+		RenderEngine.setFrontFaceDirection(true);
+		RenderEngine.setClearColor(0.6F, 0.7F, 1, 1);
 		Util.printError("renew");
 	}
 	

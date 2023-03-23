@@ -1,5 +1,8 @@
 package com.alcadra.renderengine.renderingmanager;
 
+import java.util.EnumMap;
+import java.util.Map;
+
 import com.alcadra.math.matrix.Matrix4f;
 import com.alcadra.renderengine.renderer.Renderer;
 import com.alcadra.renderengine.renderer.RenderingMode;
@@ -10,25 +13,15 @@ import com.alcadra.renderengine.shader.ShaderProgram;
 
 public class RenderingManager {
 	
-	private static final class Rendering<R extends Renderer> {
-		
-		private R renderer;
-		private RenderingMode mode;
-		
-		public Rendering(R renderer)
-		{
-			this.renderer = renderer;
-			mode = null;
-		}
-	}
-	
-	private Rendering<UniversalRenderer> universalRendering;
-	private Rendering<FontRenderer> fontRendering;
+	private Map<RenderingMode, Rendering<UniversalRenderer>> universalRendering;
+	private Map<RenderingMode, Rendering<FontRenderer>> fontRendering;
 	
 	public RenderingManager()
 	{
-		universalRendering = new Rendering<>(new UniversalRenderer(ShaderProgram.DEFAULT));
-		fontRendering = new Rendering<>(new FontRenderer(ShaderProgram.DEFAULT, null));
+		universalRendering = new EnumMap<>(RenderingMode.class);
+		for (RenderingMode mode : RenderingMode.values()) universalRendering.put(mode, new Rendering<>(new UniversalRenderer(ShaderProgram.DEFAULT)));
+		fontRendering = new EnumMap<>(RenderingMode.class);
+		for (RenderingMode mode : RenderingMode.values()) fontRendering.put(mode, new Rendering<>(new FontRenderer(ShaderProgram.DEFAULT, null)));
 	}
 	
 	public UniversalRenderer start(RenderingMode mode, ShaderProgram program)
@@ -36,41 +29,57 @@ public class RenderingManager {
 		return startUniversal(mode, program);
 	}
 	
-	public void end(Matrix4f matrix)
+	public void end(RenderingMode mode, Matrix4f matrix)
 	{
-		endUniversal(matrix);
+		endUniversal(mode, matrix);
 	}
 	
 	public UniversalRenderer startUniversal(RenderingMode mode, ShaderProgram program)
 	{
-		if (universalRendering.mode != null) throw new RenderingAlreadyStartedException();
-		universalRendering.renderer.clear();
-		universalRendering.renderer.setShaderProgram(program);
-		universalRendering.mode = mode;
-		return universalRendering.renderer;
+		Rendering<UniversalRenderer> rendering = universalRendering.get(mode);
+		if (rendering.rendering) throw new RenderingAlreadyStartedException();
+		rendering.renderer.clear();
+		rendering.renderer.setShaderProgram(program);
+		rendering.rendering = true;
+		return rendering.renderer;
 	}
 	
-	public void endUniversal(Matrix4f matrix)
+	public void endUniversal(RenderingMode mode, Matrix4f matrix)
 	{
-		if (universalRendering.mode == null) throw new RenderingNotStartedException();
-		universalRendering.renderer.draw(universalRendering.mode, matrix);
-		universalRendering.mode = null;
+		Rendering<UniversalRenderer> rendering = universalRendering.get(mode);
+		if (!rendering.rendering) throw new RenderingNotStartedException();
+		rendering.renderer.draw(mode, matrix);
+		rendering.rendering = false;
 	}
 	
 	public FontRenderer startFont(RenderingMode mode, ShaderProgram program, Font font)
 	{
-		if (fontRendering.mode != null) throw new RenderingAlreadyStartedException();
-		fontRendering.renderer.clear();
-		fontRendering.renderer.setShaderProgram(program);
-		fontRendering.renderer.setFont(font);
-		fontRendering.mode = mode;
-		return fontRendering.renderer;
+		Rendering<FontRenderer> rendering = fontRendering.get(mode);
+		if (rendering.rendering) throw new RenderingAlreadyStartedException();
+		rendering.renderer.clear();
+		rendering.renderer.setShaderProgram(program);
+		rendering.renderer.setFont(font);
+		rendering.rendering = true;
+		return rendering.renderer;
 	}
 	
-	public void endFont(Matrix4f matrix)
+	public void endFont(RenderingMode mode, Matrix4f matrix)
 	{
-		if (fontRendering.mode == null) throw new RenderingNotStartedException();
-		fontRendering.renderer.draw(fontRendering.mode, matrix);
-		fontRendering.mode = null;
+		Rendering<FontRenderer> rendering = fontRendering.get(mode);
+		if (!rendering.rendering) throw new RenderingNotStartedException();
+		rendering.renderer.draw(mode, matrix);
+		rendering.rendering = false;
+	}
+	
+	private static final class Rendering<R extends Renderer> {
+		
+		private R renderer;
+		private boolean rendering;
+		
+		public Rendering(R renderer)
+		{
+			this.renderer = renderer;
+			rendering = false;
+		}
 	}
 }

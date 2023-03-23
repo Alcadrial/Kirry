@@ -216,7 +216,7 @@ public class RenderingManagerTest implements RenderTest {
 			renderer.vertex(0.5F, 0.5F, 0.9F).color(255, 255, 0, 255).end();
 			renderer.vertex(0.5F, -0.5F, 0.9F).color(255, 255, 0, 255).end();
 			renderer.vertex(-0.5F, -0.5F, 0.9F).color(255, 255, 0, 255).end();
-			renderingManager.end(matrix);
+			renderingManager.end(RenderingMode.QUADS, matrix);
 		}
 		{
 			Matrix4f matrix = new Matrix4f();
@@ -228,7 +228,7 @@ public class RenderingManagerTest implements RenderTest {
 			renderer.vertex(0.5F, 0.5F, 0).color(0, 255, 0, 255).end();
 			renderer.vertex(0.5F, -0.5F, 0).color(0, 255, 0, 255).end();
 			renderer.vertex(-0.5F, -0.5F, 0).color(0, 255, 0, 255).end();
-			renderingManager.end(matrix);
+			renderingManager.end(RenderingMode.QUADS, matrix);
 		}
 		{
 			Matrix4f matrix = new Matrix4f();
@@ -248,7 +248,7 @@ public class RenderingManagerTest implements RenderTest {
 			
 			FontRenderer renderer = renderingManager.startFont(RenderingMode.QUADS, fontProgram, font);
 			renderer.loadText(text, Vector2f.of(0, 256), Color.BLUE, -1, 128, 8, 0);
-			renderingManager.endFont(matrix);
+			renderingManager.endFont(RenderingMode.QUADS, matrix);
 		}
 		
 		// window.draw(compact, currentTime);
