@@ -9,10 +9,21 @@ import com.alcadra.renderengine.buffer.SimpleBuffer;
 
 public class VertexArray {
 	
-	private static final VertexArray NULL = new VertexArray(0);
+	public static final VertexArray NULL = new VertexArray(0);
 	private static VertexArray binded = NULL;
+	
+	public static void unbind()
+	{
+		NULL.bind();
+	}
+	
+	public static VertexArray getBinded()
+	{
+		return binded;
+	}
+	
 	private Map<Integer, SimpleBuffer> binds = new HashMap<>();
-	private int id;
+	private final int id;
 	
 	public VertexArray()
 	{
@@ -35,12 +46,12 @@ public class VertexArray {
 	
 	public void bindBuffer(SimpleBuffer buffer)
 	{
-		if (!getBinded(buffer.getTarget()).equals(buffer))
-		{
-			bind();
-			buffer.bind();
-			binds.put(buffer.getTarget(), buffer);
-		}
+		// if (!getBinded(buffer.getTarget()).equals(buffer))
+		// {
+		bind();
+		buffer.bind();
+		// binds.put(buffer.getTarget(), buffer);
+		// }
 	}
 	
 	public void vertexAttributePointer(int index, int size, int type, boolean normalized, int stride, int offset)
@@ -53,6 +64,11 @@ public class VertexArray {
 		GL30.glEnableVertexAttribArray(index);
 	}
 	
+	public void disableVertexAttribute(int index)
+	{
+		GL30.glDisableVertexAttribArray(index);
+	}
+	
 	public int getId()
 	{
 		return id;
@@ -61,27 +77,19 @@ public class VertexArray {
 	public SimpleBuffer getBinded(int target)
 	{
 		SimpleBuffer b = binds.get(target);
-		return b == null ? SimpleBuffer.getNull() : b;
+		return b == null ? new SimpleBuffer(target, 0) {
+			
+			@Override
+			public SimpleBuffer getNull()
+			{
+				return this;
+			}
+		} : b;
 	}
 	
 	@Override
 	public boolean equals(Object obj)
 	{
 		return obj instanceof VertexArray v && v.id == id;
-	}
-	
-	public static void unbind()
-	{
-		NULL.bind();
-	}
-	
-	public static VertexArray getNull()
-	{
-		return NULL;
-	}
-	
-	public static VertexArray getBinded()
-	{
-		return binded;
 	}
 }

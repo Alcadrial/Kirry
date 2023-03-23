@@ -2,12 +2,9 @@ package com.alcadra.renderengine.buffer;
 
 import org.lwjgl.opengl.GL15;
 
-import com.alcadra.renderengine.Launch;
-
-public class SimpleBuffer {
+public abstract class SimpleBuffer {
 	
-	private static final SimpleBuffer NULL = new SimpleBuffer(0, 0);
-	private int target, id;
+	private final int target, id;
 	
 	public SimpleBuffer()
 	{
@@ -16,12 +13,11 @@ public class SimpleBuffer {
 	
 	protected SimpleBuffer(int target)
 	{
-		this(GL15.GL_ARRAY_BUFFER, GL15.glGenBuffers());
+		this(target, GL15.glGenBuffers());
 	}
 	
 	protected SimpleBuffer(int target, int id)
 	{
-		Launch.printError("[INTERNAL] simplebuffer " + target + " " + id);
 		this.target = target;
 		this.id = id;
 	}
@@ -29,6 +25,18 @@ public class SimpleBuffer {
 	public void bind()
 	{
 		GL15.glBindBuffer(getTarget(), getId());
+	}
+	
+	public void asBinded(Runnable runnable)
+	{
+		bind();
+		runnable.run();
+		unbind();
+	}
+	
+	public void unbind()
+	{
+		getNull().bind();
 	}
 	
 	public int getTarget()
@@ -41,8 +49,5 @@ public class SimpleBuffer {
 		return id;
 	}
 	
-	public static SimpleBuffer getNull()
-	{
-		return NULL;
-	}
+	public abstract SimpleBuffer getNull();
 }

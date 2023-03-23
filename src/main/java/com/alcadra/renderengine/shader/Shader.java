@@ -2,6 +2,7 @@ package com.alcadra.renderengine.shader;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 
 import org.lwjgl.opengl.GL20;
 
@@ -9,13 +10,10 @@ import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.IVector4f;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector3f;
-import com.alcadra.renderengine.util.Util;
 
 public class Shader {
 	
 	private static int programInUse = 0;
-	private ShaderInputDataType colorInputDataType, uvInputDataType, normalInputDataType;
-	private int program;
 	
 	public static void disableShaders()
 	{
@@ -25,6 +23,9 @@ public class Shader {
 			programInUse = 0;
 		}
 	}
+	
+	private ShaderInputDataType colorInputDataType, uvInputDataType, normalInputDataType;
+	private int program;
 	
 	public Shader(ShaderInputDataType colorInputDataType, ShaderInputDataType uvInputDataType, ShaderInputDataType normalInputDataType)
 	{
@@ -135,14 +136,14 @@ public class Shader {
 	
 	public ShaderStatus loadShaderFile(File file, ShaderType type) throws IOException
 	{
-		if (type == ShaderType.UNKNOWN) return new ShaderStatus(false, 0, "unknown");
-		String code = Util.loadFileToString(file);
+		if (type == ShaderType.UNKNOWN) return new ShaderStatus(false, 0, "unknown", "Unknown shader cannot be loaded!");
+		String code = Files.readString(file.toPath());
 		int shader = GL20.glCreateShader(type.getId());
 		GL20.glShaderSource(shader, code);
 		GL20.glCompileShader(shader);
-		if (GL20.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) == 0) return new ShaderStatus(false, shader, code);
+		if (GL20.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) == 0) return new ShaderStatus(false, shader, code, GL20.glGetShaderInfoLog(shader));
 		GL20.glAttachShader(program, shader);
 		GL20.glDeleteShader(shader);
-		return new ShaderStatus(true, shader, code);
+		return new ShaderStatus(true, shader, code, GL20.glGetShaderInfoLog(shader));
 	}
 }

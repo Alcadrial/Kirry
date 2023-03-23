@@ -1,8 +1,5 @@
 package com.alcadra.renderengine.util;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.List;
 
 import com.alcadra.math.vector.Vector1f;
@@ -18,19 +15,6 @@ public class Util {
 		if (vector instanceof Vector2f) return "{x=" + vector.x() + ", y= " + vector.y() + "}";
 		if (vector instanceof Vector3f) return "{x=" + vector.x() + ", y= " + vector.y() + ", z= " + vector.z() + "}";
 		return "{x=" + vector.x() + ", y= " + vector.y() + ", z= " + vector.z() + ", w= " + vector.w() + "}";
-	}
-	
-	public static String loadFileToString(File file) throws IOException
-	{
-		FileInputStream reader = new FileInputStream(file);
-		String result = new String(reader.readAllBytes());
-		reader.close();
-		return result;
-	}
-	
-	public static String loadFileToString(String file) throws IOException
-	{
-		return loadFileToString(new File(file));
 	}
 	
 	public static String newParamerizedString(String base, String parametertrigger, List<Object> parameters)

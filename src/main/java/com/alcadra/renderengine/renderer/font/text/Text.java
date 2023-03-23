@@ -38,6 +38,11 @@ public class Text implements Iterable<TextLine> {
 		}
 	}
 	
+	public void addNewLine()
+	{
+		addLine(new TextLine());
+	}
+	
 	public TextLine setLine(int index, TextLine line)
 	{
 		if (line == null) return line;

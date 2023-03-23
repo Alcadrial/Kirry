@@ -5,140 +5,117 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL15;
+import org.lwjgl.system.MemoryUtil;
 
-import com.alcadra.renderengine.Launch;
-
-public class FloatArrayBuffer extends ArrayBuffer {
+public class FloatArrayBuffer extends ArrayBuffer<FloatBuffer> {
 	
 	protected List<Float> values = new ArrayList<>();
 	
 	public FloatArrayBuffer()
 	{}
 	
-	protected FloatArrayBuffer(int target)
-	{
-		super(target);
-	}
-	
-	protected FloatArrayBuffer(int target, int id)
-	{
-		super(target, id);
-	}
-	
-	@Override
-	public void add(byte i)
-	{
-		throw new IllegalArgumentException("Only floats accepted");
-	}
-	
-	@Override
-	public void add(short i)
-	{
-		throw new IllegalArgumentException("Only floats accepted");
-	}
-	
-	@Override
-	public void add(int i)
-	{
-		throw new IllegalArgumentException("Only floats accepted");
-	}
-	
-	@Override
 	public void add(float f)
 	{
 		values.add(f);
+		isModified = true;
 	}
 	
 	public void addAll(Collection<Float> f)
 	{
 		values.addAll(f);
+		isModified = true;
 	}
 	
-	@Override
-	public void add(long i)
+	public void addAll(float[] f)
 	{
-		throw new IllegalArgumentException("Only floats accepted");
+		for (float f0 : f) values.add(f0);
+		isModified = true;
 	}
 	
-	@Override
-	public void add(double f)
+	public float getFloat(int index)
 	{
-		throw new IllegalArgumentException("Only floats accepted");
+		return values.get(index);
 	}
 	
-	@Override
-	public void merge(ArrayBuffer arrayBuffer)
+	public void merge(FloatArrayBuffer arrayBuffer)
 	{
-		if (!(arrayBuffer instanceof FloatArrayBuffer)) throw new IllegalArgumentException("Only FloatArrayBuffers accepted");
-		values.addAll(((FloatArrayBuffer) arrayBuffer).values);
+		values.addAll(arrayBuffer.values);
+		isModified = true;
 	}
 	
-	@Override
 	public void clear()
 	{
 		values.clear();
-	}
-	
-	@Override
-	public void sync()
-	{
-		bind();
-		// int size = (int) (getGlByteSize() / 4F);
-		// if (size != values.size())
-		{
-			FloatBuffer b = BufferUtils.createFloatBuffer(values.size());
-			for (Float i : values) b.put(i);
-			GL15.glBufferData(getTarget(), b.flip(), GL15.GL_DYNAMIC_DRAW);
-			Launch.printError("ArrayBuffer[INTERNAL] data");
-		}
-		// else
-		// {
-		// FloatBuffer fixed = BufferUtils.createFloatBuffer(size);
-		// for (Float i : values) fixed.put(i);
-		// fixed.flip();
-		//
-		// FloatBuffer buffer = BufferUtils.createFloatBuffer(size);
-		// GL15.glGetBufferSubData(getTarget(), 0, buffer);
-		//
-		// Launch.printError("ArrayBuffer[INTERNAL] get sub data " + size + "/" + getGlByteSize() / 4F);
-		// int start = -1;
-		// for (int i = 0; i < size; i++)
-		// {
-		// if (buffer.get() != fixed.get())
-		// {
-		// if (start == -1) start = i;
-		// }
-		// else if (start != -1)
-		// {
-		// FloatBuffer l = BufferUtils.createFloatBuffer(i - start);
-		// for (int j = start; j < i; j++) l.put(fixed.get(j));
-		//
-		// GL15.glBufferSubData(getTarget(), start, l.flip());
-		// Launch.printError("ArrayBuffer[INTERNAL] sub data");
-		// start = -1;
-		// }
-		// }
-		// }
-		Launch.printError("ArrayBuffer[INTERNAL] sync");
+		isModified = true;
 	}
 	
 	public List<Float> asList()
 	{
-		return new ArrayList<>(values);
-	}
-	
-	@Override
-	protected int elementSize()
-	{
-		return 3;
+		return List.copyOf(values);
 	}
 	
 	@Override
 	public int size()
 	{
 		return values.size();
+	}
+	
+	@Override
+	public int byteSize()
+	{
+		return size() * 4;
+	}
+	
+	@Override
+	protected FloatBuffer nativeBuffer()
+	{
+		FloatBuffer buffer = MemoryUtil.memAllocFloat(values.size());
+		for (Float i : values) buffer.put(i);
+		return buffer.flip();
+	}
+	
+	@Override
+	protected FloatBuffer nativeGlBuffer()
+	{
+		FloatBuffer buffer = MemoryUtil.memAllocFloat(getGlSize());
+		GL15.glGetBufferSubData(getTarget(), 0, buffer);
+		return buffer;
+	}
+	
+	@Override
+	protected void syncRewrite(FloatBuffer buffer)
+	{
+		GL15.glBufferData(getTarget(), buffer, GL15.GL_DYNAMIC_DRAW);
+	}
+	
+	@Override
+	protected void syncModify(FloatBuffer buffer, int from, int to)
+	{
+		GL15.glBufferSubData(getTarget(), from, buffer.position(from - 1).limit(to));
+	}
+	
+	@Override
+	protected boolean equals(FloatBuffer buffer, FloatBuffer other)
+	{
+		return buffer.get() == other.get();
+	}
+	
+	@Override
+	protected int elementSize()
+	{
+		return 4;
+	}
+	
+	@Override
+	public float[] getGlFloatData()
+	{
+		FloatBuffer buffer = MemoryUtil.memAllocFloat(getGlSize());
+		GL15.glGetBufferSubData(getTarget(), 0, buffer);
+		float[] v = new float[buffer.limit()];
+		for (int i = 0; i < v.length; i++) v[i] = buffer.get(i);
+		MemoryUtil.memFree(buffer);
+		return v;
 	}
 	
 	@Override
