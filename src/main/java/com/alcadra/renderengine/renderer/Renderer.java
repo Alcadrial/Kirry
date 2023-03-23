@@ -224,6 +224,21 @@ public class Renderer extends BaseRenderer<FloatArrayBuffer> implements ShaderRe
 			if (shader.hasUniformNormal()) shader.setUniform(bindedNormal, "normal");
 			if (shader.useUV() || shader.hasUniformUV()) shader.setUniform(0, "textureSampler");
 		}
+		draw(mode, getArrayBuffer().size());
+		Shader.disableShaders();
+	}
+	
+	public void drawPoints(int mode, Matrix4f matrix)
+	{
+		if (shader != null)
+		{
+			shader.enable();
+			shader.setUniform(matrix, "transformation");
+			if (shader.hasUniformColor()) shader.setUniform(bindedColor, "color");
+			if (shader.hasUniformUV()) shader.setUniform(bindedUV, "uv");
+			if (shader.hasUniformNormal()) shader.setUniform(bindedNormal, "normal");
+			if (shader.useUV() || shader.hasUniformUV()) shader.setUniform(0, "textureSampler");
+		}
 		drawIndices(mode);
 		Shader.disableShaders();
 	}
