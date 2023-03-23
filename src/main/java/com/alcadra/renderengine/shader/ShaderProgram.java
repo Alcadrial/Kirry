@@ -7,11 +7,21 @@ import java.util.List;
 import org.lwjgl.opengl.GL20;
 
 import com.alcadra.renderengine.shader.uniform.ShaderUniform;
+import com.alcadra.renderengine.util.Deletable;
 import com.alcadra.renderengine.util.NotUsed;
 
-public class ShaderProgram {
+public class ShaderProgram implements Deletable {
+	
+	public static final ShaderProgram DEFAULT = new ShaderProgram();
+	
+	static
+	{
+		DEFAULT.build();
+		DEFAULT.programInputs = List.of(ShaderInput.VERTEX_POSITION);
+	}
 	
 	private List<Shader>[] attachedShaders;
+	@NotUsed
 	private List<ShaderInput> knownInputs;
 	private List<ShaderInput> programInputs;
 	private int id;
@@ -109,7 +119,6 @@ public class ShaderProgram {
 	{
 		if (id != -1)
 		{
-			
 			for (List<Shader> list : attachedShaders) for (Shader shader : list) shader.removeProgram(this);
 			attachedShaders = new List[0];
 			knownInputs = List.of();
@@ -130,6 +139,7 @@ public class ShaderProgram {
 		return List.copyOf(attachedShaders[type.ordinal()]);
 	}
 	
+	@NotUsed
 	public List<ShaderInput> getKnownInputs()
 	{
 		return knownInputs;
@@ -148,5 +158,11 @@ public class ShaderProgram {
 	public int getId()
 	{
 		return id;
+	}
+	
+	@Override
+	public void close()
+	{
+		delete();
 	}
 }

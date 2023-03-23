@@ -4,7 +4,9 @@ import org.lwjgl.opengl.GL30;
 
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.renderengine.util.Util;
+import com.alcadra.renderengine.util.WorkInProgress;
 
+@WorkInProgress
 public class RenderBuffer extends SimpleBuffer {
 	
 	private final Vector2i size;

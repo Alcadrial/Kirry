@@ -1,8 +1,6 @@
 package com.alcadra.renderengine.window.widget;
 
-import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector2i;
-import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector3i;
 import com.alcadra.renderengine.window.Window;
 
@@ -15,8 +13,8 @@ public abstract class Widget implements IWidget {
 	public Widget(Window window, Vector3i pos, Vector2i size)
 	{
 		this.window = window;
-		this.pos = pos;
-		this.size = size;
+		this.pos = Vector3i.copyOf(pos);
+		this.size = Vector2i.copyOf(size);
 	}
 	
 	@Override
@@ -62,14 +60,15 @@ public abstract class Widget implements IWidget {
 	@Override
 	public final void setPos(Vector3i pos)
 	{
-		Vector3i oldPos = this.pos;
-		this.pos = move(oldPos, pos);
+		Vector3i oldPos = this.pos.xyz();
+		move(pos);
+		this.pos = pos.xyz();
 		onMove(oldPos, pos);
 	}
 	
-	protected Vector3i move(Vector3i oldPos, Vector3i newPos)
+	protected void move(Vector3i newPos)
 	{
-		return new Vector3i(new Vector3f(pos.xy()).multiply(newPos).divide(oldPos));
+		
 	}
 	
 	protected void onMove(Vector3i oldPos, Vector3i newPos)
@@ -80,14 +79,15 @@ public abstract class Widget implements IWidget {
 	@Override
 	public final void setSize(Vector2i size)
 	{
-		Vector2i oldSize = this.size;
-		this.size = resize(oldSize, size);
+		Vector2i oldSize = this.size.xy();
+		resize(size);
+		this.size = size.xy();
 		onResize(oldSize, size);
 	}
 	
-	protected Vector2i resize(Vector2i oldSize, Vector2i newSize)
+	protected void resize(Vector2i newSize)
 	{
-		return new Vector2i(new Vector2f(size).multiply(newSize).divide(oldSize));
+		
 	}
 	
 	protected void onResize(Vector2i oldSize, Vector2i newSize)

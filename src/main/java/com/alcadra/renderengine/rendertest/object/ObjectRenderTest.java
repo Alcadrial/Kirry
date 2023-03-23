@@ -1,4 +1,4 @@
-package com.alcadra.renderengine.rendertest;
+package com.alcadra.renderengine.rendertest.object;
 
 import java.io.File;
 import java.io.IOException;
@@ -7,11 +7,10 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 
 import com.alcadra.math.Matrix4f;
+import com.alcadra.math.vector.Axis;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
-import com.alcadra.math.vector.axis.Axis;
-import com.alcadra.renderengine.RenderEngine;
 import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.renderer.font.Font;
 import com.alcadra.renderengine.renderer.font.FontRenderer;
@@ -20,15 +19,15 @@ import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.renderer.object.BufferableModel;
 import com.alcadra.renderengine.renderer.object.ObjectBuilder;
 import com.alcadra.renderengine.renderer.object.ObjectRenderer;
+import com.alcadra.renderengine.rendertest.UniversalRenderTest;
 import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.textures.Texture;
 import com.alcadra.renderengine.textures.TextureTemplate;
 import com.alcadra.renderengine.util.Image;
-import com.alcadra.renderengine.util.Tracker;
+import com.alcadra.renderengine.util.SwitchableTracker;
 import com.alcadra.renderengine.util.color.Color;
-import com.alcadra.renderengine.util.color.VectorColorRGB;
-import com.alcadra.renderengine.util.color.VectorColorRGBA;
+import com.alcadra.renderengine.util.color.ColorRGB;
 import com.alcadra.renderengine.window.Window;
 
 @SuppressWarnings("deprecation")
@@ -57,7 +56,7 @@ public class ObjectRenderTest implements RenderTest {
 				{
 					case GLFW.GLFW_KEY_KP_7 ->
 					{
-						RenderEngine.setActiveTest(RenderEngine.RENDER_ENGINE_TEST);
+						UniversalRenderTest.setActiveTest(UniversalRenderTest.RENDER_ENGINE_TEST);
 					}
 				}
 			}
@@ -69,11 +68,11 @@ public class ObjectRenderTest implements RenderTest {
 		
 		try
 		{
-			font = new Font(new File(RenderEngine.fontPath), new File(RenderEngine.fontImagePath));
-			window.setIcon(new Image(new File(RenderEngine.iconPath)));
+			font = new Font(new File(UniversalRenderTest.fontPath), new File(UniversalRenderTest.fontImagePath));
+			window.setIcon(new Image(new File(UniversalRenderTest.iconPath)));
 			texture = new Texture(TextureTemplate.RGBA_2D_TEXTURE);
-			Image image = new Image(new File(RenderEngine.texturePath));
-			texture.setData2D(image.loadToBuffer(), image.getBuffered().getWidth(), image.getBuffered().getHeight(), 0);
+			Image image = new Image(new File(UniversalRenderTest.texturePath));
+			texture.setData2D(texture.getTemplate(), image.loadToBuffer(), image.getBuffered().getWidth(), image.getBuffered().getHeight(), 0);
 		}
 		catch (IOException e)
 		{
@@ -84,11 +83,11 @@ public class ObjectRenderTest implements RenderTest {
 		ShaderProgram fontProgram = new ShaderProgram();
 		try
 		{
-			shader = new Shader(new File(RenderEngine.fontShaderVertexPath));
+			shader = new Shader(new File(UniversalRenderTest.fontShaderVertexPath));
 			shader.loadShader();
 			if (!shader.getStatus().isCompiled()) System.out.println(shader.getStatus());
 			fontProgram.attachShader(shader);
-			shader = new Shader(new File(RenderEngine.fontShaderFragmentPath));
+			shader = new Shader(new File(UniversalRenderTest.fontShaderFragmentPath));
 			shader.loadShader();
 			if (!shader.getStatus().isCompiled()) System.out.println(shader.getStatus());
 			fontProgram.attachShader(shader);
@@ -104,10 +103,10 @@ public class ObjectRenderTest implements RenderTest {
 		ShaderProgram colorProgram = new ShaderProgram();
 		try
 		{
-			shader = new Shader(new File(RenderEngine.colorShaderVertexPath));
+			shader = new Shader(new File(UniversalRenderTest.colorShaderVertexPath));
 			shader.loadShader();
 			colorProgram.attachShader(shader);
-			shader = new Shader(new File(RenderEngine.colorShaderFragmentPath));
+			shader = new Shader(new File(UniversalRenderTest.colorShaderFragmentPath));
 			shader.loadShader();
 			colorProgram.attachShader(shader);
 		}
@@ -122,10 +121,10 @@ public class ObjectRenderTest implements RenderTest {
 		ShaderProgram objectTexturedShader = new ShaderProgram();
 		try
 		{
-			shader = new Shader(new File(RenderEngine.textureShaderVertexPath));
+			shader = new Shader(new File(UniversalRenderTest.textureShaderVertexPath));
 			shader.loadShader();
 			objectTexturedShader.attachShader(shader);
-			shader = new Shader(new File(RenderEngine.textureShaderFragmentPath));
+			shader = new Shader(new File(UniversalRenderTest.textureShaderFragmentPath));
 			shader.loadShader();
 			objectTexturedShader.attachShader(shader);
 		}
@@ -162,10 +161,10 @@ public class ObjectRenderTest implements RenderTest {
 	private void init()
 	{
 		trackers[0] = buildQuad(quad0, Color.LIGHT_YELLOW);
-		trackers[1] = buildQuad(quad1, Color.ofVector(0x00, 0x00, 0x00, 0x7F));
-		trackers[2] = buildQuad(quad2, Color.ofVector(0xFF, 0x00, 0x00, 0x7F));
-		trackers[3] = buildQuad(quad3, Color.ofVector(0x00, 0x00, 0xFF, 0x7F));
-		trackers[4] = buildQuad(quad4, Color.ofVector(0xFF, 0xFF, 0x00, 0x7F));
+		trackers[1] = buildQuad(quad1, Color.of(0x00, 0x00, 0x00, 0x7F));
+		trackers[2] = buildQuad(quad2, Color.of(0xFF, 0x00, 0x00, 0x7F));
+		trackers[3] = buildQuad(quad3, Color.of(0x00, 0x00, 0xFF, 0x7F));
+		trackers[4] = buildQuad(quad4, Color.of(0xFF, 0xFF, 0x00, 0x7F));
 		trackers[5] = track(cube0, cubeRenderer);
 		trackers[6] = track(cube1, cubeRenderer);
 		trackers[6].disable();
@@ -177,21 +176,21 @@ public class ObjectRenderTest implements RenderTest {
 		window.render(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
 	}
 	
-	private Tracker<BufferableModel> buildQuad(Quad quad, VectorColorRGBA color)
+	private SwitchableTracker<BufferableModel> buildQuad(Quad quad, Color color)
 	{
 		ObjectBuilder builder = objectColorRenderer.start(quad);
 		builder.vertex().color(color.r(), color.g(), color.b()).color(color.r(), color.g(), color.b(), color.a()).next().next().next().end();
 		return builder.end();
 	}
 	
-	private Tracker<BufferableModel> buildQuad(Quad quad, VectorColorRGB color)
+	private SwitchableTracker<BufferableModel> buildQuad(Quad quad, ColorRGB color)
 	{
 		ObjectBuilder builder = objectColorRenderer.start(quad);
 		builder.vertex().color(color.r(), color.g(), color.b()).next().next().next().end();
 		return builder.end();
 	}
 	
-	private Tracker<BufferableModel> track(Cube cube, ObjectRenderer renderer)
+	private SwitchableTracker<BufferableModel> track(Cube cube, ObjectRenderer renderer)
 	{
 		ObjectBuilder builder = renderer.start(cube);
 		builder.vertex().color(0x00, 0x00, 0x00, 0x7F).next().next().next().end();
@@ -203,20 +202,20 @@ public class ObjectRenderTest implements RenderTest {
 		return builder.end();
 	}
 	
-	private Quad quad0 = new Quad(new Vector2f(16, 16), new Vector2f(32, 32));
-	private Quad quad1 = new Quad(new Vector2f(64, 320), new Vector2f(256, 256));
-	private Quad quad2 = new Quad(new Vector2f(320, 320), new Vector2f(256, 256));
-	private Quad quad3 = new Quad(new Vector2f(320, 64), new Vector2f(256, 256));
-	private Quad quad4 = new Quad(new Vector2f(64, 64), new Vector2f(256, 256));
+	private Quad quad0 = new Quad(Vector2f.of(16, 16), Vector2f.of(32, 32));
+	private Quad quad1 = new Quad(Vector2f.of(64, 320), Vector2f.of(256, 256));
+	private Quad quad2 = new Quad(Vector2f.of(320, 320), Vector2f.of(256, 256));
+	private Quad quad3 = new Quad(Vector2f.of(320, 64), Vector2f.of(256, 256));
+	private Quad quad4 = new Quad(Vector2f.of(64, 64), Vector2f.of(256, 256));
 	
-	private Cube cube0 = new Cube(new Vector3f(0, 0, 0), new Vector3f(1, 1, 1));
-	private Cube cube1 = new Cube(new Vector3f(0, 0, 0), new Vector3f(2, 2, 2));
-	private Cube cube2 = new Cube(new Vector3f(0, 0, 0), new Vector3f(3, 3, 3));
-	private Cube cube3 = new Cube(new Vector3f(0, 0, 0), new Vector3f(4, 4, 4));
+	private Cube cube0 = new Cube(Vector3f.of(0, 0, 0), Vector3f.of(1, 1, 1));
+	private Cube cube1 = new Cube(Vector3f.of(0, 0, 0), Vector3f.of(2, 2, 2));
+	private Cube cube2 = new Cube(Vector3f.of(0, 0, 0), Vector3f.of(3, 3, 3));
+	private Cube cube3 = new Cube(Vector3f.of(0, 0, 0), Vector3f.of(4, 4, 4));
 	private Cube[] cubes = new Cube[] {cube0, cube1, cube2, cube3};
 	
 	@SuppressWarnings("rawtypes")
-	private Tracker[] trackers = new Tracker[10];
+	private SwitchableTracker[] trackers = new SwitchableTracker[10];
 	private int o = 0;
 	
 	@SuppressWarnings("unchecked")
@@ -230,7 +229,7 @@ public class ObjectRenderTest implements RenderTest {
 		Text text = new Text();
 		text.addLine(new TextLine("partialticks " + partialTicks));
 		text.addLine(new TextLine("time " + o));
-		fontRenderer.loadText(text, new Vector2i(0, window.getHeight() - font.getLineHeight()), Color.BLACK, 1, window.getWidth(), 0);
+		fontRenderer.loadText(text, Vector2i.of(0, window.getHeight() - font.getLineHeight()), Color.BLACK, 1, window.getWidth(), 0);
 		fontRenderer.draw(orthographicPositive);
 		
 		int i = o / 10 % 14;
@@ -247,7 +246,7 @@ public class ObjectRenderTest implements RenderTest {
 		else if (i == 11) trackers[5].modify(cubes[2]);
 		else if (i == 12) trackers[5].modify(cubes[3]);
 		else if (i == 13) trackers[5].modify(cubes[0]);
-		cubeRenderer.drawVertices(RenderingMode.QUADS, new Matrix4f(projection).multiply(new Matrix4f().view(new Vector3f(10, 0, 10), 0, 0).multiply(new Matrix4f().rotate(Axis.Y, o * 8 / 13F % 360))));
+		cubeRenderer.drawVertices(RenderingMode.QUADS, new Matrix4f(projection).multiply(new Matrix4f().view(Vector3f.of(10, 0, 10), 0, 0).multiply(new Matrix4f().rotate(Axis.Y, o * 8 / 13F % 360))));
 		
 		window.update(orthographic, partialTicks);
 		window.clear(true, true, false);

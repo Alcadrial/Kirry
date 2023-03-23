@@ -8,7 +8,7 @@ import com.alcadra.renderengine.renderer.IllegalBuildingState;
 import com.alcadra.renderengine.renderer.data.FloatListVertexData;
 import com.alcadra.renderengine.renderer.data.VertexData;
 import com.alcadra.renderengine.shader.ShaderProgram;
-import com.alcadra.renderengine.util.Tracker;
+import com.alcadra.renderengine.util.SwitchableTracker;
 import com.alcadra.renderengine.util.WorkInProgress;
 
 @WorkInProgress
@@ -33,9 +33,9 @@ public class ObjectBuilder {
 		return new VertexBuilder();
 	}
 	
-	public <B extends BufferableModel> Tracker<B> end()
+	public <B extends BufferableModel> SwitchableTracker<B> end()
 	{
-		Tracker<B> tracker = renderer.build(this);
+		SwitchableTracker<B> tracker = renderer.build(this);
 		return tracker;
 	}
 	

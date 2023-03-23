@@ -1,6 +1,11 @@
 package com.alcadra.renderengine.textures;
 
-public class IllegalTargetException extends RuntimeException {
+public class IllegalTargetException extends TextureTemplateException {
+	
+	public IllegalTargetException()
+	{
+		
+	}
 	
 	public IllegalTargetException(String message)
 	{
@@ -20,10 +25,5 @@ public class IllegalTargetException extends RuntimeException {
 	public IllegalTargetException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace)
 	{
 		super(message, cause, enableSuppression, writableStackTrace);
-	}
-	
-	public IllegalTargetException()
-	{
-		
 	}
 }

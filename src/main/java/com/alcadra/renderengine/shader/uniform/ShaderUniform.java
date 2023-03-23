@@ -74,7 +74,7 @@ public abstract class ShaderUniform<T> {
 	
 	private String name;
 	
-	ShaderUniform(String name)
+	protected ShaderUniform(String name)
 	{
 		this.name = Objects.requireNonNull(name, "ShaderUniform name must not be null!");
 	}

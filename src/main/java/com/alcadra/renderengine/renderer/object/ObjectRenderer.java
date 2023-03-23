@@ -3,29 +3,28 @@ package com.alcadra.renderengine.renderer.object;
 import java.util.Objects;
 
 import com.alcadra.math.Matrix4f;
-import com.alcadra.math.vector.Vector3f;
-import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.buffer.ObjectArrayBuffer;
 import com.alcadra.renderengine.renderer.AbstractShaderRenderer;
 import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.shader.ShaderInput;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.uniform.ShaderUniform;
-import com.alcadra.renderengine.util.Tracker;
+import com.alcadra.renderengine.shader.uniform.extra.ColorUniform;
+import com.alcadra.renderengine.util.SwitchableTracker;
 import com.alcadra.renderengine.util.WorkInProgress;
 import com.alcadra.renderengine.util.color.Color;
-import com.alcadra.renderengine.util.color.VectorColorRGBA;
+import com.alcadra.renderengine.util.color.ColorFormat;
 
 @WorkInProgress
 public class ObjectRenderer extends AbstractShaderRenderer<ObjectArrayBuffer<Object>> {
 	
 	private static final ShaderUniform<Matrix4f> TRANSFORMATION = ShaderUniform.ofMatrix4f("TRANSFORMATION");
-	private static final ShaderUniform<Vector4f> COLOR = ShaderUniform.ofVector4f("COLOR");
-	private static final ShaderUniform<Vector3f> COLOR_RGB = ShaderUniform.ofVector3f("COLOR_RGB");
+	private static final ShaderUniform<Color> COLOR = new ColorUniform("COLOR", ColorFormat.RGBA);
+	private static final ShaderUniform<Color> COLOR_RGB = new ColorUniform("COLOR_RGB", ColorFormat.RGB);
 	private static final ShaderUniform<Integer> TEXTURE_SAMPLER = ShaderUniform.ofInt("TEXTURE_SAMPLER");
 	
 	private BufferableModel buildingValue;
-	private Vector4f color;
+	private Color color;
 	private int textureSampler;
 	private int offset;
 	
@@ -41,7 +40,7 @@ public class ObjectRenderer extends AbstractShaderRenderer<ObjectArrayBuffer<Obj
 		return new ObjectBuilder(this);
 	}
 	
-	protected <B extends BufferableModel> Tracker<B> build(ObjectBuilder builder)
+	protected <B extends BufferableModel> SwitchableTracker<B> build(ObjectBuilder builder)
 	{
 		return new Tracker0<>(arrayBuffer.add(buildingValue, buildData(buildingValue)));
 	}
@@ -79,23 +78,23 @@ public class ObjectRenderer extends AbstractShaderRenderer<ObjectArrayBuffer<Obj
 		program.setUniform(TRANSFORMATION, matrix);
 		program.setUniform(TEXTURE_SAMPLER, textureSampler);
 		program.setUniform(COLOR, color);
-		program.setUniform(COLOR_RGB, color.xyz());
+		program.setUniform(COLOR_RGB, color);
 		draw(mode, arrayBuffer.intSize());
 	}
 	
-	public void setUniformColor(VectorColorRGBA color)
+	public void setUniformColor(Color color)
 	{
 		this.color = Objects.requireNonNull(color);
 	}
 	
 	public void setUniformColor(float r, float g, float b)
 	{
-		color = Color.ofVector(r, g, b);
+		color = Color.of(r, g, b);
 	}
 	
 	public void setUniformColor(float r, float g, float b, float a)
 	{
-		color = Color.ofVector(r, g, b, a);
+		color = Color.of(r, g, b, a);
 	}
 	
 	public void setUniformTextureSampler(int textureSampler)
@@ -132,11 +131,11 @@ public class ObjectRenderer extends AbstractShaderRenderer<ObjectArrayBuffer<Obj
 		return "ObjectRenderer{" + arrayBuffer + "}";
 	}
 	
-	private class Tracker0<B extends BufferableModel> implements Tracker<B> {
+	private class Tracker0<B extends BufferableModel> implements SwitchableTracker<B> {
 		
-		private Tracker<float[]> tracker;
+		private SwitchableTracker<float[]> tracker;
 		
-		public Tracker0(Tracker<float[]> tracker)
+		public Tracker0(SwitchableTracker<float[]> tracker)
 		{
 			this.tracker = tracker;
 		}

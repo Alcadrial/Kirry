@@ -2,18 +2,9 @@ package com.alcadra.renderengine.textures;
 
 import java.util.Set;
 
-import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL43;
 
 public record TextureTemplate(int target, int internalFormat, int textureFormat, int dataType, int attachment) {
-	
-	public static final TextureTemplate RGBA_2D_TEXTURE = new TextureTemplate(GL11.GL_TEXTURE_2D, GL11.GL_RGBA, GL11.GL_RGBA, GL11.GL_UNSIGNED_INT, GL43.GL_COLOR_ATTACHMENT0);
-	public static final TextureTemplate RGB_2D_TEXTURE = RGBA_2D_TEXTURE.withFormat(GL11.GL_RGB);
-	public static final TextureTemplate RGBA_CUBE_MAP_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_CUBE_MAP, GL11.GL_RGBA, GL11.GL_RGBA, GL11.GL_UNSIGNED_INT, GL43.GL_COLOR_ATTACHMENT0);
-	public static final TextureTemplate RGBA_RECTANGLE_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_RECTANGLE, GL11.GL_RGBA, GL11.GL_RGBA, GL11.GL_UNSIGNED_INT, GL43.GL_COLOR_ATTACHMENT0);
-	public static final TextureTemplate DEPTH_2D_TEXTURE = new TextureTemplate(GL11.GL_TEXTURE_2D, GL11.GL_DEPTH_COMPONENT, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, GL43.GL_DEPTH_ATTACHMENT);
-	public static final TextureTemplate STENCIL_2D_TEXTURE = new TextureTemplate(GL11.GL_TEXTURE_2D, GL43.GL_DEPTH_STENCIL, GL43.GL_STENCIL_INDEX, GL11.GL_UNSIGNED_BYTE, GL43.GL_STENCIL_ATTACHMENT);
-	public static final TextureTemplate DEPTH_STENCIL_2D_TEXTURE = new TextureTemplate(GL11.GL_TEXTURE_2D, GL43.GL_DEPTH_STENCIL, GL43.GL_DEPTH_STENCIL, GL43.GL_UNSIGNED_INT_24_8, GL43.GL_DEPTH_STENCIL_ATTACHMENT);
 	
 	private static final Set<Integer> VALID_TARGETS = Set.of(
 			GL43.GL_TEXTURE_1D,
@@ -93,6 +84,14 @@ public record TextureTemplate(int target, int internalFormat, int textureFormat,
 			GL43.GL_DEPTH_ATTACHMENT,
 			GL43.GL_STENCIL_ATTACHMENT,
 			GL43.GL_DEPTH_STENCIL_ATTACHMENT);
+	
+	public static final TextureTemplate RGBA_2D_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_2D, GL43.GL_RGBA, GL43.GL_RGBA, GL43.GL_UNSIGNED_INT_8_8_8_8, GL43.GL_COLOR_ATTACHMENT0);
+	public static final TextureTemplate RGB_2D_TEXTURE = RGBA_2D_TEXTURE.withFormat(GL43.GL_RGB);
+	public static final TextureTemplate RGBA_CUBE_MAP_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_CUBE_MAP, GL43.GL_RGBA, GL43.GL_RGBA, GL43.GL_UNSIGNED_INT_8_8_8_8, GL43.GL_COLOR_ATTACHMENT0);
+	public static final TextureTemplate RGBA_RECTANGLE_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_RECTANGLE, GL43.GL_RGBA, GL43.GL_RGBA, GL43.GL_UNSIGNED_INT_8_8_8_8, GL43.GL_COLOR_ATTACHMENT0);
+	public static final TextureTemplate DEPTH_2D_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_2D, GL43.GL_DEPTH_COMPONENT, GL43.GL_DEPTH_COMPONENT, GL43.GL_FLOAT, GL43.GL_DEPTH_ATTACHMENT);
+	public static final TextureTemplate STENCIL_2D_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_2D, GL43.GL_DEPTH_STENCIL, GL43.GL_STENCIL_INDEX, GL43.GL_UNSIGNED_BYTE, GL43.GL_STENCIL_ATTACHMENT);
+	public static final TextureTemplate DEPTH_STENCIL_2D_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_2D, GL43.GL_DEPTH_STENCIL, GL43.GL_DEPTH_STENCIL, GL43.GL_UNSIGNED_INT_24_8, GL43.GL_DEPTH_STENCIL_ATTACHMENT);
 	
 	public TextureTemplate(int target, int internalFormat, int textureFormat, int dataType, int attachment)
 	{

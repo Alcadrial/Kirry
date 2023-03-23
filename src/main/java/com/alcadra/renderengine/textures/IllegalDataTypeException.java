@@ -1,6 +1,11 @@
 package com.alcadra.renderengine.textures;
 
-public class IllegalDataTypeException extends RuntimeException {
+public class IllegalDataTypeException extends TextureTemplateException {
+	
+	public IllegalDataTypeException()
+	{
+		
+	}
 	
 	public IllegalDataTypeException(String message)
 	{
@@ -20,10 +25,5 @@ public class IllegalDataTypeException extends RuntimeException {
 	public IllegalDataTypeException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace)
 	{
 		super(message, cause, enableSuppression, writableStackTrace);
-	}
-	
-	public IllegalDataTypeException()
-	{
-		
 	}
 }

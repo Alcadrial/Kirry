@@ -1,6 +1,6 @@
 package com.alcadra.renderengine.renderer.font;
 
-public class Glyph {
+public class Glyph implements Comparable<Glyph> {
 	
 	public static final Glyph INVALID_GLYPH = new Glyph(0, 0, 0, 0, 0, 0, 0, 0);
 	
@@ -18,6 +18,12 @@ public class Glyph {
 		this.xOffset = xOffset;
 		this.yOffset = yOffset;
 		this.advance = advance;
+	}
+	
+	@Override
+	public int compareTo(Glyph o)
+	{
+		return name - o.name;
 	}
 	
 	public int getName()

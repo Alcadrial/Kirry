@@ -1,4 +1,4 @@
-package com.alcadra.renderengine.rendertest;
+package com.alcadra.renderengine.rendertest.object;
 
 import java.util.Arrays;
 import java.util.Map;

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -120,10 +121,12 @@ public class Font {
 			}
 		}
 		reader.endObject();
-		chars.sort((g, p) -> g.getName() - p.getName());
+		chars.sort(Glyph::compareTo);
 		texture = new Texture(TextureTemplate.RGBA_2D_TEXTURE);
 		Image image = new Image(png);
-		texture.setData2D(image.loadToBuffer(), image.getBuffered().getWidth(), image.getBuffered().getHeight(), 0);
+		texture.setData2D(texture.getTemplate(), image.loadToBuffer(), image.getBuffered().getWidth(), image.getBuffered().getHeight(), 0);
+	//	System.out.println(texture.getId() + " " + texture);
+	//	System.out.println(Arrays.toString(texture.getDataArray()));
 	}
 	
 	public Glyph getGlyph(char c)

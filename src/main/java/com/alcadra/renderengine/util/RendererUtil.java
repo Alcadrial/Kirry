@@ -3,7 +3,6 @@ package com.alcadra.renderengine.util;
 import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector3f;
-import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
 import com.alcadra.renderengine.util.color.Color;
 
@@ -12,7 +11,7 @@ public class RendererUtil {
 	
 	public static void loadOrthoCube(UniversalRenderer renderer, Matrix4f matrix, Vector3f start, Vector3f end, Color color)
 	{
-		loadOrthoCube(renderer, matrix.multiply(new Vector4f(start, 1)).xyz(), matrix.multiply(new Vector4f(end, 1)).xyz(), color);
+		loadOrthoCube(renderer, matrix.multiply(start.xyz1()).xyz(), matrix.multiply(end.xyz1()).xyz(), color);
 	}
 	
 	public static void loadOrthoCube(UniversalRenderer renderer, Vector3f start, Vector3f end, Color color)
@@ -55,7 +54,7 @@ public class RendererUtil {
 	
 	public static void loadRectangle(UniversalRenderer renderer, Matrix4f matrix, Vector3f start, Vector3f end, float z, Color color)
 	{
-		loadRectangle(renderer, matrix.multiply(new Vector4f(start, 1)).xy(), matrix.multiply(new Vector4f(end, 1)).xy(), z, color);
+		loadRectangle(renderer, matrix.multiply(start.xyz1()).xy(), matrix.multiply(end.xyz1()).xy(), z, color);
 	}
 	
 	public static void loadRectangle(UniversalRenderer renderer, Vector2f start, Vector2f end, float z, Color color)

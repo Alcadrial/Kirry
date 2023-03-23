@@ -14,30 +14,37 @@ import javax.imageio.stream.ImageInputStream;
 
 import org.lwjgl.BufferUtils;
 
-import com.alcadra.math.vector.Vector2f;
+import com.alcadra.math.vector.Vector2i;
 
 public class Image {
 	
 	private BufferedImage image;
+	private Vector2i size;
 	
 	public Image(File file) throws IOException
 	{
-		image = ImageIO.read(file);
+		this(ImageIO.read(file));
 	}
 	
 	public Image(ImageInputStream stream) throws IOException
 	{
-		image = ImageIO.read(stream);
+		this(ImageIO.read(stream));
 	}
 	
 	public Image(InputStream stream) throws IOException
 	{
-		image = ImageIO.read(stream);
+		this(ImageIO.read(stream));
 	}
 	
 	public Image(URL url) throws IOException
 	{
-		image = ImageIO.read(url);
+		this(ImageIO.read(url));
+	}
+	
+	private Image(BufferedImage image) throws IOException
+	{
+		this.image = image;
+		size = Vector2i.of(image.getWidth(), image.getHeight());
 	}
 	
 	public Image(int[] pixels, int width, int height)
@@ -45,11 +52,12 @@ public class Image {
 		image = new BufferedImage(width, height, 2);
 		for (int i = 0; i < pixels.length; i++) pixels[i] = fromRGBAtoARGB(pixels[i]);
 		image.setRGB(0, 0, width, height, pixels, 0, width);
+		size = Vector2i.of(width, height);
 	}
 	
 	public ByteBuffer toByteBuffer()
 	{
-		int[] data = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
+		int[] data = image.getRGB(0, 0, size.x(), size.y(), null, 0, size.x());
 		ByteBuffer buffer = BufferUtils.createByteBuffer(data.length * 4);
 		buffer.asIntBuffer().put(data).flip();
 		return buffer;
@@ -57,20 +65,20 @@ public class Image {
 	
 	public int[] loadToBuffer()
 	{
-		return image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
+		return image.getRGB(0, 0, size.x(), size.y(), null, 0, size.x());
 	}
 	
 	public List<Integer> loadToListARGB()
 	{
 		List<Integer> buffer = new ArrayList<>();
-		for (int y = 0; y < image.getHeight(); y++) for (int x = 0; x < image.getWidth(); x++) buffer.add(image.getRGB(x, y));
+		for (int y = 0; y < size.y(); y++) for (int x = 0; x < size.x(); x++) buffer.add(image.getRGB(x, y));
 		return buffer;
 	}
 	
 	public List<Integer> loadToListRGBA()
 	{
 		List<Integer> buffer = new ArrayList<>();
-		for (int y = 0; y < image.getHeight(); y++) for (int x = 0; x < image.getWidth(); x++) buffer.add(fromARGBtoRGBA(image.getRGB(x, y)));
+		for (int y = 0; y < size.y(); y++) for (int x = 0; x < size.x(); x++) buffer.add(fromARGBtoRGBA(image.getRGB(x, y)));
 		return buffer;
 	}
 	
@@ -89,8 +97,8 @@ public class Image {
 		return image;
 	}
 	
-	public Vector2f getSize()
+	public Vector2i getSize()
 	{
-		return new Vector2f(image.getWidth(), image.getHeight());
+		return size;
 	}
 }

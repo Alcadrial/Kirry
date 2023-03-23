@@ -20,8 +20,7 @@ public class FrameBuffer extends SimpleBuffer {
 	private static FrameBuffer binded = DEFAULT;
 	private static final Queue<FrameBuffer> BINDED_QUEUE = new LinkedList<>();
 	
-	private static final int[][] POINTERS = new int[64][];
-	private static int pointersNextIndex = 0;
+	private static final int[] POINTER = new int[1];
 	
 	public static FrameBuffer getBinded()
 	{
@@ -43,7 +42,7 @@ public class FrameBuffer extends SimpleBuffer {
 		};
 	}
 	
-	private Vector4i screen = new Vector4i(0, 0, 0, 0);
+	private final Vector4i screen;
 	private Texture[] colorTexture;
 	private Texture depthTexture;
 	private Texture stencilTexture;
@@ -58,6 +57,7 @@ public class FrameBuffer extends SimpleBuffer {
 	{
 		super(target, GL32.glGenFramebuffers());
 		Util.printError("[INTERNAL] framebuffer");
+		screen = Vector4i.of(0, 0, 0, 0);
 		colorTexture = new Texture[GL32.glGetInteger(GL32.GL_MAX_COLOR_ATTACHMENTS)];
 		depthTexture = null;
 		stencilTexture = null;
@@ -67,17 +67,23 @@ public class FrameBuffer extends SimpleBuffer {
 	private FrameBuffer(int target, int id)
 	{
 		super(target, id);
+		screen = Vector4i.of(0, 0, 0, 0);
 		colorTexture = null;
 		depthTexture = null;
 		stencilTexture = null;
 		renderBuffer = null;
 	}
 	
+	public void offer()
+	{
+		BINDED_QUEUE.offer(binded);
+		bind();
+	}
+	
 	@Override
 	public void bind()
 	{
 		GL32.glBindFramebuffer(getTarget(), getId());
-		BINDED_QUEUE.offer(binded);
 		binded = this;
 		GL32.glViewport(screen.x(), screen.y(), screen.z(), screen.w());
 	}
@@ -92,14 +98,19 @@ public class FrameBuffer extends SimpleBuffer {
 		}
 	}
 	
-	@Override
-	public void unbind()
+	public void poll()
 	{
 		if (isBinded())
 		{
 			if (BINDED_QUEUE.isEmpty()) DEFAULT.bind0();
 			else BINDED_QUEUE.poll().bind0();
 		}
+	}
+	
+	@Override
+	public void unbind()
+	{
+		DEFAULT.bind0();
 	}
 	
 	public boolean isBinded()
@@ -127,6 +138,7 @@ public class FrameBuffer extends SimpleBuffer {
 			case GL32.GL_DEPTH_STENCIL_ATTACHMENT -> depthTexture = stencilTexture = texture;
 			default -> colorTexture[attachment - GL32.GL_COLOR_ATTACHMENT0] = texture;
 		}
+		texture.bind();
 		GL32.glFramebufferTexture(getTarget(), attachment, texture.getId(), mipmapLevel);
 	}
 	
@@ -139,17 +151,17 @@ public class FrameBuffer extends SimpleBuffer {
 			{
 				Texture texture = new Texture(TextureTemplate.RGBA_2D_TEXTURE);
 				setTexture(texture);
-				texture.setData2D(data, width, height, 0);
+				texture.setData2D(texture.getTemplate(), data, width, height, 0);
 			}
 			if (useDepthTexture)
 			{
 				setTexture(new Texture(TextureTemplate.DEPTH_2D_TEXTURE));
-				depthTexture.setData2D(data, width, height, 0);
+				depthTexture.setData2D(depthTexture.getTemplate(), data, width, height, 0);
 			}
 			if (useStencilTexture)
 			{
 				setTexture(new Texture(TextureTemplate.STENCIL_2D_TEXTURE));
-				stencilTexture.setData2D(data, width, height, 0);
+				stencilTexture.setData2D(stencilTexture.getTemplate(), data, width, height, 0);
 			}
 		}
 		setDrawArea(screen.x(), screen.y(), width, height);
@@ -171,7 +183,7 @@ public class FrameBuffer extends SimpleBuffer {
 	
 	public void setDrawArea(int x, int y, int width, int height)
 	{
-		screen = new Vector4i(x, y, width, height);
+		screen.setAll(x, y, width, height);
 		GL32.glViewport(x, y, width, height);
 	}
 	
@@ -191,35 +203,52 @@ public class FrameBuffer extends SimpleBuffer {
 	
 	public int getColorPixel(int x, int y, int attachment)
 	{
-		synchronized (POINTERS)
-		{
-			int[] pointer = pushSlot();
-			TextureTemplate template = colorTexture[attachment].getTemplate();
-			GL13.glReadPixels(x, y, 1, 1, template.textureFormat(), template.dataType(), pointer);
-			return pointer[0];
-		}
+		TextureTemplate template = colorTexture[attachment].getTemplate();
+		GL13.glReadPixels(x, y, 1, 1, template.textureFormat(), template.dataType(), POINTER);
+		return POINTER[0];
+	}
+	
+	public int[] getColorData(int x, int y, int width, int height)
+	{
+		return getColorData(x, y, width, height, 0);
+	}
+	
+	public int[] getColorData(int x, int y, int width, int height, int attachment)
+	{
+		int[] pointer = new int[(x - width) * (y - height)];
+		TextureTemplate template = colorTexture[attachment].getTemplate();
+		GL13.glReadPixels(x, y, width, height, template.textureFormat(), template.dataType(), pointer);
+		return pointer;
 	}
 	
 	public int getDepthPixel(int x, int y)
 	{
-		synchronized (POINTERS)
-		{
-			int[] pointer = pushSlot();
-			TextureTemplate template = depthTexture.getTemplate();
-			GL13.glReadPixels(x, y, 1, 1, template.textureFormat(), template.dataType(), pointer);
-			return pointer[0];
-		}
+		TextureTemplate template = depthTexture.getTemplate();
+		GL13.glReadPixels(x, y, 1, 1, template.textureFormat(), template.dataType(), POINTER);
+		return POINTER[0];
+	}
+	
+	public int[] getDepthData(int x, int y, int width, int height)
+	{
+		int[] pointer = new int[(x - width) * (y - height)];
+		TextureTemplate template = depthTexture.getTemplate();
+		GL13.glReadPixels(x, y, width, height, template.textureFormat(), template.dataType(), pointer);
+		return pointer;
 	}
 	
 	public int getStencilPixel(int x, int y)
 	{
-		synchronized (POINTERS)
-		{
-			int[] pointer = pushSlot();
-			TextureTemplate template = stencilTexture.getTemplate();
-			GL13.glReadPixels(x, y, 1, 1, template.textureFormat(), template.dataType(), pointer);
-			return pointer[0];
-		}
+		TextureTemplate template = stencilTexture.getTemplate();
+		GL13.glReadPixels(x, y, 1, 1, template.textureFormat(), template.dataType(), POINTER);
+		return POINTER[0];
+	}
+	
+	public int[] getStencilData(int x, int y, int width, int height)
+	{
+		int[] pointer = new int[(x - width) * (y - height)];
+		TextureTemplate template = stencilTexture.getTemplate();
+		GL13.glReadPixels(x, y, width, height, template.textureFormat(), template.dataType(), pointer);
+		return pointer;
 	}
 	
 	public Texture getColorTexture(int index)
@@ -253,11 +282,5 @@ public class FrameBuffer extends SimpleBuffer {
 		{
 			unbind();
 		}
-	}
-	
-	private int[] pushSlot()
-	{
-		if (pointersNextIndex >= 64) pointersNextIndex = 0;
-		return POINTERS[pointersNextIndex++];
 	}
 }

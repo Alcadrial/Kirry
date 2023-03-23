@@ -2,19 +2,28 @@ package com.alcadra.renderengine.textures;
 
 import java.lang.ref.Cleaner.Cleanable;
 import java.nio.IntBuffer;
+import java.util.Arrays;
 
 import org.lwjgl.opengl.GL45;
 
+import com.alcadra.renderengine.util.Broken;
+import com.alcadra.renderengine.util.Optimizable;
+import com.alcadra.renderengine.util.Util;
 import com.alcadra.renderengine.util.WorkInProgress;
 
 public final class Texture implements Cleanable {
 	
-	private static final int[][] POINTERS = new int[64][];
-	private static int pointersNextIndex = 0;
+	private static final int[] POINTER = new int[1];
 	
-	public static void setActive(int x)
+	/**
+	 * Selects which texture unit subsequent texture state calls will affect. 
+	 * The number of texture units an implementation supports is implementation dependent in range [0; 31].
+	 *
+	 * @param unit the unit to activate
+	 */
+	public static void setActive(int unit)
 	{
-		GL45.glActiveTexture(GL45.GL_TEXTURE0 + x);
+		GL45.glActiveTexture(GL45.GL_TEXTURE0 + unit);
 	}
 	
 	private final TextureTemplate template;
@@ -33,9 +42,16 @@ public final class Texture implements Cleanable {
 	public Texture(TextureTemplate template)
 	{
 		this.template = template;
-		id = GL45.glCreateTextures(template.target());
+		id = GL45.glGenTextures();
+		if (id == 0) throw new TextureGenerationException();
 	}
 	
+	/**
+	 * Binds the a texture to a texture target.
+	 * <p>
+	 * While a texture object is bound, GL operations on the target to which it is bound affect the bound object, 
+	 * and queries of the target to which it is bound return state from the bound object.
+	 */
 	public void bind()
 	{
 		GL45.glBindTexture(template.target(), id);
@@ -45,14 +61,15 @@ public final class Texture implements Cleanable {
 	 * Generate a new 1D texture of length <code>width</code> using mipmap if <code>mipmapLevels</code> is greater than 0, and, 
 	 * if data isn't null, with <code>width</code> ints from data.
 	 * 
+	 * @param dataFormat the charateristics of the given data
 	 * @param data used to initialize the texture if not null
-	 * @param width the witdh of the texture
+	 * @param width the width of the texture
 	 * @param mipmapLevels the level-of-detail of the texture or 0
 	 */
-	public void setData1D(int[] data, int width, int mipmapLevels)
+	public void setData1D(TextureTemplate dataFormat, int[] data, int width, int mipmapLevels)
 	{
 		if (mipmapLevels < 0) return;
-		GL45.glTexImage1D(template.target(), mipmapLevels, template.internalFormat(), width, 0, template.textureFormat(), template.dataType(), data);
+		GL45.glTexImage1D(template.target(), mipmapLevels, template.internalFormat(), width, 0, dataFormat.textureFormat(), dataFormat.dataType(), data);
 		length = width;
 		this.width = width;
 		height = 1;
@@ -64,15 +81,18 @@ public final class Texture implements Cleanable {
 	 * Generate a new 2D texture of length <code>width * height</code> using mipmap if <code>mipmapLevels</code> is greater than 0, and, 
 	 * if data isn't null, with <code>width * height</code> ints from data.
 	 * 
+	 * @param dataFormat the charateristics of the given data
 	 * @param data used to initialize the texture if not null
-	 * @param width the witdh of the texture
+	 * @param width the width of the texture
 	 * @param height the height of the texture
 	 * @param mipmapLevels the level-of-detail of the texture or 0
 	 */
-	public void setData2D(int[] data, int width, int height, int mipmapLevels)
+	public void setData2D(TextureTemplate dataFormat, int[] data, int width, int height, int mipmapLevels)
 	{
 		if (mipmapLevels < 0) return;
-		GL45.glTexImage2D(template.target(), mipmapLevels, template.internalFormat(), width, height, 0, template.textureFormat(), template.dataType(), data);
+	//	System.out.println("internal " + id + " " + width + " " + height);
+		GL45.glTexImage2D(template.target(), mipmapLevels, template.internalFormat(), width, height, 0, dataFormat.textureFormat(), dataFormat.dataType(), data);
+		Util.printError("Texture [INTERNAL] setData");
 		length = width * height;
 		this.width = width;
 		this.height = height;
@@ -84,16 +104,17 @@ public final class Texture implements Cleanable {
 	 * Generate a new 3D texture of length <code>width * height * depth</code> using mipmap if <code>mipmapLevels</code> is greater than 0, and, 
 	 * if data isn't null, with <code>width * height * depth</code> ints from data.
 	 * 
+	 * @param dataFormat the charateristics of the given data
 	 * @param data used to initialize the texture if not null
-	 * @param width the witdh of the texture
+	 * @param width the width of the texture
 	 * @param height the height of the texture
 	 * @param depth the depth of the texture
 	 * @param mipmapLevels the level-of-detail of the texture or 0
 	 */
-	public void setData3D(int[] data, int width, int height, int depth, int mipmapLevels)
+	public void setData3D(TextureTemplate dataFormat, int[] data, int width, int height, int depth, int mipmapLevels)
 	{
 		if (mipmapLevels < 0) return;
-		GL45.glTexImage3D(template.target(), mipmapLevels, template.internalFormat(), width, height, depth, 0, template.textureFormat(), template.dataType(), data);
+		GL45.glTexImage3D(template.target(), mipmapLevels, template.internalFormat(), width, height, depth, 0, dataFormat.textureFormat(), dataFormat.dataType(), data);
 		length = width * height * depth;
 		this.width = width;
 		this.height = height;
@@ -140,10 +161,8 @@ public final class Texture implements Cleanable {
 	 */
 	public void clearRegion3D(int value, int x, int y, int z, int width, int height, int depth)
 	{
-		synchronized (POINTERS)
-		{
-			GL45.glClearTexSubImage(id, mipmapLevels, x, y, z, width, height, depth, template.textureFormat(), template.dataType(), pushSlot(value));
-		}
+		if (value == 0) GL45.glClearTexSubImage(id, mipmapLevels, x, y, z, width, height, depth, template.textureFormat(), template.dataType(), (int[]) null);
+		else GL45.glClearTexSubImage(id, mipmapLevels, x, y, z, width, height, depth, template.textureFormat(), template.dataType(), point(value));
 	}
 	
 	/**
@@ -153,7 +172,7 @@ public final class Texture implements Cleanable {
 	 * 
 	 * @param width
 	 */
-	@WorkInProgress
+	@Optimizable
 	public void resize1D(int width)
 	{
 		resize1D(width, mipmapLevels);
@@ -167,10 +186,10 @@ public final class Texture implements Cleanable {
 	 * @param width
 	 * @param mipmapLevels the level-of-detail of the texture or 0
 	 */
-	@WorkInProgress
+	@Optimizable
 	public void resize1D(int width, int mipmapLevels)
 	{
-		setData1D(getDataArray(), width, mipmapLevels);
+		setData1D(template, getDataArray(), width, mipmapLevels);
 	}
 	
 	/**
@@ -200,7 +219,7 @@ public final class Texture implements Cleanable {
 		int[] pixels = getDataArray();
 		int[] newPixels = new int[width * height];
 		for (int i = 0; i < this.height; i++) for (int j = 0; j < this.width; j++) newPixels[i * width + j] = pixels[i * this.width + j];
-		setData2D(newPixels, width, height, mipmapLevels);
+		setData2D(template, newPixels, width, height, mipmapLevels);
 	}
 	
 	/**
@@ -234,7 +253,7 @@ public final class Texture implements Cleanable {
 		int[] pixels = getDataArray();
 		int[] newPixels = new int[length2D * depth];
 		for (int i = 0; i < this.depth; i++) for (int j = 0; j < this.height; j++) for (int k = 0; k < this.width; k++) newPixels[i * length2D + j * width + k] = pixels[i * length2D0 + j * this.width + k];
-		setData3D(newPixels, width, height, depth, mipmapLevels);
+		setData3D(template, newPixels, width, height, depth, mipmapLevels);
 	}
 	
 	/**
@@ -244,6 +263,7 @@ public final class Texture implements Cleanable {
 	 * 
 	 * @param texture the destination of the copy
 	 */
+	@Broken
 	public void copyTo1D(Texture texture)
 	{
 		GL45.glCopyTextureSubImage1D(id, 0, 0, 0, 0, width);
@@ -258,6 +278,7 @@ public final class Texture implements Cleanable {
 	 * @param x
 	 * @param width
 	 */
+	@Broken
 	public void copyTo1D(Texture texture, int x, int width)
 	{
 		GL45.glCopyTextureSubImage1D(id, 0, x, 0, 0, width);
@@ -270,6 +291,7 @@ public final class Texture implements Cleanable {
 	 * 
 	 * @param texture the destination of the copy
 	 */
+	@Broken
 	public void copyTo2D(Texture texture)
 	{
 		GL45.glCopyTextureSubImage2D(id, 0, 0, 0, 0, 0, width, height);
@@ -286,6 +308,7 @@ public final class Texture implements Cleanable {
 	 * @param width
 	 * @param height
 	 */
+	@Broken
 	public void copyTo2D(Texture texture, int x, int y, int width, int height)
 	{
 		GL45.glCopyTextureSubImage2D(id, 0, x, y, 0, 0, width, height);
@@ -298,6 +321,7 @@ public final class Texture implements Cleanable {
 	 * 
 	 * @param texture the destination of the copy
 	 */
+	@Broken
 	public void copyTo3D(Texture texture)
 	{
 		for (int i = 0; i < depth; i++) GL45.glCopyTextureSubImage3D(id, 0, 0, 0, i, 0, 0, width, height);
@@ -316,6 +340,7 @@ public final class Texture implements Cleanable {
 	 * @param height
 	 * @param depth
 	 */
+	@Broken
 	public void copyTo3D(Texture texture, int x, int y, int z, int width, int height, int depth)
 	{
 		while (z < depth) GL45.glCopyTextureSubImage3D(id, 0, x, y, z++, 0, 0, width, height);
@@ -349,9 +374,30 @@ public final class Texture implements Cleanable {
 	 */
 	public int[] getDataArray(TextureTemplate template)
 	{
-		int[] pixels = new int[length];
-		GL45.glGetTexImage(template.target(), mipmapLevels, template.textureFormat(), template.dataType(), pixels);
-		return pixels;
+		int glLength = getGlLength();
+		int[] pixels = glLength == 1 ? POINTER : new int[glLength];
+		GL45.glGetTexImage(this.template.target(), mipmapLevels, template.textureFormat(), template.dataType(), pixels);
+		return Arrays.copyOf(pixels, glLength);
+	}
+	
+	public int getGlLength()
+	{
+		return getGlWidth() * getGlHeight() * getGlDepth();
+	}
+	
+	public int getGlWidth()
+	{
+		return GL45.glGetTexLevelParameteri(template.target(), mipmapLevels, GL45.GL_TEXTURE_WIDTH);
+	}
+	
+	public int getGlHeight()
+	{
+		return GL45.glGetTexLevelParameteri(template.target(), mipmapLevels, GL45.GL_TEXTURE_HEIGHT);
+	}
+	
+	public int getGlDepth()
+	{
+		return GL45.glGetTexLevelParameteri(template.target(), mipmapLevels, GL45.GL_TEXTURE_DEPTH);
 	}
 	
 	public IntBuffer getDataBuffer()
@@ -394,25 +440,20 @@ public final class Texture implements Cleanable {
 		return mipmapLevels;
 	}
 	
+	private boolean valid = true;
+	
 	@Override
 	public void clean()
 	{
 		GL45.glDeleteTextures(id);
+		if (valid) valid = false;
+		else if (Util.isDebug()) System.err.println("Recleaning");
 	}
 	
-	@SuppressWarnings("unused")
-	private int[] pushSlot()
+	private int[] point(int value)
 	{
-		if (pointersNextIndex >= 64) pointersNextIndex = 0;
-		return POINTERS[pointersNextIndex++];
-	}
-	
-	private int[] pushSlot(int value)
-	{
-		if (pointersNextIndex >= 64) pointersNextIndex = 0;
-		int[] pointer = POINTERS[pointersNextIndex++];
-		pointer[0] = value;
-		return pointer;
+		POINTER[0] = value;
+		return POINTER;
 	}
 	
 	@Override
@@ -435,6 +476,11 @@ public final class Texture implements Cleanable {
 	@Override
 	public String toString()
 	{
-		return "Texture{id=" + id + "}";
+		if (depth == 1)
+		{
+			if (height == 1) return "Texture{id=" + id + ", size=" + width + "}";
+			return "Texture{id=" + id + ", size=" + width + "x" + height + "}";
+		}
+		return "Texture{id=" + id + ", size=" + width + "x" + height + "x" + depth + "}";
 	}
 }

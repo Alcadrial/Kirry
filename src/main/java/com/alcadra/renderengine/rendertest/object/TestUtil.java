@@ -1,6 +1,6 @@
-package com.alcadra.renderengine.rendertest;
+package com.alcadra.renderengine.rendertest.object;
 
-import com.alcadra.renderengine.RenderEngine;
+import com.alcadra.renderengine.rendertest.UniversalRenderTest;
 import com.alcadra.renderengine.util.Util;
 
 public class TestUtil extends Util {
@@ -8,7 +8,7 @@ public class TestUtil extends Util {
 	public static void printErrorAsync(String s)
 	{
 		Thread t = new Thread(() -> {
-			RenderEngine.getActiveTest().getWindow().makeContextCurrent();
+			UniversalRenderTest.getActiveTest().getWindow().makeContextCurrent();
 			printError(s);
 		});
 		t.start();
@@ -17,7 +17,7 @@ public class TestUtil extends Util {
 	public static void printErrorSync(String s)
 	{
 		Thread t = new Thread(() -> {
-			RenderEngine.getActiveTest().getWindow().makeContextCurrent();
+			UniversalRenderTest.getActiveTest().getWindow().makeContextCurrent();
 			printError(s);
 		});
 		t.start();
@@ -27,6 +27,6 @@ public class TestUtil extends Util {
 		}
 		catch (InterruptedException e)
 		{}
-		RenderEngine.getActiveTest().getWindow().makeContextCurrent();
+		UniversalRenderTest.getActiveTest().getWindow().makeContextCurrent();
 	}
 }

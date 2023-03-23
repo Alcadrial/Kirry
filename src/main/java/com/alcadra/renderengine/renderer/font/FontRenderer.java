@@ -7,7 +7,6 @@ import java.util.List;
 import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector2i;
-import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.renderer.AbstractShaderRenderer;
@@ -17,21 +16,22 @@ import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.shader.ShaderInput;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.uniform.ShaderUniform;
+import com.alcadra.renderengine.shader.uniform.extra.ColorUniform;
 import com.alcadra.renderengine.textures.Texture;
 import com.alcadra.renderengine.util.color.Color;
-import com.alcadra.renderengine.util.color.VectorColorRGB;
+import com.alcadra.renderengine.util.color.ColorFormat;
 
 public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	
 	private static final ShaderUniform<Matrix4f> TRANSFORMATION = ShaderUniform.ofMatrix4f("TRANSFORMATION");
-	private static final ShaderUniform<Vector3f> COLOR = ShaderUniform.ofVector3f("COLOR");
+	private static final ShaderUniform<Color> COLOR = new ColorUniform("COLOR", ColorFormat.RGBA);
 	private static final ShaderUniform<Float> ALFA_MASK = ShaderUniform.ofFloat("ALFA_MASK");
 	private static final ShaderUniform<Integer> TEXTURE_SAMPLER = ShaderUniform.ofInt("TEXTURE_SAMPLER");
 	
 	private Font font;
 	private boolean clockWise;
 	
-	private VectorColorRGB color;
+	private Color color;
 	private float alfaMask;
 	private int textureSampler;
 	
@@ -75,7 +75,7 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	
 	public void loadText(Text text, Vector2i position, Color color, float size, int maxLength, float z)
 	{
-		loadText(text, new Vector2f(position), color, size, maxLength, z);
+		loadText(text, Vector2f.of(position), color, size, maxLength, z);
 	}
 	
 	public void loadText(Text text, Vector2f position, Color color, float size, int maxLength, float z)
@@ -130,7 +130,7 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	
 	public void loadText(Matrix4f matrix, Text text, Vector2i position, Color color, float size, int maxLength, float z)
 	{
-		loadText(matrix, text, new Vector2f(position), color, size, maxLength, z);
+		loadText(matrix, text, Vector2f.of(position), color, size, maxLength, z);
 	}
 	
 	public void loadText(Matrix4f matrix, Text text, Vector2f position, Color color, float size, int maxLength, float z)
@@ -156,6 +156,7 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 		List<Float> vertices = new ArrayList<>(textSize * 4);
 		float advanced = 0;
 		int line = -font.getLineOffset();
+		Vector4f vertex = Vector4f.of(0, 0, 0, 0);
 		for (List<RenderCharacter> fontString : fontText)
 		{
 			for (int i = 0; i < fontString.size(); i++)
@@ -169,10 +170,10 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 				float v0 = (float) formattedChar.getY() / texture.getHeight();
 				float u1 = (float) formattedChar.getWidth() / texture.getWidth();
 				float v1 = (float) formattedChar.getHeight() / texture.getHeight();
-				Vector4f vertex = matrix.multiply(new Vector4f(x, y, z, 1));
-				x = vertex.x();
-				y = vertex.y();
-				z = vertex.z();
+				Vector4f vertex0 = matrix.multiply(vertex.setAll(x, y, z, 1));
+				x = vertex0.x();
+				y = vertex0.y();
+				z = vertex0.z();
 				vertices.addAll(asList(color, x, y, z, w, h, u0, v0, u1, v1));
 				advanced += formattedChar.getAdvance();
 				if (advanced > maxLength)
@@ -345,14 +346,14 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 		this.clockWise = clockWise;
 	}
 	
-	public void setUniformColor(float r, float g, float b)
-	{
-		setUniformColor(Color.ofVector(r, g, b));
-	}
-	
-	public void setUniformColor(VectorColorRGB color)
+	public void setUniformColor(Color color)
 	{
 		this.color = color;
+	}
+	
+	public void setUniformColor(float r, float g, float b)
+	{
+		color = Color.of(r, g, b);
 	}
 	
 	public void setUniformAlfaMask(float alfaMask)

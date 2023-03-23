@@ -40,7 +40,7 @@ public class Window {
 	private long windowId;
 	private boolean isCreated = false;
 	private String title;
-	private Vector2i mousePos = Vector2i.getOrigin();
+	private Vector2i mousePos = Vector2i.of(0, 0);
 	private Vector2i size;
 	private float aspectRatio;
 	private CursorInputMode cursorInputMode = CursorInputMode.NORMAL;
@@ -59,7 +59,7 @@ public class Window {
 	
 	private GLFWCharCallbackI charCallback = (w, codepoint) -> charCallbackList.forEach(callback -> callback.invoke(w, codepoint));
 	private GLFWCursorPosCallbackI cursorPosCallback = (w, x, y) -> {
-		mousePos = new Vector2i((int) x, getHeight() - (int) y);
+		mousePos.setAll((int) x, getHeight() - (int) y);
 		for (GLFWCursorPosCallbackI callback : cursorPosCallbackList) callback.invoke(w, x, y);
 	};
 	private GLFWCursorEnterCallbackI cursorEnterCallback = (w, entered) -> cursorEnterCallbackList.forEach(callback -> callback.invoke(w, entered));
@@ -76,7 +76,7 @@ public class Window {
 	public Window(int w, int h, String title)
 	{
 		this.title = title;
-		size = new Vector2i(w, h);
+		size = Vector2i.of(w, h);
 		aspectRatio = (float) size.x() / size.y();
 	}
 	
@@ -108,7 +108,6 @@ public class Window {
 		Buffer b = GLFWImage.malloc(1).put(0, GLFWImage.malloc().set(texture.getWidth(), texture.getHeight(), MemoryUtil.memByteBuffer(buffer)));
 		GLFW.glfwSetWindowIcon(windowId, b);
 		b.get().free();
-		b.free();
 		MemoryUtil.memFree(buffer);
 	}
 	
@@ -117,7 +116,6 @@ public class Window {
 		Buffer b = GLFWImage.malloc(1).put(0, GLFWImage.malloc().set(image.getBuffered().getWidth(), image.getBuffered().getHeight(), image.toByteBuffer()));
 		GLFW.glfwSetWindowIcon(windowId, b);
 		b.get().free();
-		b.free();
 	}
 	
 	public void render(Matrix4f matrix, float partialTicks)
@@ -166,12 +164,6 @@ public class Window {
 	public final void addWidget(ClickableWidget widget)
 	{
 		clickableWidgets.add(widget);
-	}
-	
-	protected void onResize(Vector2i oldSize, Vector2i newSize)
-	{
-		aspectRatio = (float) newSize.x() / newSize.y();
-		if (isCreated) FrameBuffer.DEFAULT.setDrawArea(Vector2i.getOrigin(), newSize);
 	}
 	
 	public final long getId()
@@ -228,22 +220,33 @@ public class Window {
 		}
 	}
 	
-	public final void setSize(Vector2i size)
-	{
-		onResize(this.size, size);
-		this.size = size;
-	}
-	
 	public final void setWidth(int width)
 	{
-		onResize(size, new Vector2i(width, getHeight()));
-		setSize(new Vector2i(width, getHeight()));
+		setSize(Vector2i.of(width, getHeight()));
 	}
 	
 	public final void setHeight(int height)
 	{
-		onResize(size, new Vector2i(getWidth(), height));
-		setSize(new Vector2i(getWidth(), height));
+		setSize(Vector2i.of(getWidth(), height));
+	}
+	
+	public final void setSize(Vector2i size)
+	{
+		Vector2i oldSize = this.size.xy();
+		resize(size);
+		this.size = size.xy();
+		onResize(oldSize, size);
+	}
+	
+	protected void resize(Vector2i newSize)
+	{
+		aspectRatio = (float) newSize.x() / newSize.y();
+		if (isCreated) FrameBuffer.DEFAULT.setDrawArea(Vector2i.origin(), newSize);
+	}
+	
+	protected void onResize(Vector2i oldSize, Vector2i newSize)
+	{
+		
 	}
 	
 	public final void setMinMaxSizes(Vector2i minSize, Vector2i maxSize)

@@ -1,14 +1,23 @@
 package com.alcadra.renderengine;
 
 import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL12.*;
+import static org.lwjgl.opengl.GL13.*;
 import static org.lwjgl.opengl.GL15.*;
+import static org.lwjgl.opengl.GL30.*;
+import static org.lwjgl.opengl.GL31.*;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Spliterators;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
+import java.util.stream.StreamSupport;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -21,7 +30,11 @@ import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.shader.ShaderInput;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.ShaderType;
+import com.alcadra.renderengine.textures.Texture;
+import com.alcadra.renderengine.textures.TextureTemplate;
+import com.alcadra.renderengine.textures.TextureTemplateException;
 import com.alcadra.renderengine.util.Test;
+import com.alcadra.renderengine.util.Util;
 import com.alcadra.renderengine.window.Window;
 import com.alcadra.tester.UltimateTester;
 
@@ -32,6 +45,11 @@ public class Launch {
 	
 	public static void main(String[] args) throws IOException
 	{
+		Pattern pattern;
+		if (args.length == 0) pattern = Pattern.compile(".*");
+		else pattern = Pattern.compile(args[0]);
+		
+		Util.enableDebug();
 		if (!GLFW.glfwInit()) return;
 		window = new Window(1080, 720, "Test");
 		window.create();
@@ -47,9 +65,9 @@ public class Launch {
 		FileOutputStream stream = new FileOutputStream("Test Results.txt");
 		
 		UltimateTester t = new UltimateTester(window::detachCurrentContext, window::makeContextCurrent);
-		// t.setOutputStream(stream);
+		t.setOutputStream(new MultipleOutputStream(System.out, stream));
 		
-		t.test("Buffers Test", enclosiveContext(() -> {
+		if (pattern.matcher("Buffers Test").matches()) t.test("Buffers Test", enclosiveContext(() -> {
 			t.assertTest("Simple Buffer", enclosiveContext(b -> {
 				int value = glGetInteger(GL_ARRAY_BUFFER_BINDING);
 				t.println("Binded Before = " + value);
@@ -405,32 +423,34 @@ public class Launch {
 				});
 				return true;
 			}));
-			t.test("Shader", enclosiveContext(() -> {
-				
-				Shader shader = new Shader(new File("src/main/resources/assets/renderengine/colored_texture.vert"));
-				
-				t.println("Type = " + shader.getType());
-				
-				if (shader.getType() != ShaderType.VERTEX) return false;
-				if (shader.getStatus().isCompiled()) return false;
-				if (shader.getStatus().getId() != shader.getId()) return false;
-				
-				try
-				{
-					shader.loadShader();
-				}
-				catch (IOException e)
-				{
-					return false;
-				}
-				
-				t.println("Status = " + shader.getStatus());
-				
-				if (!shader.getStatus().isCompiled()) return false;
-				if (shader.getStatus().getId() != shader.getId()) return false;
-				
-				ShaderProgram program = new ShaderProgram(ShaderInput.VERTEX_POSITION, ShaderInput.COLOR, ShaderInput.UV);
-				
+		}));
+		
+		if (pattern.matcher("Shader").matches()) t.test("Shader", enclosiveContext(() -> {
+			
+			Shader shader = new Shader(new File("src/main/resources/assets/renderengine/colored_texture.vert"));
+			
+			t.println("Type = " + shader.getType());
+			
+			if (shader.getType() != ShaderType.VERTEX) return false;
+			if (shader.getStatus().isCompiled()) return false;
+			if (shader.getStatus().getId() != shader.getId()) return false;
+			
+			try
+			{
+				shader.loadShader();
+			}
+			catch (IOException e)
+			{
+				return false;
+			}
+			
+			t.println("Status = " + shader.getStatus());
+			
+			if (!shader.getStatus().isCompiled()) return false;
+			if (shader.getStatus().getId() != shader.getId()) return false;
+			
+			try (ShaderProgram program = new ShaderProgram(ShaderInput.VERTEX_POSITION, ShaderInput.COLOR, ShaderInput.UV))
+			{
 				t.println("Id = " + program.getId());
 				
 				if (program.getId() == 0) return false;
@@ -454,12 +474,290 @@ public class Launch {
 				if (!program.getStatus().isBuilded()) return false;
 				if (program.getProgramInputs().size() != 3) return false;
 				if (!program.getProgramInputs().equals(program.getKnownInputs())) return false;
+			}
+			
+			return true;
+		}));
+		if (pattern.matcher("Texture").matches()) t.test("Texture", enclosiveContext(() -> {
+			
+			boolean textureTemplates = t.test("Texture Templates", () -> {
+				
+				t.println("RGBA_2D_TEXTURE = " + TextureTemplate.RGBA_2D_TEXTURE);
+				if (!check(TextureTemplate.RGBA_2D_TEXTURE, GL_TEXTURE_2D, GL_RGBA, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, GL_COLOR_ATTACHMENT0)) return false;
+				t.println("RGB_2D_TEXTURE = " + TextureTemplate.RGB_2D_TEXTURE);
+				if (!check(TextureTemplate.RGB_2D_TEXTURE, GL_TEXTURE_2D, GL_RGB, GL_RGB, GL_UNSIGNED_INT_8_8_8_8, GL_COLOR_ATTACHMENT0)) return false;
+				t.println("RGBA_CUBE_MAP_TEXTURE = " + TextureTemplate.RGBA_CUBE_MAP_TEXTURE);
+				if (!check(TextureTemplate.RGBA_CUBE_MAP_TEXTURE, GL_TEXTURE_CUBE_MAP, GL_RGBA, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, GL_COLOR_ATTACHMENT0)) return false;
+				t.println("RGBA_RECTANGLE_TEXTURE = " + TextureTemplate.RGBA_RECTANGLE_TEXTURE);
+				if (!check(TextureTemplate.RGBA_RECTANGLE_TEXTURE, GL_TEXTURE_RECTANGLE, GL_RGBA, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, GL_COLOR_ATTACHMENT0)) return false;
+				t.println("DEPTH_2D_TEXTURE = " + TextureTemplate.DEPTH_2D_TEXTURE);
+				if (!check(TextureTemplate.DEPTH_2D_TEXTURE, GL_TEXTURE_2D, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT, GL_DEPTH_ATTACHMENT)) return false;
+				t.println("STENCIL_2D_TEXTURE = " + TextureTemplate.STENCIL_2D_TEXTURE);
+				if (!check(TextureTemplate.STENCIL_2D_TEXTURE, GL_TEXTURE_2D, GL_DEPTH_STENCIL, GL_STENCIL_INDEX, GL_UNSIGNED_BYTE, GL_STENCIL_ATTACHMENT)) return false;
+				t.println("DEPTH_STENCIL_2D_TEXTURE = " + TextureTemplate.DEPTH_STENCIL_2D_TEXTURE);
+				if (!check(TextureTemplate.DEPTH_STENCIL_2D_TEXTURE, GL_TEXTURE_2D, GL_DEPTH_STENCIL, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, GL_DEPTH_STENCIL_ATTACHMENT)) return false;
+				
+				if (!checkException(() -> new TextureTemplate(0, GL_RGBA, GL_RGBA, GL_UNSIGNED_INT, GL_COLOR_ATTACHMENT0), TextureTemplateException.class)) return false;
+				if (!checkException(() -> new TextureTemplate(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT, GL_COLOR_ATTACHMENT0), TextureTemplateException.class)) return false;
+				if (!checkException(() -> new TextureTemplate(GL_TEXTURE_2D, GL_RGBA, 0, GL_UNSIGNED_INT, GL_COLOR_ATTACHMENT0), TextureTemplateException.class)) return false;
+				if (!checkException(() -> new TextureTemplate(GL_TEXTURE_2D, GL_RGBA, GL_RGBA, 0, GL_COLOR_ATTACHMENT0), TextureTemplateException.class)) return false;
+				if (!checkException(() -> new TextureTemplate(GL_TEXTURE_2D, GL_RGBA, GL_RGBA, GL_UNSIGNED_INT, 0), TextureTemplateException.class)) return false;
+				
+				return true;
+			});
+			
+			boolean textureTest = false;
+			if (textureTemplates) textureTest = t.test("Texture", enclosiveContext(() -> {
+				
+				TextureTemplate rgba2d = TextureTemplate.RGBA_2D_TEXTURE;
+				TextureTemplate rgba1d = TextureTemplate.RGBA_2D_TEXTURE.withTarget(GL_TEXTURE_1D);
+				TextureTemplate rgba3d = TextureTemplate.RGBA_2D_TEXTURE.withTarget(GL_TEXTURE_3D);
+				
+				t.assertTest("Constructor", enclosiveContext(texture -> texture.getId() == 1 && texture.getTemplate() == rgba2d), new Texture(rgba2d));
+				
+				t.assertTest("SetData", dimensions(t, enclosiveContext(() -> {
+					
+					Texture texture = new Texture(rgba1d);
+					try
+					{
+						texture.bind();
+						int[] data = new int[] {0, 1, 2, 3, 4, 5, 6, 7};
+						t.println("Inserted Data = " + h(data));
+						
+						texture.setData1D(texture.getTemplate(), data, 8, 0);
+						
+						t.println(texture);
+						
+						if (texture.getWidth() != 8 || texture.getHeight() != 1 || texture.getDepth() != 1 || texture.getLength() != data.length) return false;
+						if (texture.getGlWidth() != 8 || texture.getGlHeight() != 1 || texture.getGlDepth() != 1 || texture.getLength() != data.length) return false;
+						
+						int[] data0 = texture.getDataArray();
+						t.println("Retrived Data = " + h(data0));
+						
+						return Arrays.equals(data, data0);
+					}
+					finally
+					{
+						texture.clean();
+					}
+				}), enclosiveContext(() -> {
+					
+					Texture texture = new Texture(rgba2d);
+					
+					try
+					{
+						texture.bind();
+						int[] data = new int[] {0, 1, 2, 3, 4, 5, 6, 7};
+						t.println("Inserted Data = " + h(data));
+						
+						texture.setData2D(TextureTemplate.RGBA_2D_TEXTURE, data, 4, 2, 0);
+						
+						t.println(texture);
+						
+						if (texture.getWidth() != 4 || texture.getHeight() != 2 || texture.getDepth() != 1 || texture.getLength() != data.length) return false;
+						if (texture.getGlWidth() != 4 || texture.getGlHeight() != 2 || texture.getGlDepth() != 1 || texture.getLength() != data.length) return false;
+						
+						int[] data0 = texture.getDataArray();
+						t.println("Retrived Data = " + h(data0));
+						
+						return Arrays.equals(data, data0);
+					}
+					finally
+					{
+						texture.clean();
+					}
+				}), enclosiveContext(() -> {
+					
+					Texture texture = new Texture(rgba3d);
+					
+					try
+					{
+						texture.bind();
+						int[] data = new int[] {0, 1, 2, 3, 4, 5, 6, 7};
+						t.println("Inserted Data = " + h(data));
+						
+						texture.setData3D(TextureTemplate.RGBA_2D_TEXTURE, data, 2, 2, 2, 0);
+						
+						t.println(texture);
+						
+						if (texture.getWidth() != 2 || texture.getHeight() != 2 || texture.getDepth() != 2 || texture.getLength() != data.length) return false;
+						if (texture.getGlWidth() != 2 || texture.getGlHeight() != 2 || texture.getGlDepth() != 2 || texture.getLength() != data.length) return false;
+						
+						int[] data0 = texture.getDataArray();
+						t.println("Retrived Data = " + h(data0));
+						
+						return Arrays.equals(data, data0);
+					}
+					finally
+					{
+						texture.clean();
+					}
+				})));
+				
+				t.assertTest("ClearRegion", dimensions(t, enclosiveContext(() -> {
+					Texture texture = buildTestTexture(rgba1d, 8, 0);
+					try
+					{
+						texture.clearRegion1D(0x57575744, 1, 4);
+						
+						int[] data0 = texture.getDataArray();
+						t.println("Data = " + h(data0));
+						int[] data = new int[] {0, 0x57575744, 0x57575744, 0x57575744, 0x57575744, 5, 6, 7};
+						return Arrays.equals(data, data0);
+					}
+					finally
+					{
+						texture.clean();
+					}
+				}), enclosiveContext(() -> {
+					Texture texture = buildTestTexture(rgba2d, 4, 2, 0);
+					try
+					{
+						texture.clearRegion2D(0x2478936A, 1, 0, 1, 2);
+						
+						int[] data0 = texture.getDataArray();
+						t.println("Data = " + h(data0));
+						int[] data = new int[] {0, 0x2478936A, 2, 3, 4, 0x2478936A, 6, 7};
+						return Arrays.equals(data, data0);
+					}
+					finally
+					{
+						texture.clean();
+					}
+				}), enclosiveContext(() -> {
+					Texture texture = buildTestTexture(rgba3d, 2, 2, 2, 0);
+					try
+					{
+						texture.clearRegion3D(0, 1, 0, 0, 1, 2, 2);
+						
+						int[] data0 = texture.getDataArray();
+						t.println("Data = " + h(data0));
+						int[] data = new int[] {0, 0, 2, 0, 4, 0, 6, 0};
+						return Arrays.equals(data, data0);
+					}
+					finally
+					{
+						texture.clean();
+					}
+				})));
+				
+				t.assertTest("Resize", dimensions(t, enclosiveContext(() -> {
+					Texture texture = buildTestTexture(rgba1d, 8, 0);
+					try
+					{
+						texture.resize1D(16);
+						
+						int[] data0 = texture.getDataArray();
+						t.println("Data = " + h(data0));
+						int[] data = new int[] {0, 1, 2, 3, 4, 5, 6, 7};
+						return data0.length == 16 && Arrays.equals(data, 0, 8, data0, 0, 8);
+					}
+					finally
+					{
+						texture.clean();
+					}
+				}), enclosiveContext(() -> {
+					Texture texture = buildTestTexture(rgba2d, 4, 2, 0);
+					try
+					{
+						texture.resize2D(8, 4);
+						
+						int[] data0 = texture.getDataArray();
+						t.println("Data = " + h(data0));
+						int[] data = new int[] {0, 1, 2, 3, 4, 5, 6, 7};
+						return data0.length == 32 && Arrays.equals(data, 0, 4, data0, 0, 4) && Arrays.equals(data, 4, 8, data0, 8, 12);
+					}
+					finally
+					{
+						texture.clean();
+					}
+				}), enclosiveContext(() -> {
+					Texture texture = buildTestTexture(rgba3d, 2, 2, 2, 0);
+					try
+					{
+						texture.resize3D(4, 4, 4);
+						
+						int[] data0 = texture.getDataArray();
+						t.println("Data = " + h(data0));
+						int[] data = new int[] {0, 1, 2, 3, 4, 5, 6, 7};
+						if (!Arrays.equals(data, 0, 2, data0, 0, 2) || !Arrays.equals(data, 2, 4, data0, 4, 6)) return false;
+						if (!Arrays.equals(data, 4, 6, data0, 16, 18) || !Arrays.equals(data, 6, 8, data0, 20, 22)) return false;
+						return data0.length == 64;
+					}
+					finally
+					{
+						texture.clean();
+					}
+				})));
+				
+				t.test("Copy", dimensions(t, enclosiveContext(() -> {
+					Texture texture = buildTestTexture(rgba1d, 8, 0);
+					Texture texture0 = buildTestTexture(rgba1d, 8, 8);
+					try
+					{
+						texture.copyTo1D(texture0, 1, 4);
+						
+						texture0.bind();
+						int[] data0 = texture0.getDataArray();
+						t.println("Data = " + h(data0));
+						int[] data = new int[] {8, 1, 2, 3, 4, 13, 14, 15};
+						return data0.length == 8 && Arrays.equals(data, 0, 8, data0, 0, 8);
+					}
+					finally
+					{
+						texture.clean();
+					}
+				}), enclosiveContext(() -> {
+					Texture texture = buildTestTexture(rgba2d, 4, 2, 0);
+					Texture texture0 = buildTestTexture(rgba2d, 4, 2, 8);
+					try
+					{
+						texture.copyTo2D(texture0, 1, 0, 1, 2);
+						
+						texture0.bind();
+						int[] data0 = texture0.getDataArray();
+						t.println("Data = " + h(data0));
+						int[] data = new int[] {0, 1, 10, 11, 4, 5, 14, 15};
+						return data0.length == 8 && Arrays.equals(data, 0, 4, data0, 0, 4) && Arrays.equals(data, 4, 8, data0, 8, 12);
+					}
+					finally
+					{
+						texture.clean();
+					}
+				}), enclosiveContext(() -> {
+					Texture texture = buildTestTexture(rgba3d, 2, 2, 2, 0);
+					Texture texture0 = buildTestTexture(rgba3d, 2, 2, 2, 8);
+					try
+					{
+						texture.copyTo3D(texture0, 1, 0, 0, 1, 2, 2);
+						
+						texture0.bind();
+						int[] data0 = texture.getDataArray();
+						t.println("Data = " + h(data0));
+						int[] data = new int[] {0, 9, 2, 11, 4, 13, 6, 15};
+						if (!Arrays.equals(data, 0, 2, data0, 0, 2) || !Arrays.equals(data, 2, 4, data0, 4, 6)) return false;
+						if (!Arrays.equals(data, 4, 6, data0, 16, 18) || !Arrays.equals(data, 6, 8, data0, 20, 22)) return false;
+						return data0.length == 8;
+					}
+					finally
+					{
+						texture.clean();
+					}
+				})));
 				
 				return true;
 			}));
+			
+			return textureTest;
 		}));
 		stream.close();
+		window.swapBuffers();
 		GLFW.glfwTerminate();
+	}
+	
+	public static boolean check(TextureTemplate template, int target, int internalFormat, int textureFormat, int dataType, int attachment)
+	{
+		return template.target() == target && template.internalFormat() == internalFormat && template.textureFormat() == textureFormat && template.dataType() == dataType && template.attachment() == attachment;
 	}
 	
 	public static long l(byte b)
@@ -479,9 +777,98 @@ public class Launch {
 		return h;
 	}
 	
-	public static String h(int b)
+	public static String h(int i)
 	{
-		return Integer.toHexString(b).toUpperCase();
+		return Integer.toHexString(i).toUpperCase();
+	}
+	
+	public static String h(int[] i)
+	{
+		String s = StreamSupport.intStream(Spliterators.spliterator(i, 0), false).collect(StringBuilder::new, (b, j) -> b.append(h(j)).append(", "), StringBuilder::append).toString();
+		if (s.length() == 0) return "[]";
+		return '[' + s.substring(0, s.length() - 2) + ']';
+	}
+	
+	public static Texture buildTestTexture(TextureTemplate template, int width, int offset)
+	{
+		Texture texture = new Texture(template);
+		texture.bind();
+		int[] data = new int[width];
+		for (int i = 0; i < data.length; i++) data[i] = i + offset;
+		texture.setData1D(template, data, width, 0);
+		return texture;
+	}
+	
+	public static Texture buildTestTexture(TextureTemplate template, int width, int height, int offset)
+	{
+		Texture texture = new Texture(template);
+		texture.bind();
+		int[] data = new int[width * height];
+		for (int i = 0; i < data.length; i++) data[i] = i + offset;
+		texture.setData2D(template, data, width, height, 0);
+		return texture;
+	}
+	
+	public static Texture buildTestTexture(TextureTemplate template, int width, int height, int depth, int offset)
+	{
+		Texture texture = new Texture(template);
+		texture.bind();
+		int[] data = new int[width * height * depth];
+		for (int i = 0; i < data.length; i++) data[i] = i + offset;
+		texture.setData3D(template, data, width, height, depth, 0);
+		return texture;
+	}
+	
+	public static boolean checkException(Runnable runnable, Class<? extends Exception> clazz)
+	{
+		try
+		{
+			runnable.run();
+			return false;
+		}
+		catch (Exception e)
+		{
+			return clazz.isInstance(e);
+		}
+	}
+	
+	public static boolean checkException(Runnable runnable)
+	{
+		try
+		{
+			runnable.run();
+			return false;
+		}
+		catch (Exception e)
+		{
+			return true;
+		}
+	}
+	
+	public static boolean checkNoException(Runnable runnable, Class<? extends Exception> clazz)
+	{
+		try
+		{
+			runnable.run();
+			return true;
+		}
+		catch (Exception e)
+		{
+			return !clazz.isInstance(e);
+		}
+	}
+	
+	public static boolean checkNoException(Runnable runnable)
+	{
+		try
+		{
+			runnable.run();
+			return true;
+		}
+		catch (Exception e)
+		{
+			return false;
+		}
 	}
 	
 	public static Runnable enclosiveContext(Runnable runnable)
@@ -542,5 +929,58 @@ public class Launch {
 				window.detachCurrentContext();
 			}
 		};
+	}
+	
+	public static Runnable dimensions(UltimateTester t, Runnable... runnables)
+	{
+		return enclosiveContext(() -> { for (int i = 0; i < runnables.length; i++) t.test(i + 1 + "D", runnables[i]); });
+	}
+	
+	@SafeVarargs
+	public static Supplier<Boolean> dimensions(UltimateTester t, Supplier<Boolean>... suppliers)
+	{
+		return enclosiveContext(() -> {
+			boolean result = true;
+			for (int i = 0; i < suppliers.length; i++) result &= t.test(i + 1 + "D", suppliers[i]);
+			return result;
+		});
+	}
+	
+	@SafeVarargs
+	public static <T> Predicate<T> dimensions(UltimateTester t, Predicate<T>... predicates)
+	{
+		return enclosiveContext(value -> {
+			boolean result = true;
+			for (int i = 0; i < predicates.length; i++) result &= t.test(i + 1 + "D", predicates[i], value);
+			return result;
+		});
+	}
+	
+	public static class MultipleOutputStream extends OutputStream {
+		
+		private OutputStream[] streams;
+		
+		public MultipleOutputStream(OutputStream... streams)
+		{
+			this.streams = streams;
+		}
+		
+		@Override
+		public void write(int b) throws IOException
+		{
+			for (OutputStream outputStream : streams) if (outputStream != null) outputStream.write(b);
+		}
+		
+		@Override
+		public void write(byte[] b, int off, int len) throws IOException
+		{
+			for (OutputStream outputStream : streams) if (outputStream != null) outputStream.write(b, off, len);
+		}
+		
+		@Override
+		public void flush() throws IOException
+		{
+			for (OutputStream outputStream : streams) if (outputStream != null) outputStream.flush();
+		}
 	}
 }

@@ -9,7 +9,7 @@ import java.util.stream.Stream;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.system.MemoryUtil;
 
-import com.alcadra.renderengine.util.Tracker;
+import com.alcadra.renderengine.util.SwitchableTracker;
 
 public class ObjectArrayBuffer<E> extends SyncronizableArrayBuffer<FloatBuffer> {
 	
@@ -28,7 +28,7 @@ public class ObjectArrayBuffer<E> extends SyncronizableArrayBuffer<FloatBuffer> 
 		oldNativeData = MemoryUtil.memAllocFloat(0);
 	}
 	
-	public Tracker<float[]> add(E element, float[] elementData)
+	public SwitchableTracker<float[]> add(E element, float[] elementData)
 	{
 		Tracker0 tracker = new Tracker0(new Holder(element, elementData));
 		isModified |= values.add(tracker.holder);
@@ -240,7 +240,7 @@ public class ObjectArrayBuffer<E> extends SyncronizableArrayBuffer<FloatBuffer> 
 		}
 	}
 	
-	public class Tracker0 implements Tracker<float[]> {
+	public class Tracker0 implements SwitchableTracker<float[]> {
 		
 		private Holder holder;
 		private boolean valid;

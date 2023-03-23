@@ -5,7 +5,6 @@ import java.util.function.Supplier;
 
 import org.lwjgl.opengl.GL30;
 
-import com.alcadra.math.vector.Vector1f;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
@@ -24,6 +23,11 @@ public class Util {
 		debug = true;
 	}
 	
+	public static void disableDebug()
+	{
+		debug = false;
+	}
+	
 	public static String toPointString(Vector4f vector)
 	{
 		return "{x=" + vector.x() + ", y= " + vector.y() + ", z= " + vector.z() + ", w= " + vector.w() + "}";
@@ -39,10 +43,10 @@ public class Util {
 		return "{x=" + vector.x() + ", y= " + vector.y() + "}";
 	}
 	
-	public static String toPointString(Vector1f vector)
-	{
-		return "{x=" + vector.x() + "}";
-	}
+	// public static String toPointString(Vector1f vector)
+	// {
+	// return "{x=" + vector.x() + "}";
+	// }
 	
 	public static String newParamerizedString(String base, String parametertrigger, List<Object> parameters)
 	{

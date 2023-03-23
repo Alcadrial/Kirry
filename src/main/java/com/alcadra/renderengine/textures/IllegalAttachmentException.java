@@ -1,6 +1,11 @@
 package com.alcadra.renderengine.textures;
 
-public class IllegalAttachmentException extends RuntimeException {
+public class IllegalAttachmentException extends TextureTemplateException {
+	
+	public IllegalAttachmentException()
+	{
+		
+	}
 	
 	public IllegalAttachmentException(String message)
 	{
@@ -20,10 +25,5 @@ public class IllegalAttachmentException extends RuntimeException {
 	public IllegalAttachmentException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace)
 	{
 		super(message, cause, enableSuppression, writableStackTrace);
-	}
-	
-	public IllegalAttachmentException()
-	{
-		
 	}
 }
