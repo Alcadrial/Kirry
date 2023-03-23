@@ -5,25 +5,23 @@ import java.util.Objects;
 
 import org.lwjgl.opengl.GL30;
 
-import com.alcadra.renderengine.buffer.ArrayBufferUpdate;
+import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.SyncronizableArrayBuffer;
 import com.alcadra.renderengine.shader.ShaderInput;
 import com.alcadra.renderengine.shader.ShaderInputType;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.util.Nonnull;
 import com.alcadra.renderengine.util.Util;
-import com.alcadra.renderengine.util.update.UpdatedFrom;
 
-@UpdatedFrom("BaseRenderer")
 @Nonnull
-public abstract class AbstractShaderRendererUpdate<AB extends ArrayBufferUpdate<?>> implements ShaderRendererUpdate {
+public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> implements ShaderRenderer {
 	
 	protected final VertexArray vertexArray;
 	protected final AB arrayBuffer;
 	protected ShaderProgram program;
 	private int vertexSize;
 	
-	protected AbstractShaderRendererUpdate(ShaderProgram program, AB arrayBuffer)
+	protected AbstractShaderRenderer(ShaderProgram program, AB arrayBuffer)
 	{
 		this.program = Objects.requireNonNull(program);
 		this.vertexArray = new VertexArray();
@@ -31,7 +29,7 @@ public abstract class AbstractShaderRendererUpdate<AB extends ArrayBufferUpdate<
 		initializeArrayBuffer();
 	}
 	
-	protected AbstractShaderRendererUpdate(ShaderProgram program, VertexArray vertexArray, AB arrayBuffer)
+	protected AbstractShaderRenderer(ShaderProgram program, VertexArray vertexArray, AB arrayBuffer)
 	{
 		this.program = Objects.requireNonNull(program);
 		this.vertexArray = Objects.requireNonNull(vertexArray);

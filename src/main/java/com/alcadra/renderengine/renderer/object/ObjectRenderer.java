@@ -1,148 +1,65 @@
 package com.alcadra.renderengine.renderer.object;
 
-import java.util.function.Consumer;
-import java.util.function.IntFunction;
-
-import org.lwjgl.opengl.GL30;
+import java.util.Objects;
 
 import com.alcadra.math.Matrix4f;
-import com.alcadra.math.vector.Vector2f;
-import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
-import com.alcadra.math.vector.Vector3i;
 import com.alcadra.math.vector.Vector4f;
-import com.alcadra.math.vector.Vector4i;
-import com.alcadra.renderengine.buffer.Bufferable;
 import com.alcadra.renderengine.buffer.ObjectArrayBuffer;
-import com.alcadra.renderengine.renderer.BaseRenderer;
-import com.alcadra.renderengine.renderer.ShaderRenderer;
-import com.alcadra.renderengine.renderer.VertexArray;
-import com.alcadra.renderengine.renderer.VertexBuilder;
-import com.alcadra.renderengine.shader.Shader;
-import com.alcadra.renderengine.textures.ColorTexture;
-import com.alcadra.renderengine.textures.Texture;
+import com.alcadra.renderengine.renderer.AbstractShaderRenderer;
+import com.alcadra.renderengine.renderer.RenderingMode;
+import com.alcadra.renderengine.shader.ShaderInput;
+import com.alcadra.renderengine.shader.ShaderProgram;
+import com.alcadra.renderengine.shader.uniform.ShaderUniform;
 import com.alcadra.renderengine.util.Tracker;
-import com.alcadra.renderengine.util.update.UpdatedTo;
+import com.alcadra.renderengine.util.WorkInProgress;
+import com.alcadra.renderengine.util.color.Color;
+import com.alcadra.renderengine.util.color.VectorColorRGBA;
 
-@Deprecated(since = "2.0-migration", forRemoval = true)
-@UpdatedTo("ObjectRendererUpdate")
-public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> implements ShaderRenderer, VertexBuilder<ObjectRenderer> {
+@WorkInProgress
+public class ObjectRenderer extends AbstractShaderRenderer<ObjectArrayBuffer<Object>> {
 	
-	private Vector4i bindedColor;
-	private Vector2i bindedUV;
-	private Vector3i bindedNormal;
-	private ColorTexture texture;
+	private static final ShaderUniform<Matrix4f> TRANSFORMATION = ShaderUniform.ofMatrix4f("TRANSFORMATION");
+	private static final ShaderUniform<Vector4f> COLOR = ShaderUniform.ofVector4f("COLOR");
+	private static final ShaderUniform<Vector3f> COLOR_RGB = ShaderUniform.ofVector3f("COLOR_RGB");
+	private static final ShaderUniform<Integer> TEXTURE_SAMPLER = ShaderUniform.ofInt("TEXTURE_SAMPLER");
+	
+	private BufferableModel buildingValue;
+	private Vector4f color;
+	private int textureSampler;
 	private int offset;
-	private Bufferable buildingValue;
-	private int vertexSize;
 	
-	public ObjectRenderer(Shader shader)
+	public ObjectRenderer(ShaderProgram program)
 	{
-		super(shader, new VertexArray(), new ObjectArrayBuffer<>());
-		initializeArrayBuffer();
-		bindedColor = Vector4i.getOrigin();
-		bindedUV = Vector2i.getOrigin();
-		bindedNormal = Vector3i.getOrigin();
-		texture = ColorTexture.getNull();
+		super(program, new ObjectArrayBuffer<>());
+		color = Color.BLACK;
 	}
 	
-	@Override
-	protected void initializeArrayBuffer()
-	{
-		vertexArray.bindBuffer(arrayBuffer);
-		vertexSize = 12 + (shader.useColor() ? 16 : 0) + (shader.useUV() ? 8 : 0) + (shader.useNormal() ? 12 : 0);
-		int offset = 0;
-		vertexArray.vertexAttributePointer(0, 3, GL30.GL_FLOAT, false, vertexSize, offset);
-		vertexArray.enableVertexAttribute(0);
-		offset += 12;
-		if (shader.useColor())
-		{
-			vertexArray.vertexAttributePointer(1, 4, GL30.GL_FLOAT, false, vertexSize, offset);
-			vertexArray.enableVertexAttribute(1);
-			offset += 16;
-		}
-		if (shader.useUV())
-		{
-			vertexArray.vertexAttributePointer(2, 2, GL30.GL_FLOAT, false, vertexSize, offset);
-			vertexArray.enableVertexAttribute(2);
-			offset += 8;
-		}
-		if (shader.useNormal())
-		{
-			vertexArray.vertexAttributePointer(3, 3, GL30.GL_FLOAT, false, vertexSize, offset);
-			vertexArray.enableVertexAttribute(3);
-			offset += 12;
-		}
-		VertexArray.unbind();
-	}
-	
-	@Override
-	protected void disableAttributes()
-	{
-		vertexArray.bind();
-		if (shader.useColor()) vertexArray.disableVertexAttribute(1);
-		if (shader.useUV()) vertexArray.disableVertexAttribute(2);
-		if (shader.useNormal()) vertexArray.disableVertexAttribute(3);
-	}
-	
-	public void loadTexture(ColorTexture texture)
-	{
-		this.texture = texture;
-	}
-	
-	public ObjectBuilder start(Bufferable value)
+	public ObjectBuilder start(BufferableModel value)
 	{
 		buildingValue = value;
-		return new ObjectBuilder(this, bindedColor, bindedUV, bindedNormal);
+		return new ObjectBuilder(this);
 	}
 	
-	public void startIfAbsent(Bufferable value, Consumer<ObjectBuilder> consumer)
+	protected <B extends BufferableModel> Tracker<B> build(ObjectBuilder builder)
 	{
-		if (!arrayBuffer.contains(value))
+		return new Tracker0<>(arrayBuffer.add(buildingValue, buildData(buildingValue)));
+	}
+	
+	private float[] buildData(BufferableModel model)
+	{
+		int vertices = model.vertices();
+		int vertexSize = vertexSize() / 4;
+		float[] buildedData = new float[vertexSize * vertices];
+		for (int i = 0, j = 0; i < vertices; i++, j = 0)
 		{
-			buildingValue = value;
-			consumer.accept(new ObjectBuilder(this));
-		}
-	}
-	
-	ObjectBuilder start(Bufferable value, ObjectBuilder builder)
-	{
-		buildingValue = value;
-		return builder;
-	}
-	
-	void startIfAbsent(Bufferable value, ObjectBuilder builder, Consumer<ObjectBuilder> consumer)
-	{
-		if (!arrayBuffer.contains(value))
-		{
-			buildingValue = value;
-			consumer.accept(builder);
-		}
-	}
-	
-	public <B extends Bufferable> Tracker<B> end(ObjectBuilder builder)
-	{
-		return new Tracker0<>(arrayBuffer.add(buildingValue, buildData(builder::getModifier, buildingValue, builder.availableModifier())), builder::getModifier, builder.availableModifier());
-	}
-	
-	private int[] buildData(IntFunction<VertexModifier> modifiers, Bufferable bufferable, int available)
-	{
-		int vertices = bufferable.vertices();
-		try
-		{
-			int[] buildedData = new int[vertexSize / 4 * vertices];
-			int[][] data = bufferable.getData();
-			for (int i = 0; i < vertices; i++)
+			for (ShaderInput input : program.getProgramInputs())
 			{
-				int[] vertexData = bufferable.getVertexData(i, modifiers.apply(i), data[i]);
-				for (int j = 0; j < vertexData.length; j++) buildedData[i * vertexData.length + j] = vertexData[j];
+				float[] vertexData = model.getVertexData(i, input).getData();
+				for (int k = 0; k < vertexData.length; k++, j++) buildedData[i * vertexSize + j] = vertexData[k];
 			}
-			return buildedData;
 		}
-		catch (IndexOutOfBoundsException e)
-		{
-			throw new InsufficientVertexDataException("Required " + vertices + " modifiers, available " + available, e);
-		}
+		return buildedData;
 	}
 	
 	public void enable(int index)
@@ -155,52 +72,38 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 		arrayBuffer.disable(index);
 	}
 	
-	@Override
-	public ObjectRenderer color(Vector4f color)
+	public void draw(RenderingMode mode, Matrix4f matrix)
 	{
-		bindedColor = new Vector4i(Float.floatToIntBits(color.x() / 255), Float.floatToIntBits(color.y() / 255), Float.floatToIntBits(color.z() / 255), Float.floatToIntBits(color.w() / 255));
-		return this;
-	}
-	
-	@Override
-	public ObjectRenderer uv(Vector2f uv)
-	{
-		bindedUV = new Vector2i(Float.floatToIntBits(uv.x()), Float.floatToIntBits(uv.y()));
-		return this;
-	}
-	
-	@Override
-	public ObjectRenderer normal(Vector3f normal)
-	{
-		bindedNormal = new Vector3i(Float.floatToIntBits(normal.x()), Float.floatToIntBits(normal.y()), Float.floatToIntBits(normal.z()));
-		return this;
-	}
-	
-	public void draw(int mode, Matrix4f matrix)
-	{
-		if (shader.useUV())
-		{
-			Texture.setActive(0);
-			texture.bind();
-		}
-		if (shader != null)
-		{
-			shader.enable();
-			shader.setUniform(matrix, "transformation");
-			if (shader.hasUniformColor()) shader.setUniformFloat(bindedColor, "color");
-			if (shader.hasUniformUV()) shader.setUniformFloat(bindedUV, "uv");
-			if (shader.hasUniformNormal()) shader.setUniformFloat(bindedNormal, "normal");
-			if (shader.useUV() || shader.hasUniformUV()) shader.setUniform(0, "textureSampler");
-		}
+		program.enable();
+		program.setUniform(TRANSFORMATION, matrix);
+		program.setUniform(TEXTURE_SAMPLER, textureSampler);
+		program.setUniform(COLOR, color);
+		program.setUniform(COLOR_RGB, color.xyz());
 		draw(mode, arrayBuffer.intSize());
-		Shader.disableShaders();
+	}
+	
+	public void setUniformColor(VectorColorRGBA color)
+	{
+		this.color = Objects.requireNonNull(color);
+	}
+	
+	public void setUniformColor(float r, float g, float b)
+	{
+		color = Color.ofVector(r, g, b);
+	}
+	
+	public void setUniformColor(float r, float g, float b, float a)
+	{
+		color = Color.ofVector(r, g, b, a);
+	}
+	
+	public void setUniformTextureSampler(int textureSampler)
+	{
+		if (textureSampler >= 0 && textureSampler < 32) this.textureSampler = textureSampler;
 	}
 	
 	public void reset()
 	{
-		bindedColor = Vector4i.getOrigin();
-		bindedUV = Vector2i.getOrigin();
-		bindedNormal = Vector3i.getOrigin();
 		clear();
 	}
 	
@@ -228,23 +131,19 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 		return "ObjectRenderer{" + arrayBuffer + "}";
 	}
 	
-	private class Tracker0<B extends Bufferable> implements Tracker<B> {
+	private class Tracker0<B extends BufferableModel> implements Tracker<B> {
 		
-		private Tracker<int[]> tracker;
-		private IntFunction<VertexModifier> modifiers;
-		private int available;
+		private Tracker<float[]> tracker;
 		
-		public Tracker0(Tracker<int[]> tracker, IntFunction<VertexModifier> modifiers, int available)
+		public Tracker0(Tracker<float[]> tracker)
 		{
 			this.tracker = tracker;
-			this.modifiers = modifiers;
-			this.available = available;
 		}
 		
 		@Override
 		public void modify(B elementData)
 		{
-			tracker.modify(buildData(modifiers, elementData, available));
+			tracker.modify(buildData(elementData));
 		}
 		
 		@Override

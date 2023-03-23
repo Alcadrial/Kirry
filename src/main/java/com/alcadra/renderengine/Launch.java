@@ -12,27 +12,27 @@ import java.util.function.Supplier;
 
 import org.lwjgl.glfw.GLFW;
 
-import com.alcadra.renderengine.buffer.ArrayBufferUpdate;
+import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
-import com.alcadra.renderengine.buffer.FloatArrayBufferUpdate;
+import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.buffer.SimpleBuffer;
 import com.alcadra.renderengine.shader.ShaderInput;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.ShaderType;
-import com.alcadra.renderengine.shader.ShaderUpdate;
+import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.util.Test;
-import com.alcadra.renderengine.window.WindowUpdate;
+import com.alcadra.renderengine.window.Window;
 import com.alcadra.tester.UltimateTester;
 
 @Test
 public class Launch {
 	
-	private static WindowUpdate window;
+	private static Window window;
 	
 	public static void main(String[] args) throws IOException
 	{
 		if (!GLFW.glfwInit()) return;
-		window = new WindowUpdate(1080, 720, "Test");
+		window = new Window(1080, 720, "Test");
 		window.build();
 		if (!window.isBuild())
 		{
@@ -87,13 +87,13 @@ public class Launch {
 			});
 			t.println();
 			boolean arrayBuffer = t.test("Array Buffer", enclosiveContext(() -> {
-				t.assertTest("Constructor 0", b -> b.size() == 0 && b.getTarget() == GL_ARRAY_BUFFER && b.getId() == 0, ArrayBufferUpdate.NULL);
+				t.assertTest("Constructor 0", b -> b.size() == 0 && b.getTarget() == GL_ARRAY_BUFFER && b.getId() == 0, ArrayBuffer.NULL);
 				return true;
 			}));
 			@SuppressWarnings("unused")
 			boolean floatArrayBuffer = false;
 			if (arrayBuffer) floatArrayBuffer = t.test("Float Array Buffer", enclosiveContext(() -> {
-				t.assertTest("Constructor 0", b -> b.size() == 0 && b.getTarget() == GL_ARRAY_BUFFER, new FloatArrayBufferUpdate());
+				t.assertTest("Constructor 0", b -> b.size() == 0 && b.getTarget() == GL_ARRAY_BUFFER, new FloatArrayBuffer());
 				t.println();
 				t.test("Add", b -> {
 					float f = 0.630625F;
@@ -101,40 +101,40 @@ public class Launch {
 					t.println("Size = " + b.size());
 					t.println("Data = " + b.getFloat(0));
 					return b.size() == 1 && f == b.getFloat(0);
-				}, new FloatArrayBufferUpdate());
+				}, new FloatArrayBuffer());
 				t.test("Add all", enclosiveContext(() -> {
 					t.assertTest("Collection", b -> {
 						b.addAll(List.of(0F, 2F, 3F));
 						t.println("Size = " + b.size());
 						t.println("Data = " + b.getFloat(0) + ", " + b.getFloat(1) + ", " + b.getFloat(2));
 						return b.size() == 3 && b.getFloat(0) == 0 && b.getFloat(1) == 2 && b.getFloat(2) == 3;
-					}, new FloatArrayBufferUpdate());
+					}, new FloatArrayBuffer());
 					t.assertTest("Array", b -> {
 						b.addAll(new float[] {0, 2, 3});
 						t.println("Size = " + b.size());
 						t.println("Data = " + b.getFloat(0) + ", " + b.getFloat(1) + ", " + b.getFloat(2));
 						return b.size() == 3 && b.getFloat(0) == 0 && b.getFloat(1) == 2 && b.getFloat(2) == 3;
-					}, new FloatArrayBufferUpdate());
+					}, new FloatArrayBuffer());
 					return true;
 				}));
 				t.println();
 				t.test("Merge", enclosiveContext(b -> {
 					b.add(12F);
-					FloatArrayBufferUpdate extra = new FloatArrayBufferUpdate();
+					FloatArrayBuffer extra = new FloatArrayBuffer();
 					extra.add(0.1F);
 					extra.add(11.5F);
 					b.merge(extra);
 					t.println("Size = " + b.size());
 					t.println("Data = " + b.getFloat(0) + ", " + b.getFloat(1) + ", " + b.getFloat(2));
 					return b.size() == 3 && b.getFloat(0) == 12F && b.getFloat(1) == 0.1F && b.getFloat(2) == 11.5F;
-				}), new FloatArrayBufferUpdate());
+				}), new FloatArrayBuffer());
 				t.assertTest("Clear", b -> {
 					b.add(0F);
 					b.add(1F);
 					b.clear();
 					t.println("Size = " + b.size());
 					return b.size() == 0;
-				}, new FloatArrayBufferUpdate());
+				}, new FloatArrayBuffer());
 				t.println();
 				t.assertTest("GL sync", enclosiveContext(b -> {
 					b.bind();
@@ -184,7 +184,7 @@ public class Launch {
 					data = b.getGlFloatData();
 					t.println("Data = " + data[0] + ", " + data[1] + ", " + data[2] + ", " + data[3]);
 					return data.length == 4 && data[0] == 0 && data[1] == 1 && data[2] == 2 && data[3] == 4;
-				}), new FloatArrayBufferUpdate());
+				}), new FloatArrayBuffer());
 				return true;
 			}));
 			@SuppressWarnings("unused")
@@ -308,7 +308,7 @@ public class Launch {
 			}));
 			t.test("Shader", enclosiveContext(() -> {
 				
-				ShaderUpdate shader = new ShaderUpdate(new File("src/main/resources/assets/renderengine/colored_texture.vert"));
+				Shader shader = new Shader(new File("src/main/resources/assets/renderengine/colored_texture.vert"));
 				
 				t.println("Type = " + shader.getType());
 				

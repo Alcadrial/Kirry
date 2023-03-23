@@ -20,7 +20,7 @@ import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector3i;
 import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
-import com.alcadra.renderengine.buffer.FloatArrayBufferUpdate;
+import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.buffer.FrameBuffer;
 import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.renderer.font.Font;
@@ -31,15 +31,15 @@ import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
 import com.alcadra.renderengine.rendertest.ObjectRenderTest;
 import com.alcadra.renderengine.rendertest.RenderTest;
 import com.alcadra.renderengine.shader.ShaderProgram;
-import com.alcadra.renderengine.shader.ShaderUpdate;
+import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.util.Image;
 import com.alcadra.renderengine.util.RendererUtil;
 import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.util.Util;
 import com.alcadra.renderengine.util.color.Color;
-import com.alcadra.renderengine.window.WindowUpdate;
+import com.alcadra.renderengine.window.Window;
 import com.alcadra.renderengine.window.cursor.StandardCursor;
-import com.alcadra.renderengine.window.widget.VisibleButtonUpdate;
+import com.alcadra.renderengine.window.widget.VisibleButton;
 import com.alcadra.threads.TimeThread;
 
 @SuppressWarnings("unused")
@@ -168,11 +168,11 @@ public class RenderEngine implements RenderTest {
 		Util.printError("renew");
 	}
 	
-	private WindowUpdate window;
+	private Window window;
 	private Vector2f cursor;
 	private ShaderProgram colorProgram, textureProgram;
 	private UniversalRenderer universalRenderer, widgetRenderer;
-	private FloatArrayBufferUpdate buffer0, buffer1;
+	private FloatArrayBuffer buffer0, buffer1;
 	private ElementArrayBuffer element0, element1;
 	private FontRendererUpdate fontRenderer;
 	private Font font;
@@ -181,7 +181,7 @@ public class RenderEngine implements RenderTest {
 	public void start()
 	{
 		Configuration.DEBUG.set(true);
-		window = new WindowUpdate(1080, 720, "Test");
+		window = new Window(1080, 720, "Test");
 		window.build();
 		window.makeContextCurrent();
 		Util.printError("window build");
@@ -243,14 +243,14 @@ public class RenderEngine implements RenderTest {
 		frameBuffer = new FrameBuffer();
 		Util.printError("framebuffer");
 		
-		ShaderUpdate shader0;
+		Shader shader0;
 		colorProgram = new ShaderProgram();
 		try
 		{
-			shader0 = new ShaderUpdate(new File(colorShaderVertexPath));
+			shader0 = new Shader(new File(colorShaderVertexPath));
 			shader0.loadShader();
 			colorProgram.attachShader(shader0);
-			shader0 = new ShaderUpdate(new File(colorShaderFragmentPath));
+			shader0 = new Shader(new File(colorShaderFragmentPath));
 			shader0.loadShader();
 			colorProgram.attachShader(shader0);
 		}
@@ -262,10 +262,10 @@ public class RenderEngine implements RenderTest {
 		textureProgram = new ShaderProgram();
 		try
 		{
-			shader0 = new ShaderUpdate(new File(textureShaderVertexPath));
+			shader0 = new Shader(new File(textureShaderVertexPath));
 			shader0.loadShader();
 			textureProgram.attachShader(shader0);
-			shader0 = new ShaderUpdate(new File(textureShaderFragmentPath));
+			shader0 = new Shader(new File(textureShaderFragmentPath));
 			shader0.loadShader();
 			textureProgram.attachShader(shader0);
 		}
@@ -282,11 +282,11 @@ public class RenderEngine implements RenderTest {
 		ShaderProgram fontProgram = new ShaderProgram();
 		try
 		{
-			shader0 = new ShaderUpdate(new File(fontShaderVertexPath));
+			shader0 = new Shader(new File(fontShaderVertexPath));
 			shader0.loadShader();
 			if (!shader0.getStatus().isCompiled()) System.out.println(shader0.getStatus());
 			fontProgram.attachShader(shader0);
-			shader0 = new ShaderUpdate(new File(fontShaderFragmentPath));
+			shader0 = new Shader(new File(fontShaderFragmentPath));
 			shader0.loadShader();
 			if (!shader0.getStatus().isCompiled()) System.out.println(shader0.getStatus());
 			fontProgram.attachShader(shader0);
@@ -312,7 +312,7 @@ public class RenderEngine implements RenderTest {
 		
 		window.setIcon(icon);
 		window.show();
-		window.addWidget(new VisibleButtonUpdate(new Vector3i(10, 10, 0), new Vector2i(16, 16), window) {
+		window.addWidget(new VisibleButton(new Vector3i(10, 10, 0), new Vector2i(16, 16), window) {
 			
 			@Override
 			public void onLeftClick(Vector2i mousePos)
@@ -335,11 +335,11 @@ public class RenderEngine implements RenderTest {
 		Matrix4f viewer = new Matrix4f(projection).multiply(view);
 		Vector3f end = new Vector3f(10, 10, 10);
 		
-		universalRenderer.pushBuffer(buffer0 = new FloatArrayBufferUpdate(), element0 = new ElementArrayBuffer());
+		universalRenderer.pushBuffer(buffer0 = new FloatArrayBuffer(), element0 = new ElementArrayBuffer());
 		RendererUtil.loadOrthoCube(universalRenderer, Vector3f.getOrigin(), end, Color.LIGHT_YELLOW);
 		RendererUtil.loadOrthoCube(universalRenderer, viewer, end, end.add(end), Color.LIGHT_YELLOW);
 		universalRenderer.pullBuffer();
-		universalRenderer.pushBuffer(buffer1 = new FloatArrayBufferUpdate(), element1 = new ElementArrayBuffer());
+		universalRenderer.pushBuffer(buffer1 = new FloatArrayBuffer(), element1 = new ElementArrayBuffer());
 		RendererUtil.loadSquare(universalRenderer, 100, 100, 128, 128, 1, 255, 255, 0, 255);
 		universalRenderer.pullBuffer();
 		
@@ -437,7 +437,7 @@ public class RenderEngine implements RenderTest {
 	}
 	
 	@Override
-	public WindowUpdate getWindow()
+	public Window getWindow()
 	{
 		return window;
 	}

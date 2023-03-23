@@ -3,13 +3,11 @@ package com.alcadra.renderengine.window.widget;
 import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3i;
-import com.alcadra.renderengine.renderer.ColorRenderer;
-import com.alcadra.renderengine.util.update.UpdatedTo;
+import com.alcadra.renderengine.renderer.RenderingMode;
+import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
 import com.alcadra.renderengine.window.Window;
 
-@UpdatedTo("VisibleButtonUpdate")
-@Deprecated(since = "2.0-migration", forRemoval = true)
-public abstract class VisibleButton extends Button implements DrawableWidget<ColorRenderer> {
+public abstract class VisibleButton extends Button implements DrawableWidget<UniversalRenderer> {
 	
 	public VisibleButton(Vector3i pos, Vector2i size, Window window)
 	{
@@ -17,18 +15,21 @@ public abstract class VisibleButton extends Button implements DrawableWidget<Col
 	}
 	
 	@Override
-	public void render(Matrix4f matrix, ColorRenderer renderer, Vector2i pos, float partialTicks)
+	public void render(Matrix4f matrix, UniversalRenderer renderer, Vector2i pos, float partialTicks)
 	{
 		
 	}
 	
 	@Override
-	public void draw(Matrix4f matrix, ColorRenderer renderer, float partialTicks)
+	public void draw(Matrix4f matrix, UniversalRenderer renderer, float partialTicks)
 	{
-		renderer.color(127, 127, 127, 255);
+		renderer.clear();
 		float w = getWindow().getWidth() / 2, h = getWindow().getHeight() / 2;
 		Vector3i pos = getPos();
-		renderer.loadQuad(pos.x() - w, pos.y() - h, pos.x() - w + 16, pos.y() - h + 16, pos.z());
-		renderer.drawVertices(7, matrix);
+		renderer.vertex(pos.x() - w, pos.y() - h + 16, pos.z()).color(127, 127, 127).color(127, 127, 127, 255).end();
+		renderer.vertex(pos.x() - w + 16, pos.y() - h + 16, pos.z()).color(127, 127, 127).color(127, 127, 127, 255).end();
+		renderer.vertex(pos.x() - w + 16, pos.y() - h, pos.z()).color(127, 127, 127).color(127, 127, 127, 255).end();
+		renderer.vertex(pos.x() - w, pos.y() - h, pos.z()).color(127, 127, 127).color(127, 127, 127, 255).end();
+		renderer.drawPoints(RenderingMode.QUADS, matrix);
 	}
 }

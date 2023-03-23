@@ -8,11 +8,7 @@ import java.util.List;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.system.MemoryUtil;
 
-import com.alcadra.renderengine.util.update.UpdatedTo;
-
-@Deprecated(since = "2.0-migration", forRemoval = true)
-@UpdatedTo("FloatArrayBufferUpdate")
-public class FloatArrayBuffer extends ArrayBuffer<FloatBuffer> {
+public class FloatArrayBuffer extends SyncronizableArrayBuffer<FloatBuffer> {
 	
 	protected ArrayList<Float> values = new ArrayList<>();
 	
@@ -79,7 +75,6 @@ public class FloatArrayBuffer extends ArrayBuffer<FloatBuffer> {
 		FloatBuffer buffer = MemoryUtil.memAllocFloat(values.size());
 		for (Float i : values) buffer.put(i);
 		buffer.flip();
-		// if (buffer.capacity() == 336) System.out.println(Arrays.toString(getGlFloatData()));
 		return buffer;
 	}
 	

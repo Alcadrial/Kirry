@@ -24,19 +24,16 @@ import org.lwjgl.system.CallbackI;
 import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.renderengine.buffer.FrameBuffer;
-import com.alcadra.renderengine.renderer.ColorRenderer;
-import com.alcadra.renderengine.renderer.TextureRenderer;
 import com.alcadra.renderengine.renderer.object.ObjectRenderer;
+import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
 import com.alcadra.renderengine.textures.Texture;
 import com.alcadra.renderengine.util.Image;
-import com.alcadra.renderengine.util.update.UpdatedTo;
-import com.alcadra.renderengine.util.update.UseInstead;
+import com.alcadra.renderengine.window.cursor.CursorInputMode;
 import com.alcadra.renderengine.window.cursor.ICursor;
 import com.alcadra.renderengine.window.widget.ClickableWidget;
 import com.alcadra.renderengine.window.widget.DrawableWidget;
 
-@Deprecated(since = "2.0-migration", forRemoval = true)
-@UpdatedTo("WindowUpdate")
+@SuppressWarnings("deprecation")
 public class Window {
 	
 	private long windowId;
@@ -47,14 +44,7 @@ public class Window {
 	private float aspectRatio;
 	private CursorInputMode cursorInputMode = CursorInputMode.NORMAL;
 	
-	@Deprecated(since = "2.0-migration", forRemoval = true)
-	@UseInstead(name = ".renderizableUniversalWidgets")
-	private List<Entry<ColorRenderer, DrawableWidget<ColorRenderer>>> renderizableColorWidgets = new LinkedList<>();
-	@Deprecated(since = "2.0-migration", forRemoval = true)
-	@UseInstead(name = ".renderizableUniversalWidgets")
-	private List<Entry<TextureRenderer, DrawableWidget<TextureRenderer>>> renderizableTextureWidgets = new LinkedList<>();
-	@Deprecated(since = "2.0-migration", forRemoval = true)
-	@UseInstead(name = ".renderizableObjectWidgetsUpdate")
+	private List<Entry<UniversalRenderer, DrawableWidget<UniversalRenderer>>> renderizableUniversalWidgets = new LinkedList<>();
 	private List<Entry<ObjectRenderer, DrawableWidget<ObjectRenderer>>> renderizableObjectWidgets = new LinkedList<>();
 	private List<ClickableWidget> clickableWidgets = new LinkedList<>();
 	
@@ -124,16 +114,14 @@ public class Window {
 	
 	public void render(Matrix4f matrix, float partialTicks)
 	{
-		for (Entry<ColorRenderer, DrawableWidget<ColorRenderer>> entry : renderizableColorWidgets) entry.getValue().render(new Matrix4f(matrix), entry.getKey(), entry.getValue().getPos().xy(), partialTicks);
-		for (Entry<TextureRenderer, DrawableWidget<TextureRenderer>> entry : renderizableTextureWidgets) entry.getValue().render(new Matrix4f(matrix), entry.getKey(), entry.getValue().getPos().xy(), partialTicks);
+		for (Entry<UniversalRenderer, DrawableWidget<UniversalRenderer>> entry : renderizableUniversalWidgets) entry.getValue().render(new Matrix4f(matrix), entry.getKey(), entry.getValue().getPos().xy(), partialTicks);
 		for (Entry<ObjectRenderer, DrawableWidget<ObjectRenderer>> entry : renderizableObjectWidgets) entry.getValue().render(new Matrix4f(matrix), entry.getKey(), entry.getValue().getPos().xy(), partialTicks);
 		while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
 	}
 	
 	public void update(Matrix4f matrix, float partialTicks)
 	{
-		for (Entry<ColorRenderer, DrawableWidget<ColorRenderer>> entry : renderizableColorWidgets) entry.getValue().draw(new Matrix4f(matrix), entry.getKey(), partialTicks);
-		for (Entry<TextureRenderer, DrawableWidget<TextureRenderer>> entry : renderizableTextureWidgets) entry.getValue().draw(new Matrix4f(matrix), entry.getKey(), partialTicks);
+		for (Entry<UniversalRenderer, DrawableWidget<UniversalRenderer>> entry : renderizableUniversalWidgets) entry.getValue().draw(new Matrix4f(matrix), entry.getKey(), partialTicks);
 		for (Entry<ObjectRenderer, DrawableWidget<ObjectRenderer>> entry : renderizableObjectWidgets) entry.getValue().draw(new Matrix4f(matrix), entry.getKey(), partialTicks);
 		pollEvents();
 		swapBuffers();
@@ -159,24 +147,12 @@ public class Window {
 		if (event instanceof GLFWWindowSizeCallbackI callback) windowSizeCallbackList.add(callback);
 	}
 	
-	@Deprecated(since = "2.0-migration", forRemoval = true)
-	@UseInstead(name = "WindowUpdate#addWidget(DrawableWidgetUpdate, UniversalRenderer)")
-	public final void addWidget(DrawableWidget<ColorRenderer> widget, ColorRenderer renderer)
+	public final void addWidget(DrawableWidget<UniversalRenderer> widget, UniversalRenderer renderer)
 	{
 		if (widget instanceof ClickableWidget w) addWidget(w);
-		renderizableColorWidgets.add(Map.entry(renderer, widget));
+		renderizableUniversalWidgets.add(Map.entry(renderer, widget));
 	}
 	
-	@Deprecated(since = "2.0-migration", forRemoval = true)
-	@UseInstead(name = "WindowUpdate#addWidget(DrawableWidgetUpdate, UniversalRenderer)")
-	public final void addWidget(DrawableWidget<TextureRenderer> widget, TextureRenderer renderer)
-	{
-		if (widget instanceof ClickableWidget w) addWidget(w);
-		renderizableTextureWidgets.add(Map.entry(renderer, widget));
-	}
-	
-	@Deprecated(since = "2.0-migration", forRemoval = true)
-	@UseInstead(name = "WindowUpdate#addWidget(DrawableWidgetUpdate, ObjectRendererUpdate)")
 	public final void addWidget(DrawableWidget<ObjectRenderer> widget, ObjectRenderer renderer)
 	{
 		if (widget instanceof ClickableWidget w) addWidget(w);
@@ -234,7 +210,7 @@ public class Window {
 		return aspectRatio;
 	}
 	
-	public final CursorInputMode getCursorInputMode()
+	public final com.alcadra.renderengine.window.cursor.CursorInputMode getCursorInputMode()
 	{
 		return cursorInputMode;
 	}
@@ -271,7 +247,7 @@ public class Window {
 		GLFW.glfwSetWindowSizeLimits(windowId, minSize.x(), minSize.y(), maxSize.x(), maxSize.y());
 	}
 	
-	public final void setCursorInputMode(CursorInputMode mode)
+	public final void setCursorInputMode(com.alcadra.renderengine.window.cursor.CursorInputMode mode)
 	{
 		if (cursorInputMode != mode)
 		{

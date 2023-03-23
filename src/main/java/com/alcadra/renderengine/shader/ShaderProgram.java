@@ -8,12 +8,10 @@ import org.lwjgl.opengl.GL20;
 
 import com.alcadra.renderengine.shader.uniform.ShaderUniform;
 import com.alcadra.renderengine.util.NotUsed;
-import com.alcadra.renderengine.util.WorkInProgress;
 
-@WorkInProgress
 public class ShaderProgram {
 	
-	private List<ShaderUpdate>[] attachedShaders;
+	private List<Shader>[] attachedShaders;
 	private List<ShaderInput> knownInputs;
 	private List<ShaderInput> programInputs;
 	private int id;
@@ -30,7 +28,7 @@ public class ShaderProgram {
 		status = ProgramStatus.of(id, "Needs to be builded!");
 	}
 	
-	public void attachShader(ShaderUpdate shader)
+	public void attachShader(Shader shader)
 	{
 		if (id != -1)
 		{
@@ -74,7 +72,7 @@ public class ShaderProgram {
 	void learnInputs()
 	{
 		programInputs = new ArrayList<>();
-		for (ShaderUpdate shader : attachedShaders[0]) if (shader.getStatus().isCompiled())
+		for (Shader shader : attachedShaders[0]) if (shader.getStatus().isCompiled())
 		{
 			String[] code = shader.getCode();
 			for (String line : code)
@@ -108,7 +106,7 @@ public class ShaderProgram {
 	@SuppressWarnings("unchecked")
 	public void delete()
 	{
-		for (List<ShaderUpdate> list : attachedShaders) for (ShaderUpdate shader : list) shader.removeProgram(this);
+		for (List<Shader> list : attachedShaders) for (Shader shader : list) shader.removeProgram(this);
 		attachedShaders = new List[0];
 		knownInputs = List.of();
 		programInputs = knownInputs;
@@ -121,7 +119,7 @@ public class ShaderProgram {
 		uniform.setValue(GL20.glGetUniformLocation(id, uniform.getName()), value);
 	}
 	
-	public List<ShaderUpdate> getShaders(ShaderType type)
+	public List<Shader> getShaders(ShaderType type)
 	{
 		if (id == -1 || type.ordinal() < ShaderType.COMPUTE.ordinal()) return List.of();
 		return List.copyOf(attachedShaders[type.ordinal()]);

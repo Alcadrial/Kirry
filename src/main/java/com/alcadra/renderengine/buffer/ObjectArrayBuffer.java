@@ -1,6 +1,6 @@
 package com.alcadra.renderengine.buffer;
 
-import java.nio.IntBuffer;
+import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -10,16 +10,13 @@ import org.lwjgl.opengl.GL15;
 import org.lwjgl.system.MemoryUtil;
 
 import com.alcadra.renderengine.util.Tracker;
-import com.alcadra.renderengine.util.update.UpdatedTo;
 
-@Deprecated(since = "2.0-migration", forRemoval = true)
-@UpdatedTo("ObjectArrayBufferUpdate")
-public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
+public class ObjectArrayBuffer<E> extends SyncronizableArrayBuffer<FloatBuffer> {
 	
 	private List<Holder> values;
 	private List<Holder> modifieds;
-	private IntBuffer oldLocalData;
-	private IntBuffer oldNativeData;
+	private FloatBuffer oldLocalData;
+	private FloatBuffer oldNativeData;
 	private boolean needResize;
 	private int intSize;
 	
@@ -27,11 +24,11 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 	{
 		values = new ArrayList<>();
 		modifieds = new ArrayList<>();
-		oldLocalData = MemoryUtil.memAllocInt(0);
-		oldNativeData = MemoryUtil.memAllocInt(0);
+		oldLocalData = MemoryUtil.memAllocFloat(0);
+		oldNativeData = MemoryUtil.memAllocFloat(0);
 	}
 	
-	public Tracker<int[]> add(E element, int[] elementData)
+	public Tracker<float[]> add(E element, float[] elementData)
 	{
 		Tracker0 tracker = new Tracker0(new Holder(element, elementData));
 		isModified |= values.add(tracker.holder);
@@ -158,7 +155,7 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 			else
 			{
 				List<Holder> l = List.copyOf(modifieds);
-				IntBuffer buffer = nativeBuffer();
+				FloatBuffer buffer = nativeBuffer();
 				for (Holder e : l) syncModify(buffer, e.ints, e.ints + e.data.length);
 			}
 			isModified = false;
@@ -166,31 +163,31 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 	}
 	
 	@Override
-	protected IntBuffer nativeBuffer()
+	protected FloatBuffer nativeBuffer()
 	{
 		if (isModified)
 		{
 			if (needResize)
 			{
 				MemoryUtil.memFree(oldLocalData);
-				oldLocalData = MemoryUtil.memAllocInt(intSize);
-				for (Holder e : values) oldLocalData.put(e.enabled ? e.data : new int[e.data.length]);
+				oldLocalData = MemoryUtil.memAllocFloat(intSize);
+				for (Holder e : values) oldLocalData.put(e.enabled ? e.data : new float[e.data.length]);
 				modifieds.clear();
 				return oldLocalData.flip();
 			}
-			for (Holder e : modifieds) oldLocalData.put(e.ints, e.enabled ? e.data : new int[e.data.length]);
+			for (Holder e : modifieds) oldLocalData.put(e.ints, e.enabled ? e.data : new float[e.data.length]);
 			modifieds.clear();
 		}
 		return oldLocalData;
 	}
 	
 	@Override
-	protected IntBuffer nativeGlBuffer()
+	protected FloatBuffer nativeGlBuffer()
 	{
 		if (isModified)
 		{
 			MemoryUtil.memFree(oldNativeData);
-			oldNativeData = MemoryUtil.memAllocInt(byteSize() / 4);
+			oldNativeData = MemoryUtil.memAllocFloat(byteSize() / 4);
 			GL15.glGetBufferSubData(getTarget(), 0, oldNativeData);
 			oldNativeData.flip();
 		}
@@ -198,19 +195,19 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 	}
 	
 	@Override
-	protected void syncRewrite(IntBuffer buffer)
+	protected void syncRewrite(FloatBuffer buffer)
 	{
 		GL15.glBufferData(getTarget(), buffer, GL15.GL_DYNAMIC_DRAW);
 	}
 	
 	@Override
-	protected void syncModify(IntBuffer buffer, int from, int to)
+	protected void syncModify(FloatBuffer buffer, int from, int to)
 	{
 		GL15.glBufferSubData(getTarget(), from * 4, buffer.duplicate().limit(to).position(from));
 	}
 	
 	@Override
-	protected boolean equals(IntBuffer buffer, IntBuffer other)
+	protected boolean equals(FloatBuffer buffer, FloatBuffer other)
 	{
 		return buffer.get() == other.get();
 	}
@@ -231,10 +228,10 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 		
 		E element;
 		boolean enabled;
-		int[] data;
+		float[] data;
 		int ints;
 		
-		Holder(E element, int[] data)
+		Holder(E element, float[] data)
 		{
 			this.element = element;
 			enabled = true;
@@ -243,7 +240,7 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 		}
 	}
 	
-	public class Tracker0 implements Tracker<int[]> {
+	public class Tracker0 implements Tracker<float[]> {
 		
 		private Holder holder;
 		private boolean valid;
@@ -255,7 +252,7 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 		}
 		
 		@Override
-		public void modify(int[] data)
+		public void modify(float[] data)
 		{
 			if (valid)
 			{

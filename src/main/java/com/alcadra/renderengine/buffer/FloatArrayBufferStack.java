@@ -3,13 +3,13 @@ package com.alcadra.renderengine.buffer;
 import java.util.Collection;
 import java.util.List;
 
-public class FloatArrayBufferStack extends FloatArrayBufferUpdate {
+public class FloatArrayBufferStack extends FloatArrayBuffer {
 	
 	private Node head;
 	private Node top;
 	private int size;
 	
-	public void push(FloatArrayBufferUpdate buffer)
+	public void push(FloatArrayBuffer buffer)
 	{
 		size++;
 		if (head == null)
@@ -21,7 +21,7 @@ public class FloatArrayBufferStack extends FloatArrayBufferUpdate {
 		top = top.next;
 	}
 	
-	public FloatArrayBufferUpdate current()
+	public FloatArrayBuffer current()
 	{
 		return top.buffer;
 	}
@@ -77,7 +77,7 @@ public class FloatArrayBufferStack extends FloatArrayBufferUpdate {
 	}
 	
 	@Override
-	public void merge(FloatArrayBufferUpdate arrayBuffer)
+	public void merge(FloatArrayBuffer arrayBuffer)
 	{
 		if (top != null) top.buffer.merge(arrayBuffer);
 		else super.merge(arrayBuffer);
@@ -118,9 +118,9 @@ public class FloatArrayBufferStack extends FloatArrayBufferUpdate {
 	private class Node {
 		
 		Node next;
-		FloatArrayBufferUpdate buffer;
+		FloatArrayBuffer buffer;
 		
-		public Node(Node next, FloatArrayBufferUpdate buffer)
+		public Node(Node next, FloatArrayBuffer buffer)
 		{
 			this.next = next;
 			this.buffer = buffer;

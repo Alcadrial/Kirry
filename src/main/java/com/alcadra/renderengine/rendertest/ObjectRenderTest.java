@@ -18,10 +18,10 @@ import com.alcadra.renderengine.renderer.font.FontRendererUpdate;
 import com.alcadra.renderengine.renderer.font.text.Text;
 import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.renderer.object.BufferableModel;
-import com.alcadra.renderengine.renderer.object.ObjectBuilderUpdate;
-import com.alcadra.renderengine.renderer.object.ObjectRendererUpdate;
+import com.alcadra.renderengine.renderer.object.ObjectBuilder;
+import com.alcadra.renderengine.renderer.object.ObjectRenderer;
 import com.alcadra.renderengine.shader.ShaderProgram;
-import com.alcadra.renderengine.shader.ShaderUpdate;
+import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.textures.ColorTexture;
 import com.alcadra.renderengine.util.Image;
 import com.alcadra.renderengine.util.Test;
@@ -29,25 +29,25 @@ import com.alcadra.renderengine.util.Tracker;
 import com.alcadra.renderengine.util.color.Color;
 import com.alcadra.renderengine.util.color.VectorColorRGB;
 import com.alcadra.renderengine.util.color.VectorColorRGBA;
-import com.alcadra.renderengine.window.WindowUpdate;
+import com.alcadra.renderengine.window.Window;
 
 @SuppressWarnings("deprecation")
 @Test
 public class ObjectRenderTest implements RenderTest {
 	
-	private WindowUpdate window;
+	private Window window;
 	private Font font;
 	
 	private FontRendererUpdate fontRenderer;
-	private ObjectRendererUpdate objectColorRenderer;
-	private ObjectRendererUpdate objectTexturedRenderer;
-	private ObjectRendererUpdate cubeRenderer;
+	private ObjectRenderer objectColorRenderer;
+	private ObjectRenderer objectTexturedRenderer;
+	private ObjectRenderer cubeRenderer;
 	private ColorTexture texture;
 	
 	@Override
 	public void start()
 	{
-		window = new WindowUpdate(1080, 720, "ObjectRenderTest");
+		window = new Window(1080, 720, "ObjectRenderTest");
 		window.build();
 		window.makeContextCurrent();
 		
@@ -79,15 +79,15 @@ public class ObjectRenderTest implements RenderTest {
 			e.printStackTrace(System.out);
 		}
 		
-		ShaderUpdate shader;
+		Shader shader;
 		ShaderProgram fontProgram = new ShaderProgram();
 		try
 		{
-			shader = new ShaderUpdate(new File(RenderEngine.fontShaderVertexPath));
+			shader = new Shader(new File(RenderEngine.fontShaderVertexPath));
 			shader.loadShader();
 			if (!shader.getStatus().isCompiled()) System.out.println(shader.getStatus());
 			fontProgram.attachShader(shader);
-			shader = new ShaderUpdate(new File(RenderEngine.fontShaderFragmentPath));
+			shader = new Shader(new File(RenderEngine.fontShaderFragmentPath));
 			shader.loadShader();
 			if (!shader.getStatus().isCompiled()) System.out.println(shader.getStatus());
 			fontProgram.attachShader(shader);
@@ -103,10 +103,10 @@ public class ObjectRenderTest implements RenderTest {
 		ShaderProgram colorProgram = new ShaderProgram();
 		try
 		{
-			shader = new ShaderUpdate(new File(RenderEngine.colorShaderVertexPath));
+			shader = new Shader(new File(RenderEngine.colorShaderVertexPath));
 			shader.loadShader();
 			colorProgram.attachShader(shader);
-			shader = new ShaderUpdate(new File(RenderEngine.colorShaderFragmentPath));
+			shader = new Shader(new File(RenderEngine.colorShaderFragmentPath));
 			shader.loadShader();
 			colorProgram.attachShader(shader);
 		}
@@ -116,15 +116,15 @@ public class ObjectRenderTest implements RenderTest {
 		}
 		colorProgram.build();
 		
-		objectColorRenderer = new ObjectRendererUpdate(colorProgram);
+		objectColorRenderer = new ObjectRenderer(colorProgram);
 		
 		ShaderProgram objectTexturedShader = new ShaderProgram();
 		try
 		{
-			shader = new ShaderUpdate(new File(RenderEngine.textureShaderVertexPath));
+			shader = new Shader(new File(RenderEngine.textureShaderVertexPath));
 			shader.loadShader();
 			objectTexturedShader.attachShader(shader);
-			shader = new ShaderUpdate(new File(RenderEngine.textureShaderFragmentPath));
+			shader = new Shader(new File(RenderEngine.textureShaderFragmentPath));
 			shader.loadShader();
 			objectTexturedShader.attachShader(shader);
 		}
@@ -134,9 +134,9 @@ public class ObjectRenderTest implements RenderTest {
 		}
 		objectTexturedShader.build();
 		
-		objectTexturedRenderer = new ObjectRendererUpdate(objectTexturedShader);
+		objectTexturedRenderer = new ObjectRenderer(objectTexturedShader);
 		
-		cubeRenderer = new ObjectRendererUpdate(objectTexturedShader);
+		cubeRenderer = new ObjectRenderer(objectTexturedShader);
 		
 		init();
 	}
@@ -178,21 +178,21 @@ public class ObjectRenderTest implements RenderTest {
 	
 	private Tracker<BufferableModel> buildQuad(Quad quad, VectorColorRGBA color)
 	{
-		ObjectBuilderUpdate builder = objectColorRenderer.start(quad);
+		ObjectBuilder builder = objectColorRenderer.start(quad);
 		builder.vertex().color(color.r(), color.g(), color.b()).color(color.r(), color.g(), color.b(), color.a()).next().next().next().end();
 		return builder.end();
 	}
 	
 	private Tracker<BufferableModel> buildQuad(Quad quad, VectorColorRGB color)
 	{
-		ObjectBuilderUpdate builder = objectColorRenderer.start(quad);
+		ObjectBuilder builder = objectColorRenderer.start(quad);
 		builder.vertex().color(color.r(), color.g(), color.b()).next().next().next().end();
 		return builder.end();
 	}
 	
-	private Tracker<BufferableModel> track(Cube cube, ObjectRendererUpdate renderer)
+	private Tracker<BufferableModel> track(Cube cube, ObjectRenderer renderer)
 	{
-		ObjectBuilderUpdate builder = renderer.start(cube);
+		ObjectBuilder builder = renderer.start(cube);
 		builder.vertex().color(0x00, 0x00, 0x00, 0x7F).next().next().next().end();
 		builder.vertex().color(0x00, 0x00, 0xFF, 0x7F).next().next().next().end();
 		builder.vertex().color(0x00, 0xFF, 0x00, 0x7F).next().next().next().end();
@@ -254,7 +254,7 @@ public class ObjectRenderTest implements RenderTest {
 	}
 	
 	@Override
-	public WindowUpdate getWindow()
+	public Window getWindow()
 	{
 		return window;
 	}

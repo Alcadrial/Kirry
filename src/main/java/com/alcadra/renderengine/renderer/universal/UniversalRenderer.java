@@ -8,8 +8,8 @@ import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBufferStack;
 import com.alcadra.renderengine.buffer.FloatArrayBufferStack;
-import com.alcadra.renderengine.buffer.FloatArrayBufferUpdate;
-import com.alcadra.renderengine.renderer.AbstractIndicesRendererUpdate;
+import com.alcadra.renderengine.buffer.FloatArrayBuffer;
+import com.alcadra.renderengine.renderer.AbstractIndicesRenderer;
 import com.alcadra.renderengine.renderer.AbstractVertexBuilder;
 import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.shader.ShaderProgram;
@@ -19,7 +19,7 @@ import com.alcadra.renderengine.util.color.Color;
 import com.alcadra.renderengine.util.color.VectorColorRGBA;
 
 @Nonnull
-public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayBufferStack> {
+public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferStack> {
 	
 	private static final ShaderUniform<Matrix4f> TRANSFORMATION = ShaderUniform.ofMatrix4f("TRANSFORMATION");
 	private static final ShaderUniform<Vector4f> COLOR = ShaderUniform.ofVector4f("COLOR");
@@ -79,29 +79,29 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 	
 	public void pushBuffer()
 	{
-		pushBuffer(new FloatArrayBufferUpdate());
+		pushBuffer(new FloatArrayBuffer());
 	}
 	
-	public void pushBuffer(FloatArrayBufferUpdate arrayBuffer)
+	public void pushBuffer(FloatArrayBuffer arrayBuffer)
 	{
 		pushBuffer(arrayBuffer, new ElementArrayBuffer());
 	}
 	
-	public void pushBuffer(FloatArrayBufferUpdate arrayBuffer, ElementArrayBuffer elementBuffer)
+	public void pushBuffer(FloatArrayBuffer arrayBuffer, ElementArrayBuffer elementBuffer)
 	{
 		this.arrayBuffer.push(arrayBuffer);
 		elementStack.push(elementBuffer);
 		offset = elementStack.getMax();
 	}
 	
-	public void pushBufferMerge(FloatArrayBufferUpdate buffer)
+	public void pushBufferMerge(FloatArrayBuffer buffer)
 	{
 		pushBufferMerge(buffer, new ElementArrayBuffer());
 	}
 	
-	public void pushBufferMerge(FloatArrayBufferUpdate buffer, ElementArrayBuffer elementBuffer)
+	public void pushBufferMerge(FloatArrayBuffer buffer, ElementArrayBuffer elementBuffer)
 	{
-		FloatArrayBufferUpdate b = arrayBuffer.current();
+		FloatArrayBuffer b = arrayBuffer.current();
 		buffer.merge(b);
 		arrayBuffer.push(buffer);
 		ElementArrayBuffer e = elementStack.current();

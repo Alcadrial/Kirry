@@ -7,10 +7,6 @@ import java.nio.IntBuffer;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.system.MemoryUtil;
 
-import com.alcadra.renderengine.util.update.UpdatedTo;
-
-@Deprecated(since = "2.0-migration", forRemoval = true)
-@UpdatedTo("ArrayBufferUpdate")
 public abstract class ArrayBuffer<B extends Buffer> extends SimpleBuffer {
 	
 	public static final ArrayBuffer<Buffer> NULL = new ArrayBuffer<>(0) {
@@ -25,32 +21,6 @@ public abstract class ArrayBuffer<B extends Buffer> extends SimpleBuffer {
 		public int byteSize()
 		{
 			return 0;
-		}
-		
-		@Override
-		protected Buffer nativeBuffer()
-		{
-			return null;
-		}
-		
-		@Override
-		protected Buffer nativeGlBuffer()
-		{
-			return null;
-		}
-		
-		@Override
-		protected void syncRewrite(Buffer buffer)
-		{}
-		
-		@Override
-		protected void syncModify(Buffer buffer, int from, int to)
-		{}
-		
-		@Override
-		protected boolean equals(Buffer buffer, Buffer other)
-		{
-			return false;
 		}
 		
 		@Override
@@ -86,60 +56,7 @@ public abstract class ArrayBuffer<B extends Buffer> extends SimpleBuffer {
 		return null;
 	}
 	
-	protected abstract B nativeBuffer();
-	protected abstract B nativeGlBuffer();
-	
-	protected abstract void syncRewrite(B buffer);
-	protected abstract void syncModify(B buffer, int from, int to);
-	
-	protected abstract boolean equals(B buffer, B other);
-	
 	public abstract void clear();
-	
-	public void sync()
-	{
-		if (isModified)
-		{
-			/*
-			@off
-			int byteSize = getGlByteSize();
-			if (byteSize != byteSize())
-			{
-			@on
-			*/
-			B buffer = nativeBuffer();
-			syncRewrite(buffer);
-			MemoryUtil.memFree(buffer);
-			/*
-			@off
-			}
-			else
-			{
-				B local = nativeBuffer();
-				B buffer = nativeGlBuffer();
-				int start = -1;
-				int size = size();
-				for (int i = 0; i < size; i++)
-				{
-					if (!equals(buffer, local))
-					{
-						if (start == -1) start = i;
-					}
-					else if (start != -1)
-					{
-						syncModify(local, start, i);
-						local.limit(size).position(i);
-						start = -1;
-					}
-				}
-				MemoryUtil.memFree(local);
-				MemoryUtil.memFree(buffer);
-			}
-			@on
-			*/
-			isModified = false;
-		}
-	}
 	
 	protected abstract int elementSize();
 	

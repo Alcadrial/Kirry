@@ -4,7 +4,7 @@ import java.nio.Buffer;
 
 import org.lwjgl.system.MemoryUtil;
 
-public abstract class SyncronizableArrayBuffer<B extends Buffer> extends ArrayBufferUpdate<B> {
+public abstract class SyncronizableArrayBuffer<B extends Buffer> extends ArrayBuffer<B> {
 	
 	protected abstract B nativeBuffer();
 	protected abstract B nativeGlBuffer();

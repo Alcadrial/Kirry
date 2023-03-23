@@ -1,18 +1,13 @@
 package com.alcadra.renderengine.shader;
 
-import com.alcadra.renderengine.util.update.UseInstead;
-
 public class ShaderStatus {
 	
-	private String code;
-	private String[] code0;
+	private String[] code;
 	private String info;
 	private boolean isCompiled;
 	private int id;
 	
-	@Deprecated(since = "1.2", forRemoval = true)
-	@UseInstead(name = "ShaderStatus(boolean, int, String[], String)", descriptions = "Break code into a String[] containing a String for every line")
-	public ShaderStatus(boolean isCompiled, int id, String code, String info)
+	public ShaderStatus(boolean isCompiled, int id, String[] code, String info)
 	{
 		this.code = code;
 		this.info = info;
@@ -20,24 +15,9 @@ public class ShaderStatus {
 		this.id = id;
 	}
 	
-	public ShaderStatus(boolean isCompiled, int id, String[] code, String info)
-	{
-		this.code = "";
-		for (String line : code) this.code += line + "\n";
-		code0 = code;
-		this.info = info;
-		this.isCompiled = isCompiled;
-		this.id = id;
-	}
-	
-	public String getCode()
+	public String[] getCode()
 	{
 		return code;
-	}
-	
-	public String[] getCode0()
-	{
-		return code0;
 	}
 	
 	public String getInfo()
@@ -59,9 +39,8 @@ public class ShaderStatus {
 	public String toString()
 	{
 		if (isCompiled) return "Shader compiled";
-		if (code0 == null) return code + "\n" + info;
 		String s = "";
-		for (String line : code0) s += line + "\n";
+		for (String line : code) s += line + "\n";
 		return s + info;
 	}
 }

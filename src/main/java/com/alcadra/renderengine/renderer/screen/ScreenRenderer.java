@@ -1,13 +1,13 @@
 package com.alcadra.renderengine.renderer.screen;
 
-import com.alcadra.renderengine.buffer.ArrayBufferUpdate;
-import com.alcadra.renderengine.renderer.AbstractShaderRendererUpdate;
+import com.alcadra.renderengine.buffer.ArrayBuffer;
+import com.alcadra.renderengine.renderer.AbstractShaderRenderer;
 import com.alcadra.renderengine.shader.ShaderProgram;
-import com.alcadra.renderengine.window.widget.DrawableWidgetUpdate;
+import com.alcadra.renderengine.window.widget.DrawableWidget;
 
-class ScreenRenderer extends AbstractShaderRendererUpdate<DataModel> {
+class ScreenRenderer extends AbstractShaderRenderer<DataModel> {
 	
-	private ArrayBufferUpdate<?> currentArrayBuffer;
+	private ArrayBuffer<?> currentArrayBuffer;
 	
 	public ScreenRenderer(ShaderProgram program)
 	{
@@ -22,7 +22,7 @@ class ScreenRenderer extends AbstractShaderRendererUpdate<DataModel> {
 		super.initializeArrayBuffer();
 	}
 	
-	public void drawWidget(DrawableWidgetUpdate<ScreenRenderer> widget)
+	public void drawWidget(DrawableWidget<ScreenRenderer> widget)
 	{
 		
 	}
@@ -32,7 +32,7 @@ class ScreenRenderer extends AbstractShaderRendererUpdate<DataModel> {
 		
 	}
 	
-	public void useBuffer(ArrayBufferUpdate<?> buffer)
+	public void useBuffer(ArrayBuffer<?> buffer)
 	{
 		currentArrayBuffer = buffer;
 	}

@@ -2,10 +2,12 @@ package com.alcadra.renderengine.renderer.object;
 
 import java.nio.FloatBuffer;
 
-import com.alcadra.renderengine.buffer.ArrayBufferUpdate;
+import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.shader.ShaderInput;
+import com.alcadra.renderengine.util.NotYetImplemented;
 
-public class BufferedModel extends ArrayBufferUpdate<FloatBuffer> implements BufferableModel {
+@NotYetImplemented
+public class BufferedModel extends ArrayBuffer<FloatBuffer> implements BufferableModel {
 	
 	@Override
 	public DataGetter getVertexData(int vertex, ShaderInput shaderInput)

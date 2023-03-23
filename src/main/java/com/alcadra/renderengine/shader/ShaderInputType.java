@@ -127,6 +127,11 @@ public enum ShaderInputType {
 		return size;
 	}
 	
+	/**
+	 * Returns the length in bytes of this type.
+	 * 
+	 * @return the length in bytes
+	 */
 	public int getLength()
 	{
 		return length;

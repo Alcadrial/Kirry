@@ -2,9 +2,9 @@ package com.alcadra.renderengine.renderer.screen;
 
 import java.nio.FloatBuffer;
 
-import com.alcadra.renderengine.buffer.ArrayBufferUpdate;
+import com.alcadra.renderengine.buffer.ArrayBuffer;
 
-abstract class DataModel extends ArrayBufferUpdate<FloatBuffer> {
+abstract class DataModel extends ArrayBuffer<FloatBuffer> {
 	
 	public static final DataModel EMPTY = new EmptyDataModel();
 	
