@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -110,5 +111,11 @@ public class Text implements Iterable<TextLine> {
 	public Stream<TextLine> parallelStream()
 	{
 		return StreamSupport.stream(spliterator(), true);
+	}
+	
+	@Override
+	public String toString()
+	{
+		return stream().map(Object::toString).collect(Collectors.joining(", ", "[", "]"));
 	}
 }

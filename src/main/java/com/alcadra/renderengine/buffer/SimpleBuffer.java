@@ -2,8 +2,6 @@ package com.alcadra.renderengine.buffer;
 
 import org.lwjgl.opengl.GL15;
 
-import com.alcadra.renderengine.util.Util;
-
 public abstract class SimpleBuffer implements AutoCloseable {
 	
 	private final int target, id;

@@ -159,7 +159,7 @@ public class FloatArrayBufferStack extends FloatArrayBuffer {
 	@Override
 	public String toString()
 	{
-		return "FloatArrayBufferStack{size=" + size + ", topValues=" + current().values + "}";
+		return "FloatArrayBufferStack{size=" + size + ", topValues=" + (top != null ? top.buffer : this).values + "}";
 	}
 	
 	private class Node {

@@ -137,7 +137,7 @@ public class ElementArrayBufferStack extends ElementArrayBuffer {
 	@Override
 	public String toString()
 	{
-		return "ElementArrayBufferStack{size=" + size + ", topValues=" + current().values + "}";
+		return "ElementArrayBufferStack{size=" + size + ", topValues=" + (top != null ? top.buffer : this).values + "}";
 	}
 	
 	private class Node {
