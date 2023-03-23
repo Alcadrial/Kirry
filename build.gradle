@@ -1,14 +1,43 @@
 import org.gradle.internal.os.OperatingSystem
 
 plugins {
+    id("java")
     id("java-library")
 }
+
+def printClass(Object obj) {
+	println(obj.class)
+}
+
+println("Configuring RenderEngine's project")
+
+boolean printExportedFiles = false;
+boolean excludeTestFiles = true;
 
 java {
 	toolchain.languageVersion.set(JavaLanguageVersion.of(17))
     withSourcesJar()
     withJavadocJar()
 }
+printClass(sourceSets.main.java)
+
+sourceSets.main.java {
+	srcDir("src/main/java")
+	
+	exclude(e -> {
+		if (!excludeTestFiles || !e.getFile().isFile()) return false;
+		boolean b = e.getFile().name.endsWith(".java")
+		String text = e.getFile().text
+		boolean b0 = text.contains("@Test")
+		boolean b1 = text.contains("import com.alcadra.renderengine.Test")
+		boolean b2 = text.contains("package com.alcadra.renderengine;")
+		boolean b3 = text.contains("@com.alcadra.renderengine.Test")
+		boolean result = b && ((b0 && (b1 || b2)) || b3)
+		if (!result && printExportedFiles) System.out.println(e.getFile());
+		return result
+	})
+}
+
 
 project.ext.lwjglVersion = "3.3.0"
 
@@ -16,7 +45,7 @@ switch (OperatingSystem.current()) {
 	case OperatingSystem.LINUX:
 		def osArch = System.getProperty("os.arch")
 		project.ext.lwjglNatives = osArch.startsWith("arm") || osArch.startsWith("aarch64")
-			? "natives-linux-${osArch.contains("64") || osArch.startsWith("armv8") ? "arm64" : "arm32"}"
+			? "natives-linux-${osArch.contains('64') || osArch.startsWith('armv8') ? 'arm64' : 'arm32'}"
 			: "natives-linux"
 		break
 	case OperatingSystem.MAC_OS:
@@ -25,22 +54,59 @@ switch (OperatingSystem.current()) {
 	case OperatingSystem.WINDOWS:
 		def osArch = System.getProperty("os.arch")
 		project.ext.lwjglNatives = osArch.contains("64")
-			? "natives-windows${osArch.startsWith("aarch64") ? "-arm64" : ""}"
+			? "natives-windows${osArch.startsWith('aarch64') ? '-arm64' : ""}"
 			: "natives-windows-x86"
 		break
 }
 
+
+tasks.named("jar") {
+	getDestinationDirectory().set(new File("jar"))
+}
+tasks.named("javadocJar") {
+	getDestinationDirectory().set(new File("jar"))
+}
+tasks.named("sourcesJar") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+	getDestinationDirectory().set(new File("jar"))
+}
+
 class AlcadrialTask extends DefaultTask {
+
     AlcadrialTask() {
         group = "alcadrial"
     }
 }
 
 task export(type: AlcadrialTask) {
-	dependsOn "jar"
-	dependsOn "javadocJar"
-	dependsOn "sourcesJar"
+	dependsOn("exportJar")
+	dependsOn("exportJavadoc")
+	dependsOn("exportSources")
+	//dependsOn("exportTestSources")
 }
+
+task exportJar(type: AlcadrialTask) {
+	dependsOn("jar")
+}
+
+task exportJavadoc(type: AlcadrialTask) {
+	dependsOn("javadocJar")
+}
+
+task exportSources(type: AlcadrialTask) {
+	dependsOn("sourcesJar")
+}
+
+task exportTestSources(type: AlcadrialTask) {
+	excludeTestFiles = false;
+	tasks.named("sourcesJar") {getArchiveFileName().set("RenderEngine-test.jar")}
+	dependsOn("sourcesJar")
+	doLast{
+		tasks.named("sourcesJar") {getArchiveFileName().set("RenderEngine.jar")}
+		excludeTestFiles = true
+	}
+}
+
 
 repositories {
 	flatDir {
@@ -62,4 +128,18 @@ dependencies {
 	runtimeOnly ("org.lwjgl:lwjgl-glfw::$lwjglNatives")
 	runtimeOnly ("org.lwjgl:lwjgl-openal::$lwjglNatives")
 	runtimeOnly ("org.lwjgl:lwjgl-opengl::$lwjglNatives")
+}
+
+jar {
+    manifest {
+        attributes([
+                "Specification-Title"     : "Render Engine",
+                "Specification-Vendor"    : "Alcadrial",
+                "Specification-Version"   : "1",
+                "Implementation-Title"    : project.name,
+                "Implementation-Version"  : project.jar.archiveVersion,
+                "Implementation-Vendor"   : "alcadrial",
+                "Implementation-Timestamp": new Date().format("dd-MM-yyyy'T'HH:mm:ssZ")
+        ])
+    }
 }
