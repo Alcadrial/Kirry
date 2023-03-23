@@ -1,17 +1,16 @@
 package com.alcadra.renderengine.textures;
 
-import java.lang.ref.Cleaner.Cleanable;
 import java.nio.IntBuffer;
 import java.util.Arrays;
 
 import org.lwjgl.opengl.GL45;
 
 import com.alcadra.renderengine.util.Broken;
+import com.alcadra.renderengine.util.Deletable;
 import com.alcadra.renderengine.util.Optimizable;
 import com.alcadra.renderengine.util.Util;
-import com.alcadra.renderengine.util.WorkInProgress;
 
-public final class Texture implements Cleanable {
+public final class Texture implements Deletable {
 	
 	private static final int[] POINTER = new int[1];
 	
@@ -90,7 +89,7 @@ public final class Texture implements Cleanable {
 	public void setData2D(TextureTemplate dataFormat, int[] data, int width, int height, int mipmapLevels)
 	{
 		if (mipmapLevels < 0) return;
-	//	System.out.println("internal " + id + " " + width + " " + height);
+		// System.out.println("internal " + id + " " + width + " " + height);
 		GL45.glTexImage2D(template.target(), mipmapLevels, template.internalFormat(), width, height, 0, dataFormat.textureFormat(), dataFormat.dataType(), data);
 		Util.printError("Texture [INTERNAL] setData");
 		length = width * height;
@@ -443,11 +442,12 @@ public final class Texture implements Cleanable {
 	private boolean valid = true;
 	
 	@Override
-	public void clean()
+	public void close()
 	{
 		GL45.glDeleteTextures(id);
 		if (valid) valid = false;
 		else if (Util.isDebug()) System.err.println("Recleaning");
+		if (Util.isDebug()) System.err.println("Clean");
 	}
 	
 	private int[] point(int value)

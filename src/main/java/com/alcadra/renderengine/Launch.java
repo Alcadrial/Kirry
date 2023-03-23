@@ -33,6 +33,7 @@ import com.alcadra.renderengine.shader.ShaderType;
 import com.alcadra.renderengine.textures.Texture;
 import com.alcadra.renderengine.textures.TextureTemplate;
 import com.alcadra.renderengine.textures.TextureTemplateException;
+import com.alcadra.renderengine.util.Deletable;
 import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.util.Util;
 import com.alcadra.renderengine.window.Window;
@@ -513,12 +514,10 @@ public class Launch {
 				TextureTemplate rgba1d = TextureTemplate.RGBA_2D_TEXTURE.withTarget(GL_TEXTURE_1D);
 				TextureTemplate rgba3d = TextureTemplate.RGBA_2D_TEXTURE.withTarget(GL_TEXTURE_3D);
 				
-				t.assertTest("Constructor", enclosiveContext(texture -> texture.getId() == 1 && texture.getTemplate() == rgba2d), new Texture(rgba2d));
+				t.assertTest("Constructor", enclosiveContext(tryTexture(texture -> texture.getId() == 1 && texture.getTemplate() == rgba2d)), new Texture(rgba2d));
 				
 				t.assertTest("SetData", dimensions(t, enclosiveContext(() -> {
-					
-					Texture texture = new Texture(rgba1d);
-					try
+					try (Texture texture = new Texture(rgba1d))
 					{
 						texture.bind();
 						int[] data = new int[] {0, 1, 2, 3, 4, 5, 6, 7};
@@ -536,15 +535,8 @@ public class Launch {
 						
 						return Arrays.equals(data, data0);
 					}
-					finally
-					{
-						texture.clean();
-					}
 				}), enclosiveContext(() -> {
-					
-					Texture texture = new Texture(rgba2d);
-					
-					try
+					try (Texture texture = new Texture(rgba2d))
 					{
 						texture.bind();
 						int[] data = new int[] {0, 1, 2, 3, 4, 5, 6, 7};
@@ -562,15 +554,8 @@ public class Launch {
 						
 						return Arrays.equals(data, data0);
 					}
-					finally
-					{
-						texture.clean();
-					}
 				}), enclosiveContext(() -> {
-					
-					Texture texture = new Texture(rgba3d);
-					
-					try
+					try (Texture texture = new Texture(rgba3d))
 					{
 						texture.bind();
 						int[] data = new int[] {0, 1, 2, 3, 4, 5, 6, 7};
@@ -588,15 +573,10 @@ public class Launch {
 						
 						return Arrays.equals(data, data0);
 					}
-					finally
-					{
-						texture.clean();
-					}
 				})));
 				
 				t.assertTest("ClearRegion", dimensions(t, enclosiveContext(() -> {
-					Texture texture = buildTestTexture(rgba1d, 8, 0);
-					try
+					try (Texture texture = buildTestTexture(rgba1d, 8, 0))
 					{
 						texture.clearRegion1D(0x57575744, 1, 4);
 						
@@ -605,13 +585,8 @@ public class Launch {
 						int[] data = new int[] {0, 0x57575744, 0x57575744, 0x57575744, 0x57575744, 5, 6, 7};
 						return Arrays.equals(data, data0);
 					}
-					finally
-					{
-						texture.clean();
-					}
 				}), enclosiveContext(() -> {
-					Texture texture = buildTestTexture(rgba2d, 4, 2, 0);
-					try
+					try (Texture texture = buildTestTexture(rgba2d, 4, 2, 0))
 					{
 						texture.clearRegion2D(0x2478936A, 1, 0, 1, 2);
 						
@@ -620,13 +595,8 @@ public class Launch {
 						int[] data = new int[] {0, 0x2478936A, 2, 3, 4, 0x2478936A, 6, 7};
 						return Arrays.equals(data, data0);
 					}
-					finally
-					{
-						texture.clean();
-					}
 				}), enclosiveContext(() -> {
-					Texture texture = buildTestTexture(rgba3d, 2, 2, 2, 0);
-					try
+					try (Texture texture = buildTestTexture(rgba3d, 2, 2, 2, 0))
 					{
 						texture.clearRegion3D(0, 1, 0, 0, 1, 2, 2);
 						
@@ -635,15 +605,10 @@ public class Launch {
 						int[] data = new int[] {0, 0, 2, 0, 4, 0, 6, 0};
 						return Arrays.equals(data, data0);
 					}
-					finally
-					{
-						texture.clean();
-					}
 				})));
 				
 				t.assertTest("Resize", dimensions(t, enclosiveContext(() -> {
-					Texture texture = buildTestTexture(rgba1d, 8, 0);
-					try
+					try (Texture texture = buildTestTexture(rgba1d, 8, 0))
 					{
 						texture.resize1D(16);
 						
@@ -652,13 +617,8 @@ public class Launch {
 						int[] data = new int[] {0, 1, 2, 3, 4, 5, 6, 7};
 						return data0.length == 16 && Arrays.equals(data, 0, 8, data0, 0, 8);
 					}
-					finally
-					{
-						texture.clean();
-					}
 				}), enclosiveContext(() -> {
-					Texture texture = buildTestTexture(rgba2d, 4, 2, 0);
-					try
+					try (Texture texture = buildTestTexture(rgba2d, 4, 2, 0))
 					{
 						texture.resize2D(8, 4);
 						
@@ -667,13 +627,8 @@ public class Launch {
 						int[] data = new int[] {0, 1, 2, 3, 4, 5, 6, 7};
 						return data0.length == 32 && Arrays.equals(data, 0, 4, data0, 0, 4) && Arrays.equals(data, 4, 8, data0, 8, 12);
 					}
-					finally
-					{
-						texture.clean();
-					}
 				}), enclosiveContext(() -> {
-					Texture texture = buildTestTexture(rgba3d, 2, 2, 2, 0);
-					try
+					try (Texture texture = buildTestTexture(rgba3d, 2, 2, 2, 0))
 					{
 						texture.resize3D(4, 4, 4);
 						
@@ -684,64 +639,51 @@ public class Launch {
 						if (!Arrays.equals(data, 4, 6, data0, 16, 18) || !Arrays.equals(data, 6, 8, data0, 20, 22)) return false;
 						return data0.length == 64;
 					}
-					finally
-					{
-						texture.clean();
-					}
 				})));
 				
 				t.test("Copy", dimensions(t, enclosiveContext(() -> {
-					Texture texture = buildTestTexture(rgba1d, 8, 0);
-					Texture texture0 = buildTestTexture(rgba1d, 8, 8);
-					try
+					try (Texture texture = buildTestTexture(rgba1d, 8, 0))
 					{
-						texture.copyTo1D(texture0, 1, 4);
-						
-						texture0.bind();
-						int[] data0 = texture0.getDataArray();
-						t.println("Data = " + h(data0));
-						int[] data = new int[] {8, 1, 2, 3, 4, 13, 14, 15};
-						return data0.length == 8 && Arrays.equals(data, 0, 8, data0, 0, 8);
-					}
-					finally
-					{
-						texture.clean();
+						try (Texture texture0 = buildTestTexture(rgba1d, 8, 8))
+						{
+							texture.copyTo1D(texture0, 1, 4);
+							
+							texture0.bind();
+							int[] data0 = texture0.getDataArray();
+							t.println("Data = " + h(data0));
+							int[] data = new int[] {8, 1, 2, 3, 4, 13, 14, 15};
+							return data0.length == 8 && Arrays.equals(data, 0, 8, data0, 0, 8);
+						}
 					}
 				}), enclosiveContext(() -> {
-					Texture texture = buildTestTexture(rgba2d, 4, 2, 0);
-					Texture texture0 = buildTestTexture(rgba2d, 4, 2, 8);
-					try
+					try (Texture texture = buildTestTexture(rgba2d, 4, 2, 0))
 					{
-						texture.copyTo2D(texture0, 1, 0, 1, 2);
-						
-						texture0.bind();
-						int[] data0 = texture0.getDataArray();
-						t.println("Data = " + h(data0));
-						int[] data = new int[] {0, 1, 10, 11, 4, 5, 14, 15};
-						return data0.length == 8 && Arrays.equals(data, 0, 4, data0, 0, 4) && Arrays.equals(data, 4, 8, data0, 8, 12);
-					}
-					finally
-					{
-						texture.clean();
+						try (Texture texture0 = buildTestTexture(rgba2d, 4, 2, 8))
+						{
+							texture.copyTo2D(texture0, 1, 0, 1, 2);
+							
+							texture0.bind();
+							int[] data0 = texture0.getDataArray();
+							t.println("Data = " + h(data0));
+							int[] data = new int[] {0, 1, 10, 11, 4, 5, 14, 15};
+							return data0.length == 8 && Arrays.equals(data, 0, 4, data0, 0, 4) && Arrays.equals(data, 4, 8, data0, 8, 12);
+						}
 					}
 				}), enclosiveContext(() -> {
-					Texture texture = buildTestTexture(rgba3d, 2, 2, 2, 0);
-					Texture texture0 = buildTestTexture(rgba3d, 2, 2, 2, 8);
-					try
+					try (Texture texture = buildTestTexture(rgba3d, 2, 2, 2, 0))
 					{
-						texture.copyTo3D(texture0, 1, 0, 0, 1, 2, 2);
-						
-						texture0.bind();
-						int[] data0 = texture.getDataArray();
-						t.println("Data = " + h(data0));
-						int[] data = new int[] {0, 9, 2, 11, 4, 13, 6, 15};
-						if (!Arrays.equals(data, 0, 2, data0, 0, 2) || !Arrays.equals(data, 2, 4, data0, 4, 6)) return false;
-						if (!Arrays.equals(data, 4, 6, data0, 16, 18) || !Arrays.equals(data, 6, 8, data0, 20, 22)) return false;
-						return data0.length == 8;
-					}
-					finally
-					{
-						texture.clean();
+						try (Texture texture0 = buildTestTexture(rgba3d, 2, 2, 2, 8))
+						{
+							texture.copyTo3D(texture0, 1, 0, 0, 1, 2, 2);
+							
+							texture0.bind();
+							int[] data0 = texture.getDataArray();
+							t.println("Data = " + h(data0));
+							int[] data = new int[] {0, 9, 2, 11, 4, 13, 6, 15};
+							if (!Arrays.equals(data, 0, 2, data0, 0, 2) || !Arrays.equals(data, 2, 4, data0, 4, 6)) return false;
+							if (!Arrays.equals(data, 4, 6, data0, 16, 18) || !Arrays.equals(data, 6, 8, data0, 20, 22)) return false;
+							return data0.length == 8;
+						}
 					}
 				})));
 				
@@ -787,6 +729,20 @@ public class Launch {
 		String s = StreamSupport.intStream(Spliterators.spliterator(i, 0), false).collect(StringBuilder::new, (b, j) -> b.append(h(j)).append(", "), StringBuilder::append).toString();
 		if (s.length() == 0) return "[]";
 		return '[' + s.substring(0, s.length() - 2) + ']';
+	}
+	
+	public static <T extends Deletable> Predicate<T> tryTexture(Predicate<T> predicate)
+	{
+		return texture -> {
+			try
+			{
+				return predicate.test(texture);
+			}
+			finally
+			{
+				texture.close();
+			}
+		};
 	}
 	
 	public static Texture buildTestTexture(TextureTemplate template, int width, int offset)
