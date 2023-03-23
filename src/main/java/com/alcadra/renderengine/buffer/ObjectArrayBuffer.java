@@ -166,6 +166,7 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 				MemoryUtil.memFree(oldLocalData);
 				oldLocalData = MemoryUtil.memAllocInt(intSize);
 				for (Holder e : values) oldLocalData.put(e.enabled ? e.data : new int[e.data.length]);
+				modifieds.clear();
 				return oldLocalData.flip();
 			}
 			for (Holder e : modifieds) oldLocalData.put(e.ints, e.enabled ? e.data : new int[e.data.length]);

@@ -60,9 +60,9 @@ public class ObjectBuilder {
 		return new Builder();
 	}
 	
-	public Tracker<Bufferable> end()
+	public <B extends Bufferable> Tracker<B> end()
 	{
-		Tracker<Bufferable> tracker = renderer.end(this);
+		Tracker<B> tracker = renderer.end(this);
 		modifiers.clear();
 		return tracker;
 	}
