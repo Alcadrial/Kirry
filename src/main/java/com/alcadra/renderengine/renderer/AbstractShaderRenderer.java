@@ -80,7 +80,7 @@ public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> implemen
 	
 	protected void draw(RenderingMode mode)
 	{
-		draw(mode, 0, arrayBuffer.size());
+ 		draw(mode, 0, arrayBuffer.size() / vertexSize() * 4);
 	}
 	
 	protected void draw(RenderingMode mode, int count)
