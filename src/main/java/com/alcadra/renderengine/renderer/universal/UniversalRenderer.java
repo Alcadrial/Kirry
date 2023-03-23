@@ -11,7 +11,7 @@ import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.renderer.AbstractIndicesRendererUpdate;
-import com.alcadra.renderengine.renderer.VertexArray;
+import com.alcadra.renderengine.renderer.IndicesRenderer;
 import com.alcadra.renderengine.renderer.object.IllegalBuildingState;
 import com.alcadra.renderengine.shader.ShaderInput;
 import com.alcadra.renderengine.shader.ShaderInputType;
@@ -37,36 +37,6 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 		color = Vector4f.getOrigin();
 		textureSampler = 0;
 		offset = 0;
-		initializeArrayBuffer();
-	}
-	
-	@Override
-	protected void initializeArrayBuffer()
-	{
-		List<ShaderInput> inputs = program.getProgramInputs();
-		int size = 0;
-		for (ShaderInput input : inputs) size += input.getType().getLength();
-		int index = 0;
-		int stride = 0;
-		vertexArray.bind();
-		vertexArray.bindBuffer(arrayBuffer);
-		for (ShaderInput input : inputs)
-		{
-			ShaderInputType type = input.getType();
-			vertexArray.vertexAttributePointer(index, type.getSize(), type.getType(), false, size, stride);
-			vertexArray.enableVertexAttribute(index);
-			stride += type.getLength();
-			index++;
-		}
-		VertexArray.unbind();
-	}
-	
-	@Override
-	protected void disableAttributes()
-	{
-		vertexArray.bind();
-		for (int i = program.getProgramInputs().size() - 1; i >= 0; i--) vertexArray.disableVertexAttribute(i);
-		VertexArray.unbind();
 	}
 	
 	@Override
@@ -85,7 +55,7 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 		return new VertexBuilder(x, y, z);
 	}
 	
-	public UniversalRenderer vertex(int index)
+	public IndicesRenderer vertex(int index)
 	{
 		elements.add(index);
 		return this;

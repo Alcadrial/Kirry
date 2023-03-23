@@ -1,0 +1,34 @@
+package com.alcadra.renderengine.window.widget;
+
+import com.alcadra.math.Matrix4f;
+import com.alcadra.math.vector.Vector2i;
+import com.alcadra.math.vector.Vector3i;
+import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
+import com.alcadra.renderengine.util.RendererUtil;
+import com.alcadra.renderengine.util.update.UpdatedFrom;
+import com.alcadra.renderengine.window.Window;
+
+@UpdatedFrom("VisibleButton")
+public abstract class VisibleButtonUpdate extends Button implements DrawableWidgetUpdate<UniversalRenderer> {
+	
+	public VisibleButtonUpdate(Vector3i pos, Vector2i size, Window window)
+	{
+		super(pos, size, window);
+	}
+	
+	@Override
+	public void render(Matrix4f matrix, UniversalRenderer renderer, Vector2i pos, float partialTicks)
+	{
+		
+	}
+	
+	@Override
+	public void draw(Matrix4f matrix, UniversalRenderer renderer, float partialTicks)
+	{
+		renderer.clear();
+		float w = getWindow().getWidth() / 2, h = getWindow().getHeight() / 2;
+		Vector3i pos = getPos();
+		RendererUtil.loadSquare(renderer, pos.x() - w, pos.y() - h, pos.x() - w + 16, pos.y() - h + 16, pos.z(), 127, 127, 127, 255);
+		renderer.drawPoints(7, matrix);
+	}
+}

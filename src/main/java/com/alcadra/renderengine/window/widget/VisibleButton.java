@@ -4,8 +4,11 @@ import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3i;
 import com.alcadra.renderengine.renderer.ColorRenderer;
+import com.alcadra.renderengine.util.update.UpdatedTo;
 import com.alcadra.renderengine.window.Window;
 
+@UpdatedTo("VisibleButtonUpdate")
+@Deprecated(since = "2.0-migration", forRemoval = true)
 public abstract class VisibleButton extends Button implements DrawableWidget<ColorRenderer> {
 	
 	public VisibleButton(Vector3i pos, Vector2i size, Window window)

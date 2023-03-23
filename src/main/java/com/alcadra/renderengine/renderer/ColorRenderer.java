@@ -7,7 +7,10 @@ import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
 import com.alcadra.math.vector.complex.Quaternion;
 import com.alcadra.renderengine.shader.Shader;
+import com.alcadra.renderengine.util.update.UseInstead;
 
+@Deprecated(since = "2.0-migration", forRemoval = true)
+@UseInstead(name = "UniversalRenderer")
 public class ColorRenderer extends Renderer {
 	
 	public ColorRenderer(Shader shader)

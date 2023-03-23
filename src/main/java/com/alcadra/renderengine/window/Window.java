@@ -27,11 +27,14 @@ import com.alcadra.renderengine.buffer.FrameBuffer;
 import com.alcadra.renderengine.renderer.ColorRenderer;
 import com.alcadra.renderengine.renderer.TextureRenderer;
 import com.alcadra.renderengine.renderer.object.ObjectRenderer;
+import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
 import com.alcadra.renderengine.textures.Texture;
 import com.alcadra.renderengine.util.Image;
+import com.alcadra.renderengine.util.update.UseInstead;
 import com.alcadra.renderengine.window.cursor.ICursor;
 import com.alcadra.renderengine.window.widget.ClickableWidget;
 import com.alcadra.renderengine.window.widget.DrawableWidget;
+import com.alcadra.renderengine.window.widget.DrawableWidgetUpdate;
 
 public class Window {
 	
@@ -43,8 +46,13 @@ public class Window {
 	private float aspectRatio;
 	private CursorInputMode cursorInputMode = CursorInputMode.NORMAL;
 	
+	@Deprecated(since = "2.0-migration", forRemoval = true)
+	@UseInstead(name = ".renderizableUniversalWidgets")
 	private List<Entry<ColorRenderer, DrawableWidget<ColorRenderer>>> renderizableColorWidgets = new LinkedList<>();
+	@Deprecated(since = "2.0-migration", forRemoval = true)
+	@UseInstead(name = ".renderizableUniversalWidgets")
 	private List<Entry<TextureRenderer, DrawableWidget<TextureRenderer>>> renderizableTextureWidgets = new LinkedList<>();
+	private List<Entry<UniversalRenderer, DrawableWidgetUpdate<UniversalRenderer>>> renderizableUniversalWidgets = new LinkedList<>();
 	private List<Entry<ObjectRenderer, DrawableWidget<ObjectRenderer>>> renderizableObjectWidgets = new LinkedList<>();
 	private List<ClickableWidget> clickableWidgets = new LinkedList<>();
 	
@@ -149,16 +157,26 @@ public class Window {
 		if (event instanceof GLFWWindowSizeCallbackI callback) windowSizeCallbackList.add(callback);
 	}
 	
+	@Deprecated(since = "2.0-migration", forRemoval = true)
+	@UseInstead(name = "#addWidget(DrawableWidgetUpdate, UniversalRenderer)")
 	public final void addWidget(DrawableWidget<ColorRenderer> widget, ColorRenderer renderer)
 	{
 		if (widget instanceof ClickableWidget w) addWidget(w);
 		renderizableColorWidgets.add(Map.entry(renderer, widget));
 	}
 	
+	@Deprecated(since = "2.0-migration", forRemoval = true)
+	@UseInstead(name = "#addWidget(DrawableWidgetUpdate, UniversalRenderer)")
 	public final void addWidget(DrawableWidget<TextureRenderer> widget, TextureRenderer renderer)
 	{
 		if (widget instanceof ClickableWidget w) addWidget(w);
 		renderizableTextureWidgets.add(Map.entry(renderer, widget));
+	}
+	
+	public final void addWidget(DrawableWidgetUpdate<UniversalRenderer> widget, UniversalRenderer renderer)
+	{
+		if (widget instanceof ClickableWidget w) addWidget(w);
+		renderizableUniversalWidgets.add(Map.entry(renderer, widget));
 	}
 	
 	public final void addWidget(DrawableWidget<ObjectRenderer> widget, ObjectRenderer renderer)

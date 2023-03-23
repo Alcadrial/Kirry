@@ -3,7 +3,9 @@ package com.alcadra.renderengine.window.widget;
 import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.renderengine.renderer.BaseRenderer;
+import com.alcadra.renderengine.util.update.UpdatedTo;
 
+@UpdatedTo("DrawableWidgetUpdate")
 @Deprecated(since = "2.0-migration", forRemoval = true)
 public interface DrawableWidget<R extends BaseRenderer<?>> extends IWidget {
 	
