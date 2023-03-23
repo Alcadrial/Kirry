@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWCharCallbackI;
 import org.lwjgl.glfw.GLFWCursorEnterCallbackI;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
 import org.lwjgl.glfw.GLFWImage;
@@ -44,31 +45,27 @@ public class Window {
 	private List<ClickableWidget> clickableWidgets = new LinkedList<>();
 	private List<Widget> clickableWidgets0 = new LinkedList<>();
 	
+	private List<GLFWCharCallbackI> charCallbackList = new ArrayList<>(1);
 	private List<GLFWCursorPosCallbackI> cursorPosCallbackList = new ArrayList<>(1);
 	private List<GLFWCursorEnterCallbackI> cursorEnterCallbackList = new ArrayList<>(1);
+	private List<GLFWKeyCallbackI> keyCallbackList = new ArrayList<>(1);
 	private List<GLFWMouseButtonCallbackI> mouseButtonCallbackList = new ArrayList<>(1);
 	private List<GLFWScrollCallbackI> scrollCallbackList = new ArrayList<>(1);
-	private List<GLFWKeyCallbackI> keyCallbackList = new ArrayList<>(1);
 	private List<GLFWWindowSizeCallbackI> windowSizeCallbackList = new ArrayList<>(1);
+	
+	private GLFWCharCallbackI charCallback = (w, codepoint) -> charCallbackList.forEach(callback -> callback.invoke(w, codepoint));
 	private GLFWCursorPosCallbackI cursorPosCallback = (w, x, y) -> {
 		mousePos = new Vector2i((int) x, getHeight() - (int) y);
 		for (GLFWCursorPosCallbackI callback : cursorPosCallbackList) callback.invoke(w, x, y);
 	};
-	private GLFWCursorEnterCallbackI cursorEnterCallback = (w, entered) -> { for (GLFWCursorEnterCallbackI callback : cursorEnterCallbackList) callback.invoke(w, entered); };
+	private GLFWCursorEnterCallbackI cursorEnterCallback = (w, entered) -> cursorEnterCallbackList.forEach(callback -> callback.invoke(w, entered));
+	private GLFWKeyCallbackI keyCallback = (w, key, scancode, action, mode) -> keyCallbackList.forEach(callback -> callback.invoke(w, key, scancode, action, mode));
 	private GLFWMouseButtonCallbackI mouseButtonCallback = (w, button, action, mode) -> {
 		for (GLFWMouseButtonCallbackI callback : mouseButtonCallbackList) callback.invoke(w, button, action, mode);
-		if (action == GLFW.GLFW_PRESS)
-		{
-			for (ClickableWidget clickableWidget : clickableWidgets)
-			{
-				Widget widget = (Widget) clickableWidget;
-				if (widget.isMouseHovered()) clickableWidget.onClick(button, mousePos);
-			}
-		}
+		if (action == GLFW.GLFW_PRESS) for (ClickableWidget clickableWidget : clickableWidgets) if (((Widget) clickableWidget).isMouseHovered()) clickableWidget.onClick(button, mousePos);
 	};
-	private GLFWKeyCallbackI keyCallback = (w, key, scancode, action, mode) -> { for (GLFWKeyCallbackI callback : keyCallbackList) callback.invoke(w, key, scancode, action, mode); };
-	private GLFWWindowSizeCallbackI windowSizeCallback = (w, x, y) -> { for (GLFWWindowSizeCallbackI callback : windowSizeCallbackList) callback.invoke(w, x, y); };
-	private GLFWScrollCallbackI windowScrollCallback = (w, xOffset, yOffset) -> { for (GLFWScrollCallbackI callback : scrollCallbackList) callback.invoke(w, xOffset, yOffset); };
+	private GLFWWindowSizeCallbackI windowSizeCallback = (w, x, y) -> windowSizeCallbackList.forEach(callback -> callback.invoke(w, x, y));
+	private GLFWScrollCallbackI windowScrollCallback = (w, xOffset, yOffset) -> scrollCallbackList.forEach(callback -> callback.invoke(w, xOffset, yOffset));
 	
 	public Window(int w, int h, String title)
 	{
@@ -86,11 +83,12 @@ public class Window {
 			{
 				GLFW.glfwMakeContextCurrent(windowId);
 				GLFW.glfwSwapInterval(0);
-				GLFW.glfwSetCursorPosCallback(windowId, cursorPosCallback);
+				GLFW.glfwSetCharCallback(windowId, charCallback);
 				GLFW.glfwSetCursorEnterCallback(windowId, cursorEnterCallback);
+				GLFW.glfwSetCursorPosCallback(windowId, cursorPosCallback);
+				GLFW.glfwSetKeyCallback(windowId, keyCallback);
 				GLFW.glfwSetMouseButtonCallback(windowId, mouseButtonCallback);
 				GLFW.glfwSetScrollCallback(windowId, windowScrollCallback);
-				GLFW.glfwSetKeyCallback(windowId, keyCallback);
 				GLFW.glfwSetWindowSizeCallback(windowId, windowSizeCallback);
 			}
 		}
@@ -140,7 +138,7 @@ public class Window {
 			colorRenderer.clear();
 			i.next().render(new Matrix4f(matrix), colorRenderer, textureRenderer, j.next().getPos().xy(), partialTicks);
 		}
-		FrameBuffer.unbind();
+		while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
 		pollEvents();
 		swapBuffers();
 		GL30.glClear(GL30.GL_COLOR_BUFFER_BIT | GL30.GL_DEPTH_BUFFER_BIT);
@@ -148,11 +146,12 @@ public class Window {
 	
 	public final void addEvent(CallbackI event)
 	{
+		if (event instanceof GLFWCharCallbackI callback) charCallbackList.add(callback);
 		if (event instanceof GLFWCursorPosCallbackI callback) cursorPosCallbackList.add(callback);
 		if (event instanceof GLFWCursorEnterCallbackI callback) cursorEnterCallbackList.add(callback);
+		if (event instanceof GLFWKeyCallbackI callback) keyCallbackList.add(callback);
 		if (event instanceof GLFWMouseButtonCallbackI callback) mouseButtonCallbackList.add(callback);
 		if (event instanceof GLFWScrollCallbackI callback) scrollCallbackList.add(callback);
-		if (event instanceof GLFWKeyCallbackI callback) keyCallbackList.add(callback);
 		if (event instanceof GLFWWindowSizeCallbackI callback) windowSizeCallbackList.add(callback);
 	}
 	
@@ -249,6 +248,11 @@ public class Window {
 		setSize(new Vector2i(getWidth(), height));
 	}
 	
+	public final void setMinMaxSizes(Vector2i minSize, Vector2i maxSize)
+	{
+		GLFW.glfwSetWindowSizeLimits(windowId, minSize.x(), minSize.y(), maxSize.x(), maxSize.y());
+	}
+	
 	public final void setCursorInputMode(CursorInputMode mode)
 	{
 		if (cursorInputMode != mode)
@@ -256,5 +260,10 @@ public class Window {
 			cursorInputMode = mode;
 			GLFW.glfwSetInputMode(windowId, GLFW.GLFW_CURSOR, mode.ordinal() + GLFW.GLFW_CURSOR_NORMAL);
 		}
+	}
+	
+	public final void setLockKeyModsInputMode(boolean value)
+	{
+		GLFW.glfwSetInputMode(windowId, GLFW.GLFW_LOCK_KEY_MODS, value ? 1 : 0);
 	}
 }
