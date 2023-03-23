@@ -2,7 +2,7 @@ package com.alcadra.renderengine.shader.uniform;
 
 import org.lwjgl.opengl.GL20;
 
-import com.alcadra.math.Matrix4f;
+import com.alcadra.math.matrix.Matrix4f;
 
 class Matrix4fUniform extends ShaderUniform<Matrix4f> {
 	

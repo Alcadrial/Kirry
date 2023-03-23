@@ -2,7 +2,7 @@ package com.alcadra.renderengine.renderer.object;
 
 import java.util.Objects;
 
-import com.alcadra.math.Matrix4f;
+import com.alcadra.math.matrix.Matrix4f;
 import com.alcadra.renderengine.buffer.ObjectArrayBuffer;
 import com.alcadra.renderengine.renderer.AbstractShaderRenderer;
 import com.alcadra.renderengine.renderer.RenderingMode;

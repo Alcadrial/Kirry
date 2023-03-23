@@ -2,8 +2,8 @@ package com.alcadra.renderengine.shader.uniform;
 
 import java.util.Objects;
 
-import com.alcadra.math.Matrix3f;
-import com.alcadra.math.Matrix4f;
+import com.alcadra.math.matrix.Matrix3f;
+import com.alcadra.math.matrix.Matrix4f;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;

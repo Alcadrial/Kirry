@@ -2,7 +2,7 @@ package com.alcadra.renderengine.renderer;
 
 import java.util.Objects;
 
-import com.alcadra.math.Matrix4f;
+import com.alcadra.math.matrix.Matrix4f;
 import com.alcadra.renderengine.buffer.ArrayBuffer;
 
 public abstract class AbstractRenderer<AB extends ArrayBuffer<?>> implements Renderer {

@@ -6,11 +6,11 @@ import java.io.IOException;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 
-import com.alcadra.math.Matrix4f;
-import com.alcadra.math.vector.Axis;
+import com.alcadra.math.matrix.Matrix4f;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
+import com.alcadra.math.vector.axis.Axis;
 import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.renderer.font.Font;
 import com.alcadra.renderengine.renderer.font.FontRenderer;
@@ -62,6 +62,7 @@ public class ObjectRenderTest implements RenderTest {
 					}
 					if (key == GLFW.GLFW_KEY_KP_2)
 					{
+						UniversalRenderTest.setActiveTest(UniversalRenderTest.MANAGER_RENDER_TEST);
 						return;
 					}
 				}
@@ -235,7 +236,7 @@ public class ObjectRenderTest implements RenderTest {
 		Text text = new Text();
 		text.addLine(new TextLine("partialticks " + partialTicks));
 		text.addLine(new TextLine("time " + o));
-		fontRenderer.loadText(text, Vector2i.of(0, window.getHeight() - font.getLineHeight()), Color.BLACK, 1, window.getWidth(), 0);
+		fontRenderer.loadText(text, Vector2i.of(0, window.getHeight() - font.getLineHeight()), Color.BLACK, -1, -1, -1, 0);
 		fontRenderer.draw(orthographicPositive);
 		
 		int i = o / 10 % 14;

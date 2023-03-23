@@ -3,7 +3,7 @@ package com.alcadra.renderengine.renderer.screen;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import com.alcadra.math.Matrix4f;
+import com.alcadra.math.matrix.Matrix4f;
 import com.alcadra.renderengine.renderer.ShaderRenderer;
 import com.alcadra.renderengine.textures.Texture;
 

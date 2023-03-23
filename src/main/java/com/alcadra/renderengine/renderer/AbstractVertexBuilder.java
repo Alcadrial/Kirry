@@ -1,7 +1,6 @@
 package com.alcadra.renderengine.renderer;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,7 +11,7 @@ import com.alcadra.renderengine.shader.ShaderProgram;
 
 public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB>> {
 	
-	protected final Map<ShaderInput, List<Float>> map;
+	protected final Map<ShaderInput, float[]> map;
 	protected final ShaderProgram program;
 	
 	protected AbstractVertexBuilder(ShaderProgram program)
@@ -24,35 +23,34 @@ public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB>
 	protected AbstractVertexBuilder(ShaderProgram program, float x, float y, float z)
 	{
 		this(program);
-		map.put(ShaderInput.VERTEX_POSITION, List.of(x, y, z));
+		map.put(ShaderInput.VERTEX_POSITION, new float[] {x, y, z});
 	}
 	
 	public VB set(ShaderInput input, int... values)
 	{
-		ShaderInputType type = input.getType();
-		Float[] floatIntBitsArray = new Float[type.getSize()];
-		for (int i = 0; i < type.getSize(); i++) floatIntBitsArray[i] = Float.intBitsToFloat(values[i]);
-		map.put(input, Arrays.asList(floatIntBitsArray));
+		float[] floatIntBitsArray = new float[input.getType().getSize()];
+		for (int i = 0; i < floatIntBitsArray.length; i++) floatIntBitsArray[i] = Float.intBitsToFloat(values[i]);
+		map.put(input, floatIntBitsArray);
 		return myself();
 	}
 	
-	public VB set(ShaderInput input, Float... values)
+	public VB set(ShaderInput input, float... values)
 	{
-		map.put(input, Arrays.asList(values));
+		map.put(input, values);
 		return myself();
 	}
 	
 	public VB set(ShaderInput input, double... values)
 	{
 		ShaderInputType type = input.getType();
-		Float[] dividedValues = new Float[type.getSize() * 2];
+		float[] dividedValues = new float[type.getSize() * 2];
 		for (int i = type.getSize() - 1; i >= 0; i--)
 		{
 			long l = Double.doubleToLongBits(values[i]);
 			dividedValues[i * 2] = Float.intBitsToFloat((int) (l >>> 32));
 			dividedValues[i * 2 + 1] = Float.intBitsToFloat((int) l);
 		}
-		map.put(input, Arrays.asList(dividedValues));
+		map.put(input, dividedValues);
 		return myself();
 	}
 	
@@ -104,28 +102,28 @@ public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB>
 	public VB scalarFloat(ShaderInput input, float a)
 	{
 		if (input.getType().getSize() != 1) throw new IllegalBuildingState("ShaderInput require " + input.getType().getSize() + " values, but the method inserts 1 values");
-		map.put(input, List.of(a));
+		map.put(input, new float[] {a});
 		return myself();
 	}
 	
 	public VB vec2(ShaderInput input, float a, float b)
 	{
 		if (input.getType().getSize() != 2) throw new IllegalBuildingState("ShaderInput require " + input.getType().getSize() + " values, but the method inserts 2 values");
-		map.put(input, List.of(a, b));
+		map.put(input, new float[] {a, b});
 		return myself();
 	}
 	
 	public VB vec3(ShaderInput input, float a, float b, float c)
 	{
 		if (input.getType().getSize() != 3) throw new IllegalBuildingState("ShaderInput require " + input.getType().getSize() + " values, but the method inserts 3 values");
-		map.put(input, List.of(a, b, c));
+		map.put(input, new float[] {a, b, c});
 		return myself();
 	}
 	
 	public VB vec4(ShaderInput input, float a, float b, float c, float d)
 	{
 		if (input.getType().getSize() != 4) throw new IllegalBuildingState("ShaderInput require " + input.getType().getSize() + " values, but the method inserts 4 values");
-		map.put(input, List.of(a, b, c, d));
+		map.put(input, new float[] {a, b, c, d});
 		return myself();
 	}
 	
@@ -134,8 +132,8 @@ public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB>
 		List<Float> list = new ArrayList<>(program.getProgramInputs().size() * 4);
 		for (ShaderInput input : program.getProgramInputs())
 		{
-			List<Float> data = map.get(input);
-			if (data != null) list.addAll(data);
+			float[] data = map.get(input);
+			if (data != null) for (float f : data) list.add(f);
 			else for (int i = input.getType().getSize(); i > 0; i--) list.add(0F);
 		}
 		return List.copyOf(list);

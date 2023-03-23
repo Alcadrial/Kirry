@@ -1,6 +1,6 @@
 package com.alcadra.renderengine.renderer;
 
-import com.alcadra.math.Matrix4f;
+import com.alcadra.math.matrix.Matrix4f;
 
 public interface Renderer {
 	

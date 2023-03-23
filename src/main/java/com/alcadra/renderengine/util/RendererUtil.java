@@ -1,6 +1,6 @@
 package com.alcadra.renderengine.util;
 
-import com.alcadra.math.Matrix4f;
+import com.alcadra.math.matrix.Matrix4f;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.renderengine.renderer.universal.UniversalRenderer;

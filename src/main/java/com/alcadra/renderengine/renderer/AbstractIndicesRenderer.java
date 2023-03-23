@@ -4,7 +4,7 @@ import java.util.Objects;
 
 import org.lwjgl.opengl.GL11;
 
-import com.alcadra.math.Matrix4f;
+import com.alcadra.math.matrix.Matrix4f;
 import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.shader.ShaderProgram;

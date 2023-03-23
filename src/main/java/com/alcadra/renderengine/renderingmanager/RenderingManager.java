@@ -1,6 +1,6 @@
 package com.alcadra.renderengine.renderingmanager;
 
-import com.alcadra.math.Matrix4f;
+import com.alcadra.math.matrix.Matrix4f;
 import com.alcadra.renderengine.renderer.Renderer;
 import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.renderer.font.Font;

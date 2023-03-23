@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.lwjgl.opengl.GL30;
 
-import com.alcadra.math.Matrix4f;
+import com.alcadra.math.matrix.Matrix4f;
 import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.SyncronizableArrayBuffer;
 import com.alcadra.renderengine.shader.ShaderInput;

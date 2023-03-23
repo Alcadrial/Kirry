@@ -14,7 +14,7 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.MemoryUtil;
 
 import com.alcadra.math.Math;
-import com.alcadra.math.Matrix4f;
+import com.alcadra.math.matrix.Matrix4f;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
@@ -34,6 +34,7 @@ import com.alcadra.renderengine.renderer.font.FontRenderer;
 import com.alcadra.renderengine.renderer.font.text.Text;
 import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
+import com.alcadra.renderengine.rendertest.manager.RenderingManagerTest;
 import com.alcadra.renderengine.rendertest.object.ObjectRenderTest;
 import com.alcadra.renderengine.rendertest.object.RenderTest;
 import com.alcadra.renderengine.shader.ProgramStatus;
@@ -66,6 +67,7 @@ public class UniversalRenderTest implements RenderTest {
 	
 	public static final UniversalRenderTest RENDER_ENGINE_TEST = new UniversalRenderTest();
 	public static final ObjectRenderTest OBJECT_RENDER_TEST = new ObjectRenderTest();
+	public static final RenderingManagerTest MANAGER_RENDER_TEST = new RenderingManagerTest();
 	private static RenderTest activeTest;
 	
 	private static int maxLoops = 60;
@@ -442,8 +444,8 @@ public class UniversalRenderTest implements RenderTest {
 		Vector3f end = Vector3f.of(10, 10, 10);
 		Util.printError("compact");
 		
-		fontRenderer.loadText(new Text("ala.beta@delta"), Vector2i.of(0, (int) o % 360), Color.LIGHT_RED, 0.5F, 500, 0);
-		fontRenderer.loadText(new Text(Util.toPointString(cursor)), Vector2f.copyOf(cursor).subtract(window.getSize().xy().multiplyAll(0.5F)), Color.of(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight(), 0), 0.003F, 550, 0);
+		fontRenderer.loadText(new Text("ala.beta@delta"), Vector2i.of(0, (int) o % 360), Color.LIGHT_RED, -1, -1, -1, 0);
+		fontRenderer.loadText(new Text(Util.toPointString(cursor)), Vector2f.copyOf(cursor).subtract(window.getSize().xy().multiplyAll(0.5F)), Color.of(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight(), 0), -1, -1, -1, 0);
 		Text text = new Text();
 		text.addLine(new TextLine("partial " + partialTicks));
 		text.addLine(new TextLine("time " + currentTime));
@@ -463,7 +465,7 @@ public class UniversalRenderTest implements RenderTest {
 		text.addLine(new TextLine("o " + o));
 		text.addLine(new TextLine(Double.toString(o % 180)));
 		text.addLine(new TextLine(Double.toString(o % 360)));
-		fontRenderer.loadText(text, Vector2i.of(-window.getWidth() / 2, window.getHeight() / 2 - 40), Color.BLACK, 0.7F, 1000, 0);
+		fontRenderer.loadText(text, Vector2i.of(-window.getWidth() / 2, window.getHeight() / 2 - 40), Color.BLACK, 16, -1, window.getHeight() / 16, 0);
 		Util.printError("FontRender texting");
 		fontRenderer.draw(compact);
 		Util.printError("FontRender draw");

@@ -1,6 +1,6 @@
 package com.alcadra.renderengine.renderer.screen;
 
-import com.alcadra.math.Matrix4f;
+import com.alcadra.math.matrix.Matrix4f;
 import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.renderer.AbstractShaderRenderer;
 import com.alcadra.renderengine.renderer.RenderingMode;

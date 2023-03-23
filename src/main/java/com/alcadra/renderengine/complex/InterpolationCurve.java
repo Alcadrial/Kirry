@@ -17,10 +17,10 @@ public class InterpolationCurve {
 		Vector2f point = Vector2f.copyOf(pos);
 		for (float i = 0; i < 1; i += step)
 		{
-			point.setAll(pos.x(), pos.y()).add(i * size.x(), Math.interpolation(0, size.y(), i, interpolationFunction));
+			point.setAll(pos.x(), pos.y()).add(i * size.x(), Math.interpolation(0F, size.y(), i, interpolationFunction));
 			renderer.vertex(point.x(), point.y(), point.z()).color(color.r(), color.g(), color.b(), color.a()).end();
 		}
-		point.setAll(pos.x(), pos.y()).add(size.x(), Math.interpolation(0, size.y(), 1, interpolationFunction));
+		point.setAll(pos.x(), pos.y()).add(size.x(), Math.interpolation(0F, size.y(), 1F, interpolationFunction));
 		renderer.vertex(point.x(), point.y(), point.z()).color(color.r(), color.g(), color.b(), color.a()).end();
 	}
 	

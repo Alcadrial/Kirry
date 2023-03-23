@@ -2,7 +2,7 @@ package com.alcadra.renderengine.renderer.universal;
 
 import java.util.Objects;
 
-import com.alcadra.math.Matrix4f;
+import com.alcadra.math.matrix.Matrix4f;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBufferStack;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;

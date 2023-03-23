@@ -8,14 +8,14 @@ import com.alcadra.renderengine.shader.ShaderInput;
 
 public class FloatListVertexData implements VertexData {
 	
-	private final Map<ShaderInput, List<Float>> data;
+	private final Map<ShaderInput, float[]> data;
 	private final List<Float> vertexData;
 	
-	public FloatListVertexData(Map<ShaderInput, List<Float>> data, int vertexSize)
+	public FloatListVertexData(Map<ShaderInput, float[]> data, int vertexSize)
 	{
 		this.data = Map.copyOf(data);
 		vertexData = new ArrayList<>(vertexSize);
-		for (List<Float> entry : this.data.values()) vertexData.addAll(entry);
+		for (float[] entry : this.data.values()) for (float f : entry) vertexData.add(f);
 	}
 	
 	@Override

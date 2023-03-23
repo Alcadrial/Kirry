@@ -23,7 +23,7 @@ import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.system.CallbackI;
 import org.lwjgl.system.MemoryUtil;
 
-import com.alcadra.math.Matrix4f;
+import com.alcadra.math.matrix.Matrix4f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.renderengine.framebuffer.FrameBuffer;
 import com.alcadra.renderengine.renderer.ShaderRenderer;

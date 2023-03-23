@@ -24,6 +24,7 @@ public class Font {
 	private HashMap<Entry<Integer, Integer>, Integer> extraOffset = new HashMap<>();
 	private Texture texture;
 	private int spaceIndex;
+	private int size;
 	
 	public Font(File json, File png) throws IOException
 	{
@@ -36,16 +37,12 @@ public class Font {
 		{
 			switch (reader.nextName())
 			{
-				case "name":
-					name = reader.nextString();
-					break;
-				case "lineHeight":
-					lineHeight = reader.nextInt();
-					break;
-				case "lineOffset":
-					lineOffset = reader.nextInt();
-					break;
-				case "characters":
+				case "name" -> name = reader.nextString();
+				case "lineHeight" -> lineHeight = reader.nextInt();
+				case "lineOffset" -> lineOffset = reader.nextInt();
+				case "size" -> size = reader.nextInt();
+				case "characters" ->
+				{
 					reader.beginArray();
 					chars = new ArrayList<>();
 					while (reader.hasNext())
@@ -56,41 +53,24 @@ public class Font {
 						{
 							switch (reader.nextName())
 							{
-								case "char":
-									name = reader.nextInt();
-									break;
-								case "x":
-									x = reader.nextInt();
-									break;
-								case "y":
-									y = reader.nextInt();
-									break;
-								case "width":
-									width = reader.nextInt();
-									break;
-								case "height":
-									height = reader.nextInt();
-									break;
-								case "xOffset":
-									xOffset = reader.nextInt();
-									break;
-								case "yOffset":
-									yOffset = reader.nextInt();
-									break;
-								case "advance":
-									advance = reader.nextInt();
-									break;
-								default:
-									reader.skipValue();
-									break;
+								case "char" -> name = reader.nextInt();
+								case "x" -> x = reader.nextInt();
+								case "y" -> y = reader.nextInt();
+								case "width" -> width = reader.nextInt();
+								case "height" -> height = reader.nextInt();
+								case "xOffset" -> xOffset = reader.nextInt();
+								case "yOffset" -> yOffset = reader.nextInt();
+								case "advance" -> advance = reader.nextInt();
+								default -> reader.skipValue();
 							}
 						}
 						chars.add(new Glyph(name, x, y, width, height, xOffset, yOffset, advance));
 						reader.endObject();
 					}
 					reader.endArray();
-					break;
-				case "extra":
+				}
+				case "extra" ->
+				{
 					reader.beginArray();
 					while (reader.hasNext())
 					{
@@ -100,24 +80,17 @@ public class Font {
 						{
 							switch (reader.nextName())
 							{
-								case "before":
-									before = reader.nextInt();
-									break;
-								case "after":
-									after = reader.nextInt();
-									break;
-								case "offset":
-									offset = reader.nextInt();
-									break;
+								case "before" -> before = reader.nextInt();
+								case "after" -> after = reader.nextInt();
+								case "offset" -> offset = reader.nextInt();
 							}
 						}
 						extraOffset.put(Map.entry(before, after), offset);
 						reader.endObject();
 					}
 					reader.endArray();
-					break;
-				default:
-					reader.skipValue();
+				}
+				default -> reader.skipValue();
 			}
 		}
 		reader.endObject();
@@ -177,6 +150,11 @@ public class Font {
 	public int getLineOffset()
 	{
 		return lineOffset;
+	}
+	
+	public int getSize()
+	{
+		return size;
 	}
 	
 	public Texture getTexture()
