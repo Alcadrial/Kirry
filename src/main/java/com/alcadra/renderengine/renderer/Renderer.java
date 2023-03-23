@@ -11,7 +11,7 @@ import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.shader.Shader;
 
-public class Renderer extends BaseRenderer<FloatArrayBuffer> implements ShaderRenderer, VertexBuilder<Renderer> {
+public class Renderer extends BaseIndicesRenderer<FloatArrayBuffer> implements IndicesRenderer, VertexBuilder<Renderer> {
 	
 	private Vector4f bindedColor = Vector4f.getOrigin();
 	private Vector2f bindedUV = Vector2f.getOrigin();
@@ -26,8 +26,7 @@ public class Renderer extends BaseRenderer<FloatArrayBuffer> implements ShaderRe
 	
 	protected void initializeArrayBuffer()
 	{
-		VertexArray vertexArray = getVertexArray();
-		vertexArray.bindBuffer(getArrayBuffer());
+		vertexArray.bindBuffer(arrayBuffer);
 		int size = 12 + (shader.useColor() ? 16 : 0) + (shader.useUV() ? 8 : 0) + (shader.useNormal() ? 12 : 0);
 		int offset = 0;
 		vertexArray.vertexAttributePointer(0, 3, GL30.GL_FLOAT, false, size, offset);
@@ -56,7 +55,6 @@ public class Renderer extends BaseRenderer<FloatArrayBuffer> implements ShaderRe
 	
 	protected void disableAttributes()
 	{
-		VertexArray vertexArray = getVertexArray();
 		vertexArray.bind();
 		if (shader.useColor()) vertexArray.disableVertexAttribute(1);
 		if (shader.useUV()) vertexArray.disableVertexAttribute(2);
@@ -73,19 +71,18 @@ public class Renderer extends BaseRenderer<FloatArrayBuffer> implements ShaderRe
 	
 	public Renderer loadPoint(int index)
 	{
-		getElementArrayBuffer().add(index);
+		elements.add(index);
 		return this;
 	}
 	
 	public Renderer loadPoint(float x, float y, float z)
 	{
-		getElementArrayBuffer().add(offset);
+		elements.add(offset);
 		return vertex(x, y, z);
 	}
 	
 	public Renderer vertex(float x, float y, float z)
 	{
-		FloatArrayBuffer arrayBuffer = getArrayBuffer();
 		arrayBuffer.add(x);
 		arrayBuffer.add(y);
 		arrayBuffer.add(z);
@@ -224,7 +221,7 @@ public class Renderer extends BaseRenderer<FloatArrayBuffer> implements ShaderRe
 			if (shader.hasUniformNormal()) shader.setUniform(bindedNormal, "normal");
 			if (shader.useUV() || shader.hasUniformUV()) shader.setUniform(0, "textureSampler");
 		}
-		draw(mode, getArrayBuffer().size());
+		draw(mode, arrayBuffer.size());
 		Shader.disableShaders();
 	}
 	
@@ -234,6 +231,7 @@ public class Renderer extends BaseRenderer<FloatArrayBuffer> implements ShaderRe
 		drawPoints(mode, matrix);
 	}
 	
+	@Override
 	public void drawPoints(int mode, Matrix4f matrix)
 	{
 		if (shader != null)
@@ -266,8 +264,8 @@ public class Renderer extends BaseRenderer<FloatArrayBuffer> implements ShaderRe
 	
 	public void merge(Renderer renderer)
 	{
-		getArrayBuffer().merge(renderer.getArrayBuffer());
-		getElementArrayBuffer().merge(renderer.getElementArrayBuffer(), offset);
+		arrayBuffer.merge(renderer.arrayBuffer);
+		elements.merge(renderer.elements, offset);
 		offset += renderer.getOffset();
 	}
 	
@@ -279,6 +277,6 @@ public class Renderer extends BaseRenderer<FloatArrayBuffer> implements ShaderRe
 	@Override
 	public String toString()
 	{
-		return "Renderer{" + getArrayBuffer() + ", " + getElementArrayBuffer() + "}";
+		return "Renderer{" + arrayBuffer + ", " + elements + "}";
 	}
 }
