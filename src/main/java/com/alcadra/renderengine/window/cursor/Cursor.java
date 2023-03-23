@@ -8,19 +8,28 @@ import com.alcadra.renderengine.util.Image;
 public class Cursor implements ICursor {
 	
 	private long id;
-	private GLFWImage image;
 	
 	public Cursor(Image image)
 	{
-		this.image = new GLFWImage(image.toByteBuffer());
-		id = GLFW.glfwCreateCursor(this.image, 0, 0);
+		this(image, 0, 0);
+	}
+	
+	public Cursor(Image image, int xOffset, int yOffset)
+	{
+		GLFWImage image0 = GLFWImage.malloc().set(image.getBuffered().getWidth(), image.getBuffered().getHeight(), image.toByteBuffer());
+		id = GLFW.glfwCreateCursor(image0, xOffset, yOffset);
+		image0.free();
 		if (id == 0) throw new CursorException();
 	}
 	
 	@Override
 	public void destroy()
 	{
-		GLFW.glfwDestroyCursor(id);
+		if (id != 0)
+		{
+			GLFW.glfwDestroyCursor(id);
+			id = 0;
+		}
 	}
 	
 	@Override

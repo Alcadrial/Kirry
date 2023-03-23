@@ -2,7 +2,7 @@ package com.alcadra.renderengine.window.widget;
 
 import com.alcadra.math.vector.Vector2i;
 
-public interface ClickableWidget extends IWidget {
+public interface ClickableWidget extends Widget {
 	
 	default void onClick(int button, Vector2i mousePos)
 	{

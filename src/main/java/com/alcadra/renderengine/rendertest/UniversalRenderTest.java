@@ -70,11 +70,11 @@ public class UniversalRenderTest implements RenderTest {
 	private static final ShaderUniform<Matrix4f> TRANSFORMATION = ShaderUniform.ofMatrix4f("TRANSFORMATION");
 	private static final ShaderUniform<Integer> STATE = ShaderUniform.ofInt("STATE");
 	
-	public static void setActiveTest(RenderTest activeTest)
+	public static void setActiveTest(RenderTest test)
 	{
-		UniversalRenderTest.activeTest.getWindow().hide();
-		UniversalRenderTest.activeTest = activeTest;
-		UniversalRenderTest.activeTest.restart();
+		activeTest.getWindow().hide();
+		activeTest = test;
+		activeTest.restart();
 	}
 	
 	public static RenderTest getActiveTest()
@@ -239,12 +239,12 @@ public class UniversalRenderTest implements RenderTest {
 					{
 						switch (key)
 						{
-							case GLFW.GLFW_KEY_W -> position.add(0, 0, partial);
-							case GLFW.GLFW_KEY_A -> position.add(-partial, 0, 0);
-							case GLFW.GLFW_KEY_S -> position.add(0, 0, -partial);
-							case GLFW.GLFW_KEY_D -> position.add(partial, 0, 0);
-							case GLFW.GLFW_KEY_SPACE -> position.add(0, partial, 0);
-							case GLFW.GLFW_KEY_LEFT_SHIFT -> position.add(0, -partial, 0);
+							case GLFW.GLFW_KEY_W -> position.add(0, 0, currentTime);
+							case GLFW.GLFW_KEY_A -> position.add(-currentTime, 0, 0);
+							case GLFW.GLFW_KEY_S -> position.add(0, 0, -currentTime);
+							case GLFW.GLFW_KEY_D -> position.add(currentTime, 0, 0);
+							case GLFW.GLFW_KEY_SPACE -> position.add(0, currentTime, 0);
+							case GLFW.GLFW_KEY_LEFT_SHIFT -> position.add(0, -currentTime, 0);
 							case GLFW.GLFW_KEY_P -> position.setAll(0, 0, 0);
 						}
 					}
@@ -346,7 +346,7 @@ public class UniversalRenderTest implements RenderTest {
 			{
 				System.out.println("r");
 			}
-		}, widgetRenderer);
+		}, () -> widgetRenderer);
 		Util.printError("window");
 		
 		frameBuffer.bind();
@@ -401,13 +401,16 @@ public class UniversalRenderTest implements RenderTest {
 	private double o = 0;
 	private String s = "";
 	private Vector3f position = Vector3f.of(0, 0, 0);
-	private float rotationX = 0, rotationY = 0, partial;
+	private float rotationX = 0, rotationY = 0, currentTime;
+	private long time = System.nanoTime();
 	private boolean rotating = false;
 	
 	@Override
 	public void loop(float partialTicks)
 	{
-		partial = partialTicks * 0.1F;
+		long t = System.nanoTime();
+		currentTime = (t - time) / 1000000F / 50;
+		time = t;
 		Matrix4f identity = new Matrix4f();
 		Matrix4f compact = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
 		Matrix4f positive = new Matrix4f().orthographicPositive(window.getWidth(), window.getHeight());
@@ -429,7 +432,8 @@ public class UniversalRenderTest implements RenderTest {
 		fontRenderer.loadText(new Text("ala.beta@delta"), Vector2i.of(0, (int) o % 360), Color.LIGHT_RED, 0.5F, 500, 0);
 		fontRenderer.loadText(new Text(Util.toPointString(cursor)), Vector2f.copyOf(cursor).subtract(window.getSize().xy().multiplyAll(0.5F)), Color.of(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight(), 0), 0.003F, 550, 0);
 		Text text = new Text();
-		text.addLine(new TextLine("partialTicks " + partialTicks));
+		text.addLine(new TextLine("partial " + partialTicks));
+		text.addLine(new TextLine("time " + currentTime));
 		text.addLine(new TextLine("fps " + thread.getRunsPerSecond()));
 		text.addLine(new TextLine("xRot " + rotationX));
 		text.addLine(new TextLine("yRot " + rotationY));
@@ -446,7 +450,7 @@ public class UniversalRenderTest implements RenderTest {
 		text.addLine(new TextLine("o " + o));
 		text.addLine(new TextLine(Double.toString(o % 180)));
 		text.addLine(new TextLine(Double.toString(o % 360)));
-		fontRenderer.loadText(text, Vector2i.of(-window.getWidth() / 2, window.getHeight() / 2 - 40), Color.BLACK, 0.8F, 1000, 0);
+		fontRenderer.loadText(text, Vector2i.of(-window.getWidth() / 2, window.getHeight() / 2 - 40), Color.BLACK, 0.7F, 1000, 0);
 		Util.printError("FontRender texting");
 		fontRenderer.draw(compact);
 		Util.printError("FontRender draw");
@@ -458,10 +462,10 @@ public class UniversalRenderTest implements RenderTest {
 		Util.printError("FrameBuffer draw");
 		
 		universalRenderer.pushBuffer(buffer0, element0);
-		// universalRenderer.drawVertices(RenderingMode.QUADS, projected);
+		universalRenderer.drawVertices(RenderingMode.QUADS, projected);
 		universalRenderer.pullBuffer();
 		universalRenderer.pushBuffer(buffer1, element1);
-		// universalRenderer.drawVertices(RenderingMode.QUADS, compact);
+		universalRenderer.drawVertices(RenderingMode.QUADS, compact);
 		universalRenderer.pullBuffer();
 		universalRenderer.pushBuffer();
 		B\u00e8zierCurve.renderCurve(universalRenderer, 100, Color.RED, Vector2f.of(0, -400), Vector2f.of(0, -100), Vector2f.of(300, -100), Vector2f.of(300, -400), Vector2f.of(0, -400), Vector2f.of(0, -300), Vector2f.of(100, -300), Vector2f.of(100, -400), Vector2f.of(0, -400));
@@ -508,10 +512,11 @@ public class UniversalRenderTest implements RenderTest {
 		textureRenderer.drawVertices(RenderingMode.QUADS, identity);
 		textureRenderer.pullBuffer();
 		
-		window.update(compact, partialTicks);
+		window.draw(compact, currentTime);
+		window.update();
 		window.clear(true, true, false);
 		Util.printError("window update");
-		o += partialTicks * 1;
+		o += currentTime * 1;
 	}
 	
 	@Override

@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Supplier;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCharCallbackI;
@@ -25,8 +26,7 @@ import org.lwjgl.system.MemoryUtil;
 import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.renderengine.framebuffer.FrameBuffer;
-import com.alcadra.renderengine.renderer.object.ObjectRenderer;
-import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
+import com.alcadra.renderengine.renderer.ShaderRenderer;
 import com.alcadra.renderengine.textures.Texture;
 import com.alcadra.renderengine.util.Image;
 import com.alcadra.renderengine.window.cursor.CursorInputMode;
@@ -34,55 +34,105 @@ import com.alcadra.renderengine.window.cursor.ICursor;
 import com.alcadra.renderengine.window.widget.ClickableWidget;
 import com.alcadra.renderengine.window.widget.DrawableWidget;
 
-@SuppressWarnings("deprecation")
 public class Window {
 	
-	private long windowId;
-	private boolean isCreated = false;
+	private long id;
+	private boolean isCreated;
 	private String title;
-	private Vector2i mousePos = Vector2i.of(0, 0);
+	private Vector2i mousePos;
 	private Vector2i size;
 	private float aspectRatio;
-	private CursorInputMode cursorInputMode = CursorInputMode.NORMAL;
+	private CursorInputMode cursorInputMode;
 	
-	private List<Entry<UniversalRenderer, DrawableWidget<UniversalRenderer>>> renderizableUniversalWidgets = new LinkedList<>();
-	private List<Entry<ObjectRenderer, DrawableWidget<ObjectRenderer>>> renderizableObjectWidgets = new LinkedList<>();
-	private List<ClickableWidget> clickableWidgets = new LinkedList<>();
+	private List<Entry<Supplier<? extends ShaderRenderer>, DrawableWidget<ShaderRenderer>>> renderizableWidgets;
+	private List<ClickableWidget> clickableWidgets;
 	
-	private List<GLFWCharCallbackI> charCallbackList = new ArrayList<>(1);
-	private List<GLFWCursorPosCallbackI> cursorPosCallbackList = new ArrayList<>(1);
-	private List<GLFWCursorEnterCallbackI> cursorEnterCallbackList = new ArrayList<>(1);
-	private List<GLFWKeyCallbackI> keyCallbackList = new ArrayList<>(1);
-	private List<GLFWMouseButtonCallbackI> mouseButtonCallbackList = new ArrayList<>(1);
-	private List<GLFWScrollCallbackI> scrollCallbackList = new ArrayList<>(1);
-	private List<GLFWWindowSizeCallbackI> windowSizeCallbackList = new ArrayList<>(1);
-	
-	private GLFWCharCallbackI charCallback = (w, codepoint) -> charCallbackList.forEach(callback -> callback.invoke(w, codepoint));
-	private GLFWCursorPosCallbackI cursorPosCallback = (w, x, y) -> {
-		mousePos.setAll((int) x, getHeight() - (int) y);
-		for (GLFWCursorPosCallbackI callback : cursorPosCallbackList) callback.invoke(w, x, y);
-	};
-	private GLFWCursorEnterCallbackI cursorEnterCallback = (w, entered) -> cursorEnterCallbackList.forEach(callback -> callback.invoke(w, entered));
-	private GLFWKeyCallbackI keyCallback = (w, key, scancode, action, mode) -> keyCallbackList.forEach(callback -> callback.invoke(w, key, scancode, action, mode));
-	private GLFWMouseButtonCallbackI mouseButtonCallback = (w, button, action, mode) -> {
-		for (GLFWMouseButtonCallbackI callback : mouseButtonCallbackList) callback.invoke(w, button, action, mode);
-		if (action == GLFW.GLFW_PRESS) for (ClickableWidget e : clickableWidgets) if (e.isMouseHover()) e.onClick(button, mousePos);
-	};
-	private GLFWWindowSizeCallbackI windowSizeCallback = (w, x, y) -> windowSizeCallbackList.forEach(callback -> callback.invoke(w, x, y));
-	private GLFWScrollCallbackI windowScrollCallback = (w, xOffset, yOffset) -> scrollCallbackList.forEach(callback -> callback.invoke(w, xOffset, yOffset));
+	private List<GLFWCharCallbackI> charCallbackList;
+	private List<GLFWCursorPosCallbackI> cursorPosCallbackList;
+	private List<GLFWCursorEnterCallbackI> cursorEnterCallbackList;
+	private List<GLFWKeyCallbackI> keyCallbackList;
+	private List<GLFWMouseButtonCallbackI> mouseButtonCallbackList;
+	private List<GLFWScrollCallbackI> scrollCallbackList;
+	private List<GLFWWindowSizeCallbackI> windowSizeCallbackList;
 	
 	private GLCapabilities glCapabilities;
 	
-	public Window(int w, int h, String title)
+	public Window(int width, int height, String title)
 	{
 		this.title = title;
-		size = Vector2i.of(w, h);
+		size = Vector2i.of(width, height);
 		aspectRatio = (float) size.x() / size.y();
+		isCreated = false;
+		mousePos = Vector2i.of(0, 0);
+		cursorInputMode = CursorInputMode.NORMAL;
+		firstInit();
+	}
+	
+	public Window(Vector2i size, String title)
+	{
+		this.title = title;
+		this.size = Vector2i.copyOf(size);
+		aspectRatio = (float) size.x() / size.y();
+		isCreated = false;
+		mousePos = Vector2i.of(0, 0);
+		cursorInputMode = CursorInputMode.NORMAL;
+		firstInit();
+	}
+	
+	private void firstInit()
+	{
+		renderizableWidgets = new LinkedList<>();
+		clickableWidgets = new LinkedList<>();
+		
+		charCallbackList = new ArrayList<>(1);
+		cursorPosCallbackList = new ArrayList<>(1);
+		cursorEnterCallbackList = new ArrayList<>(1);
+		keyCallbackList = new ArrayList<>(1);
+		mouseButtonCallbackList = new ArrayList<>(1);
+		scrollCallbackList = new ArrayList<>(1);
+		windowSizeCallbackList = new ArrayList<>(1);
+	}
+	
+	protected void charCallback(long id, int codepoint)
+	{
+		for (GLFWCharCallbackI callback : charCallbackList) callback.invoke(id, codepoint);
+	}
+	
+	protected void cursorPosCallback(long id, double x, double y)
+	{
+		mousePos.setAll((int) x, getHeight() - (int) y);
+		for (GLFWCursorPosCallbackI callback : cursorPosCallbackList) callback.invoke(id, x, y);
+	}
+	
+	protected void cursorEnterCallback(long id, boolean entered)
+	{
+		for (GLFWCursorEnterCallbackI callback : cursorEnterCallbackList) callback.invoke(id, entered);
+	}
+	
+	protected void keyCallback(long id, int key, int scancode, int action, int mods)
+	{
+		for (GLFWKeyCallbackI callback : keyCallbackList) callback.invoke(id, key, scancode, action, mods);
+	}
+	
+	protected void mouseButtonCallback(long id, int button, int action, int mods)
+	{
+		for (GLFWMouseButtonCallbackI callback : mouseButtonCallbackList) callback.invoke(id, button, action, mods);
+		if (action == GLFW.GLFW_PRESS) for (ClickableWidget e : clickableWidgets) if (e.isMouseHover()) e.onClick(button, mousePos);
+	}
+	
+	protected void windowSizeCallback(long id, int width, int height)
+	{
+		for (GLFWWindowSizeCallbackI callback : windowSizeCallbackList) callback.invoke(id, width, height);
+	}
+	
+	protected void windowScrollCallback(long id, double x, double y)
+	{
+		for (GLFWScrollCallbackI callback : scrollCallbackList) callback.invoke(id, x, y);
 	}
 	
 	public void create()
 	{
-		if (!isCreated) isCreated = (windowId = GLFW.glfwCreateWindow(getWidth(), getHeight(), title, 0, 0)) != 0;
+		if (!isCreated) isCreated = (id = GLFW.glfwCreateWindow(getWidth(), getHeight(), title, 0, 0)) != 0;
 	}
 	
 	public void init()
@@ -91,44 +141,29 @@ public class Window {
 		{
 			FrameBuffer.DEFAULT.setDrawArea(0, 0, getWidth(), getHeight());
 			GLFW.glfwSwapInterval(0);
-			GLFW.glfwSetCharCallback(windowId, charCallback);
-			GLFW.glfwSetCursorEnterCallback(windowId, cursorEnterCallback);
-			GLFW.glfwSetCursorPosCallback(windowId, cursorPosCallback);
-			GLFW.glfwSetKeyCallback(windowId, keyCallback);
-			GLFW.glfwSetMouseButtonCallback(windowId, mouseButtonCallback);
-			GLFW.glfwSetScrollCallback(windowId, windowScrollCallback);
-			GLFW.glfwSetWindowSizeCallback(windowId, windowSizeCallback);
+			GLFW.glfwSetCharCallback(id, this::charCallback);
+			GLFW.glfwSetCursorEnterCallback(id, this::cursorEnterCallback);
+			GLFW.glfwSetCursorPosCallback(id, this::cursorPosCallback);
+			GLFW.glfwSetKeyCallback(id, this::keyCallback);
+			GLFW.glfwSetMouseButtonCallback(id, this::mouseButtonCallback);
+			GLFW.glfwSetScrollCallback(id, this::windowScrollCallback);
+			GLFW.glfwSetWindowSizeCallback(id, this::windowSizeCallback);
 		}
 	}
 	
-	public final void setIcon(Texture texture)
+	public <R extends ShaderRenderer> void render(Matrix4f matrix, float partialTicks)
 	{
-		IntBuffer buffer = MemoryUtil.memAllocInt(texture.getLength());
-		buffer.put(texture.getDataArray()).flip();
-		Buffer b = GLFWImage.malloc(1).put(0, GLFWImage.malloc().set(texture.getWidth(), texture.getHeight(), MemoryUtil.memByteBuffer(buffer)));
-		GLFW.glfwSetWindowIcon(windowId, b);
-		b.get().free();
-		MemoryUtil.memFree(buffer);
-	}
-	
-	public final void setIcon(Image image)
-	{
-		Buffer b = GLFWImage.malloc(1).put(0, GLFWImage.malloc().set(image.getBuffered().getWidth(), image.getBuffered().getHeight(), image.toByteBuffer()));
-		GLFW.glfwSetWindowIcon(windowId, b);
-		b.get().free();
-	}
-	
-	public void render(Matrix4f matrix, float partialTicks)
-	{
-		for (Entry<UniversalRenderer, DrawableWidget<UniversalRenderer>> entry : renderizableUniversalWidgets) entry.getValue().render(new Matrix4f(matrix), entry.getKey(), entry.getValue().getPos().xy(), partialTicks);
-		for (Entry<ObjectRenderer, DrawableWidget<ObjectRenderer>> entry : renderizableObjectWidgets) entry.getValue().render(new Matrix4f(matrix), entry.getKey(), entry.getValue().getPos().xy(), partialTicks);
+		for (Entry<Supplier<? extends ShaderRenderer>, DrawableWidget<ShaderRenderer>> entry : renderizableWidgets) entry.getValue().render(new Matrix4f(matrix), entry.getKey().get(), partialTicks);
 		while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
 	}
 	
-	public void update(Matrix4f matrix, float partialTicks)
+	public void draw(Matrix4f matrix, float partialTicks)
 	{
-		for (Entry<UniversalRenderer, DrawableWidget<UniversalRenderer>> entry : renderizableUniversalWidgets) entry.getValue().draw(new Matrix4f(matrix), entry.getKey(), partialTicks);
-		for (Entry<ObjectRenderer, DrawableWidget<ObjectRenderer>> entry : renderizableObjectWidgets) entry.getValue().draw(new Matrix4f(matrix), entry.getKey(), partialTicks);
+		for (Entry<Supplier<? extends ShaderRenderer>, DrawableWidget<ShaderRenderer>> entry : renderizableWidgets) entry.getValue().draw(new Matrix4f(matrix), entry.getKey().get(), partialTicks);
+	}
+	
+	public void update()
+	{
 		pollEvents();
 		swapBuffers();
 	}
@@ -138,7 +173,7 @@ public class Window {
 		FrameBuffer.DEFAULT.clear(color, depth, stencil);
 	}
 	
-	public final void addEvent(CallbackI event)
+	public void addEvent(CallbackI event)
 	{
 		if (event instanceof GLFWCharCallbackI callback) charCallbackList.add(callback);
 		if (event instanceof GLFWCursorPosCallbackI callback) cursorPosCallbackList.add(callback);
@@ -149,26 +184,26 @@ public class Window {
 		if (event instanceof GLFWWindowSizeCallbackI callback) windowSizeCallbackList.add(callback);
 	}
 	
-	public final void addWidget(DrawableWidget<UniversalRenderer> widget, UniversalRenderer renderer)
+	public <R extends ShaderRenderer> void addWidget(DrawableWidget<R> widget, Supplier<R> renderer)
 	{
 		if (widget instanceof ClickableWidget w) addWidget(w);
-		renderizableUniversalWidgets.add(Map.entry(renderer, widget));
+		renderizableWidgets.add(cast(Map.entry(renderer, widget)));
 	}
 	
-	public final void addWidget(DrawableWidget<ObjectRenderer> widget, ObjectRenderer renderer)
+	@SuppressWarnings("unchecked")
+	private <T, X> X cast(T t)
 	{
-		if (widget instanceof ClickableWidget w) addWidget(w);
-		renderizableObjectWidgets.add(Map.entry(renderer, widget));
+		return (X) t;
 	}
 	
-	public final void addWidget(ClickableWidget widget)
+	public void addWidget(ClickableWidget widget)
 	{
 		clickableWidgets.add(widget);
 	}
 	
 	public final long getId()
 	{
-		return windowId;
+		return id;
 	}
 	
 	public final boolean isCreated()
@@ -211,15 +246,6 @@ public class Window {
 		return cursorInputMode;
 	}
 	
-	public final void setMousePos(Vector2i mousePos)
-	{
-		if (!this.mousePos.equals(mousePos))
-		{
-			this.mousePos = mousePos;
-			GLFW.glfwSetCursorPos(windowId, mousePos.x(), mousePos.y());
-		}
-	}
-	
 	public final void setWidth(int width)
 	{
 		setSize(Vector2i.of(width, getHeight()));
@@ -249,28 +275,9 @@ public class Window {
 		
 	}
 	
-	public final void setMinMaxSizes(Vector2i minSize, Vector2i maxSize)
-	{
-		GLFW.glfwSetWindowSizeLimits(windowId, minSize.x(), minSize.y(), maxSize.x(), maxSize.y());
-	}
-	
-	public final void setCursorInputMode(CursorInputMode mode)
-	{
-		if (cursorInputMode != mode)
-		{
-			cursorInputMode = mode;
-			GLFW.glfwSetInputMode(windowId, GLFW.GLFW_CURSOR, mode.ordinal() + GLFW.GLFW_CURSOR_NORMAL);
-		}
-	}
-	
-	public final void setLockKeyModsInputMode(boolean value)
-	{
-		GLFW.glfwSetInputMode(windowId, GLFW.GLFW_LOCK_KEY_MODS, value ? 1 : 0);
-	}
-	
 	public final void makeContextCurrent()
 	{
-		GLFW.glfwMakeContextCurrent(windowId);
+		GLFW.glfwMakeContextCurrent(id);
 		if (glCapabilities == null) glCapabilities = GL.createCapabilities();
 		else GL.setCapabilities(glCapabilities);
 	}
@@ -282,49 +289,77 @@ public class Window {
 	
 	public final boolean shouldClose()
 	{
-		return GLFW.glfwWindowShouldClose(windowId);
+		return GLFW.glfwWindowShouldClose(id);
 	}
 	
 	public final void show()
 	{
-		GLFW.glfwShowWindow(windowId);
-		onResize(getSize(), getSize());
+		GLFW.glfwShowWindow(id);
+		onShow();
+	}
+	
+	protected void onShow()
+	{
+		
 	}
 	
 	public final void hide()
 	{
-		GLFW.glfwHideWindow(windowId);
-		onResize(getSize(), getSize());
+		GLFW.glfwHideWindow(id);
+		onHide();
 	}
 	
-	public final void focus()
+	protected void onHide()
 	{
-		GLFW.glfwFocusWindow(windowId);
-	}
-	
-	public final void requestAttention()
-	{
-		GLFW.glfwRequestWindowAttention(windowId);
+		
 	}
 	
 	public final void iconify()
 	{
-		GLFW.glfwIconifyWindow(windowId);
+		GLFW.glfwIconifyWindow(id);
+		onIconify();
+	}
+	
+	protected void onIconify()
+	{
+		
 	}
 	
 	public final void maximize()
 	{
-		GLFW.glfwMaximizeWindow(windowId);
+		GLFW.glfwMaximizeWindow(id);
+		onMaximize();
+	}
+	
+	protected void onMaximize()
+	{
+		
 	}
 	
 	public final void restore()
 	{
-		GLFW.glfwRestoreWindow(windowId);
+		GLFW.glfwRestoreWindow(id);
+		onRestore();
 	}
 	
-	public final void setOpacity(float alpha)
+	protected void onRestore()
 	{
-		GLFW.glfwSetWindowOpacity(windowId, alpha / 255);
+		
+	}
+	
+	public final void focus()
+	{
+		GLFW.glfwFocusWindow(id);
+	}
+	
+	protected void onFocus()
+	{
+		
+	}
+	
+	public final void requestAttention()
+	{
+		GLFW.glfwRequestWindowAttention(id);
 	}
 	
 	public final void pollEvents()
@@ -334,16 +369,71 @@ public class Window {
 	
 	public final void swapBuffers()
 	{
-		GLFW.glfwSwapBuffers(windowId);
-	}
-	
-	public final void setCursor(ICursor cursor)
-	{
-		GLFW.glfwSetCursor(windowId, cursor.getId());
+		GLFW.glfwSwapBuffers(id);
 	}
 	
 	public final void removeCursor()
 	{
-		GLFW.glfwSetCursor(windowId, 0);
+		GLFW.glfwSetCursor(id, 0);
+	}
+	
+	public final void setOpacity(float alpha)
+	{
+		GLFW.glfwSetWindowOpacity(id, alpha / 255);
+	}
+	
+	public final void setMinMaxSizes(Vector2i minSize, Vector2i maxSize)
+	{
+		GLFW.glfwSetWindowSizeLimits(id, minSize.x(), minSize.y(), maxSize.x(), maxSize.y());
+	}
+	
+	public final void setMinMaxSizes(int minWidth, int minHeight, int maxWidth, int maxHeight)
+	{
+		GLFW.glfwSetWindowSizeLimits(id, minWidth, minHeight, maxWidth, maxHeight);
+	}
+	
+	public final void setCursor(ICursor cursor)
+	{
+		GLFW.glfwSetCursor(id, cursor.getId());
+	}
+	
+	public final void setCursorInputMode(CursorInputMode mode)
+	{
+		if (cursorInputMode != mode)
+		{
+			cursorInputMode = mode;
+			GLFW.glfwSetInputMode(id, GLFW.GLFW_CURSOR, mode.ordinal() + GLFW.GLFW_CURSOR_NORMAL);
+		}
+	}
+	
+	public final void setLockKeyModsInputMode(boolean value)
+	{
+		GLFW.glfwSetInputMode(id, GLFW.GLFW_LOCK_KEY_MODS, value ? 1 : 0);
+	}
+	
+	public final void setMousePos(Vector2i mousePos)
+	{
+		if (!this.mousePos.equals(mousePos))
+		{
+			this.mousePos = mousePos;
+			GLFW.glfwSetCursorPos(id, mousePos.x(), mousePos.y());
+		}
+	}
+	
+	public final void setIcon(Texture texture)
+	{
+		IntBuffer buffer = MemoryUtil.memAllocInt(texture.getLength());
+		buffer.put(texture.getDataArray()).flip();
+		Buffer b = GLFWImage.malloc(1).put(0, GLFWImage.malloc().set(texture.getWidth(), texture.getHeight(), MemoryUtil.memByteBuffer(buffer)));
+		GLFW.glfwSetWindowIcon(id, b);
+		b.get().free();
+		MemoryUtil.memFree(buffer);
+	}
+	
+	public final void setIcon(Image image)
+	{
+		Buffer b = GLFWImage.malloc(1).put(0, GLFWImage.malloc().set(image.getBuffered().getWidth(), image.getBuffered().getHeight(), image.toByteBuffer()));
+		GLFW.glfwSetWindowIcon(id, b);
+		b.get().free();
 	}
 }
