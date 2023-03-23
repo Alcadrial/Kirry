@@ -2,8 +2,6 @@ package com.alcadra.renderengine.renderer;
 
 import java.awt.IllegalComponentStateException;
 
-import org.lwjgl.opengl.GL30;
-
 import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
@@ -21,12 +19,7 @@ public class ColorRenderer extends Renderer {
 	protected void initializeArrayBuffer()
 	{
 		if (!shader.useColor()) throw new IllegalComponentStateException("Shader cannot use a color for render in a ColorRenderer!");
-		getVertexArray().bindBuffer(getArrayBuffer());
-		GL30.glVertexAttribPointer(0, 3, GL30.GL_FLOAT, false, 28, 0);
-		GL30.glVertexAttribPointer(1, 4, GL30.GL_FLOAT, false, 28, 12);
-		GL30.glEnableVertexAttribArray(0);
-		GL30.glEnableVertexAttribArray(1);
-		VertexArray.unbind();
+		super.initializeArrayBuffer();
 	}
 	
 	@Override

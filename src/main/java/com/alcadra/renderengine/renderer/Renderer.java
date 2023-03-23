@@ -48,7 +48,7 @@ public class Renderer extends BaseRenderer {
 		}
 		if (shader.useNormal())
 		{
-			GL30.glVertexAttribPointer(3, 3, GL30.GL_FLOAT, true, size, offset);
+			GL30.glVertexAttribPointer(3, 3, GL30.GL_FLOAT, false, size, offset);
 			GL30.glEnableVertexAttribArray(3);
 			offset += 12;
 		}

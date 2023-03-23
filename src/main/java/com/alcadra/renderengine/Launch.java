@@ -234,6 +234,7 @@ public class Launch {
 		{
 			e.printStackTrace(System.out);
 		}
+		shader.build();
 		shaderTexture = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED);
 		try
 		{
@@ -244,6 +245,7 @@ public class Launch {
 		{
 			e.printStackTrace(System.out);
 		}
+		shaderTexture.build();
 		renderer = new Renderer(shader);
 		colorRenderer = new ColorRenderer(shader);
 		textureRenderer = new TextureRenderer(shaderTexture);
@@ -257,6 +259,7 @@ public class Launch {
 		{
 			e.printStackTrace(System.out);
 		}
+		fontShader.build();
 		fontRenderer = new FontRenderer(fontShader, shaderTexture);
 		try
 		{

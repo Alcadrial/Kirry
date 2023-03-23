@@ -23,6 +23,34 @@ import com.alcadra.renderengine.textures.Texture;
 
 public class FontRenderer extends BaseRenderer {
 	
+	public class FontTextureRenderer extends TextureRenderer {
+		
+		public FontTextureRenderer(Shader shader)
+		{
+			super(shader);
+		}
+		
+		@Override
+		protected void initializeArrayBuffer()
+		{
+			VertexArray vertexArray = getVertexArray();
+			vertexArray.bindBuffer(getArrayBuffer());
+			int size = 20 + (shader.useColor() ? 16 : 0), offset = 0, i = 0;
+			vertexArray.vertexAttributePointer(i, 3, GL30.GL_FLOAT, false, size, offset);
+			vertexArray.enableVertexAttribute(i++);
+			offset += 12;
+			if (shader.useColor())
+			{
+				vertexArray.vertexAttributePointer(i, 4, GL30.GL_FLOAT, false, size, offset);
+				vertexArray.enableVertexAttribute(i++);
+				offset += 16;
+			}
+			vertexArray.vertexAttributePointer(i, 2, GL30.GL_FLOAT, false, size, offset);
+			vertexArray.enableVertexAttribute(i++);
+			VertexArray.unbind();
+		}
+	}
+	
 	private final FrameBuffer frameBuffer = new FrameBuffer();
 	private final TextureRenderer textureRenderer;
 	
@@ -35,7 +63,7 @@ public class FontRenderer extends BaseRenderer {
 		GL30.glEnableVertexAttribArray(0);
 		GL30.glEnableVertexAttribArray(1);
 		VertexArray.unbind();
-		textureRenderer = new TextureRenderer(textureShader);
+		textureRenderer = new FontTextureRenderer(textureShader);
 	}
 	
 	public void drawString(Matrix4f matrix, Font font, Text text, Vector2i position, float size, float z)
