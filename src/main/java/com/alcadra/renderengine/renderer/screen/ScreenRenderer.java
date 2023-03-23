@@ -18,7 +18,8 @@ class ScreenRenderer extends AbstractShaderRenderer<DataModel> {
 	@Override
 	protected void initializeArrayBuffer()
 	{
-		vertexArray.bindBuffer(currentArrayBuffer);
+		vertexArray.bind();
+		currentArrayBuffer.bind();
 		super.initializeArrayBuffer();
 	}
 	

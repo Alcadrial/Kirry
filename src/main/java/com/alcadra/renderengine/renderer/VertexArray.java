@@ -1,11 +1,7 @@
 package com.alcadra.renderengine.renderer;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.lwjgl.opengl.GL30;
 
-import com.alcadra.renderengine.buffer.SimpleBuffer;
 import com.alcadra.renderengine.util.Nonnull;
 
 public class VertexArray {
@@ -24,7 +20,6 @@ public class VertexArray {
 		return binded;
 	}
 	
-	private Map<Integer, SimpleBuffer> binds = new HashMap<>();
 	private final int id;
 	
 	public VertexArray()
@@ -46,12 +41,6 @@ public class VertexArray {
 		}
 	}
 	
-	public void bindBuffer(SimpleBuffer buffer)
-	{
-		bind();
-		buffer.bind();
-	}
-	
 	public void vertexAttributePointer(int index, int size, int type, boolean normalized, int stride, int offset)
 	{
 		GL30.glVertexAttribPointer(index, size, type, normalized, stride, offset);
@@ -70,19 +59,6 @@ public class VertexArray {
 	public int getId()
 	{
 		return id;
-	}
-	
-	public SimpleBuffer getBinded(int target)
-	{
-		SimpleBuffer b = binds.get(target);
-		return b == null ? new SimpleBuffer(target, 0) {
-			
-			@Override
-			public SimpleBuffer getNull()
-			{
-				return this;
-			}
-		} : b;
 	}
 	
 	@Override

@@ -45,7 +45,7 @@ public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> implemen
 		int index = 0;
 		int offset = 0;
 		vertexArray.bind();
-		vertexArray.bindBuffer(arrayBuffer);
+		arrayBuffer.bind();
 		for (ShaderInput input : inputs)
 		{
 			ShaderInputType type = input.getType();
@@ -75,7 +75,7 @@ public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> implemen
 	@SuppressWarnings("rawtypes")
 	protected void syncBuffers()
 	{
-		vertexArray.bindBuffer(arrayBuffer);
+		arrayBuffer.bind();
 		if (arrayBuffer instanceof SyncronizableArrayBuffer s) s.sync();
 		Util.printError("BaseRenderer[INTERNAL] array sync");
 	}
@@ -95,6 +95,7 @@ public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> implemen
 		vertexArray.bind();
 		syncBuffers();
 		GL30.glDrawArrays(mode.ordinal(), start, count);
+		arrayBuffer.unbind();
 		Util.printError("BaseRenderer[INTERNAL] draw");
 	}
 	
