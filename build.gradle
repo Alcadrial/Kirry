@@ -1,0 +1,65 @@
+import org.gradle.internal.os.OperatingSystem
+
+plugins {
+    id("java-library")
+}
+
+java {
+	toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+    withSourcesJar()
+    withJavadocJar()
+}
+
+project.ext.lwjglVersion = "3.3.0"
+
+switch (OperatingSystem.current()) {
+	case OperatingSystem.LINUX:
+		def osArch = System.getProperty("os.arch")
+		project.ext.lwjglNatives = osArch.startsWith("arm") || osArch.startsWith("aarch64")
+			? "natives-linux-${osArch.contains("64") || osArch.startsWith("armv8") ? "arm64" : "arm32"}"
+			: "natives-linux"
+		break
+	case OperatingSystem.MAC_OS:
+		project.ext.lwjglNatives = System.getProperty("os.arch").startsWith("aarch64") ? "natives-macos-arm64" : "natives-macos"
+		break
+	case OperatingSystem.WINDOWS:
+		def osArch = System.getProperty("os.arch")
+		project.ext.lwjglNatives = osArch.contains("64")
+			? "natives-windows${osArch.startsWith("aarch64") ? "-arm64" : ""}"
+			: "natives-windows-x86"
+		break
+}
+
+class AlcadrialTask extends DefaultTask {
+    AlcadrialTask() {
+        group = "alcadrial"
+    }
+}
+
+task export(type: AlcadrialTask) {
+	dependsOn "jar"
+	dependsOn "javadocJar"
+	dependsOn "sourcesJar"
+}
+
+repositories {
+	flatDir {
+		dirs("libs")
+	}
+    mavenCentral()
+}
+
+dependencies {
+	implementation (":math")
+	implementation (":threads")
+    implementation ("com.google.guava:guava:31.0.1-jre")
+    implementation ("com.google.code.gson:gson:2.8.9")
+    implementation ("org.lwjgl:lwjgl:3.3.0")
+    implementation ("org.lwjgl:lwjgl-glfw:3.3.0")
+    implementation ("org.lwjgl:lwjgl-openal:3.3.0")
+    implementation ("org.lwjgl:lwjgl-opengl:3.3.0")
+	runtimeOnly ("org.lwjgl:lwjgl::$lwjglNatives")
+	runtimeOnly ("org.lwjgl:lwjgl-glfw::$lwjglNatives")
+	runtimeOnly ("org.lwjgl:lwjgl-openal::$lwjglNatives")
+	runtimeOnly ("org.lwjgl:lwjgl-opengl::$lwjglNatives")
+}
