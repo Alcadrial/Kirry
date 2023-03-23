@@ -103,6 +103,13 @@ public class FloatArrayBufferStack extends FloatArrayBuffer {
 	}
 	
 	@Override
+	public void bind()
+	{
+		if (top != null) top.buffer.bind();
+		else super.bind();
+	}
+	
+	@Override
 	public void sync()
 	{
 		if (top != null) top.buffer.sync();
