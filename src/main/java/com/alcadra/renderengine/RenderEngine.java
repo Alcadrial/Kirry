@@ -10,7 +10,6 @@ import org.lwjgl.glfw.GLFWCursorPosCallbackI;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.opengl.GL30;
-import org.lwjgl.opengl.GL43;
 import org.lwjgl.system.Configuration;
 import org.lwjgl.system.MemoryUtil;
 
@@ -21,10 +20,8 @@ import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector3i;
 import com.alcadra.math.vector.Vector4f;
 import com.alcadra.renderengine.buffer.FrameBuffer;
-import com.alcadra.renderengine.renderer.ColorRenderer;
-import com.alcadra.renderengine.renderer.TextureRenderer;
 import com.alcadra.renderengine.renderer.font.Font;
-import com.alcadra.renderengine.renderer.font.FontRenderer;
+import com.alcadra.renderengine.renderer.font.FontRendererUpdate;
 import com.alcadra.renderengine.renderer.font.text.Text;
 import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
@@ -40,9 +37,11 @@ import com.alcadra.renderengine.util.Image;
 import com.alcadra.renderengine.util.RendererUtil;
 import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.util.Util;
+import com.alcadra.renderengine.util.color.Color;
+import com.alcadra.renderengine.util.color.VectorColorRGB;
 import com.alcadra.renderengine.window.Window;
 import com.alcadra.renderengine.window.cursor.StandardCursor;
-import com.alcadra.renderengine.window.widget.VisibleButton;
+import com.alcadra.renderengine.window.widget.VisibleButtonUpdate;
 import com.alcadra.threads.TimeThread;
 
 @SuppressWarnings("unused")
@@ -176,9 +175,7 @@ public class RenderEngine implements RenderTest {
 	private Shader shader, shaderTexture;
 	private ShaderProgram colorProgram, textureProgram;
 	private UniversalRenderer renderer;
-	private FontRenderer fontRenderer;
-	private TextureRenderer textureRenderer;
-	private ColorRenderer colorRenderer;
+	private FontRendererUpdate fontRenderer;
 	private Font font;
 	
 	@Override
@@ -308,24 +305,25 @@ public class RenderEngine implements RenderTest {
 		
 		Util.printError("shader init");
 		renderer = new UniversalRenderer(colorProgram);
-		colorRenderer = new ColorRenderer(shader);
-		textureRenderer = new TextureRenderer(shaderTexture);
 		Util.printError("renderer init");
-		Shader fontShader = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED);
+		ShaderProgram fontProgram = new ShaderProgram();
 		try
 		{
-			results = fontShader.loadShaderFile(new File(fontShaderVertexPath), ShaderType.VERTEX);
-			if (!results.isCompiled()) System.out.println(results);
-			results = fontShader.loadShaderFile(new File(fontShaderFragmentPath), ShaderType.FRAGMENT);
-			if (!results.isCompiled()) System.out.println(results);
+			shader0 = new ShaderUpdate(new File(fontShaderVertexPath));
+			shader0.loadShader();
+			if (!shader0.getStatus().isCompiled()) System.out.println(shader0.getStatus());
+			fontProgram.attachShader(shader0);
+			shader0 = new ShaderUpdate(new File(fontShaderFragmentPath));
+			shader0.loadShader();
+			if (!shader0.getStatus().isCompiled()) System.out.println(shader0.getStatus());
+			fontProgram.attachShader(shader0);
 		}
 		catch (IOException e)
 		{
 			e.printStackTrace(System.out);
 		}
-		fontShader.build();
+		fontProgram.build();
 		Util.printError("font shader");
-		fontRenderer = new FontRenderer(fontShader);
 		try
 		{
 			font = new Font(new File(fontPath), new File(fontImagePath));
@@ -336,12 +334,12 @@ public class RenderEngine implements RenderTest {
 		{
 			e.printStackTrace();
 		}
-		fontRenderer.setFont(font);
+		fontRenderer = new FontRendererUpdate(fontProgram, font);
 		Util.printError("font renderer");
 		
 		window.setIcon(icon);
 		window.show();
-		window.addWidget(new VisibleButton(new Vector3i(10, 10, 0), new Vector2i(16, 16), window) {
+		window.addWidget(new VisibleButtonUpdate(new Vector3i(10, 10, 0), new Vector2i(16, 16), window) {
 			
 			@Override
 			public void onLeftClick(Vector2i mousePos)
@@ -354,18 +352,10 @@ public class RenderEngine implements RenderTest {
 			{
 				System.out.println("r");
 			}
-		}, colorRenderer);
+		}, renderer);
 		Util.printError("window");
 		
 		frameBuffer.initializeDepthTextureBuffer(1024, 1024);
-		
-		textureRenderer.loadImage(icon);
-		colorRenderer.loadQuad(0, 0, 0, 100, 100, 0, 255, 254, 2, 255);
-		
-		GL30.glEnable(GL43.GL_DEBUG_OUTPUT);
-		GL30.glEnable(GL43.GL_DEBUG_OUTPUT_SYNCHRONOUS);
-		GL43.glDebugMessageCallback((source, type, id, severity, length, message, userParam) -> System.out.println(MemoryUtil.memASCII(message)), 0);
-		GL43.glDebugMessageControl(GL43.GL_DONT_CARE, GL43.GL_DONT_CARE, GL43.GL_DONT_CARE, new int[0], false);
 		
 		window.render(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
 		
@@ -417,8 +407,8 @@ public class RenderEngine implements RenderTest {
 		Vector3f end = new Vector3f(10, 10, 10);
 		Util.printError("compact");
 		
-		fontRenderer.loadText(new Text("ala.beta@delta"), new Vector2i(0, (int) o % 360), new Vector3f(255, 0, 0), 0.5F, 500, 0);
-		fontRenderer.loadText(new Text(Util.toPointString(cursor)), new Vector2i(cursor.subtract(window.getSize().multiply(0.5F))), new Vector2f(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight()), 0.003F, 550, 0);
+		fontRenderer.loadText(new Text("ala.beta@delta"), new Vector2i(0, (int) o % 360), Color.LIGHT_RED, 0.5F, 500, 0);
+		fontRenderer.loadText(new Text(Util.toPointString(cursor)), new Vector2i(cursor.subtract(window.getSize().multiply(0.5F))), new VectorColorRGB(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight(), 0), 0.003F, 550, 0);
 		Text text = new Text();
 		text.addLine(new TextLine("partialTicks " + partialTicks));
 		text.addLine(new TextLine("fps " + thread.getRunsPerSecond()));
@@ -437,7 +427,7 @@ public class RenderEngine implements RenderTest {
 		text.addLine(new TextLine("o " + o));
 		text.addLine(new TextLine(Double.toString(o % 180)));
 		text.addLine(new TextLine(Double.toString(o % 360)));
-		fontRenderer.loadText(text, new Vector2i(-window.getWidth() / 2, window.getHeight() / 2 - 40), 0.8F, 1000, 0);
+		fontRenderer.loadText(text, new Vector2i(-window.getWidth() / 2, window.getHeight() / 2 - 40), Color.BLACK, 0.8F, 1000, 0);
 		Util.printError("FontRender texting");
 		fontRenderer.draw(compact);
 		Util.printError("FontRender draw");
