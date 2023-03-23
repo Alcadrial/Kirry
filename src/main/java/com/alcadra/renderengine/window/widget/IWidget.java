@@ -16,6 +16,9 @@ public interface IWidget {
 	
 	public abstract Vector3i getPos();
 	public abstract Vector2i getSize();
+	public abstract int getX();
+	public abstract int getY();
+	public abstract int getZ();
 	public abstract int getWidth();
 	public abstract int getHeight();
 	public abstract void setPos(Vector3i pos);

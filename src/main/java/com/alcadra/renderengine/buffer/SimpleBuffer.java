@@ -2,7 +2,9 @@ package com.alcadra.renderengine.buffer;
 
 import org.lwjgl.opengl.GL15;
 
-public abstract class SimpleBuffer {
+import com.alcadra.renderengine.util.Util;
+
+public abstract class SimpleBuffer implements AutoCloseable {
 	
 	private final int target, id;
 	
@@ -47,5 +49,11 @@ public abstract class SimpleBuffer {
 	public int getId()
 	{
 		return id;
+	}
+	
+	@Override
+	public void close()
+	{
+		GL15.glDeleteBuffers(id);
 	}
 }

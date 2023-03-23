@@ -7,6 +7,7 @@ import static org.lwjgl.opengl.GL15.*;
 import static org.lwjgl.opengl.GL30.*;
 import static org.lwjgl.opengl.GL31.*;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -196,47 +197,45 @@ public class Launch {
 				t.assertTest("Constructor", b -> b.size() == 0 && b.current() == b, new FloatArrayBufferStack());
 				t.println();
 				t.assertTest("Push", enclosiveContext(b -> {
-					FloatArrayBuffer b0 = new FloatArrayBuffer();
-					FloatArrayBuffer b1 = new FloatArrayBuffer();
-					FloatArrayBuffer b2 = new FloatArrayBuffer();
-					FloatArrayBuffer b3 = new FloatArrayBuffer();
-					b.push(b0);
-					t.println("Current = " + b.current());
-					if (b.current() != b0 && b.size() != 1) return false;
-					b.push(b1);
-					b.push(b2);
-					t.println("Current = " + b.current());
-					if (b.current() != b2 && b.size() != 3) return false;
-					b.push(b1);
-					b.push(b3);
-					b.push(b);
-					t.println("Current = " + b.current());
-					if (b.current() != b && b.size() != 6) return false;
-					return true;
+					try (FloatArrayBuffer b0 = new FloatArrayBuffer(); FloatArrayBuffer b1 = new FloatArrayBuffer(); FloatArrayBuffer b2 = new FloatArrayBuffer(); FloatArrayBuffer b3 = new FloatArrayBuffer())
+					{
+						b.push(b0);
+						t.println("Current = " + b.current());
+						if (b.current() != b0 && b.size() != 1) return false;
+						b.push(b1);
+						b.push(b2);
+						t.println("Current = " + b.current());
+						if (b.current() != b2 && b.size() != 3) return false;
+						b.push(b1);
+						b.push(b3);
+						b.push(b);
+						t.println("Current = " + b.current());
+						if (b.current() != b && b.size() != 6) return false;
+						return true;
+					}
 				}), new FloatArrayBufferStack());
 				t.assertTest("Pull", enclosiveContext(b -> {
-					FloatArrayBuffer b0 = new FloatArrayBuffer();
-					FloatArrayBuffer b1 = new FloatArrayBuffer();
-					FloatArrayBuffer b2 = new FloatArrayBuffer();
-					FloatArrayBuffer b3 = new FloatArrayBuffer();
-					b.push(b0);
-					b.pull();
-					b.push(b2);
-					t.println("Current = " + b.current());
-					if (b.current() != b2 && b.size() != 1) return false;
-					b.push(b1);
-					b.push(b3);
-					b.pull();
-					b.push(b);
-					b.pull();
-					b.pull();
-					b.pull();
-					t.println("Current = " + b.current());
-					if (b.current() != b && b.size() != 0) return false;
-					b.pull();
-					t.println("Current = " + b.current());
-					if (b.current() != b && b.size() != 0) return false;
-					return true;
+					try (FloatArrayBuffer b0 = new FloatArrayBuffer(); FloatArrayBuffer b1 = new FloatArrayBuffer(); FloatArrayBuffer b2 = new FloatArrayBuffer(); FloatArrayBuffer b3 = new FloatArrayBuffer())
+					{
+						b.push(b0);
+						b.pull();
+						b.push(b2);
+						t.println("Current = " + b.current());
+						if (b.current() != b2 && b.size() != 1) return false;
+						b.push(b1);
+						b.push(b3);
+						b.pull();
+						b.push(b);
+						b.pull();
+						b.pull();
+						b.pull();
+						t.println("Current = " + b.current());
+						if (b.current() != b && b.size() != 0) return false;
+						b.pull();
+						t.println("Current = " + b.current());
+						if (b.current() != b && b.size() != 0) return false;
+						return true;
+					}
 				}), new FloatArrayBufferStack());
 				t.println();
 				t.<Supplier<FloatArrayBuffer>>assertTest("Superclass methods", t.getLastPredicateTestCast("Float Array Buffer"), FloatArrayBufferStack::new);
@@ -246,6 +245,7 @@ public class Launch {
 					stack.push(new FloatArrayBuffer());
 					return stack.current();
 				});
+				stack.close();
 				return true;
 			}));
 			boolean elementArrayBuffer = t.<Supplier<ElementArrayBuffer>>test("Element Array Buffer", enclosiveContext(builder -> {
@@ -372,47 +372,45 @@ public class Launch {
 				t.assertTest("Constructor", b -> b.size() == 0 && b.current() == b, new ElementArrayBufferStack());
 				t.println();
 				t.assertTest("Push", enclosiveContext(b -> {
-					ElementArrayBuffer b0 = new ElementArrayBuffer();
-					ElementArrayBuffer b1 = new ElementArrayBuffer();
-					ElementArrayBuffer b2 = new ElementArrayBuffer();
-					ElementArrayBuffer b3 = new ElementArrayBuffer();
-					b.push(b0);
-					t.println("Current = " + b.current());
-					if (b.current() != b0 && b.size() != 1) return false;
-					b.push(b1);
-					b.push(b2);
-					t.println("Current = " + b.current());
-					if (b.current() != b2 && b.size() != 3) return false;
-					b.push(b1);
-					b.push(b3);
-					b.push(b);
-					t.println("Current = " + b.current());
-					if (b.current() != b && b.size() != 6) return false;
-					return true;
+					try (ElementArrayBuffer b0 = new ElementArrayBuffer(); ElementArrayBuffer b1 = new ElementArrayBuffer(); ElementArrayBuffer b2 = new ElementArrayBuffer(); ElementArrayBuffer b3 = new ElementArrayBuffer())
+					{
+						b.push(b0);
+						t.println("Current = " + b.current());
+						if (b.current() != b0 && b.size() != 1) return false;
+						b.push(b1);
+						b.push(b2);
+						t.println("Current = " + b.current());
+						if (b.current() != b2 && b.size() != 3) return false;
+						b.push(b1);
+						b.push(b3);
+						b.push(b);
+						t.println("Current = " + b.current());
+						if (b.current() != b && b.size() != 6) return false;
+						return true;
+					}
 				}), new ElementArrayBufferStack());
 				t.assertTest("Pull", enclosiveContext(b -> {
-					ElementArrayBuffer b0 = new ElementArrayBuffer();
-					ElementArrayBuffer b1 = new ElementArrayBuffer();
-					ElementArrayBuffer b2 = new ElementArrayBuffer();
-					ElementArrayBuffer b3 = new ElementArrayBuffer();
-					b.push(b0);
-					b.pull();
-					b.push(b2);
-					t.println("Current = " + b.current());
-					if (b.current() != b2 && b.size() != 1) return false;
-					b.push(b1);
-					b.push(b3);
-					b.pull();
-					b.push(b);
-					b.pull();
-					b.pull();
-					b.pull();
-					t.println("Current = " + b.current());
-					if (b.current() != b && b.size() != 0) return false;
-					b.pull();
-					t.println("Current = " + b.current());
-					if (b.current() != b && b.size() != 0) return false;
-					return true;
+					try (ElementArrayBuffer b0 = new ElementArrayBuffer(); ElementArrayBuffer b1 = new ElementArrayBuffer(); ElementArrayBuffer b2 = new ElementArrayBuffer(); ElementArrayBuffer b3 = new ElementArrayBuffer())
+					{
+						b.push(b0);
+						b.pull();
+						b.push(b2);
+						t.println("Current = " + b.current());
+						if (b.current() != b2 && b.size() != 1) return false;
+						b.push(b1);
+						b.push(b3);
+						b.pull();
+						b.push(b);
+						b.pull();
+						b.pull();
+						b.pull();
+						t.println("Current = " + b.current());
+						if (b.current() != b && b.size() != 0) return false;
+						b.pull();
+						t.println("Current = " + b.current());
+						if (b.current() != b && b.size() != 0) return false;
+						return true;
+					}
 				}), new ElementArrayBufferStack());
 				t.println();
 				t.<Supplier<ElementArrayBuffer>>assertTest("Superclass methods", t.getLastPredicateTestCast("Element Array Buffer"), ElementArrayBufferStack::new);
@@ -422,6 +420,7 @@ public class Launch {
 					stack.push(new ElementArrayBuffer());
 					return stack.current();
 				});
+				stack.close();
 				return true;
 			}));
 		}));
@@ -743,6 +742,23 @@ public class Launch {
 				texture.close();
 			}
 		};
+	}
+	
+	public static boolean closeAll(boolean result, Closeable... closeables) throws IOException
+	{
+		for (Closeable closeable : closeables) closeable.close();
+		return result;
+	}
+	
+	public static boolean closeAllNoException(boolean result, Closeable... closeables)
+	{
+		try
+		{
+			for (Closeable closeable : closeables) closeable.close();
+		}
+		catch (IOException e)
+		{}
+		return result;
 	}
 	
 	public static Texture buildTestTexture(TextureTemplate template, int width, int offset)

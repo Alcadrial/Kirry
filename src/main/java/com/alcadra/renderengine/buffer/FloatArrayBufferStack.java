@@ -27,21 +27,23 @@ public class FloatArrayBufferStack extends FloatArrayBuffer {
 		return top != null ? top.buffer : this;
 	}
 	
-	public void pull()
+	public FloatArrayBuffer pull()
 	{
+		FloatArrayBuffer current = current();
 		if (top != null)
 		{
 			size--;
 			if (head == top)
 			{
 				head = top = null;
-				return;
+				return current;
 			}
 			Node n = head;
 			while (n.next != top) n = n.next;
 			top = n;
 			top.next = null;
 		}
+		return current;
 	}
 	
 	public int stackSize()

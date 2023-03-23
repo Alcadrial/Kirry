@@ -31,13 +31,31 @@ public abstract class Widget implements IWidget {
 	@Override
 	public final Vector3i getPos()
 	{
-		return pos;
+		return Vector3i.copyOf(pos);
 	}
 	
 	@Override
 	public final Vector2i getSize()
 	{
-		return size;
+		return Vector2i.copyOf(size);
+	}
+	
+	@Override
+	public int getX()
+	{
+		return pos.x();
+	}
+	
+	@Override
+	public int getY()
+	{
+		return pos.y();
+	}
+	
+	@Override
+	public int getZ()
+	{
+		return pos.z();
 	}
 	
 	@Override
@@ -60,7 +78,7 @@ public abstract class Widget implements IWidget {
 	@Override
 	public final void setPos(Vector3i pos)
 	{
-		Vector3i oldPos = this.pos.xyz();
+		Vector3i oldPos = Vector3i.copyOf(this.pos);
 		move(pos);
 		this.pos = pos.xyz();
 		onMove(oldPos, pos);
@@ -79,7 +97,7 @@ public abstract class Widget implements IWidget {
 	@Override
 	public final void setSize(Vector2i size)
 	{
-		Vector2i oldSize = this.size.xy();
+		Vector2i oldSize = Vector2i.copyOf(this.size.xy());
 		resize(size);
 		this.size = size.xy();
 		onResize(oldSize, size);

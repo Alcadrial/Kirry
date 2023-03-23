@@ -43,9 +43,9 @@ public class FrameBuffer extends SimpleBuffer {
 	}
 	
 	private final Vector4i screen;
-	private Texture[] colorTexture;
-	private Texture depthTexture;
-	private Texture stencilTexture;
+	private TextureHolder[] colorTexture;
+	private TextureHolder depthTexture;
+	private TextureHolder stencilTexture;
 	private RenderBuffer renderBuffer;
 	
 	public FrameBuffer()
@@ -58,7 +58,7 @@ public class FrameBuffer extends SimpleBuffer {
 		super(target, GL32.glGenFramebuffers());
 		Util.printError("[INTERNAL] framebuffer");
 		screen = Vector4i.of(0, 0, 0, 0);
-		colorTexture = new Texture[GL32.glGetInteger(GL32.GL_MAX_COLOR_ATTACHMENTS)];
+		colorTexture = new TextureHolder[GL32.glGetInteger(GL32.GL_MAX_COLOR_ATTACHMENTS)];
 		depthTexture = null;
 		stencilTexture = null;
 		renderBuffer = null;
@@ -133,10 +133,29 @@ public class FrameBuffer extends SimpleBuffer {
 		int attachment = texture.getTemplate().attachment();
 		switch (attachment)
 		{
-			case GL32.GL_DEPTH_ATTACHMENT -> depthTexture = texture;
-			case GL32.GL_STENCIL_ATTACHMENT -> stencilTexture = texture;
-			case GL32.GL_DEPTH_STENCIL_ATTACHMENT -> depthTexture = stencilTexture = texture;
-			default -> colorTexture[attachment - GL32.GL_COLOR_ATTACHMENT0] = texture;
+			case GL32.GL_DEPTH_ATTACHMENT -> depthTexture = new TextureHolder(texture, false);
+			case GL32.GL_STENCIL_ATTACHMENT -> stencilTexture = new TextureHolder(texture, false);
+			case GL32.GL_DEPTH_STENCIL_ATTACHMENT -> depthTexture = stencilTexture = new TextureHolder(texture, false);
+			default -> colorTexture[attachment - GL32.GL_COLOR_ATTACHMENT0] = new TextureHolder(texture, false);
+		}
+		texture.bind();
+		GL32.glFramebufferTexture(getTarget(), attachment, texture.getId(), mipmapLevel);
+	}
+	
+	private void setTextureInternal(Texture texture)
+	{
+		setTextureInternal(texture, 0);
+	}
+	
+	private void setTextureInternal(Texture texture, int mipmapLevel)
+	{
+		int attachment = texture.getTemplate().attachment();
+		switch (attachment)
+		{
+			case GL32.GL_DEPTH_ATTACHMENT -> depthTexture = new TextureHolder(texture, true);
+			case GL32.GL_STENCIL_ATTACHMENT -> stencilTexture = new TextureHolder(texture, true);
+			case GL32.GL_DEPTH_STENCIL_ATTACHMENT -> depthTexture = stencilTexture = new TextureHolder(texture, true);
+			default -> colorTexture[attachment - GL32.GL_COLOR_ATTACHMENT0] = new TextureHolder(texture, true);
 		}
 		texture.bind();
 		GL32.glFramebufferTexture(getTarget(), attachment, texture.getId(), mipmapLevel);
@@ -149,19 +168,22 @@ public class FrameBuffer extends SimpleBuffer {
 			int[] data = new int[width * height];
 			if (useColorTexture)
 			{
+				if (colorTexture[0] != null && colorTexture[0].internal) colorTexture[0].texture.close();
 				Texture texture = new Texture(TextureTemplate.RGBA_2D_TEXTURE);
-				setTexture(texture);
+				setTextureInternal(texture);
 				texture.setData2D(texture.getTemplate(), data, width, height, 0);
 			}
 			if (useDepthTexture)
 			{
-				setTexture(new Texture(TextureTemplate.DEPTH_2D_TEXTURE));
-				depthTexture.setData2D(depthTexture.getTemplate(), data, width, height, 0);
+				if (depthTexture != null && depthTexture.internal) depthTexture.texture.close();
+				setTextureInternal(new Texture(TextureTemplate.DEPTH_2D_TEXTURE));
+				depthTexture.texture.setData2D(depthTexture.texture.getTemplate(), data, width, height, 0);
 			}
 			if (useStencilTexture)
 			{
-				setTexture(new Texture(TextureTemplate.STENCIL_2D_TEXTURE));
-				stencilTexture.setData2D(stencilTexture.getTemplate(), data, width, height, 0);
+				if (stencilTexture != null && stencilTexture.internal) stencilTexture.texture.close();
+				setTextureInternal(new Texture(TextureTemplate.STENCIL_2D_TEXTURE));
+				stencilTexture.texture.setData2D(stencilTexture.texture.getTemplate(), data, width, height, 0);
 			}
 		}
 		setDrawArea(screen.x(), screen.y(), width, height);
@@ -203,7 +225,7 @@ public class FrameBuffer extends SimpleBuffer {
 	
 	public int getColorPixel(int x, int y, int attachment)
 	{
-		TextureTemplate template = colorTexture[attachment].getTemplate();
+		TextureTemplate template = colorTexture[attachment].texture.getTemplate();
 		GL13.glReadPixels(x, y, 1, 1, template.textureFormat(), template.dataType(), POINTER);
 		return POINTER[0];
 	}
@@ -216,14 +238,14 @@ public class FrameBuffer extends SimpleBuffer {
 	public int[] getColorData(int x, int y, int width, int height, int attachment)
 	{
 		int[] pointer = new int[(x - width) * (y - height)];
-		TextureTemplate template = colorTexture[attachment].getTemplate();
+		TextureTemplate template = colorTexture[attachment].texture.getTemplate();
 		GL13.glReadPixels(x, y, width, height, template.textureFormat(), template.dataType(), pointer);
 		return pointer;
 	}
 	
 	public int getDepthPixel(int x, int y)
 	{
-		TextureTemplate template = depthTexture.getTemplate();
+		TextureTemplate template = depthTexture.texture.getTemplate();
 		GL13.glReadPixels(x, y, 1, 1, template.textureFormat(), template.dataType(), POINTER);
 		return POINTER[0];
 	}
@@ -231,14 +253,14 @@ public class FrameBuffer extends SimpleBuffer {
 	public int[] getDepthData(int x, int y, int width, int height)
 	{
 		int[] pointer = new int[(x - width) * (y - height)];
-		TextureTemplate template = depthTexture.getTemplate();
+		TextureTemplate template = depthTexture.texture.getTemplate();
 		GL13.glReadPixels(x, y, width, height, template.textureFormat(), template.dataType(), pointer);
 		return pointer;
 	}
 	
 	public int getStencilPixel(int x, int y)
 	{
-		TextureTemplate template = stencilTexture.getTemplate();
+		TextureTemplate template = stencilTexture.texture.getTemplate();
 		GL13.glReadPixels(x, y, 1, 1, template.textureFormat(), template.dataType(), POINTER);
 		return POINTER[0];
 	}
@@ -246,24 +268,24 @@ public class FrameBuffer extends SimpleBuffer {
 	public int[] getStencilData(int x, int y, int width, int height)
 	{
 		int[] pointer = new int[(x - width) * (y - height)];
-		TextureTemplate template = stencilTexture.getTemplate();
+		TextureTemplate template = stencilTexture.texture.getTemplate();
 		GL13.glReadPixels(x, y, width, height, template.textureFormat(), template.dataType(), pointer);
 		return pointer;
 	}
 	
 	public Texture getColorTexture(int index)
 	{
-		return colorTexture[index];
+		return colorTexture[index].texture;
 	}
 	
 	public Texture getDepthTexture()
 	{
-		return depthTexture;
+		return depthTexture.texture;
 	}
 	
 	public Texture getStencilTexture()
 	{
-		return stencilTexture;
+		return stencilTexture.texture;
 	}
 	
 	public RenderBuffer getRenderBuffer()
@@ -281,6 +303,18 @@ public class FrameBuffer extends SimpleBuffer {
 		finally
 		{
 			unbind();
+		}
+	}
+	
+	private final class TextureHolder {
+		
+		private Texture texture;
+		private boolean internal;
+		
+		public TextureHolder(Texture texture, boolean internal)
+		{
+			this.texture = texture;
+			this.internal = internal;
 		}
 	}
 }

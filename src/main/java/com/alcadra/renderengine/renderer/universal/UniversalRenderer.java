@@ -7,6 +7,7 @@ import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBufferStack;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.buffer.FloatArrayBufferStack;
+import com.alcadra.renderengine.buffer.SimpleBuffer;
 import com.alcadra.renderengine.renderer.AbstractIndicesRenderer;
 import com.alcadra.renderengine.renderer.AbstractVertexBuilder;
 import com.alcadra.renderengine.renderer.RenderingMode;
@@ -25,6 +26,7 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 	private static final ShaderUniform<Color> COLOR_RGB = new ColorUniform("COLOR_RGB", ColorFormat.RGB);
 	private static final ShaderUniform<Integer> TEXTURE_SAMPLER = ShaderUniform.ofInt("TEXTURE_SAMPLER");
 	
+	private BufferNode head;
 	private ElementArrayBufferStack elementStack;
 	private Color color;
 	private int textureSampler;
@@ -79,15 +81,22 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 	
 	public void pushBuffer()
 	{
-		pushBuffer(new FloatArrayBuffer());
+		pushBuffer0(pushNewBuffer(new FloatArrayBuffer()), pushNewBuffer(new ElementArrayBuffer()));
 	}
 	
 	public void pushBuffer(FloatArrayBuffer arrayBuffer)
 	{
-		pushBuffer(arrayBuffer, new ElementArrayBuffer());
+		if (head != null) head.count++;
+		pushBuffer0(arrayBuffer, pushNewBuffer(new ElementArrayBuffer()));
 	}
 	
 	public void pushBuffer(FloatArrayBuffer arrayBuffer, ElementArrayBuffer elementBuffer)
+	{
+		if (head != null) head.count += 2;
+		pushBuffer0(arrayBuffer, elementBuffer);
+	}
+	
+	private void pushBuffer0(FloatArrayBuffer arrayBuffer, ElementArrayBuffer elementBuffer)
 	{
 		this.arrayBuffer.push(arrayBuffer);
 		elementStack.push(elementBuffer);
@@ -97,10 +106,17 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 	
 	public void pushBufferMerge(FloatArrayBuffer buffer)
 	{
-		pushBufferMerge(buffer, new ElementArrayBuffer());
+		if (head != null) head.count++;
+		pushBufferMerge0(buffer, new ElementArrayBuffer());
 	}
 	
 	public void pushBufferMerge(FloatArrayBuffer buffer, ElementArrayBuffer elementBuffer)
+	{
+		if (head != null) head.count += 2;
+		pushBufferMerge0(buffer, elementBuffer);
+	}
+	
+	private void pushBufferMerge0(FloatArrayBuffer buffer, ElementArrayBuffer elementBuffer)
 	{
 		FloatArrayBuffer b = arrayBuffer.current();
 		buffer.merge(b);
@@ -112,9 +128,35 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 		initializeArrayBuffer();
 	}
 	
+	private <B extends SimpleBuffer> B pushNewBuffer(B buffer)
+	{
+		BufferNode n = head;
+		head = new BufferNode(buffer);
+		head.next = n;
+		return buffer;
+	}
+	
 	public void pullBuffer()
 	{
+		if (head != null)
+		{
+			if (head.count == 0)
+			{
+				head.buffer.close();
+				head = head.next;
+			}
+			else head.count--;
+		}
 		arrayBuffer.pull();
+		if (head != null)
+		{
+			if (head.count == 0)
+			{
+				head.buffer.close();
+				head = head.next;
+			}
+			else head.count--;
+		}
 		elementStack.pull();
 		offset = elementStack.getMax() + 1;
 	}
@@ -169,6 +211,19 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 			arrayBuffer.addAll(gatherProgramData());
 			map.clear();
 			elements.add(offset++);
+		}
+	}
+	
+	private class BufferNode {
+		
+		private SimpleBuffer buffer;
+		private BufferNode next;
+		private int count;
+		
+		public BufferNode(SimpleBuffer buffer)
+		{
+			this.buffer = buffer;
+			count = 0;
 		}
 	}
 }

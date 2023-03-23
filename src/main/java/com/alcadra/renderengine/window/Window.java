@@ -183,12 +183,12 @@ public class Window {
 	
 	public Vector2i getMousePos()
 	{
-		return mousePos;
+		return Vector2i.copyOf(mousePos);
 	}
 	
 	public final Vector2i getSize()
 	{
-		return size;
+		return Vector2i.copyOf(size);
 	}
 	
 	public final int getWidth()
