@@ -3,14 +3,13 @@ package com.alcadra.renderengine.buffer;
 import java.util.LinkedList;
 import java.util.Queue;
 
-import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL32;
 
 import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector4i;
 import com.alcadra.renderengine.textures.ColorTexture;
 import com.alcadra.renderengine.textures.DepthTexture;
-import com.alcadra.renderengine.textures.Texture;
+import com.alcadra.renderengine.textures.StencilTexture;
 import com.alcadra.renderengine.util.Util;
 
 public class FrameBuffer extends SimpleBuffer {
@@ -42,27 +41,30 @@ public class FrameBuffer extends SimpleBuffer {
 	private Vector4i screen = new Vector4i(0, 0, 0, 0);
 	private ColorTexture colorTexture;
 	private DepthTexture depthTexture;
+	private StencilTexture stencilTexture;
 	private RenderBuffer renderBuffer;
 	
 	public FrameBuffer()
 	{
 		this(GL32.GL_FRAMEBUFFER);
-		colorTexture = ColorTexture.getNull();
-		depthTexture = DepthTexture.getNull();
-		renderBuffer = null;
 	}
 	
 	protected FrameBuffer(int target)
 	{
-		this(target, GL32.glGenFramebuffers());
+		super(target, GL32.glGenFramebuffers());
+		Util.printError("[INTERNAL] framebuffer");
+		colorTexture = null;
+		depthTexture = null;
+		stencilTexture = null;
+		renderBuffer = null;
 	}
 	
-	protected FrameBuffer(int target, int id)
+	private FrameBuffer(int target, int id)
 	{
 		super(target, id);
-		Util.printError("[INTERNAL] framebuffer");
-		colorTexture = ColorTexture.getNull();
-		depthTexture = DepthTexture.getNull();
+		colorTexture = null;
+		depthTexture = null;
+		stencilTexture = null;
 		renderBuffer = null;
 	}
 	
@@ -90,19 +92,9 @@ public class FrameBuffer extends SimpleBuffer {
 	{
 		if (isBinded())
 		{
-			FrameBuffer frameBuffer = BINDED_QUEUE.poll();
-			if (frameBuffer == null)
-			{
-				DEFAULT.bind0();
-				return;
-			}
-			frameBuffer.bind0();
+			if (BINDED_QUEUE.isEmpty()) DEFAULT.bind0();
+			else BINDED_QUEUE.poll().bind0();
 		}
-	}
-	
-	public void bindUnbinded()
-	{
-		if (!isBinded()) bind();
 	}
 	
 	public boolean isBinded()
@@ -115,73 +107,59 @@ public class FrameBuffer extends SimpleBuffer {
 		return getId() != DEFAULT.getId();
 	}
 	
-	public void bindTexture(Texture texture, int attachment)
+	public void setTexture(ColorTexture texture)
 	{
-		if (texture.nonNull())
-		{
-			bindUnbinded();
-			GL32.glFramebufferTexture(getTarget(), attachment, texture.getId(), 0);
-			setDrawArea(screen.xy(), texture.getSize());
-			if (texture instanceof ColorTexture) colorTexture = (ColorTexture) texture;
-			else if (texture instanceof DepthTexture) depthTexture = (DepthTexture) texture;
-		}
+		GL32.glFramebufferTexture(getTarget(), GL32.GL_COLOR_ATTACHMENT0, texture.getId(), 0);
+		colorTexture = texture;
 	}
 	
-	public void initializeTexture(int width, int height)
+	public void setTexture(DepthTexture texture)
 	{
-		if (notDefault())
-		{
-			if (depthTexture.nonNull()) bindTexture(DepthTexture.getNull(), GL32.GL_DEPTH_ATTACHMENT);
-			bindTexture(new ColorTexture(width, height), GL32.GL_COLOR_ATTACHMENT0);
-		}
+		GL32.glFramebufferTexture(getTarget(), GL32.GL_DEPTH_ATTACHMENT, texture.getId(), 0);
+		depthTexture = texture;
 	}
 	
-	public void initializeDepthBuffer(int width, int height)
+	public void setTexture(StencilTexture texture)
 	{
-		if (notDefault())
-		{
-			if (colorTexture.nonNull()) bindTexture(ColorTexture.getNull(), GL32.GL_COLOR_ATTACHMENT0);
-			bindTexture(new DepthTexture(width, height), GL32.GL_DEPTH_ATTACHMENT);
-			GL30.glEnable(GL30.GL_DEPTH_TEST);
-			GL32.glClear(GL32.GL_DEPTH_BUFFER_BIT);
-		}
+		GL32.glFramebufferTexture(getTarget(), GL32.GL_STENCIL_ATTACHMENT, texture.getId(), 0);
+		stencilTexture = texture;
 	}
 	
-	public void initializeDepthTextureBuffer(int width, int height)
+	public void init(int width, int height, boolean useColorTexture, boolean useDepthTexture, boolean useStencilTexture)
 	{
-		if (notDefault())
-		{
-			bind();
-			bindTexture(new DepthTexture(width, height), GL32.GL_DEPTH_ATTACHMENT);
-			GL32.glClear(GL32.GL_DEPTH_BUFFER_BIT);
-			bindTexture(new ColorTexture(width, height), GL32.GL_COLOR_ATTACHMENT0);
-			GL30.glEnable(GL30.GL_DEPTH_TEST);
-			GL32.glEnable(GL32.GL_BLEND);
-			GL32.glBlendFunc(GL32.GL_SRC_ALPHA, GL32.GL_ONE_MINUS_SRC_ALPHA);
-			unbind();
-		}
+		if (useColorTexture) setTexture(new ColorTexture(width, height));
+		if (useDepthTexture) setTexture(new DepthTexture(width, height));
+		if (useStencilTexture) setTexture(new StencilTexture(width, height));
+		setDrawArea(screen.x(), screen.y(), width, height);
 	}
 	
-	public void bindRenderBuffer(RenderBuffer buffer)
+	public void bindRenderBuffer(RenderBuffer buffer, int attachment)
 	{
 		if (renderBuffer == null || renderBuffer.getId() != buffer.getId())
 		{
 			renderBuffer = buffer;
-			GL32.glFramebufferRenderbuffer(getTarget(), GL32.GL_COLOR_ATTACHMENT0, renderBuffer.getTarget(), renderBuffer.getId());
+			GL32.glFramebufferRenderbuffer(getTarget(), attachment, renderBuffer.getTarget(), renderBuffer.getId());
 		}
 	}
 	
 	public void setDrawArea(Vector2i start, Vector2i size)
 	{
-		screen = new Vector4i(start.x(), start.y(), size.x(), size.y());
-		if (isBinded()) bind();
-		else GL32.glViewport(screen.x(), screen.y(), screen.z(), screen.w());
+		setDrawArea(start.x(), start.y(), size.x(), size.y());
 	}
 	
-	public void clear()
+	public void setDrawArea(int x, int y, int width, int height)
 	{
-		bindUnbinded();
-		GL32.glClear(GL32.GL_DEPTH_BUFFER_BIT | GL32.GL_COLOR_BUFFER_BIT);
+		screen = new Vector4i(x, y, width, height);
+		GL32.glViewport(x, y, width, height);
+	}
+	
+	public void clear(boolean color, boolean depth, boolean stencil)
+	{
+		int mask = 0;
+		if (color) mask |= GL32.GL_COLOR_BUFFER_BIT;
+		if (depth) mask |= GL32.GL_DEPTH_BUFFER_BIT;
+		if (stencil) mask |= GL32.GL_STENCIL_BUFFER_BIT;
+		if (mask != 0) GL32.glClear(mask);
 	}
 	
 	public ColorTexture getColorTexture()
@@ -192,6 +170,11 @@ public class FrameBuffer extends SimpleBuffer {
 	public DepthTexture getDepthTexture()
 	{
 		return depthTexture;
+	}
+	
+	public StencilTexture getStencilTexture()
+	{
+		return stencilTexture;
 	}
 	
 	public RenderBuffer getRenderBuffer()
