@@ -213,7 +213,7 @@ public class Renderer extends BaseRenderer<FloatArrayBuffer> implements ShaderRe
 		return loadCube(matrix.multiply(new Vector4f(start, 1)).xyz(), matrix.multiply(new Vector4f(end, 1)).xyz());
 	}
 	
-	public void draw(int mode, Matrix4f matrix)
+	public void drawVertices(int mode, Matrix4f matrix)
 	{
 		if (shader != null)
 		{
@@ -226,6 +226,12 @@ public class Renderer extends BaseRenderer<FloatArrayBuffer> implements ShaderRe
 		}
 		draw(mode, getArrayBuffer().size());
 		Shader.disableShaders();
+	}
+	
+	@Deprecated(since = "1.1", forRemoval = true)
+	public void draw(int mode, Matrix4f matrix)
+	{
+		drawPoints(mode, matrix);
 	}
 	
 	public void drawPoints(int mode, Matrix4f matrix)
