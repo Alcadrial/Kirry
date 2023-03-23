@@ -464,7 +464,7 @@ public class UniversalRenderTest implements RenderTest {
 		// universalRenderer.drawVertices(RenderingMode.QUADS, compact);
 		universalRenderer.pullBuffer();
 		universalRenderer.pushBuffer();
-		BèzierCurve.renderCurve(universalRenderer, 100, Color.RED, Vector2f.of(0, -400), Vector2f.of(0, -100), Vector2f.of(300, -100), Vector2f.of(300, -400), Vector2f.of(0, -400), Vector2f.of(0, -300), Vector2f.of(100, -300), Vector2f.of(100, -400), Vector2f.of(0, -400));
+		B\u00e8zierCurve.renderCurve(universalRenderer, 100, Color.RED, Vector2f.of(0, -400), Vector2f.of(0, -100), Vector2f.of(300, -100), Vector2f.of(300, -400), Vector2f.of(0, -400), Vector2f.of(0, -300), Vector2f.of(100, -300), Vector2f.of(100, -400), Vector2f.of(0, -400));
 		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
 		universalRenderer.clear();
 		EllipseCurve.renderCurve(universalRenderer, cursor, 300, 300, 50, Color.BLUE);
@@ -492,7 +492,7 @@ public class UniversalRenderTest implements RenderTest {
 		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> (float) (Math.log10(x + 1) / Math.log10(2)), 50, Color.LIGHT_RED);
 		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
 		universalRenderer.clear();
-		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> (float) (x * Math.pow(Math.E, x) / Math.E), 50, Color.LIGHT_YELLOW);
+		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> (float) (x * Math.pow(Math.E, x - 1)), 50, Color.LIGHT_YELLOW);
 		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
 		universalRenderer.clear();
 		KochCurve.renderCurve(universalRenderer, Vector2f.of(200, 0), Vector2f.of(400, 0), 5, Color.DARK_CYAN);

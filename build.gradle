@@ -11,28 +11,47 @@ void printClass(Object obj) {
 
 println("Configuring RenderEngine's project")
 
-boolean printExcludedFiles = true;
-boolean printExportedFiles = true;
-boolean excludeTestFiles = true;
+boolean printExcludedFiles = true
+boolean printExportedFiles = true
+boolean excludeTestFiles = true
+boolean printOnlyOnce = true
 
 java {
-	toolchain.languageVersion.set(JavaLanguageVersion.of(17))
-	withSourcesJar();
-	withJavadocJar();
+	toolchain.languageVersion = JavaLanguageVersion.of(17)
+	withSourcesJar()
+	withJavadocJar()
 }
+
+javadoc {
+	options.tags("apiNote:a:API Note:", "implSpec:a:Implementation Requirements:", "implNote:a:Implementation Note:")
+}
+
+compileJava.options.encoding = "UTF-8"
+
 sourceSets.main.java {
 	srcDir("src/main/java")
 	
+	File start = null
+	
 	exclude(e -> {
+		if (printOnlyOnce)
+		{
+			if (start == null) start = e.getFile()
+			else if (start.equals(e.getFile()))
+			{
+				printExportedFiles = false
+				printExcludedFiles = false
+			}
+		}
 		if (!excludeTestFiles || e.getFile().isDirectory()) {
-			File packageFile = new File(e.getFile().getPath() + "\\package-info.java")
+			File packageFile = new File(e.getFile().getPath() + "/package-info.java")
 			if (packageFile.isFile())
 			{
 				String text = packageFile.text
-				boolean r = text.contains("package com.alcadra.renderengine.util;") && text.contains("@Test") || text.contains("@com.alcadra.renderengine.util.Test")
+				boolean r = (text.contains("package com.alcadra.renderengine.util;") && text.contains("@Test")) || text.contains("@com.alcadra.renderengine.util.Test")
 				if (!r && printExportedFiles) System.out.println("D " + e.getFile())
 				if (r && printExcludedFiles) System.out.println("excluded D " + e.getFile())
-				return r;
+				return r
 			}
 			if (printExportedFiles) System.out.println("D " + e.getFile())
 			return false
@@ -45,7 +64,7 @@ sourceSets.main.java {
 		boolean b3 = text.contains("@com.alcadra.renderengine.util.Test")
 		boolean result = b && ((b0 && (b1 || b2)) || b3)
 		if (printExportedFiles && !result) System.out.println("F " + e.getFile())
-		if (printExcludedFiles && result) System.out.println("F " + e.getFile())
+		if (printExcludedFiles && result) System.out.println("excluded F " + e.getFile())
 		return result
 	})
 }
