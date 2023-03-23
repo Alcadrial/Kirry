@@ -22,7 +22,7 @@ import com.alcadra.math.vector.Vector3i;
 import com.alcadra.renderengine.RenderEngine;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
-import com.alcadra.renderengine.complex.BèzierCurve;
+import com.alcadra.renderengine.complex.B\u00e8zierCurve;
 import com.alcadra.renderengine.complex.EllipseCurve;
 import com.alcadra.renderengine.complex.InterpolationCurve;
 import com.alcadra.renderengine.complex.KochCurve;
@@ -161,7 +161,7 @@ public class UniversalRenderTest implements RenderTest {
 	public void render() throws InterruptedException
 	{
 		activeTest = this;
-		thread = new TimeThread("Test", maxLoops, this::start, t -> !activeTest.getWindow().shouldClose(), this::loopMethod, GLFW::glfwTerminate);
+		thread = new TimeThread("Test", maxLoops, this::start, t -> !activeTest.getWindow().shouldClose(), this::loopMethod, RenderEngine::terminate);
 		thread.setDaemon(false);
 		thread.start();
 		synchronized (this)

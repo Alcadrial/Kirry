@@ -8,4 +8,9 @@ public class RenderEngine {
 	{
 		return GLFW.glfwInit();
 	}
+	
+	public static void terminate()
+	{
+		GLFW.glfwTerminate();
+	}
 }

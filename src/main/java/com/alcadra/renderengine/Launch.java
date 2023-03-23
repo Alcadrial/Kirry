@@ -518,7 +518,6 @@ public class Launch {
 				t.assertTest("SetData", dimensions(t, enclosiveContext(() -> {
 					try (Texture texture = new Texture(rgba1d))
 					{
-						texture.bind();
 						int[] data = new int[] {0, 1, 2, 3, 4, 5, 6, 7};
 						t.println("Inserted Data = " + h(data));
 						
@@ -537,7 +536,6 @@ public class Launch {
 				}), enclosiveContext(() -> {
 					try (Texture texture = new Texture(rgba2d))
 					{
-						texture.bind();
 						int[] data = new int[] {0, 1, 2, 3, 4, 5, 6, 7};
 						t.println("Inserted Data = " + h(data));
 						
@@ -556,7 +554,6 @@ public class Launch {
 				}), enclosiveContext(() -> {
 					try (Texture texture = new Texture(rgba3d))
 					{
-						texture.bind();
 						int[] data = new int[] {0, 1, 2, 3, 4, 5, 6, 7};
 						t.println("Inserted Data = " + h(data));
 						
@@ -645,12 +642,16 @@ public class Launch {
 					{
 						try (Texture texture0 = buildTestTexture(rgba1d, 8, 8))
 						{
-							texture.copyTo1D(texture0, 1, 4);
-							
-							texture0.bind();
-							int[] data0 = texture0.getDataArray();
+							int[] data0 = texture.getDataArray();
 							t.println("Data = " + h(data0));
-							int[] data = new int[] {8, 1, 2, 3, 4, 13, 14, 15};
+							data0 = texture0.getDataArray();
+							t.println("Data = " + h(data0));
+							
+							texture.copyTo1D(texture0, 1, 2, 4);
+							
+							data0 = texture0.getDataArray();
+							t.println("Result = " + h(data0));
+							int[] data = new int[] {8, 9, 1, 2, 3, 4, 14, 15};
 							return data0.length == 8 && Arrays.equals(data, 0, 8, data0, 0, 8);
 						}
 					}
@@ -659,13 +660,12 @@ public class Launch {
 					{
 						try (Texture texture0 = buildTestTexture(rgba2d, 4, 2, 8))
 						{
-							texture.copyTo2D(texture0, 1, 0, 1, 2);
+							texture.copyTo2D(texture0, 0, 0, 0, 0, 2, 2);
 							
-							texture0.bind();
 							int[] data0 = texture0.getDataArray();
 							t.println("Data = " + h(data0));
 							int[] data = new int[] {0, 1, 10, 11, 4, 5, 14, 15};
-							return data0.length == 8 && Arrays.equals(data, 0, 4, data0, 0, 4) && Arrays.equals(data, 4, 8, data0, 8, 12);
+							return data0.length == 8 && Arrays.equals(data, data0);
 						}
 					}
 				}), enclosiveContext(() -> {
@@ -673,15 +673,12 @@ public class Launch {
 					{
 						try (Texture texture0 = buildTestTexture(rgba3d, 2, 2, 2, 8))
 						{
-							texture.copyTo3D(texture0, 1, 0, 0, 1, 2, 2);
+							texture.copyTo3D(texture0, 0, 0, 0, 0, 0, 0, 1, 2, 2);
 							
-							texture0.bind();
-							int[] data0 = texture.getDataArray();
+							int[] data0 = texture0.getDataArray();
 							t.println("Data = " + h(data0));
 							int[] data = new int[] {0, 9, 2, 11, 4, 13, 6, 15};
-							if (!Arrays.equals(data, 0, 2, data0, 0, 2) || !Arrays.equals(data, 2, 4, data0, 4, 6)) return false;
-							if (!Arrays.equals(data, 4, 6, data0, 16, 18) || !Arrays.equals(data, 6, 8, data0, 20, 22)) return false;
-							return data0.length == 8;
+							return data0.length == 8 && Arrays.equals(data, data0);
 						}
 					}
 				})));
@@ -693,7 +690,7 @@ public class Launch {
 		}));
 		stream.close();
 		window.swapBuffers();
-		GLFW.glfwTerminate();
+		RenderEngine.terminate();
 	}
 	
 	public static boolean check(TextureTemplate template, int target, int internalFormat, int textureFormat, int dataType, int attachment)
@@ -764,7 +761,6 @@ public class Launch {
 	public static Texture buildTestTexture(TextureTemplate template, int width, int offset)
 	{
 		Texture texture = new Texture(template);
-		texture.bind();
 		int[] data = new int[width];
 		for (int i = 0; i < data.length; i++) data[i] = i + offset;
 		texture.setData1D(template, data, width, 0);
@@ -774,7 +770,6 @@ public class Launch {
 	public static Texture buildTestTexture(TextureTemplate template, int width, int height, int offset)
 	{
 		Texture texture = new Texture(template);
-		texture.bind();
 		int[] data = new int[width * height];
 		for (int i = 0; i < data.length; i++) data[i] = i + offset;
 		texture.setData2D(template, data, width, height, 0);
@@ -784,7 +779,6 @@ public class Launch {
 	public static Texture buildTestTexture(TextureTemplate template, int width, int height, int depth, int offset)
 	{
 		Texture texture = new Texture(template);
-		texture.bind();
 		int[] data = new int[width * height * depth];
 		for (int i = 0; i < data.length; i++) data[i] = i + offset;
 		texture.setData3D(template, data, width, height, depth, 0);

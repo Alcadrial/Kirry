@@ -138,7 +138,6 @@ public class FrameBuffer extends SimpleBuffer {
 			case GL32.GL_DEPTH_STENCIL_ATTACHMENT -> depthTexture = stencilTexture = new TextureHolder(texture, false);
 			default -> colorTexture[attachment - GL32.GL_COLOR_ATTACHMENT0] = new TextureHolder(texture, false);
 		}
-		texture.bind();
 		GL32.glFramebufferTexture(getTarget(), attachment, texture.getId(), mipmapLevel);
 	}
 	
@@ -157,7 +156,6 @@ public class FrameBuffer extends SimpleBuffer {
 			case GL32.GL_DEPTH_STENCIL_ATTACHMENT -> depthTexture = stencilTexture = new TextureHolder(texture, true);
 			default -> colorTexture[attachment - GL32.GL_COLOR_ATTACHMENT0] = new TextureHolder(texture, true);
 		}
-		texture.bind();
 		GL32.glFramebufferTexture(getTarget(), attachment, texture.getId(), mipmapLevel);
 	}
 	

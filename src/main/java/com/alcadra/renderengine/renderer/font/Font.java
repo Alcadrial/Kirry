@@ -129,7 +129,6 @@ public class Font {
 		}
 		texture = new Texture(TextureTemplate.RGBA_2D_TEXTURE);
 		Image image = new Image(png);
-		texture.bind();
 		texture.setData2D(texture.getTemplate(), image.loadToRGBABuffer(), image.getBuffered().getWidth(), image.getBuffered().getHeight(), 0);
 	}
 	

@@ -5,6 +5,7 @@ import java.util.Arrays;
 
 import org.lwjgl.opengl.GL45;
 
+import com.alcadra.renderengine.framebuffer.FrameBuffer;
 import com.alcadra.renderengine.util.Broken;
 import com.alcadra.renderengine.util.Deletable;
 import com.alcadra.renderengine.util.Optimizable;
@@ -12,6 +13,7 @@ import com.alcadra.renderengine.util.Util;
 
 public final class Texture implements Deletable {
 	
+	private static final FrameBuffer FRAME_BUFFER = new FrameBuffer();
 	private static final int[] POINTER = new int[1];
 	
 	/**
@@ -50,6 +52,8 @@ public final class Texture implements Deletable {
 	 * <p>
 	 * While a texture object is bound, GL operations on the target to which it is bound affect the bound object, 
 	 * and queries of the target to which it is bound return state from the bound object.
+	 * <p>
+	 * Methods in this class doesn't require binding.
 	 */
 	public void bind()
 	{
@@ -68,6 +72,7 @@ public final class Texture implements Deletable {
 	public void setData1D(TextureTemplate dataFormat, int[] data, int width, int mipmapLevels)
 	{
 		if (mipmapLevels < 0) return;
+		bind();
 		GL45.glTexImage1D(template.target(), mipmapLevels, template.internalFormat(), width, 0, dataFormat.textureFormat(), dataFormat.dataType(), data);
 		length = width;
 		this.width = width;
@@ -90,6 +95,7 @@ public final class Texture implements Deletable {
 	{
 		if (mipmapLevels < 0) return;
 		// System.out.println("internal " + id + " " + width + " " + height);
+		bind();
 		GL45.glTexImage2D(template.target(), mipmapLevels, template.internalFormat(), width, height, 0, dataFormat.textureFormat(), dataFormat.dataType(), data);
 		Util.printError("Texture [INTERNAL] setData");
 		length = width * height;
@@ -113,6 +119,7 @@ public final class Texture implements Deletable {
 	public void setData3D(TextureTemplate dataFormat, int[] data, int width, int height, int depth, int mipmapLevels)
 	{
 		if (mipmapLevels < 0) return;
+		bind();
 		GL45.glTexImage3D(template.target(), mipmapLevels, template.internalFormat(), width, height, depth, 0, dataFormat.textureFormat(), dataFormat.dataType(), data);
 		length = width * height * depth;
 		this.width = width;
@@ -262,10 +269,12 @@ public final class Texture implements Deletable {
 	 * 
 	 * @param texture the destination of the copy
 	 */
-	@Broken
 	public void copyTo1D(Texture texture)
 	{
-		GL45.glCopyTextureSubImage1D(id, 0, 0, 0, 0, width);
+		FRAME_BUFFER.offer();
+		FRAME_BUFFER.setTexture(this);
+		GL45.glCopyTextureSubImage1D(texture.id, 0, 0, 0, 0, width);
+		FRAME_BUFFER.poll();
 	}
 	
 	/**
@@ -274,13 +283,16 @@ public final class Texture implements Deletable {
 	 * If this texture is bigger in any dimension than the specified one, than will be copied the data that fits in that texture.
 	 * 
 	 * @param texture the destination of the copy
-	 * @param x
+	 * @param sourceX
+	 * @param destinationX
 	 * @param width
 	 */
-	@Broken
-	public void copyTo1D(Texture texture, int x, int width)
+	public void copyTo1D(Texture texture, int sourceX, int destinationX, int width)
 	{
-		GL45.glCopyTextureSubImage1D(id, 0, x, 0, 0, width);
+		FRAME_BUFFER.offer();
+		FRAME_BUFFER.setTexture(this);
+		GL45.glCopyTextureSubImage1D(texture.id, 0, destinationX, sourceX, 0, width);
+		FRAME_BUFFER.poll();
 	}
 	
 	/**
@@ -290,10 +302,12 @@ public final class Texture implements Deletable {
 	 * 
 	 * @param texture the destination of the copy
 	 */
-	@Broken
 	public void copyTo2D(Texture texture)
 	{
-		GL45.glCopyTextureSubImage2D(id, 0, 0, 0, 0, 0, width, height);
+		FRAME_BUFFER.offer();
+		FRAME_BUFFER.setTexture(this);
+		GL45.glCopyTextureSubImage2D(texture.id, 0, 0, 0, 0, 0, width, height);
+		FRAME_BUFFER.poll();
 	}
 	
 	/**
@@ -302,15 +316,19 @@ public final class Texture implements Deletable {
 	 * If this texture is bigger in any dimension than the specified one, than will be copied the data that fits in that texture.
 	 * 
 	 * @param texture the destination of the copy
-	 * @param x
-	 * @param y
+	 * @param sourceX
+	 * @param sourceY
+	 * @param destinationX
+	 * @param destinationY
 	 * @param width
 	 * @param height
 	 */
-	@Broken
-	public void copyTo2D(Texture texture, int x, int y, int width, int height)
+	public void copyTo2D(Texture texture, int sourceX, int sourceY, int destinationX, int destinationY, int width, int height)
 	{
-		GL45.glCopyTextureSubImage2D(id, 0, x, y, 0, 0, width, height);
+		FRAME_BUFFER.offer();
+		FRAME_BUFFER.setTexture(this);
+		GL45.glCopyTextureSubImage2D(texture.id, 0, destinationX, destinationY, sourceX, sourceY, width, height);
+		FRAME_BUFFER.poll();
 	}
 	
 	/**
@@ -323,7 +341,10 @@ public final class Texture implements Deletable {
 	@Broken
 	public void copyTo3D(Texture texture)
 	{
-		for (int i = 0; i < depth; i++) GL45.glCopyTextureSubImage3D(id, 0, 0, 0, i, 0, 0, width, height);
+		FRAME_BUFFER.offer();
+		FRAME_BUFFER.setTexture(this);
+		for (int i = 0; i < depth; i++) GL45.glCopyTextureSubImage3D(texture.id, 0, 0, 0, i, 0, 0, width, height);
+		FRAME_BUFFER.poll();
 	}
 	
 	/**
@@ -332,29 +353,36 @@ public final class Texture implements Deletable {
 	 * If this texture is bigger in any dimension than the specified one, than will be copied the data that fits in that texture.
 	 * 
 	 * @param texture the destination of the copy
-	 * @param x
-	 * @param y
-	 * @param z
+	 * @param sourceX
+	 * @param sourceY
+	 * @param sourceZ ({@link Broken}: no effect, always used 0)
+	 * @param destinationX
+	 * @param destinationY
+	 * @param destinationZ
 	 * @param width
 	 * @param height
-	 * @param depth
+	 * @param depth ({@link Broken}: sourceZ will be used for each layer)
 	 */
-	@Broken
-	public void copyTo3D(Texture texture, int x, int y, int z, int width, int height, int depth)
+	public void copyTo3D(Texture texture, int sourceX, int sourceY, @Broken int sourceZ, int destinationX, int destinationY, int destinationZ, int width, int height, @Broken int depth)
 	{
-		while (z < depth) GL45.glCopyTextureSubImage3D(id, 0, x, y, z++, 0, 0, width, height);
+		FRAME_BUFFER.offer();
+		FRAME_BUFFER.setTexture(this);
+		// int sourceZEnd = sourceZ + depth;
+		int destinationZEnd = destinationZ + depth;
+		while (destinationZ < destinationZEnd) GL45.glCopyTextureSubImage3D(texture.id, 0, destinationX, destinationY, destinationZ++, sourceX, sourceY, width, height);
+		FRAME_BUFFER.poll();
 	}
 	
 	public void enableAntiAlias()
 	{
-		GL45.glTexParameteri(template.target(), GL45.GL_TEXTURE_MIN_FILTER, GL45.GL_LINEAR);
-		GL45.glTexParameteri(template.target(), GL45.GL_TEXTURE_MAG_FILTER, GL45.GL_LINEAR);
+		GL45.glTextureParameteri(id, GL45.GL_TEXTURE_MIN_FILTER, GL45.GL_LINEAR);
+		GL45.glTextureParameteri(id, GL45.GL_TEXTURE_MAG_FILTER, GL45.GL_LINEAR);
 	}
 	
 	public void disableAntiAlias()
 	{
-		GL45.glTexParameteri(template.target(), GL45.GL_TEXTURE_MIN_FILTER, GL45.GL_NEAREST);
-		GL45.glTexParameteri(template.target(), GL45.GL_TEXTURE_MAG_FILTER, GL45.GL_NEAREST);
+		GL45.glTextureParameteri(id, GL45.GL_TEXTURE_MIN_FILTER, GL45.GL_NEAREST);
+		GL45.glTextureParameteri(id, GL45.GL_TEXTURE_MAG_FILTER, GL45.GL_NEAREST);
 	}
 	
 	/**
@@ -375,7 +403,7 @@ public final class Texture implements Deletable {
 	{
 		int glLength = getGlLength();
 		int[] pixels = glLength == 1 ? POINTER : new int[glLength];
-		GL45.glGetTexImage(this.template.target(), mipmapLevels, template.textureFormat(), template.dataType(), pixels);
+		GL45.glGetTextureImage(id, mipmapLevels, template.textureFormat(), template.dataType(), pixels);
 		return glLength == 1 ? Arrays.copyOf(pixels, glLength) : pixels;
 	}
 	
@@ -386,17 +414,17 @@ public final class Texture implements Deletable {
 	
 	public int getGlWidth()
 	{
-		return GL45.glGetTexLevelParameteri(template.target(), mipmapLevels, GL45.GL_TEXTURE_WIDTH);
+		return GL45.glGetTextureLevelParameteri(id, mipmapLevels, GL45.GL_TEXTURE_WIDTH);
 	}
 	
 	public int getGlHeight()
 	{
-		return GL45.glGetTexLevelParameteri(template.target(), mipmapLevels, GL45.GL_TEXTURE_HEIGHT);
+		return GL45.glGetTextureLevelParameteri(id, mipmapLevels, GL45.GL_TEXTURE_HEIGHT);
 	}
 	
 	public int getGlDepth()
 	{
-		return GL45.glGetTexLevelParameteri(template.target(), mipmapLevels, GL45.GL_TEXTURE_DEPTH);
+		return GL45.glGetTextureLevelParameteri(id, mipmapLevels, GL45.GL_TEXTURE_DEPTH);
 	}
 	
 	public IntBuffer getDataBuffer()
