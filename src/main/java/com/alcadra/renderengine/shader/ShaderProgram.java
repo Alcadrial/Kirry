@@ -78,7 +78,7 @@ public class ShaderProgram {
 			for (String line : code)
 			{
 				String line0 = line.stripLeading();
-				if (line0.startsWith("layout")) line0 = line0.substring(line0.indexOf(")"));
+				if (line0.startsWith("layout")) line0 = line0.substring(line0.indexOf(")") + 1).stripLeading();
 				if (line0.startsWith("in "))
 				{
 					String line1 = line0.substring(3).stripLeading();
