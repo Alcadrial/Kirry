@@ -13,6 +13,7 @@ import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.MemoryUtil;
 
+import com.alcadra.math.Math;
 import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.math.vector.Vector2i;
@@ -21,6 +22,11 @@ import com.alcadra.math.vector.Vector3i;
 import com.alcadra.renderengine.RenderEngine;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
+import com.alcadra.renderengine.complex.BèzierCurve;
+import com.alcadra.renderengine.complex.EllipseCurve;
+import com.alcadra.renderengine.complex.InterpolationCurve;
+import com.alcadra.renderengine.complex.KochCurve;
+import com.alcadra.renderengine.complex.RhodoneaCurve;
 import com.alcadra.renderengine.framebuffer.FrameBuffer;
 import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.renderer.font.Font;
@@ -351,7 +357,7 @@ public class UniversalRenderTest implements RenderTest {
 		Matrix4f projection = new Matrix4f().project(10, 100, 8, window.getAspectRatio());
 		Matrix4f view = new Matrix4f().view(position, rotationX, rotationY);
 		Matrix4f viewer = new Matrix4f(projection).multiply(view);
-		Vector3f end = Vector3f.of(10, 10, 10);
+		Vector3f end = Vector3f.of(10, 10, 0);
 		
 		buffer0 = new FloatArrayBuffer();
 		element0 = new ElementArrayBuffer();
@@ -404,6 +410,7 @@ public class UniversalRenderTest implements RenderTest {
 		partial = partialTicks * 0.1F;
 		Matrix4f identity = new Matrix4f();
 		Matrix4f compact = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
+		Matrix4f positive = new Matrix4f().orthographicPositive(window.getWidth(), window.getHeight());
 		Matrix4f projection = new Matrix4f().project(10, 100, 8, window.getAspectRatio());
 		Matrix4f view = new Matrix4f().view(position, rotationX, rotationY);
 		Matrix4f camera = new Matrix4f().view(Vector3f.origin(), (float) o, (float) (o / 2));
@@ -420,7 +427,7 @@ public class UniversalRenderTest implements RenderTest {
 		Util.printError("compact");
 		
 		fontRenderer.loadText(new Text("ala.beta@delta"), Vector2i.of(0, (int) o % 360), Color.LIGHT_RED, 0.5F, 500, 0);
-		fontRenderer.loadText(new Text(Util.toPointString(cursor)), cursor.subtract(window.getSize().xy().multiplyAll(0.5F)), Color.of(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight(), 0), 0.003F, 550, 0);
+		fontRenderer.loadText(new Text(Util.toPointString(cursor)), Vector2f.copyOf(cursor).subtract(window.getSize().xy().multiplyAll(0.5F)), Color.of(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight(), 0), 0.003F, 550, 0);
 		Text text = new Text();
 		text.addLine(new TextLine("partialTicks " + partialTicks));
 		text.addLine(new TextLine("fps " + thread.getRunsPerSecond()));
@@ -448,10 +455,47 @@ public class UniversalRenderTest implements RenderTest {
 		Util.printError("FrameBuffer draw");
 		
 		universalRenderer.pushBuffer(buffer0, element0);
-		universalRenderer.drawVertices(RenderingMode.QUADS, projected);
+		// universalRenderer.drawVertices(RenderingMode.QUADS, projected);
 		universalRenderer.pullBuffer();
 		universalRenderer.pushBuffer(buffer1, element1);
-		universalRenderer.drawVertices(RenderingMode.QUADS, compact);
+		// universalRenderer.drawVertices(RenderingMode.QUADS, compact);
+		universalRenderer.pullBuffer();
+		universalRenderer.pushBuffer();
+		BèzierCurve.renderCurve(universalRenderer, 100, Color.RED, Vector2f.of(0, -400), Vector2f.of(0, -100), Vector2f.of(300, -100), Vector2f.of(300, -400), Vector2f.of(0, -400), Vector2f.of(0, -300), Vector2f.of(100, -300), Vector2f.of(100, -400), Vector2f.of(0, -400));
+		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.clear();
+		EllipseCurve.renderCurve(universalRenderer, cursor, 300, 300, 50, Color.BLUE);
+		EllipseCurve.renderCurve(universalRenderer, cursor, 100, 100, 50, Color.BLUE);
+		universalRenderer.drawVertices(RenderingMode.LINE_LOOP, positive);
+		universalRenderer.clear();
+		RhodoneaCurve.renderCurve(universalRenderer, cursor, 100, 2, 0, 750, Color.GREEN);
+		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, positive);
+		universalRenderer.clear();
+		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> x, 3, Color.LIGHT_BLUE);
+		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.clear();
+		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> 1 - x, 3, Color.LIGHT_GRAY);
+		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.clear();
+		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> (Math.cos(x * Math.PIF) + 1) / 2, 30, Color.LIGHT_CYAN);
+		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.clear();
+		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> (Math.cos((x + 1) * Math.PIF) + 1) / 2, 32, Color.LIGHT_GREEN);
+		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.clear();
+		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> x * x, 50, Color.LIGHT_MAGENTA);
+		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.clear();
+		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> (float) (Math.log10(x + 1) / Math.log10(2)), 50, Color.LIGHT_RED);
+		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.clear();
+		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> (float) (x * Math.pow(Math.E, x) / Math.E), 50, Color.LIGHT_YELLOW);
+		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
+		universalRenderer.clear();
+		KochCurve.renderCurve(universalRenderer, Vector2f.of(200, 0), Vector2f.of(400, 0), 5, Color.DARK_CYAN);
+		KochCurve.renderCurve(universalRenderer, Vector2f.of(400, 0), Vector2f.of(300, -200), 5, Color.DARK_CYAN);
+		KochCurve.renderCurve(universalRenderer, Vector2f.of(300, -200), Vector2f.of(200, 0), 5, Color.DARK_CYAN);
+		universalRenderer.drawVertices(RenderingMode.LINE_STRIP, compact);
 		universalRenderer.pullBuffer();
 		Util.printError("TextureRender draw");
 		

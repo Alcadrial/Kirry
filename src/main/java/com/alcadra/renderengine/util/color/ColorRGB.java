@@ -5,6 +5,6 @@ public interface ColorRGB extends Color {
 	@Override
 	default float a()
 	{
-		return 1;
+		return 255;
 	}
 }
