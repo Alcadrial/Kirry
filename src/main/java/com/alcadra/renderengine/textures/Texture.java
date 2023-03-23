@@ -278,7 +278,8 @@ public final class Texture implements Deletable {
 	}
 	
 	/**
-	 * Copy this texture from <code>x</code> to <code>x + width</code> (excluded) to the specified one.
+	 * Copy this texture from <code>sourceX</code> to <code>sourceX + width</code> (excluded) to the specified one
+	 * from <code>destinationX</code> to <code>destinationX + width</code>.
 	 * <p>
 	 * If this texture is bigger in any dimension than the specified one, than will be copied the data that fits in that texture.
 	 * 
@@ -311,7 +312,8 @@ public final class Texture implements Deletable {
 	}
 	
 	/**
-	 * Copy this texture from <code>(x; y)</code> to <code>(x + width; y + height)</code> (excluded) to the specified one.
+	 * Copy this texture from <code>(sourceX; sourceY)</code> to <code>(sourceX + width; sourceY + height)</code> (excluded) to the specified one
+	 * from <code>(destinationX; destinationY)</code> to <code>(destinationX + width; destinationY + height)</code>.
 	 * <p>
 	 * If this texture is bigger in any dimension than the specified one, than will be copied the data that fits in that texture.
 	 * 
@@ -348,7 +350,8 @@ public final class Texture implements Deletable {
 	}
 	
 	/**
-	 * Copy this texture from <code>(x; y; z)</code> to <code>(x + width; y + height; z + depth)</code> (excluded) to the specified one.
+	 * Copy this texture from <code>(sourceX; sourceY; sourceZ)</code> to <code>(sourceX + width; sourceY + height; sourceZ + depth)</code> (excluded) to the specified one
+	 * from <code>(destinationX; destinationY; destinationZ)</code> to <code>(destinationX + width; destinationY + height; destinationZ + depth)</code>.
 	 * <p>
 	 * If this texture is bigger in any dimension than the specified one, than will be copied the data that fits in that texture.
 	 * 
