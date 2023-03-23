@@ -3,12 +3,14 @@ import org.gradle.internal.os.OperatingSystem
 plugins {
     id("java")
     id("java-library")
+    id("eclipse")
 }
 
 void printClass(Object obj) {
 	println(obj.class)
 }
 
+eclipse.project.name = "RenderEngine Core"
 println("Configuring RenderEngine's project")
 
 boolean printExcludedFiles = true
@@ -69,7 +71,6 @@ sourceSets.main.java {
 	})
 }
 
-
 project.ext.lwjglVersion = "3.3.1"
 
 switch (OperatingSystem.current()) {
@@ -89,7 +90,6 @@ switch (OperatingSystem.current()) {
 			: "natives-windows-x86"
 		break
 }
-
 
 tasks.named("jar") {
 	getDestinationDirectory().set(new File("jar"))
@@ -160,12 +160,8 @@ dependencies {
     implementation ("com.google.code.gson:gson:2.8.9")
     implementation ("org.lwjgl:lwjgl:$lwjglVersion")
     implementation ("org.lwjgl:lwjgl-glfw:$lwjglVersion")
-    implementation ("org.lwjgl:lwjgl-openal:$lwjglVersion")
-    implementation ("org.lwjgl:lwjgl-opengl:$lwjglVersion")
 	runtimeOnly ("org.lwjgl:lwjgl::$lwjglNatives")
 	runtimeOnly ("org.lwjgl:lwjgl-glfw::$lwjglNatives")
-	runtimeOnly ("org.lwjgl:lwjgl-openal::$lwjglNatives")
-	runtimeOnly ("org.lwjgl:lwjgl-opengl::$lwjglNatives")
 }
 
 def manifestAttributes = [
