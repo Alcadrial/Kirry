@@ -167,6 +167,7 @@ public class RenderEngine implements RenderTest {
 		GL30.glEnable(GL30.GL_DEPTH_TEST);
 		GL30.glEnable(GL30.GL_BLEND);
 		GL30.glBlendFunc(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA);
+		GL30.glEnable(GL30.GL_CULL_FACE);
 		GL30.glClearColor(0.6F, 0.7F, 1, 1);
 		Util.printError("renew");
 	}

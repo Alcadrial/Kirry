@@ -29,6 +29,8 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	private static final ShaderUniform<Integer> TEXTURE_SAMPLER = ShaderUniform.ofInt("TEXTURE_SAMPLER");
 	
 	private Font font;
+	private boolean clockWise;
+	
 	private VectorColorRGB color;
 	private float alfaMask;
 	private int textureSampler;
@@ -40,8 +42,14 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	
 	public FontRenderer(ShaderProgram program, Font font)
 	{
+		this(program, font, false);
+	}
+	
+	public FontRenderer(ShaderProgram program, Font font, boolean clockWise)
+	{
 		super(program, new FloatArrayBuffer());
 		this.font = font;
+		this.clockWise = clockWise;
 		color = Color.BLACK;
 		alfaMask = 1;
 	}
@@ -185,28 +193,57 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 		int size = vertexSize() / 4;
 		
 		int offset = 0;
-		addVertexPosition(vertex, x, y + h, z, offset);
-		addColor(vertex, color, offset);
-		addColorRGB(vertex, color, offset);
-		addUV(vertex, u0, v0 + v1, offset);
 		
-		offset += size;
-		addVertexPosition(vertex, x + w, y + h, z, offset);
-		addColor(vertex, color, offset);
-		addColorRGB(vertex, color, offset);
-		addUV(vertex, u0 + u1, v0 + v1, offset);
-		
-		offset += size;
-		addVertexPosition(vertex, x + w, y, z, offset);
-		addColor(vertex, color, offset);
-		addColorRGB(vertex, color, offset);
-		addUV(vertex, u0 + u1, v0, offset);
-		
-		offset += size;
-		addVertexPosition(vertex, x, y, z, offset);
-		addColor(vertex, color, offset);
-		addColorRGB(vertex, color, offset);
-		addUV(vertex, u0, v0, offset);
+		if (clockWise)
+		{
+			addVertexPosition(vertex, x, y + h, z, offset);
+			addColor(vertex, color, offset);
+			addColorRGB(vertex, color, offset);
+			addUV(vertex, u0, v0 + v1, offset);
+			
+			offset += size;
+			addVertexPosition(vertex, x + w, y + h, z, offset);
+			addColor(vertex, color, offset);
+			addColorRGB(vertex, color, offset);
+			addUV(vertex, u0 + u1, v0 + v1, offset);
+			
+			offset += size;
+			addVertexPosition(vertex, x + w, y, z, offset);
+			addColor(vertex, color, offset);
+			addColorRGB(vertex, color, offset);
+			addUV(vertex, u0 + u1, v0, offset);
+			
+			offset += size;
+			addVertexPosition(vertex, x, y, z, offset);
+			addColor(vertex, color, offset);
+			addColorRGB(vertex, color, offset);
+			addUV(vertex, u0, v0, offset);
+		}
+		else
+		{
+			addVertexPosition(vertex, x + w, y + h, z, offset);
+			addColor(vertex, color, offset);
+			addColorRGB(vertex, color, offset);
+			addUV(vertex, u0 + u1, v0 + v1, offset);
+			
+			offset += size;
+			addVertexPosition(vertex, x, y + h, z, offset);
+			addColor(vertex, color, offset);
+			addColorRGB(vertex, color, offset);
+			addUV(vertex, u0, v0 + v1, offset);
+			
+			offset += size;
+			addVertexPosition(vertex, x, y, z, offset);
+			addColor(vertex, color, offset);
+			addColorRGB(vertex, color, offset);
+			addUV(vertex, u0, v0, offset);
+			
+			offset += size;
+			addVertexPosition(vertex, x + w, y, z, offset);
+			addColor(vertex, color, offset);
+			addColorRGB(vertex, color, offset);
+			addUV(vertex, u0 + u1, v0, offset);
+		}
 		
 		return new AbstractList<>() {
 			
@@ -281,9 +318,19 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 		return font;
 	}
 	
+	public boolean isClockWise()
+	{
+		return clockWise;
+	}
+	
 	public void setFont(Font font)
 	{
 		this.font = font;
+	}
+	
+	public void setClockWise(boolean clockWise)
+	{
+		this.clockWise = clockWise;
 	}
 	
 	public void setUniformColor(float r, float g, float b)
