@@ -29,7 +29,7 @@ import com.alcadra.renderengine.renderer.object.ObjectRenderer;
 import com.alcadra.renderengine.textures.Texture;
 import com.alcadra.renderengine.util.Image;
 import com.alcadra.renderengine.window.widget.ClickableWidget;
-import com.alcadra.renderengine.window.widget.RenderizableWidget;
+import com.alcadra.renderengine.window.widget.DrawableWidget;
 
 public class Window {
 	
@@ -41,9 +41,9 @@ public class Window {
 	private float aspectRatio;
 	private CursorInputMode cursorInputMode = CursorInputMode.NORMAL;
 	
-	private List<Entry<ColorRenderer, RenderizableWidget<ColorRenderer>>> renderizableColorWidgets = new LinkedList<>();
-	private List<Entry<TextureRenderer, RenderizableWidget<TextureRenderer>>> renderizableTextureWidgets = new LinkedList<>();
-	private List<Entry<ObjectRenderer, RenderizableWidget<ObjectRenderer>>> renderizableObjectWidgets = new LinkedList<>();
+	private List<Entry<ColorRenderer, DrawableWidget<ColorRenderer>>> renderizableColorWidgets = new LinkedList<>();
+	private List<Entry<TextureRenderer, DrawableWidget<TextureRenderer>>> renderizableTextureWidgets = new LinkedList<>();
+	private List<Entry<ObjectRenderer, DrawableWidget<ObjectRenderer>>> renderizableObjectWidgets = new LinkedList<>();
 	private List<ClickableWidget> clickableWidgets = new LinkedList<>();
 	
 	private List<GLFWCharCallbackI> charCallbackList = new ArrayList<>(1);
@@ -108,24 +108,19 @@ public class Window {
 		b.free();
 	}
 	
+	public void render(Matrix4f matrix, float partialTicks)
+	{
+		for (Entry<ColorRenderer, DrawableWidget<ColorRenderer>> entry : renderizableColorWidgets) entry.getValue().render(new Matrix4f(matrix), entry.getKey(), entry.getValue().getPos().xy(), partialTicks);
+		for (Entry<TextureRenderer, DrawableWidget<TextureRenderer>> entry : renderizableTextureWidgets) entry.getValue().render(new Matrix4f(matrix), entry.getKey(), entry.getValue().getPos().xy(), partialTicks);
+		for (Entry<ObjectRenderer, DrawableWidget<ObjectRenderer>> entry : renderizableObjectWidgets) entry.getValue().render(new Matrix4f(matrix), entry.getKey(), entry.getValue().getPos().xy(), partialTicks);
+		while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
+	}
+	
 	public void update(Matrix4f matrix, float partialTicks)
 	{
-		for (Entry<ColorRenderer, RenderizableWidget<ColorRenderer>> entry : renderizableColorWidgets)
-		{
-			entry.getKey().clear();
-			entry.getValue().render(new Matrix4f(matrix), entry.getKey(), entry.getValue().getPos().xy(), partialTicks);
-		}
-		for (Entry<TextureRenderer, RenderizableWidget<TextureRenderer>> entry : renderizableTextureWidgets)
-		{
-			entry.getKey().clear();
-			entry.getValue().render(new Matrix4f(matrix), entry.getKey(), entry.getValue().getPos().xy(), partialTicks);
-		}
-		for (Entry<ObjectRenderer, RenderizableWidget<ObjectRenderer>> entry : renderizableObjectWidgets)
-		{
-			entry.getKey().clear();
-			entry.getValue().render(new Matrix4f(matrix), entry.getKey(), entry.getValue().getPos().xy(), partialTicks);
-		}
-		while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
+		for (Entry<ColorRenderer, DrawableWidget<ColorRenderer>> entry : renderizableColorWidgets) entry.getValue().draw(new Matrix4f(matrix), entry.getKey(), partialTicks);
+		for (Entry<TextureRenderer, DrawableWidget<TextureRenderer>> entry : renderizableTextureWidgets) entry.getValue().draw(new Matrix4f(matrix), entry.getKey(), partialTicks);
+		for (Entry<ObjectRenderer, DrawableWidget<ObjectRenderer>> entry : renderizableObjectWidgets) entry.getValue().draw(new Matrix4f(matrix), entry.getKey(), partialTicks);
 		pollEvents();
 		swapBuffers();
 	}
@@ -150,19 +145,19 @@ public class Window {
 		if (event instanceof GLFWWindowSizeCallbackI callback) windowSizeCallbackList.add(callback);
 	}
 	
-	public final void addWidget(RenderizableWidget<ColorRenderer> widget, ColorRenderer renderer)
+	public final void addWidget(DrawableWidget<ColorRenderer> widget, ColorRenderer renderer)
 	{
 		if (widget instanceof ClickableWidget w) addWidget(w);
 		renderizableColorWidgets.add(Map.entry(renderer, widget));
 	}
 	
-	public final void addWidget(RenderizableWidget<TextureRenderer> widget, TextureRenderer renderer)
+	public final void addWidget(DrawableWidget<TextureRenderer> widget, TextureRenderer renderer)
 	{
 		if (widget instanceof ClickableWidget w) addWidget(w);
 		renderizableTextureWidgets.add(Map.entry(renderer, widget));
 	}
 	
-	public final void addWidget(RenderizableWidget<ObjectRenderer> widget, ObjectRenderer renderer)
+	public final void addWidget(DrawableWidget<ObjectRenderer> widget, ObjectRenderer renderer)
 	{
 		if (widget instanceof ClickableWidget w) addWidget(w);
 		renderizableObjectWidgets.add(Map.entry(renderer, widget));

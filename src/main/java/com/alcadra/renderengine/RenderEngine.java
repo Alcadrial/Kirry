@@ -35,6 +35,7 @@ import com.alcadra.renderengine.shader.ShaderInputDataType;
 import com.alcadra.renderengine.shader.ShaderStatus;
 import com.alcadra.renderengine.shader.ShaderType;
 import com.alcadra.renderengine.util.Image;
+import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.util.Util;
 import com.alcadra.renderengine.window.Window;
 import com.alcadra.renderengine.window.widget.VisibleButton;
@@ -313,6 +314,8 @@ public class RenderEngine implements RenderTest {
 		GL43.glDebugMessageCallback((source, type, id, severity, length, message, userParam) -> System.out.println(MemoryUtil.memASCII(message)), 0);
 		GL43.glDebugMessageControl(GL43.GL_DONT_CARE, GL43.GL_DONT_CARE, GL43.GL_DONT_CARE, new int[0], false);
 		
+		window.render(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
+		
 		Util.printError("renderer load");
 		System.out.print("FontRenderer{FloatArrayBuffer{values=[");
 		for (int i = 0; i < 4 * 14; i++)
@@ -327,6 +330,7 @@ public class RenderEngine implements RenderTest {
 	{
 		window.show();
 		window.makeContextCurrent();
+		window.render(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
 	}
 	
 	private FrameBuffer frameBuffer;

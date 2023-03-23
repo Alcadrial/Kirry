@@ -15,6 +15,7 @@ import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.buffer.SimpleBuffer;
+import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.window.Window;
 import com.alcadra.tester.UltimateTester;
 

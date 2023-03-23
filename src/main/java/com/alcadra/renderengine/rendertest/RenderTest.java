@@ -1,6 +1,6 @@
 package com.alcadra.renderengine.rendertest;
 
-import com.alcadra.renderengine.Test;
+import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.window.Window;
 
 @Test

@@ -21,6 +21,7 @@ import com.alcadra.renderengine.renderer.VertexBuilder;
 import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.textures.ColorTexture;
 import com.alcadra.renderengine.textures.Texture;
+import com.alcadra.renderengine.util.Switch;
 
 public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> implements ShaderRenderer, VertexBuilder<ObjectRenderer> {
 	
@@ -120,7 +121,7 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 		}
 	}
 	
-	public int end(ObjectBuilder builder)
+	public Switch end(ObjectBuilder builder)
 	{
 		int vertices = buildingValue.vertices();
 		int vertexSize = this.vertexSize / 4;
@@ -139,8 +140,10 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 		{
 			throw new InsufficientVertexDataException("Required " + vertices + " modifiers, available " + builder.availableModifier(), e);
 		}
-		getArrayBuffer().add(buildingValue, buildedData);
-		return getArrayBuffer().size() - 1;
+		ObjectArrayBuffer<Object> buffer = getArrayBuffer();
+		int index = buffer.size();
+		buffer.add(buildingValue, buildedData);
+		return new Switch(() -> buffer.enable(index), () -> buffer.disable(index), true);
 	}
 	
 	public void enable(int index)
@@ -202,6 +205,7 @@ public class ObjectRenderer extends BaseRenderer<ObjectArrayBuffer<Object>> impl
 		clear();
 	}
 	
+	@Override
 	public void clear()
 	{
 		getArrayBuffer().clear();
