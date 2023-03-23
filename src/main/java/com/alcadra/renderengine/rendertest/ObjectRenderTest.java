@@ -20,11 +20,10 @@ import com.alcadra.renderengine.renderer.font.text.TextLine;
 import com.alcadra.renderengine.renderer.object.BufferableModel;
 import com.alcadra.renderengine.renderer.object.ObjectBuilder;
 import com.alcadra.renderengine.renderer.object.ObjectRenderer;
-import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.Shader;
+import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.textures.ColorTexture;
 import com.alcadra.renderengine.util.Image;
-import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.util.Tracker;
 import com.alcadra.renderengine.util.color.Color;
 import com.alcadra.renderengine.util.color.VectorColorRGB;
@@ -32,7 +31,6 @@ import com.alcadra.renderengine.util.color.VectorColorRGBA;
 import com.alcadra.renderengine.window.Window;
 
 @SuppressWarnings("deprecation")
-@Test
 public class ObjectRenderTest implements RenderTest {
 	
 	private Window window;

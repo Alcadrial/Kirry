@@ -7,10 +7,8 @@ import com.alcadra.math.vector.Vector3f;
 import com.alcadra.renderengine.renderer.object.BufferableModel;
 import com.alcadra.renderengine.renderer.object.DataGetter;
 import com.alcadra.renderengine.shader.ShaderInput;
-import com.alcadra.renderengine.util.Test;
 
 @SuppressWarnings("deprecation")
-@Test
 public class Cube implements BufferableModel {
 	
 	private Map<ShaderInput, float[]> map;

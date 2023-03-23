@@ -1,9 +1,7 @@
 package com.alcadra.renderengine.rendertest;
 
-import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.window.Window;
 
-@Test
 public interface RenderTest {
 	
 	public void start();
