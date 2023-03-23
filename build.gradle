@@ -11,6 +11,7 @@ void printClass(Object obj) {
 
 println("Configuring RenderEngine's project")
 
+boolean printExcludedFiles = true;
 boolean printExportedFiles = true;
 boolean excludeTestFiles = true;
 
@@ -27,14 +28,15 @@ sourceSets.main.java {
 			File packageFile = new File(e.getFile().getPath() + "\\package-info.java")
 			if (packageFile.isFile())
 			{
-				boolean r = packageFile.text.contains("package com.alcadra.renderengine.util;") || packageFile.text.contains("@com.alcadra.renderengine.util.Test")
+				String text = packageFile.text
+				boolean r = text.contains("package com.alcadra.renderengine.util;") && text.contains("@Test") || text.contains("@com.alcadra.renderengine.util.Test")
 				if (!r && printExportedFiles) System.out.println("D " + e.getFile())
+				if (r && printExcludedFiles) System.out.println("excluded D " + e.getFile())
 				return r;
 			}
 			if (printExportedFiles) System.out.println("D " + e.getFile())
 			return false
 		}
-		if (e.getFile().getPath().endsWith("\\package-info.java")) return true
 		boolean b = e.getFile().name.endsWith(".java")
 		String text = e.getFile().text
 		boolean b0 = text.contains("@Test")
@@ -43,6 +45,7 @@ sourceSets.main.java {
 		boolean b3 = text.contains("@com.alcadra.renderengine.util.Test")
 		boolean result = b && ((b0 && (b1 || b2)) || b3)
 		if (printExportedFiles && !result) System.out.println("F " + e.getFile())
+		if (printExcludedFiles && result) System.out.println("F " + e.getFile())
 		return result
 	})
 }

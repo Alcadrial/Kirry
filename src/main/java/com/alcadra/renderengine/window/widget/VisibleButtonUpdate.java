@@ -5,7 +5,6 @@ import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3i;
 import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.renderer.universal.UniversalRenderer;
-import com.alcadra.renderengine.util.RendererUtil;
 import com.alcadra.renderengine.util.update.UpdatedFrom;
 import com.alcadra.renderengine.window.WindowUpdate;
 
@@ -29,7 +28,10 @@ public abstract class VisibleButtonUpdate extends ButtonUpdate implements Drawab
 		renderer.clear();
 		float w = getWindow().getWidth() / 2, h = getWindow().getHeight() / 2;
 		Vector3i pos = getPos();
-		RendererUtil.loadSquare(renderer, pos.x() - w, pos.y() - h, pos.x() - w + 16, pos.y() - h + 16, pos.z(), 127, 127, 127, 255);
+		renderer.vertex(pos.x() - w, pos.y() - h + 16, pos.z()).color(127, 127, 127).color(127, 127, 127, 255).end();
+		renderer.vertex(pos.x() - w + 16, pos.y() - h + 16, pos.z()).color(127, 127, 127).color(127, 127, 127, 255).end();
+		renderer.vertex(pos.x() - w + 16, pos.y() - h, pos.z()).color(127, 127, 127).color(127, 127, 127, 255).end();
+		renderer.vertex(pos.x() - w, pos.y() - h, pos.z()).color(127, 127, 127).color(127, 127, 127, 255).end();
 		renderer.drawPoints(RenderingMode.QUADS, matrix);
 	}
 }
