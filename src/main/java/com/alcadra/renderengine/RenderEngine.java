@@ -288,7 +288,7 @@ public class RenderEngine implements RenderTest {
 		}
 		fontShader.build();
 		Util.printError("font shader");
-		fontRenderer = new FontRenderer(fontShader, shaderTexture);
+		fontRenderer = new FontRenderer(fontShader);
 		try
 		{
 			font = new Font(new File(fontPath), new File(fontImagePath));

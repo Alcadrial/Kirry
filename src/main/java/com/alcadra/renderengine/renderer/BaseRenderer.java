@@ -7,7 +7,9 @@ import org.lwjgl.opengl.GL30;
 import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.shader.Shader;
+import com.alcadra.renderengine.util.NoReplacement;
 import com.alcadra.renderengine.util.ToRename;
+import com.alcadra.renderengine.util.UseInstead;
 import com.alcadra.renderengine.util.Util;
 
 @ToRename(name = "BaseShaderRenderer")
@@ -16,6 +18,7 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> implements ShaderR
 	protected final VertexArray vertexArray;
 	protected final AB arrayBuffer;
 	@Deprecated(since = "1.2", forRemoval = true)
+	@UseInstead(value = {"BaseIndicesRenderer.elements"}, descriptions = {"For indices extend BaseIndicesRenderer instead"})
 	protected ElementArrayBuffer elements;
 	protected Shader shader;
 	
@@ -27,15 +30,8 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> implements ShaderR
 		elements = null;
 	}
 	
-	public BaseRenderer(Supplier<Shader> shader, Supplier<? extends VertexArray> vertexArray, Supplier<? extends AB> arrayBuffer)
-	{
-		this.shader = shader.get();
-		this.vertexArray = vertexArray.get();
-		this.arrayBuffer = arrayBuffer.get();
-		elements = null;
-	}
-	
 	@Deprecated(since = "1.2", forRemoval = true)
+	@UseInstead(value = {"BaseRenderer(Shader, VertexArray, AB)"}, descriptions = {"For indices extend BaseIndicesRenderer instead"})
 	public BaseRenderer(Shader shader, VertexArray vertexArray, AB arrayBuffer, ElementArrayBuffer elementArrayBuffer)
 	{
 		this.shader = shader;
@@ -45,6 +41,7 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> implements ShaderR
 	}
 	
 	@Deprecated(since = "1.2", forRemoval = true)
+	@NoReplacement
 	public BaseRenderer(Supplier<Shader> shader, Supplier<? extends VertexArray> vertexArray, Supplier<? extends AB> arrayBuffer, Supplier<? extends ElementArrayBuffer> elementArrayBuffer)
 	{
 		this.shader = shader.get();
@@ -76,6 +73,8 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> implements ShaderR
 		Util.printError("BaseRenderer[INTERNAL] draw");
 	}
 	
+	@Deprecated(since = "1.2", forRemoval = true)
+	@UseInstead(value = {"BaseIndicesRenderer#drawIndices(int)"}, descriptions = {"For indices extend BaseIndicesRenderer instead"})
 	protected void drawIndices(int mode)
 	{
 		vertexArray.bind();
@@ -92,18 +91,21 @@ public abstract class BaseRenderer<AB extends ArrayBuffer<?>> implements ShaderR
 	}
 	
 	@Deprecated(since = "1.2", forRemoval = true)
+	@NoReplacement
 	protected VertexArray getVertexArray()
 	{
 		return vertexArray;
 	}
 	
 	@Deprecated(since = "1.2", forRemoval = true)
+	@NoReplacement
 	protected AB getArrayBuffer()
 	{
 		return arrayBuffer;
 	}
 	
 	@Deprecated(since = "1.2", forRemoval = true)
+	@NoReplacement
 	protected ElementArrayBuffer getElementArrayBuffer()
 	{
 		return elements;
