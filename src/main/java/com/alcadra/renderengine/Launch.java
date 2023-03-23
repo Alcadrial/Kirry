@@ -34,13 +34,16 @@ public class Launch {
 	{
 		if (!GLFW.glfwInit()) return;
 		window = new Window(1080, 720, "Test");
-		window.build();
-		if (!window.isBuild())
+		window.create();
+		if (!window.isCreated())
 		{
 			GLFW.glfwTerminate();
 			System.out.println("e");
 			return;
 		}
+		window.makeContextCurrent();
+		window.init();
+		
 		FileOutputStream stream = new FileOutputStream("Test Results.txt");
 		
 		UltimateTester t = new UltimateTester(window::detachCurrentContext, window::makeContextCurrent);

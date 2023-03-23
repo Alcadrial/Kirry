@@ -185,8 +185,9 @@ public class RenderEngine implements RenderTest {
 	public void start()
 	{
 		window = new Window(1080, 720, "Test");
-		window.build();
+		window.create();
 		window.makeContextCurrent();
+		window.init();
 		Util.printError("window build");
 		cursor = Vector2f.getOrigin();
 		window.addEvent(new GLFWCursorPosCallbackI() {
@@ -331,7 +332,10 @@ public class RenderEngine implements RenderTest {
 		}, widgetRenderer);
 		Util.printError("window");
 		
-		frameBuffer.initializeDepthTextureBuffer(1024, 1024);
+		frameBuffer.bind();
+		frameBuffer.init(1024, 1024, true, true, false);
+		frameBuffer.unbind();
+		Util.printError("frameBuffer init");
 		
 		Matrix4f projection = new Matrix4f().project(10, 100, 8, window.getAspectRatio());
 		Matrix4f view = new Matrix4f().view(position, rotationX, rotationY);
@@ -344,6 +348,7 @@ public class RenderEngine implements RenderTest {
 		RendererUtil.loadOrthoCube(universalRenderer, Vector3f.getOrigin(), end, Color.LIGHT_YELLOW);
 		RendererUtil.loadOrthoCube(universalRenderer, viewer, end, end.add(end), Color.LIGHT_YELLOW);
 		universalRenderer.pullBuffer();
+		
 		buffer1 = new FloatArrayBuffer();
 		element1 = new ElementArrayBuffer();
 		universalRenderer.pushBuffer(buffer1, element1);
@@ -431,6 +436,7 @@ public class RenderEngine implements RenderTest {
 		Util.printError("TextureRender draw");
 		
 		// frameBuffer.unbind();
+		
 		window.update(compact, partialTicks);
 		window.clear(true, true, false);
 		Util.printError("window update");

@@ -17,7 +17,6 @@ import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWScrollCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.opengl.GL;
-import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.system.CallbackI;
 
@@ -37,7 +36,7 @@ import com.alcadra.renderengine.window.widget.DrawableWidget;
 public class Window {
 	
 	private long windowId;
-	private boolean isBuild = false;
+	private boolean isCreated = false;
 	private String title;
 	private Vector2i mousePos = Vector2i.getOrigin();
 	private Vector2i size;
@@ -79,22 +78,24 @@ public class Window {
 		aspectRatio = (float) size.x() / size.y();
 	}
 	
-	public void build()
+	public void create()
 	{
-		if (!isBuild)
+		if (!isCreated) isCreated = (windowId = GLFW.glfwCreateWindow(getWidth(), getHeight(), title, 0, 0)) != 0;
+	}
+	
+	public void init()
+	{
+		if (isCreated)
 		{
-			windowId = GLFW.glfwCreateWindow(getWidth(), getHeight(), title, 0, 0);
-			if (isBuild = windowId != 0)
-			{
-				GLFW.glfwSwapInterval(0);
-				GLFW.glfwSetCharCallback(windowId, charCallback);
-				GLFW.glfwSetCursorEnterCallback(windowId, cursorEnterCallback);
-				GLFW.glfwSetCursorPosCallback(windowId, cursorPosCallback);
-				GLFW.glfwSetKeyCallback(windowId, keyCallback);
-				GLFW.glfwSetMouseButtonCallback(windowId, mouseButtonCallback);
-				GLFW.glfwSetScrollCallback(windowId, windowScrollCallback);
-				GLFW.glfwSetWindowSizeCallback(windowId, windowSizeCallback);
-			}
+			FrameBuffer.DEFAULT.setDrawArea(0, 0, getWidth(), getHeight());
+			GLFW.glfwSwapInterval(0);
+			GLFW.glfwSetCharCallback(windowId, charCallback);
+			GLFW.glfwSetCursorEnterCallback(windowId, cursorEnterCallback);
+			GLFW.glfwSetCursorPosCallback(windowId, cursorPosCallback);
+			GLFW.glfwSetKeyCallback(windowId, keyCallback);
+			GLFW.glfwSetMouseButtonCallback(windowId, mouseButtonCallback);
+			GLFW.glfwSetScrollCallback(windowId, windowScrollCallback);
+			GLFW.glfwSetWindowSizeCallback(windowId, windowSizeCallback);
 		}
 	}
 	
@@ -129,11 +130,7 @@ public class Window {
 	
 	public final void clear(boolean color, boolean depth, boolean stencil)
 	{
-		int mask = 0;
-		if (color) mask |= GL30.GL_COLOR_BUFFER_BIT;
-		if (depth) mask |= GL30.GL_DEPTH_BUFFER_BIT;
-		if (stencil) mask |= GL30.GL_STENCIL_BUFFER_BIT;
-		if (mask != 0) GL30.glClear(mask);
+		FrameBuffer.DEFAULT.clear(color, depth, stencil);
 	}
 	
 	public final void addEvent(CallbackI event)
@@ -167,7 +164,7 @@ public class Window {
 	protected void onResize(Vector2i oldSize, Vector2i newSize)
 	{
 		aspectRatio = (float) newSize.x() / newSize.y();
-		if (isBuild) FrameBuffer.DEFAULT.setDrawArea(Vector2i.getOrigin(), newSize);
+		if (isCreated) FrameBuffer.DEFAULT.setDrawArea(Vector2i.getOrigin(), newSize);
 	}
 	
 	public final long getId()
@@ -175,9 +172,9 @@ public class Window {
 		return windowId;
 	}
 	
-	public final boolean isBuild()
+	public final boolean isCreated()
 	{
-		return isBuild;
+		return isCreated;
 	}
 	
 	public final String getTitle()
@@ -210,7 +207,7 @@ public class Window {
 		return aspectRatio;
 	}
 	
-	public final com.alcadra.renderengine.window.cursor.CursorInputMode getCursorInputMode()
+	public final CursorInputMode getCursorInputMode()
 	{
 		return cursorInputMode;
 	}
@@ -247,7 +244,7 @@ public class Window {
 		GLFW.glfwSetWindowSizeLimits(windowId, minSize.x(), minSize.y(), maxSize.x(), maxSize.y());
 	}
 	
-	public final void setCursorInputMode(com.alcadra.renderengine.window.cursor.CursorInputMode mode)
+	public final void setCursorInputMode(CursorInputMode mode)
 	{
 		if (cursorInputMode != mode)
 		{
