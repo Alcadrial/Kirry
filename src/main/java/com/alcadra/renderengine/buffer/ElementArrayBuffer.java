@@ -3,8 +3,8 @@ package com.alcadra.renderengine.buffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.system.MemoryUtil;
@@ -40,14 +40,16 @@ public class ElementArrayBuffer extends SimpleBuffer {
 		{}
 	};
 	
-	protected List<Integer> values;
+	protected ArrayList<Integer> values;
 	private boolean isModified;
+	private int max;
 	
 	public ElementArrayBuffer()
 	{
 		this(GL15.glGenBuffers());
 		values = new ArrayList<>();
 		isModified = false;
+		max = 0;
 	}
 	
 	private ElementArrayBuffer(int id)
@@ -58,6 +60,7 @@ public class ElementArrayBuffer extends SimpleBuffer {
 	public void add(int i)
 	{
 		values.add(i);
+		if (i > max) max = i;
 		isModified = true;
 	}
 	
@@ -69,12 +72,19 @@ public class ElementArrayBuffer extends SimpleBuffer {
 	public void addAll(Collection<Integer> collection)
 	{
 		values.addAll(collection);
+		Optional<Integer> max = collection.stream().max(Integer::compare);
+		max.ifPresent(i -> this.max = i);
 		isModified = true;
 	}
 	
 	public void addAll(int[] indices)
 	{
-		for (int i : indices) values.add(i);
+		values.ensureCapacity(values.size() + indices.length);
+		for (int i : indices)
+		{
+			values.add(i);
+			if (i > max) max = i;
+		}
 		isModified = true;
 	}
 	
@@ -83,15 +93,22 @@ public class ElementArrayBuffer extends SimpleBuffer {
 		return values.get(index);
 	}
 	
-	public void merge(ElementArrayBuffer arrayBuffer, int offset)
+	public void merge(ElementArrayBuffer elementBuffer, int offset)
 	{
-		for (Integer i : arrayBuffer.values) values.add(i + offset);
+		values.ensureCapacity(values.size() + elementBuffer.size());
+		for (Integer i : elementBuffer.values)
+		{
+			int j = i + offset;
+			values.add(j);
+			if (j > max) max = j;
+		}
 		isModified = true;
 	}
 	
 	public void clear()
 	{
 		values.clear();
+		max = 0;
 		isModified = true;
 	}
 	
@@ -99,40 +116,17 @@ public class ElementArrayBuffer extends SimpleBuffer {
 	{
 		if (isModified)
 		{
+			syncModify();
 			isModified = false;
-			// int size = getGlSize();
-			// if (size != values.size())
-			// {
-			IntBuffer b = MemoryUtil.memAllocInt(values.size());
-			for (Integer i : values) b.put(i);
-			GL15.glBufferData(getTarget(), b.flip(), GL15.GL_DYNAMIC_DRAW);
-			MemoryUtil.memFree(b);
-			// }
-			// else
-			// {
-			// IntBuffer fixed = MemoryUtil.memAllocInt(size);
-			// for (Integer i : values) fixed.put(i);
-			// fixed.flip();
-			// IntBuffer buffer = MemoryUtil.memAllocInt(size);
-			// GL15.glGetBufferSubData(getTarget(), 0, buffer);
-			// int start = -1;
-			// for (int i = 0; i < size; i++)
-			// {
-			// if (buffer.get() != fixed.get())
-			// {
-			// if (start == -1) start = i;
-			// }
-			// else if (start != -1)
-			// {
-			// GL15.glBufferSubData(getTarget(), start * 4, fixed.position(start).limit(i));
-			// fixed.limit(size).position(i);
-			// start = -1;
-			// }
-			// }
-			// MemoryUtil.memFree(fixed);
-			// MemoryUtil.memFree(buffer);
-			// }
 		}
+	}
+	
+	protected void syncModify()
+	{
+		IntBuffer b = MemoryUtil.memAllocInt(values.size());
+		for (Integer i : values) b.put(i);
+		GL15.glBufferData(getTarget(), b.flip(), GL15.GL_DYNAMIC_DRAW);
+		MemoryUtil.memFree(b);
 	}
 	
 	public int getGlSize()
@@ -150,10 +144,15 @@ public class ElementArrayBuffer extends SimpleBuffer {
 		return v;
 	}
 	
+	public int getMax()
+	{
+		return max;
+	}
+	
 	@Override
 	public SimpleBuffer getNull()
 	{
-		return null;
+		return NULL;
 	}
 	
 	public int size()

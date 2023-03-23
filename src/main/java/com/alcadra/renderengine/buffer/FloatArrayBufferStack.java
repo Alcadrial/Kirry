@@ -1,10 +1,7 @@
 package com.alcadra.renderengine.buffer;
 
-import java.nio.FloatBuffer;
 import java.util.Collection;
 import java.util.List;
-
-import org.lwjgl.system.MemoryUtil;
 
 public class FloatArrayBufferStack extends FloatArrayBuffer {
 	
@@ -96,22 +93,20 @@ public class FloatArrayBufferStack extends FloatArrayBuffer {
 	@Override
 	public List<Float> asList()
 	{
-		return top.buffer.asList();
+		return top != null ? top.buffer.asList() : super.asList();
 	}
 	
 	@Override
 	public int size()
 	{
-		return top.buffer.size();
+		return top != null ? top.buffer.size() : super.size();
 	}
 	
 	@Override
-	protected FloatBuffer nativeBuffer()
+	public void sync()
 	{
-		FloatBuffer buffer = MemoryUtil.memAllocFloat(size());
-		for (Float i : top.buffer.values) buffer.put(i);
-		buffer.flip();
-		return buffer;
+		if (top != null) top.buffer.sync();
+		else super.sync();
 	}
 	
 	@Override

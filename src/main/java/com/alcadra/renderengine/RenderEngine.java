@@ -19,6 +19,7 @@ import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector3i;
 import com.alcadra.math.vector.Vector4f;
+import com.alcadra.renderengine.buffer.ElementArrayBuffer;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.buffer.FrameBuffer;
 import com.alcadra.renderengine.renderer.RenderingMode;
@@ -178,6 +179,7 @@ public class RenderEngine implements RenderTest {
 	private ShaderProgram colorProgram, textureProgram;
 	private UniversalRenderer universalRenderer, widgetRenderer;
 	private FloatArrayBuffer buffer0, buffer1;
+	private ElementArrayBuffer element0, element1;
 	private FontRendererUpdate fontRenderer;
 	private Font font;
 	
@@ -366,11 +368,11 @@ public class RenderEngine implements RenderTest {
 		Matrix4f viewer = new Matrix4f(projection).multiply(view);
 		Vector3f end = new Vector3f(10, 10, 10);
 		
-		universalRenderer.pushBuffer(buffer0 = new FloatArrayBuffer());
-		RendererUtil.loadOrthoCube(universalRenderer, Vector3f.getOrigin(), end, new Vector4f(255, 255, 0, 255));
-		RendererUtil.loadOrthoCube(universalRenderer, viewer, end, end.add(end), new Vector4f(255, 255, 0, 255));
+		universalRenderer.pushBuffer(buffer0 = new FloatArrayBuffer(), element0 = new ElementArrayBuffer());
+		RendererUtil.loadOrthoCube(universalRenderer, Vector3f.getOrigin(), end, Color.LIGHT_YELLOW);
+		RendererUtil.loadOrthoCube(universalRenderer, viewer, end, end.add(end), Color.LIGHT_YELLOW);
 		universalRenderer.pullBuffer();
-		universalRenderer.pushBuffer(buffer1 = new FloatArrayBuffer());
+		universalRenderer.pushBuffer(buffer1 = new FloatArrayBuffer(), element1 = new ElementArrayBuffer());
 		RendererUtil.loadSquare(universalRenderer, 100, 100, 128, 128, 1, 255, 255, 0, 255);
 		universalRenderer.pullBuffer();
 		
@@ -451,13 +453,13 @@ public class RenderEngine implements RenderTest {
 		
 		// frameBuffer.bind();
 		Util.printError("FrameBuffer draw");
-		window.pollEvents();
-		// renderer.pushBuffer(buffer0);
+		
+		universalRenderer.pushBuffer(buffer0, element0);
 		universalRenderer.drawPoints(RenderingMode.QUADS, projected);
-		// renderer.pullBuffer();
-		// renderer.pushBuffer(buffer1);
-		// renderer.drawPoints(GL30.GL_QUADS, compact);
-		// renderer.pullBuffer();
+		universalRenderer.pullBuffer();
+		universalRenderer.pushBuffer(buffer1, element1);
+		universalRenderer.drawPoints(RenderingMode.QUADS, compact);
+		universalRenderer.pullBuffer();
 		Util.printError("TextureRender draw");
 		
 		// textureRenderer.clear();

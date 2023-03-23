@@ -5,11 +5,12 @@ import java.util.Objects;
 import com.alcadra.math.Matrix4f;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.Vector4f;
+import com.alcadra.renderengine.buffer.ElementArrayBuffer;
+import com.alcadra.renderengine.buffer.ElementArrayBufferStack;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
 import com.alcadra.renderengine.buffer.FloatArrayBufferStack;
 import com.alcadra.renderengine.renderer.AbstractIndicesRendererUpdate;
 import com.alcadra.renderengine.renderer.AbstractVertexBuilder;
-import com.alcadra.renderengine.renderer.IndicesRendererUpdate;
 import com.alcadra.renderengine.renderer.RenderingMode;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.uniform.ShaderUniform;
@@ -23,13 +24,20 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 	private static final ShaderUniform<Vector3f> COLOR_RGB = ShaderUniform.ofVector3f("COLOR_RGB");
 	private static final ShaderUniform<Integer> TEXTURE_SAMPLER = ShaderUniform.ofInt("TEXTURE_SAMPLER");
 	
+	private ElementArrayBufferStack elementStack;
 	private Vector4f color;
 	private int textureSampler;
 	private int offset;
 	
 	public UniversalRenderer(ShaderProgram program)
 	{
-		super(program, new FloatArrayBufferStack());
+		this(program, new ElementArrayBufferStack());
+	}
+	
+	public UniversalRenderer(ShaderProgram program, ElementArrayBufferStack elementStack)
+	{
+		super(program, new FloatArrayBufferStack(), elementStack);
+		this.elementStack = elementStack;
 		color = Vector4f.getOrigin();
 		textureSampler = 0;
 		offset = 0;
@@ -46,12 +54,22 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 		drawIndices(mode);
 	}
 	
+	public void drawVertices(RenderingMode mode, Matrix4f matrix)
+	{
+		program.enable();
+		program.setUniform(TRANSFORMATION, matrix);
+		program.setUniform(TEXTURE_SAMPLER, textureSampler);
+		program.setUniform(COLOR, color);
+		program.setUniform(COLOR_RGB, color.xyz());
+		draw(mode);
+	}
+	
 	public VertexBuilder vertex(float x, float y, float z)
 	{
 		return new VertexBuilder(x, y, z);
 	}
 	
-	public IndicesRendererUpdate vertex(int index)
+	public UniversalRenderer vertex(int index)
 	{
 		elements.add(index);
 		return this;
@@ -62,21 +80,39 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 		pushBuffer(new FloatArrayBuffer());
 	}
 	
-	public void pushBuffer(FloatArrayBuffer buffer)
+	public void pushBuffer(FloatArrayBuffer arrayBuffer)
 	{
-		arrayBuffer.push(buffer);
+		pushBuffer(arrayBuffer, new ElementArrayBuffer());
+	}
+	
+	public void pushBuffer(FloatArrayBuffer arrayBuffer, ElementArrayBuffer elementBuffer)
+	{
+		this.arrayBuffer.push(arrayBuffer);
+		elementStack.push(elementBuffer);
+		offset = elementStack.getMax();
 	}
 	
 	public void pushBufferMerge(FloatArrayBuffer buffer)
 	{
+		pushBufferMerge(buffer, new ElementArrayBuffer());
+	}
+	
+	public void pushBufferMerge(FloatArrayBuffer buffer, ElementArrayBuffer elementBuffer)
+	{
 		FloatArrayBuffer b = arrayBuffer.current();
 		buffer.merge(b);
 		arrayBuffer.push(buffer);
+		ElementArrayBuffer e = elementStack.current();
+		elementBuffer.merge(e, elementBuffer.getMax());
+		elementStack.push(elementBuffer);
+		offset = elementStack.getMax();
 	}
 	
 	public void pullBuffer()
 	{
 		arrayBuffer.pull();
+		elementStack.pull();
+		offset = 0;
 	}
 	
 	public int getOffset()
@@ -125,13 +161,6 @@ public class UniversalRenderer extends AbstractIndicesRendererUpdate<FloatArrayB
 			arrayBuffer.addAll(gatherProgramData());
 			map.clear();
 			elements.add(offset++);
-		}
-		
-		public void end(int index)
-		{
-			arrayBuffer.addAll(gatherProgramData());
-			map.clear();
-			elements.add(index);
 		}
 	}
 }
