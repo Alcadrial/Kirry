@@ -171,20 +171,25 @@ public class FrameBuffer extends SimpleBuffer {
 			{
 				if (colorTexture[0] != null && colorTexture[0].internal) colorTexture[0].texture.close();
 				Texture texture = new Texture(TextureTemplate.RGBA_2D_TEXTURE);
-				setTextureInternal(texture);
 				texture.setData2D(texture.getTemplate(), data, width, height, 0);
+				texture.disableAntiAlias();
+				setTextureInternal(texture);
 			}
 			if (useDepthTexture)
 			{
 				if (depthTexture != null && depthTexture.internal) depthTexture.texture.close();
-				setTextureInternal(new Texture(TextureTemplate.DEPTH_2D_TEXTURE));
-				depthTexture.texture.setData2D(depthTexture.texture.getTemplate(), data, width, height, 0);
+				Texture texture = new Texture(TextureTemplate.DEPTH_2D_TEXTURE);
+				texture.setData2D(texture.getTemplate(), data, width, height, 0);
+				texture.disableAntiAlias();
+				setTextureInternal(texture);
 			}
 			if (useStencilTexture)
 			{
 				if (stencilTexture != null && stencilTexture.internal) stencilTexture.texture.close();
-				setTextureInternal(new Texture(TextureTemplate.STENCIL_2D_TEXTURE));
-				stencilTexture.texture.setData2D(stencilTexture.texture.getTemplate(), data, width, height, 0);
+				Texture texture = new Texture(TextureTemplate.STENCIL_2D_TEXTURE);
+				texture.setData2D(texture.getTemplate(), data, width, height, 0);
+				texture.disableAntiAlias();
+				setTextureInternal(texture);
 			}
 		}
 		setDrawArea(screen.x(), screen.y(), width, height);

@@ -5,6 +5,8 @@ import java.util.Arrays;
 
 import org.lwjgl.opengl.GL45;
 
+import com.alcadra.math.vector.Vector2i;
+import com.alcadra.math.vector.Vector3i;
 import com.alcadra.renderengine.framebuffer.FrameBuffer;
 import com.alcadra.renderengine.util.Broken;
 import com.alcadra.renderengine.util.Deletable;
@@ -468,6 +470,31 @@ public final class Texture implements Deletable {
 	public int getMipmapLevels()
 	{
 		return mipmapLevels;
+	}
+	
+	public Vector2i getWidthVector()
+	{
+		return Vector2i.of(width, 1);
+	}
+	
+	public Vector2i getHeightVector()
+	{
+		return Vector2i.of(height, 1);
+	}
+	
+	public Vector2i getDepthVector()
+	{
+		return Vector2i.of(depth, 1);
+	}
+	
+	public Vector2i getAreaVector()
+	{
+		return Vector2i.of(width, height);
+	}
+	
+	public Vector3i getVolumeVector()
+	{
+		return Vector3i.of(width, height, depth);
 	}
 	
 	private boolean valid = true;
