@@ -77,7 +77,21 @@ public class RenderEngine implements RenderTest {
 	{
 		for (String string : args)
 		{
+			System.out.println(string);
 			if (string.equalsIgnoreCase("debug")) Util.enableDebug();
+			else if (string.equalsIgnoreCase("exe"))
+			{
+				colorShaderVertexPath = colorShaderVertexPath.substring(19);
+				colorShaderFragmentPath = colorShaderFragmentPath.substring(19);
+				textureShaderVertexPath = textureShaderVertexPath.substring(19);
+				textureShaderFragmentPath = textureShaderFragmentPath.substring(19);
+				fontShaderVertexPath = fontShaderVertexPath.substring(19);
+				fontShaderFragmentPath = fontShaderFragmentPath.substring(19);
+				iconPath = iconPath.substring(19);
+				texturePath = texturePath.substring(19);
+				fontPath = fontPath.substring(19);
+				fontImagePath = fontImagePath.substring(19);
+			}
 			else if (string.startsWith("path"))
 			{
 				String key = string.substring(4, string.indexOf('='));

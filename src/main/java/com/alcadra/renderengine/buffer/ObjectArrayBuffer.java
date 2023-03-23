@@ -137,7 +137,7 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 	}
 	
 	@Override
-	public void sync()
+	public void sync()// effettua le modifiche senza poi azzerare la lista delle modifiche
 	{
 		if (isModified)
 		{
@@ -250,10 +250,10 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 		{
 			if (valid)
 			{
+				if (!modifieds.contains(holder)) modifieds.add(holder);
 				isModified = holder.data != data;
 				needResize = holder.data.length != data.length;
 				holder.data = data;
-				if (!modifieds.contains(holder)) modifieds.add(holder);
 			}
 		}
 		
@@ -262,9 +262,7 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 		{
 			if (isOff())
 			{
-				int i = modifieds.indexOf(holder);
-				if (i == -1) modifieds.add(holder);
-				else modifieds.remove(i);
+				if (!modifieds.contains(holder)) modifieds.add(holder);
 				isModified = true;
 				holder.enabled = true;
 				return true;
@@ -277,9 +275,7 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 		{
 			if (isOn())
 			{
-				int i = modifieds.indexOf(holder);
-				if (i == -1) modifieds.add(holder);
-				else modifieds.remove(i);
+				if (!modifieds.contains(holder)) modifieds.add(holder);
 				isModified = true;
 				holder.enabled = false;
 				return true;
