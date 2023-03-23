@@ -157,13 +157,15 @@ public class Launch {
 	
 	public void loopMethod(float partialTicks)
 	{
-		printError();
+		printError("origin");
 		loop(partialTicks);
-		FrameBuffer.unbind();
+		printError("loop");
+		while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
 		GL30.glEnable(GL30.GL_DEPTH_TEST);
 		GL30.glEnable(GL30.GL_BLEND);
 		GL30.glBlendFunc(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA);
 		GL30.glClearColor(0.6F, 0.7F, 1, 1);
+		printError("renew");
 	}
 	
 	Shader shader, shaderTexture;
@@ -177,6 +179,8 @@ public class Launch {
 	{
 		window = new Window(1080, 720, "Test");
 		window.build();
+		GL.createCapabilities();
+		printError("window build");
 		cursor = Vector2f.getOrigin();
 		window.addEvent(new GLFWCursorPosCallbackI() {
 			
@@ -202,7 +206,6 @@ public class Launch {
 		window.addEvent((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			Launch.this.window.setWidth(width);
 			Launch.this.window.setHeight(height);
-			fontRenderer.initializeFrameBuffer(width, height);
 		});
 		window.addEvent((GLFWKeyCallbackI) (id, key, scancode, action, mods) -> {
 			if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT) position = switch (key)
@@ -222,8 +225,11 @@ public class Launch {
 				GLFW.glfwSetInputMode(id, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL + (rotating ? 2 : 0));
 			}
 		});
-		GL.createCapabilities();
+		printError("events");
+		FrameBuffer.getNull();
+		printError("capabilities");
 		frameBuffer = new FrameBuffer();
+		printError("framebuffer");
 		shader = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED, ShaderInputDataType.UNUSUED);
 		try
 		{
@@ -246,10 +252,12 @@ public class Launch {
 			e.printStackTrace(System.out);
 		}
 		shaderTexture.build();
+		printError("shader init");
 		renderer = new Renderer(shader);
 		colorRenderer = new ColorRenderer(shader);
 		textureRenderer = new TextureRenderer(shaderTexture);
-		Shader fontShader = new Shader(ShaderInputDataType.UNUSUED, ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED);
+		printError("renderer init");
+		Shader fontShader = new Shader(ShaderInputDataType.PER_VERTEX, ShaderInputDataType.PER_VERTEX, ShaderInputDataType.UNUSUED);
 		try
 		{
 			fontShader.loadShaderFile(new File(fontShaderVertexPath), ShaderType.VERTEX);
@@ -260,6 +268,7 @@ public class Launch {
 			e.printStackTrace(System.out);
 		}
 		fontShader.build();
+		printError("font shader");
 		fontRenderer = new FontRenderer(fontShader, shaderTexture);
 		try
 		{
@@ -271,16 +280,32 @@ public class Launch {
 		{
 			e.printStackTrace();
 		}
+		fontRenderer.setFont(font);
+		printError("font renderer");
+		
 		window.setIcon(icon);
 		window.show();
-		window.addWidget(new VisibleButton(new Vector3i(10, 10, 0), new Vector2i(16, 16), window));
+		window.addWidget(new VisibleButton(new Vector3i(10, 10, 0), new Vector2i(16, 16), window) {
+			
+			@Override
+			public void onLeftClick(Vector2i mousePos)
+			{
+				System.out.println("l");
+			}
+			
+			@Override
+			public void onRightClick(Vector2i mousePos)
+			{
+				System.out.println("r");
+			}
+		});
+		printError("window");
 		
 		frameBuffer.initializeDepthTextureBuffer(1024, 1024);
-		fontRenderer.initializeFrameBuffer(window.getWidth(), window.getHeight());
 		
 		textureRenderer.loadTexture(new ColorTexture(icon));
-		
 		colorRenderer.loadQuad(0, 0, 0, 100, 100, 0, 255, 254, 2, 255);
+		printError("renderer load");
 	}
 	
 	FrameBuffer frameBuffer;
@@ -314,8 +339,8 @@ public class Launch {
 		Vector3f end = new Vector3f(10, 10, 10);
 		printError("compact");
 		
-		fontRenderer.drawString(compact, font, new Text("ala.beta@delta"), new Vector2i(0, (int) o % 180), new Vector3f(255, 0, 0), 0.5F, 0);
-		fontRenderer.drawString(compact, font, new Text(Util.toPointString(cursor)), new Vector2i(cursor.subtract(window.getSize().multiply(0.5F))), new Vector2f(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight()), 0.3F, 0);
+		fontRenderer.loadText(compact, new Text("ala.beta@delta"), new Vector2i(0, (int) o % 180), new Vector3f(255, 0, 0), 0.5F, 500, 0);
+		fontRenderer.loadText(compact, new Text(Util.toPointString(cursor)), new Vector2i(cursor.subtract(window.getSize().multiply(0.5F))), new Vector2f(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight()), 0.3F, 550, 0);
 		Text text = new Text();
 		text.addLine(new TextLine("partialTicks " + partialTicks));
 		text.addLine(new TextLine("fps " + thread.getRunsPerSecond()));
@@ -334,23 +359,24 @@ public class Launch {
 		text.addLine(new TextLine("o " + o));
 		text.addLine(new TextLine(Double.toString(o % 180)));
 		text.addLine(new TextLine(Double.toString(o % 360)));
-		fontRenderer.drawString(compact, font, text, new Vector2i(-450, 500), 1, 1000, 0);
+		fontRenderer.loadText(compact, text, new Vector2i(-450, 500), 1, 1000, 0);
 		printError("FontRender texting");
-		fontRenderer.drawTexture(identity, 0F);
+		fontRenderer.draw(compact);
 		printError("FontRender draw");
 		
-		frameBuffer.bind();
-		printError("FrameBuffer draw");
+		// frameBuffer.bind();
+		// printError("FrameBuffer draw");
 		
 		renderer.clear();
 		renderer.color(255, 255, 0, 255);
 		renderer.loadCube(identity, Vector3f.getOrigin(), end);
-		// render.loadCube(viewer, end, end.add(end));
-		// render.draw(GL30.GL_QUADS, projected);
-		printError("TextureRender draw");
+		renderer.loadCube(viewer, end, end.add(end));
+		renderer.draw(GL30.GL_QUADS, projected);
+		// printError("TextureRender draw");
 		
-		FrameBuffer.unbind();
+		// frameBuffer.unbind();
 		window.update(compact, colorRenderer, textureRenderer, partialTicks);
+		printError("window update");
 		o += partialTicks * 1;
 	}
 }
