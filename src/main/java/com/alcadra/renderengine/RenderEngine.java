@@ -412,13 +412,13 @@ public class RenderEngine implements RenderTest {
 		renderer.color(255, 255, 0, 255);
 		renderer.loadCube(identity, Vector3f.getOrigin(), end);
 		renderer.loadCube(viewer, end, end.add(end));
-		renderer.draw(GL30.GL_QUADS, projected);
+		renderer.drawPoints(GL30.GL_QUADS, projected);
 		Util.printError("TextureRender draw");
 		
 		textureRenderer.clear();
 		textureRenderer.loadQuad(0, 0, 256, 256, 0, 0, 0, 1, 1);
 		// System.out.println(textureRenderer);
-		textureRenderer.draw(GL30.GL_QUADS, compact);
+		textureRenderer.drawVertices(GL30.GL_QUADS, compact);
 		
 		// frameBuffer.unbind();
 		window.update(compact, partialTicks);
