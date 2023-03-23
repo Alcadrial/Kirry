@@ -2,7 +2,6 @@ package com.alcadra.renderengine.rendertest;
 
 import com.alcadra.math.vector.Vector2f;
 import com.alcadra.renderengine.buffer.Bufferable;
-import com.alcadra.renderengine.renderer.object.ObjectBuilder;
 import com.alcadra.renderengine.renderer.object.VertexModifier;
 import com.alcadra.renderengine.util.Test;
 
@@ -43,7 +42,7 @@ public class Quad implements Bufferable {
 	}
 	
 	@Override
-	public int[][] getData(ObjectBuilder builder)
+	public int[][] getData()
 	{
 		return data;
 	}

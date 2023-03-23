@@ -1,44 +1,39 @@
 package com.alcadra.renderengine.util;
 
-import java.util.function.Supplier;
-
-public class Switch {
+public interface Switch {
 	
-	private Supplier<Boolean> activation;
-	private Supplier<Boolean> deactivation;
-	private boolean on;
+	boolean turnOn();
+	boolean turnOff();
 	
-	public Switch(Supplier<Boolean> activation, Supplier<Boolean> deactivation, boolean on)
+	default boolean enable()
 	{
-		this.activation = activation;
-		this.deactivation = deactivation;
-		this.on = on;
+		return turnOn();
 	}
 	
-	public boolean turnOn()
+	default boolean disable()
 	{
-		on = activation.get();
-		return on;
+		return turnOff();
 	}
 	
-	public boolean turnOff()
+	default boolean turn()
 	{
-		on = !deactivation.get();
-		return !on;
+		return isOn() ? turnOff() : turnOn();
 	}
 	
-	public boolean turn()
+	boolean isOn();
+	
+	default boolean isOff()
 	{
-		return on ? turnOff() : turnOn();
+		return !isOn();
 	}
 	
-	public boolean isOn()
+	default boolean isEnabled()
 	{
-		return on;
+		return isOn();
 	}
 	
-	public boolean isOff()
+	default boolean isDisabled()
 	{
-		return !on;
+		return isOff();
 	}
 }

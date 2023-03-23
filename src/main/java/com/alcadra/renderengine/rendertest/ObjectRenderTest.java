@@ -12,6 +12,7 @@ import com.alcadra.math.vector.Vector2i;
 import com.alcadra.math.vector.Vector3f;
 import com.alcadra.math.vector.axis.Axis;
 import com.alcadra.renderengine.RenderEngine;
+import com.alcadra.renderengine.buffer.Bufferable;
 import com.alcadra.renderengine.renderer.font.Font;
 import com.alcadra.renderengine.renderer.font.FontRenderer;
 import com.alcadra.renderengine.renderer.font.text.Text;
@@ -24,8 +25,8 @@ import com.alcadra.renderengine.shader.ShaderStatus;
 import com.alcadra.renderengine.shader.ShaderType;
 import com.alcadra.renderengine.textures.ColorTexture;
 import com.alcadra.renderengine.util.Image;
-import com.alcadra.renderengine.util.Switch;
 import com.alcadra.renderengine.util.Test;
+import com.alcadra.renderengine.util.Tracker;
 import com.alcadra.renderengine.window.Window;
 
 @Test
@@ -128,21 +129,7 @@ public class ObjectRenderTest implements RenderTest {
 		cubeRenderer = new ObjectRenderer(objectTexturedShader);
 		cubeRenderer.loadTexture(texture);
 		
-		switchs[0] = objectColorRenderer.start(quad0).vertex().color(0xFF, 0xFF, 0x00, 0xFF).next().next().next().end().end();
-		switchs[1] = objectTexturedRenderer.start(quad1).vertex().color(0x00, 0x00, 0x00, 0x7F).next().next().next().end().end();
-		switchs[2] = objectTexturedRenderer.start(quad2).vertex().color(0xFF, 0x00, 0x00, 0x7F).next().next().next().end().end();
-		switchs[3] = objectTexturedRenderer.start(quad3).vertex().color(0x00, 0x00, 0xFF, 0x7F).next().next().next().end().end();
-		switchs[4] = objectTexturedRenderer.start(quad4).vertex().color(0xFF, 0xFF, 0x00, 0x7F).next().next().next().end().end();
-		ObjectBuilder builder = cubeRenderer.start(cube);
-		builder.vertex().color(0x00, 0x00, 0x00, 0x7F).next().next().next().end();
-		builder.vertex().color(0x00, 0x00, 0xFF, 0x7F).next().next().next().end();
-		builder.vertex().color(0x00, 0xFF, 0x00, 0x7F).next().next().next().end();
-		builder.vertex().color(0x00, 0xFF, 0xFF, 0x7F).next().next().next().end();
-		builder.vertex().color(0xFF, 0x00, 0x00, 0x7F).next().next().next().end();
-		builder.vertex().color(0xFF, 0x00, 0xFF, 0x7F).next().next().next().end();
-		switchs[5] = builder.end();
-		
-		window.render(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
+		init();
 	}
 	
 	@Override
@@ -159,21 +146,37 @@ public class ObjectRenderTest implements RenderTest {
 		objectColorRenderer.clear();
 		objectTexturedRenderer.clear();
 		cubeRenderer.clear();
-		switchs[0] = objectColorRenderer.start(quad0).vertex().color(0xFF, 0xFF, 0x00, 0xFF).next().next().next().end().end();
-		switchs[1] = objectTexturedRenderer.start(quad1).vertex().color(0x00, 0x00, 0x00, 0x7F).next().next().next().end().end();
-		switchs[2] = objectTexturedRenderer.start(quad2).vertex().color(0xFF, 0x00, 0x00, 0x7F).next().next().next().end().end();
-		switchs[3] = objectTexturedRenderer.start(quad3).vertex().color(0x00, 0x00, 0xFF, 0x7F).next().next().next().end().end();
-		switchs[4] = objectTexturedRenderer.start(quad4).vertex().color(0xFF, 0xFF, 0x00, 0x7F).next().next().next().end().end();
-		ObjectBuilder builder = cubeRenderer.start(cube);
+		init();
+	}
+	
+	private void init()
+	{
+		trackers[0] = objectColorRenderer.start(quad0).vertex().color(0xFF, 0xFF, 0x00, 0xFF).next().next().next().end().end();
+		trackers[1] = objectTexturedRenderer.start(quad1).vertex().color(0x00, 0x00, 0x00, 0x7F).next().next().next().end().end();
+		trackers[2] = objectTexturedRenderer.start(quad2).vertex().color(0xFF, 0x00, 0x00, 0x7F).next().next().next().end().end();
+		trackers[3] = objectTexturedRenderer.start(quad3).vertex().color(0x00, 0x00, 0xFF, 0x7F).next().next().next().end().end();
+		trackers[4] = objectTexturedRenderer.start(quad4).vertex().color(0xFF, 0xFF, 0x00, 0x7F).next().next().next().end().end();
+		trackers[5] = track(cube0, cubeRenderer);
+		trackers[6] = track(cube1, cubeRenderer);
+		trackers[6].disable();
+		trackers[7] = track(cube2, cubeRenderer);
+		trackers[7].disable();
+		trackers[8] = track(cube3, cubeRenderer);
+		trackers[8].disable();
+		
+		window.render(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
+	}
+	
+	private Tracker<Bufferable> track(Cube cube, ObjectRenderer renderer)
+	{
+		ObjectBuilder builder = renderer.start(cube);
 		builder.vertex().color(0x00, 0x00, 0x00, 0x7F).next().next().next().end();
 		builder.vertex().color(0x00, 0x00, 0xFF, 0x7F).next().next().next().end();
 		builder.vertex().color(0x00, 0xFF, 0x00, 0x7F).next().next().next().end();
 		builder.vertex().color(0x00, 0xFF, 0xFF, 0x7F).next().next().next().end();
 		builder.vertex().color(0xFF, 0x00, 0x00, 0x7F).next().next().next().end();
 		builder.vertex().color(0xFF, 0x00, 0xFF, 0x7F).next().next().next().end();
-		switchs[5] = builder.end();
-		
-		window.render(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
+		return builder.end();
 	}
 	
 	private Quad quad0 = new Quad(new Vector2f(16, 16), new Vector2f(32, 32));
@@ -182,11 +185,17 @@ public class ObjectRenderTest implements RenderTest {
 	private Quad quad3 = new Quad(new Vector2f(320, 64), new Vector2f(256, 256));
 	private Quad quad4 = new Quad(new Vector2f(64, 64), new Vector2f(256, 256));
 	
-	private Cube cube = new Cube(new Vector3f(0, 0, 0), new Vector3f(1, 1, 1));
+	private Cube cube0 = new Cube(new Vector3f(0, 0, 0), new Vector3f(1, 1, 1));
+	private Cube cube1 = new Cube(new Vector3f(0, 0, 0), new Vector3f(2, 2, 2));
+	private Cube cube2 = new Cube(new Vector3f(0, 0, 0), new Vector3f(3, 3, 3));
+	private Cube cube3 = new Cube(new Vector3f(0, 0, 0), new Vector3f(4, 4, 4));
+	private Cube[] cubes = new Cube[] {cube0, cube1, cube2, cube3};
 	
-	private Switch[] switchs = new Switch[10];
+	@SuppressWarnings("rawtypes")
+	private Tracker[] trackers = new Tracker[10];
 	private int o = 0;
 	
+	@SuppressWarnings("unchecked")
 	@Override
 	public void loop(float partialTicks)
 	{
@@ -200,15 +209,19 @@ public class ObjectRenderTest implements RenderTest {
 		fontRenderer.loadText(text, new Vector2i(0, window.getHeight() - font.getLineHeight()), 1, window.getWidth(), 0);
 		fontRenderer.draw(orthographicPositive);
 		
-		int i = o / 10 % 10;
-		if (i == 0) switchs[0].turnOff();
-		else if (i == 5) switchs[0].turnOn();
+		int i = o / 10 % 14;
+		if (i == 0) trackers[0].disable();
+		else if (i == 5) trackers[0].enable();
 		objectColorRenderer.draw(7, orthographicPositive);
 		
-		if (i > 0 && i < 5) switchs[i].turnOff();
-		else if (i > 5) switchs[i - 5].turnOn();
+		if (i > 0 && i < 5) trackers[i].disable();
+		else if (i > 5 && i < 10) trackers[i - 5].enable();
 		objectTexturedRenderer.draw(7, orthographicPositive);
 		
+		if (i == 10) trackers[5].modify(cubes[1]);
+		else if (i == 11) trackers[5].modify(cubes[2]);
+		else if (i == 12) trackers[5].modify(cubes[3]);
+		else if (i == 13) trackers[5].modify(cubes[0]);
 		cubeRenderer.draw(7, new Matrix4f(projection).multiply(new Matrix4f().view(new Vector3f(10, 0, 10), 0, 0).multiply(new Matrix4f().rotate(Axis.Y, o * 8 / 13F % 360))));
 		
 		window.update(orthographic, partialTicks);

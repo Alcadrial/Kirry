@@ -9,6 +9,8 @@ import java.util.stream.Stream;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.system.MemoryUtil;
 
+import com.alcadra.renderengine.util.Tracker;
+
 public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 	
 	private List<Holder> values;
@@ -26,20 +28,13 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 		oldNativeData = MemoryUtil.memAllocInt(0);
 	}
 	
-	public boolean add(E element, int[] elementData)
+	public Tracker<int[]> add(E element, int[] elementData)
 	{
-		isModified |= values.add(new Holder(element, elementData));
+		Tracker0 tracker = new Tracker0(new Holder(element, elementData));
+		isModified |= values.add(tracker.holder);
 		intSize += elementData.length;
 		if (oldLocalData.capacity() < intSize) needResize = true;
-		return isModified;
-	}
-	
-	public void add(int index, E element, int[] elementData)
-	{
-		isModified = true;
-		values.add(index, new Holder(element, elementData));
-		intSize += elementData.length;
-		if (oldLocalData.capacity() < intSize) needResize = true;
+		return tracker;
 	}
 	
 	public E get(int index)
@@ -75,15 +70,6 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 			return true;
 		}
 		return false;
-	}
-	
-	public E remove(int index)
-	{
-		isModified = true;
-		Holder holder = values.remove(index);
-		intSize -= holder.data.length;
-		if (oldLocalData.capacity() >= intSize) needResize = false;
-		return values.remove(index).element;
 	}
 	
 	public boolean isEmpty()
@@ -179,7 +165,7 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 			{
 				MemoryUtil.memFree(oldLocalData);
 				oldLocalData = MemoryUtil.memAllocInt(intSize);
-				for (Holder holder : values) oldLocalData.put(holder.data);
+				for (Holder e : values) oldLocalData.put(e.enabled ? e.data : new int[e.data.length]);
 				return oldLocalData.flip();
 			}
 			for (Holder e : modifieds) oldLocalData.put(e.ints, e.enabled ? e.data : new int[e.data.length]);
@@ -244,6 +230,96 @@ public class ObjectArrayBuffer<E> extends ArrayBuffer<IntBuffer> {
 			enabled = true;
 			this.data = data;
 			ints = intSize;
+		}
+	}
+	
+	public class Tracker0 implements Tracker<int[]> {
+		
+		private Holder holder;
+		private boolean valid;
+		
+		public Tracker0(Holder holder)
+		{
+			this.holder = holder;
+			valid = true;
+		}
+		
+		@Override
+		public void modify(int[] data)
+		{
+			if (valid)
+			{
+				isModified = holder.data != data;
+				needResize = holder.data.length != data.length;
+				holder.data = data;
+				if (!modifieds.contains(holder)) modifieds.add(holder);
+			}
+		}
+		
+		@Override
+		public boolean turnOn()
+		{
+			if (isOff())
+			{
+				int i = modifieds.indexOf(holder);
+				if (i == -1) modifieds.add(holder);
+				else modifieds.remove(i);
+				isModified = true;
+				holder.enabled = true;
+				return true;
+			}
+			return false;
+		}
+		
+		@Override
+		public boolean turnOff()
+		{
+			if (isOn())
+			{
+				int i = modifieds.indexOf(holder);
+				if (i == -1) modifieds.add(holder);
+				else modifieds.remove(i);
+				isModified = true;
+				holder.enabled = false;
+				return true;
+			}
+			return false;
+		}
+		
+		@Override
+		public void remove()
+		{
+			if (valid)
+			{
+				if (isOn())
+				{
+					int i = modifieds.indexOf(holder);
+					if (i > -1) modifieds.remove(i);
+				}
+				intSize -= holder.data.length;
+				if (oldLocalData.capacity() >= intSize) needResize = false;
+				values.remove(holder);
+				isModified = true;
+				valid = false;
+			}
+		}
+		
+		@Override
+		public boolean isOn()
+		{
+			return valid && holder.enabled;
+		}
+		
+		@Override
+		public boolean isOff()
+		{
+			return valid && !holder.enabled;
+		}
+		
+		@Override
+		public boolean isValid()
+		{
+			return valid;
 		}
 	}
 }

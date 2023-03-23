@@ -32,9 +32,9 @@ sourceSets.main.java {
 		boolean b = e.getFile().name.endsWith(".java")
 		String text = e.getFile().text
 		boolean b0 = text.contains("@Test")
-		boolean b1 = text.contains("import com.alcadra.renderengine.Test")
-		boolean b2 = text.contains("package com.alcadra.renderengine;")
-		boolean b3 = text.contains("@com.alcadra.renderengine.Test")
+		boolean b1 = text.contains("import com.alcadra.renderengine.util.Test")
+		boolean b2 = text.contains("package com.alcadra.renderengine.util;")
+		boolean b3 = text.contains("@com.alcadra.renderengine.util.Test")
 		boolean result = b && ((b0 && (b1 || b2)) || b3)
 		if (!result && printExportedFiles) System.out.println("F " + e.getFile())
 		return result
