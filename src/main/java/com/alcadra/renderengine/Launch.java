@@ -482,7 +482,7 @@ public class Launch {
 				
 				if (program.getKnownInputs().size() != 3) return false;
 				if (program.getProgramInputs().size() != 0) return false;
-				if (program.isBuilded()) return false;
+				if (program.getStatus().isBuilded()) return false;
 				for (ShaderType type : ShaderType.values()) if (program.getShaders(type).size() != 0) return false;
 				
 				program.attachShader(shader);
@@ -495,7 +495,7 @@ public class Launch {
 				
 				t.println("Real Inputs = " + program.getProgramInputs());
 				
-				if (!program.isBuilded()) return false;
+				if (!program.getStatus().isBuilded()) return false;
 				if (program.getProgramInputs().size() != 3) return false;
 				if (!program.getProgramInputs().equals(program.getKnownInputs())) return false;
 				

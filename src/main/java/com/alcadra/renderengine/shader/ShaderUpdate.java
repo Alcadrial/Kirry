@@ -49,8 +49,8 @@ public class ShaderUpdate extends Shader {
 		for (String s : code) builder.append(s).append('\n');
 		GL20.glShaderSource(id, builder);
 		GL20.glCompileShader(id);
-		status = new ShaderStatus(GL20.glGetShaderi(id, GL20.GL_COMPILE_STATUS) == GL20.GL_TRUE, id, code, GL20.glGetShaderInfoLog(id));
-		if (status.isCompiled()) for (ShaderProgram program : programs) if (program.isBuilded()) program.build();
+		status = new ShaderStatus(GL20.glGetShaderi(id, GL20.GL_COMPILE_STATUS) == 1, id, code, GL20.glGetShaderInfoLog(id));
+		if (status.isCompiled()) for (ShaderProgram program : programs) if (program.getStatus().isBuilded()) program.build();
 		return status;
 	}
 	
