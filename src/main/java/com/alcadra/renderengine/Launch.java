@@ -12,14 +12,15 @@ import java.util.function.Supplier;
 
 import org.lwjgl.glfw.GLFW;
 
-import com.alcadra.renderengine.buffer.ArrayBuffer;
 import com.alcadra.renderengine.buffer.ElementArrayBuffer;
+import com.alcadra.renderengine.buffer.ElementArrayBufferStack;
 import com.alcadra.renderengine.buffer.FloatArrayBuffer;
+import com.alcadra.renderengine.buffer.FloatArrayBufferStack;
 import com.alcadra.renderengine.buffer.SimpleBuffer;
+import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.shader.ShaderInput;
 import com.alcadra.renderengine.shader.ShaderProgram;
 import com.alcadra.renderengine.shader.ShaderType;
-import com.alcadra.renderengine.shader.Shader;
 import com.alcadra.renderengine.util.Test;
 import com.alcadra.renderengine.window.Window;
 import com.alcadra.tester.UltimateTester;
@@ -43,7 +44,6 @@ public class Launch {
 		FileOutputStream stream = new FileOutputStream("Test Results.txt");
 		
 		UltimateTester t = new UltimateTester(window::detachCurrentContext, window::makeContextCurrent);
-		
 		// t.setOutputStream(stream);
 		
 		t.test("Buffers Test", enclosiveContext(() -> {
@@ -70,30 +70,11 @@ public class Launch {
 				value = glGetInteger(GL_ARRAY_BUFFER_BINDING);
 				t.println("Binded Outside = " + value);
 				return valueInside[0] == b.getId() && value == 0;
-			}), new SimpleBuffer() {
-				
-				@Override
-				public SimpleBuffer getNull()
-				{
-					return new SimpleBuffer(getTarget(), 0) {
-						
-						@Override
-						public SimpleBuffer getNull()
-						{
-							return this;
-						}
-					};
-				}
-			});
+			}), new SimpleBuffer() {});
 			t.println();
-			boolean arrayBuffer = t.test("Array Buffer", enclosiveContext(() -> {
-				t.assertTest("Constructor 0", b -> b.size() == 0 && b.getTarget() == GL_ARRAY_BUFFER && b.getId() == 0, ArrayBuffer.NULL);
-				return true;
-			}));
-			@SuppressWarnings("unused")
 			boolean floatArrayBuffer = false;
-			if (arrayBuffer) floatArrayBuffer = t.test("Float Array Buffer", enclosiveContext(() -> {
-				t.assertTest("Constructor 0", b -> b.size() == 0 && b.getTarget() == GL_ARRAY_BUFFER, new FloatArrayBuffer());
+			floatArrayBuffer = t.<Supplier<FloatArrayBuffer>>test("Float Array Buffer", enclosiveContext(builder -> {
+				t.assertTest("Constructor 0", b -> b.size() == 0 && b.getTarget() == GL_ARRAY_BUFFER, builder.get());
 				t.println();
 				t.test("Add", b -> {
 					float f = 0.630625F;
@@ -101,40 +82,40 @@ public class Launch {
 					t.println("Size = " + b.size());
 					t.println("Data = " + b.getFloat(0));
 					return b.size() == 1 && f == b.getFloat(0);
-				}, new FloatArrayBuffer());
+				}, builder.get());
 				t.test("Add all", enclosiveContext(() -> {
 					t.assertTest("Collection", b -> {
 						b.addAll(List.of(0F, 2F, 3F));
 						t.println("Size = " + b.size());
 						t.println("Data = " + b.getFloat(0) + ", " + b.getFloat(1) + ", " + b.getFloat(2));
 						return b.size() == 3 && b.getFloat(0) == 0 && b.getFloat(1) == 2 && b.getFloat(2) == 3;
-					}, new FloatArrayBuffer());
+					}, builder.get());
 					t.assertTest("Array", b -> {
 						b.addAll(new float[] {0, 2, 3});
 						t.println("Size = " + b.size());
 						t.println("Data = " + b.getFloat(0) + ", " + b.getFloat(1) + ", " + b.getFloat(2));
 						return b.size() == 3 && b.getFloat(0) == 0 && b.getFloat(1) == 2 && b.getFloat(2) == 3;
-					}, new FloatArrayBuffer());
+					}, builder.get());
 					return true;
 				}));
 				t.println();
 				t.test("Merge", enclosiveContext(b -> {
 					b.add(12F);
-					FloatArrayBuffer extra = new FloatArrayBuffer();
+					FloatArrayBuffer extra = builder.get();
 					extra.add(0.1F);
 					extra.add(11.5F);
 					b.merge(extra);
 					t.println("Size = " + b.size());
 					t.println("Data = " + b.getFloat(0) + ", " + b.getFloat(1) + ", " + b.getFloat(2));
 					return b.size() == 3 && b.getFloat(0) == 12F && b.getFloat(1) == 0.1F && b.getFloat(2) == 11.5F;
-				}), new FloatArrayBuffer());
+				}), builder.get());
 				t.assertTest("Clear", b -> {
 					b.add(0F);
 					b.add(1F);
 					b.clear();
 					t.println("Size = " + b.size());
 					return b.size() == 0;
-				}, new FloatArrayBuffer());
+				}, builder.get());
 				t.println();
 				t.assertTest("GL sync", enclosiveContext(b -> {
 					b.bind();
@@ -184,12 +165,69 @@ public class Launch {
 					data = b.getGlFloatData();
 					t.println("Data = " + data[0] + ", " + data[1] + ", " + data[2] + ", " + data[3]);
 					return data.length == 4 && data[0] == 0 && data[1] == 1 && data[2] == 2 && data[3] == 4;
-				}), new FloatArrayBuffer());
+				}), builder.get());
+				return true;
+			}), FloatArrayBuffer::new);
+			@SuppressWarnings("unused")
+			boolean floatArrayBufferStack = false;
+			if (floatArrayBuffer) floatArrayBufferStack = t.test("Float Array Buffer Stack", enclosiveContext(() -> {
+				t.assertTest("Constructor", b -> b.size() == 0 && b.current() == b, new FloatArrayBufferStack());
+				t.println();
+				t.assertTest("Push", enclosiveContext(b -> {
+					FloatArrayBuffer b0 = new FloatArrayBuffer();
+					FloatArrayBuffer b1 = new FloatArrayBuffer();
+					FloatArrayBuffer b2 = new FloatArrayBuffer();
+					FloatArrayBuffer b3 = new FloatArrayBuffer();
+					b.push(b0);
+					t.println("Current = " + b.current());
+					if (b.current() != b0 && b.size() != 1) return false;
+					b.push(b1);
+					b.push(b2);
+					t.println("Current = " + b.current());
+					if (b.current() != b2 && b.size() != 3) return false;
+					b.push(b1);
+					b.push(b3);
+					b.push(b);
+					t.println("Current = " + b.current());
+					if (b.current() != b && b.size() != 6) return false;
+					return true;
+				}), new FloatArrayBufferStack());
+				t.assertTest("Pull", enclosiveContext(b -> {
+					FloatArrayBuffer b0 = new FloatArrayBuffer();
+					FloatArrayBuffer b1 = new FloatArrayBuffer();
+					FloatArrayBuffer b2 = new FloatArrayBuffer();
+					FloatArrayBuffer b3 = new FloatArrayBuffer();
+					b.push(b0);
+					b.pull();
+					b.push(b2);
+					t.println("Current = " + b.current());
+					if (b.current() != b2 && b.size() != 1) return false;
+					b.push(b1);
+					b.push(b3);
+					b.pull();
+					b.push(b);
+					b.pull();
+					b.pull();
+					b.pull();
+					t.println("Current = " + b.current());
+					if (b.current() != b && b.size() != 0) return false;
+					b.pull();
+					t.println("Current = " + b.current());
+					if (b.current() != b && b.size() != 0) return false;
+					return true;
+				}), new FloatArrayBufferStack());
+				t.println();
+				t.<Supplier<FloatArrayBuffer>>assertTest("Superclass methods", t.getLastPredicateTestCast("Float Array Buffer"), FloatArrayBufferStack::new);
+				FloatArrayBufferStack stack = new FloatArrayBufferStack();
+				t.<Supplier<FloatArrayBuffer>>assertTest("Pulled Superclass methods", t.getLastPredicateTestCast("Float Array Buffer"), () -> {
+					stack.pull();
+					stack.push(new FloatArrayBuffer());
+					return stack.current();
+				});
 				return true;
 			}));
-			@SuppressWarnings("unused")
-			boolean elementArrayBuffer = t.test("Element Array Buffer", enclosiveContext(() -> {
-				t.assertTest("Constructor", b -> b.size() == 0 && b.getTarget() == GL_ELEMENT_ARRAY_BUFFER, new ElementArrayBuffer());
+			boolean elementArrayBuffer = t.<Supplier<ElementArrayBuffer>>test("Element Array Buffer", enclosiveContext(builder -> {
+				t.assertTest("Constructor", b -> b.size() == 0 && b.getTarget() == GL_ELEMENT_ARRAY_BUFFER, builder.get());
 				t.println();
 				t.assertTest("Add", b -> {
 					b.add(0);
@@ -198,22 +236,22 @@ public class Launch {
 					t.println("Size = " + b.size());
 					t.println("Data = " + b.get(0) + ", " + b.get(1) + ", " + b.get(2));
 					return b.size() == 3 && b.get(0) == 0 && b.get(1) == 2 && b.get(2) == 3;
-				}, new ElementArrayBuffer());
+				}, builder.get());
 				t.test("Add all", enclosiveContext(() -> {
 					t.assertTest("Collection", b -> {
 						b.addAll(List.of(0, 2, 3));
 						t.println("Size = " + b.size());
 						t.println("Data = " + b.get(0) + ", " + b.get(1) + ", " + b.get(2));
 						return b.size() == 3 && b.get(0) == 0 && b.get(1) == 2 && b.get(2) == 3;
-					}, new ElementArrayBuffer());
+					}, builder.get());
 					t.assertTest("Array", b -> {
 						b.addAll(new int[] {0, 2, 3});
 						t.println("Size = " + b.size());
 						t.println("Data = " + b.get(0) + ", " + b.get(1) + ", " + b.get(2));
 						return b.size() == 3 && b.get(0) == 0 && b.get(1) == 2 && b.get(2) == 3;
-					}, new ElementArrayBuffer());
-					t.assertTest("Element Array Buffer", enclosiveContext(b -> {
-						ElementArrayBuffer extra = new ElementArrayBuffer();
+					}, builder.get());
+					t.assertTest("ElementArrayBuffer", enclosiveContext(b -> {
+						ElementArrayBuffer extra = builder.get();
 						extra.add(0);
 						extra.add(2);
 						extra.add(3);
@@ -221,12 +259,12 @@ public class Launch {
 						t.println("Size = " + b.size());
 						t.println("Data = " + b.get(0) + ", " + b.get(1) + ", " + b.get(2));
 						return b.size() == 3 && b.get(0) == 0 && b.get(1) == 2 && b.get(2) == 3;
-					}), new ElementArrayBuffer());
+					}), builder.get());
 					return true;
 				}));
 				t.println();
 				t.test("Merge", enclosiveContext(b -> {
-					ElementArrayBuffer extra = new ElementArrayBuffer();
+					ElementArrayBuffer extra = builder.get();
 					extra.add(0);
 					extra.add(1);
 					b.merge(extra, 0);
@@ -234,14 +272,14 @@ public class Launch {
 					t.println("Size = " + b.size());
 					t.println("Data = " + b.get(0) + ", " + b.get(1) + ", " + b.get(2) + ", " + b.get(3));
 					return b.size() == 4 && b.get(0) == 0 && b.get(1) == 1 && b.get(2) == 2 && b.get(3) == 3;
-				}), new ElementArrayBuffer());
+				}), builder.get());
 				t.assertTest("Clear", b -> {
 					b.add(0);
 					b.add(1);
 					b.clear();
 					t.println("Size = " + b.size());
 					return b.size() == 0;
-				}, new ElementArrayBuffer());
+				}, builder.get());
 				t.println();
 				t.assertTest("GL sync", enclosiveContext(b -> {
 					b.bind();
@@ -291,7 +329,7 @@ public class Launch {
 					data = b.getGlData();
 					t.println("Data = " + data[0] + ", " + data[1] + ", " + data[2] + ", " + data[3]);
 					return data.length == 4 && data[0] == 0 && data[1] == 1 && data[2] == 2 && data[3] == 4;
-				}), new ElementArrayBuffer());
+				}), builder.get());
 				t.test("Get array", enclosiveContext(b -> {
 					b.bind();
 					b.add(0);
@@ -303,7 +341,65 @@ public class Launch {
 					t.println("Length = " + data.length);
 					t.println("Data = " + data[0] + ", " + data[1] + ", " + data[2] + ", " + data[3]);
 					return data.length == 4 && data[0] == 0 && data[1] == 1 && data[2] == 2 && data[3] == 4;
-				}), new ElementArrayBuffer());
+				}), builder.get());
+				return true;
+			}), ElementArrayBuffer::new);
+			@SuppressWarnings("unused")
+			boolean elementArrayBufferStack = false;
+			if (elementArrayBuffer) elementArrayBufferStack = t.test("Element Array Buffer Stack", enclosiveContext(() -> {
+				t.assertTest("Constructor", b -> b.size() == 0 && b.current() == b, new ElementArrayBufferStack());
+				t.println();
+				t.assertTest("Push", enclosiveContext(b -> {
+					ElementArrayBuffer b0 = new ElementArrayBuffer();
+					ElementArrayBuffer b1 = new ElementArrayBuffer();
+					ElementArrayBuffer b2 = new ElementArrayBuffer();
+					ElementArrayBuffer b3 = new ElementArrayBuffer();
+					b.push(b0);
+					t.println("Current = " + b.current());
+					if (b.current() != b0 && b.size() != 1) return false;
+					b.push(b1);
+					b.push(b2);
+					t.println("Current = " + b.current());
+					if (b.current() != b2 && b.size() != 3) return false;
+					b.push(b1);
+					b.push(b3);
+					b.push(b);
+					t.println("Current = " + b.current());
+					if (b.current() != b && b.size() != 6) return false;
+					return true;
+				}), new ElementArrayBufferStack());
+				t.assertTest("Pull", enclosiveContext(b -> {
+					ElementArrayBuffer b0 = new ElementArrayBuffer();
+					ElementArrayBuffer b1 = new ElementArrayBuffer();
+					ElementArrayBuffer b2 = new ElementArrayBuffer();
+					ElementArrayBuffer b3 = new ElementArrayBuffer();
+					b.push(b0);
+					b.pull();
+					b.push(b2);
+					t.println("Current = " + b.current());
+					if (b.current() != b2 && b.size() != 1) return false;
+					b.push(b1);
+					b.push(b3);
+					b.pull();
+					b.push(b);
+					b.pull();
+					b.pull();
+					b.pull();
+					t.println("Current = " + b.current());
+					if (b.current() != b && b.size() != 0) return false;
+					b.pull();
+					t.println("Current = " + b.current());
+					if (b.current() != b && b.size() != 0) return false;
+					return true;
+				}), new ElementArrayBufferStack());
+				t.println();
+				t.<Supplier<ElementArrayBuffer>>assertTest("Superclass methods", t.getLastPredicateTestCast("Element Array Buffer"), ElementArrayBufferStack::new);
+				ElementArrayBufferStack stack = new ElementArrayBufferStack();
+				t.<Supplier<ElementArrayBuffer>>assertTest("Pulled Superclass methods", t.getLastPredicateTestCast("Element Array Buffer"), () -> {
+					stack.pull();
+					stack.push(new ElementArrayBuffer());
+					return stack.current();
+				});
 				return true;
 			}));
 			t.test("Shader", enclosiveContext(() -> {
@@ -331,6 +427,10 @@ public class Launch {
 				if (shader.getStatus().getId() != shader.getId()) return false;
 				
 				ShaderProgram program = new ShaderProgram(ShaderInput.VERTEX_POSITION, ShaderInput.COLOR, ShaderInput.UV);
+				
+				t.println("Id = " + program.getId());
+				
+				if (program.getId() == 0) return false;
 				
 				t.println("Known Inputs = " + program.getKnownInputs());
 				
@@ -391,6 +491,7 @@ public class Launch {
 			}
 			catch (Exception e)
 			{
+				e.printStackTrace();
 				throw e;
 			}
 			finally
@@ -403,11 +504,10 @@ public class Launch {
 	public static Supplier<Boolean> enclosiveContext(Supplier<Boolean> supplier)
 	{
 		return () -> {
-			boolean b;
 			window.makeContextCurrent();
 			try
 			{
-				b = supplier.get();
+				return supplier.get();
 			}
 			catch (Exception e)
 			{
@@ -418,28 +518,26 @@ public class Launch {
 			{
 				window.detachCurrentContext();
 			}
-			return b;
 		};
 	}
 	
 	public static <T> Predicate<T> enclosiveContext(Predicate<T> predicate)
 	{
 		return t -> {
-			boolean b;
 			window.makeContextCurrent();
 			try
 			{
-				b = predicate.test(t);
+				return predicate.test(t);
 			}
 			catch (Exception e)
 			{
+				e.printStackTrace();
 				throw e;
 			}
 			finally
 			{
 				window.detachCurrentContext();
 			}
-			return b;
 		};
 	}
 }

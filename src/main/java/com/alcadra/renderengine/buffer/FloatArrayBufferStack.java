@@ -1,5 +1,6 @@
 package com.alcadra.renderengine.buffer;
 
+import java.nio.FloatBuffer;
 import java.util.Collection;
 import java.util.List;
 
@@ -23,7 +24,7 @@ public class FloatArrayBufferStack extends FloatArrayBuffer {
 	
 	public FloatArrayBuffer current()
 	{
-		return top.buffer;
+		return top != null ? top.buffer : this;
 	}
 	
 	public void pull()
@@ -103,13 +104,6 @@ public class FloatArrayBufferStack extends FloatArrayBuffer {
 	}
 	
 	@Override
-	public void bind()
-	{
-		if (top != null) top.buffer.bind();
-		else super.bind();
-	}
-	
-	@Override
 	public void sync()
 	{
 		if (top != null) top.buffer.sync();
@@ -117,9 +111,53 @@ public class FloatArrayBufferStack extends FloatArrayBuffer {
 	}
 	
 	@Override
+	protected FloatBuffer nativeBuffer()
+	{
+		return top != null ? top.buffer.nativeBuffer() : super.nativeBuffer();
+	}
+	
+	@Override
+	protected FloatBuffer nativeGlBuffer()
+	{
+		return top != null ? top.buffer.nativeGlBuffer() : super.nativeGlBuffer();
+	}
+	
+	@Override
+	protected void syncRewrite(FloatBuffer buffer)
+	{
+		if (top != null) top.buffer.syncRewrite(buffer);
+		else super.syncRewrite(buffer);
+	}
+	
+	@Override
+	protected void syncModify(FloatBuffer buffer, int from, int to)
+	{
+		if (top != null) top.buffer.syncModify(buffer, from, to);
+		else super.syncModify(buffer, from, to);
+	}
+	
+	@Override
+	public float[] getGlFloatData()
+	{
+		return top != null ? top.buffer.getGlFloatData() : super.getGlFloatData();
+	}
+	
+	@Override
+	public int getId()
+	{
+		return top != null ? top.buffer.getId() : super.getId();
+	}
+	
+	@Override
+	public int getTarget()
+	{
+		return top != null ? top.buffer.getTarget() : super.getTarget();
+	}
+	
+	@Override
 	public String toString()
 	{
-		return "FloatArrayBufferStack{size=" + size + ", topValues=" + top.buffer.values + "}";
+		return "FloatArrayBufferStack{size=" + size + ", topValues=" + current().values + "}";
 	}
 	
 	private class Node {

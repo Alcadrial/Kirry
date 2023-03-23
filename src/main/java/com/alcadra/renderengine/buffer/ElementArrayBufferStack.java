@@ -97,16 +97,15 @@ public class ElementArrayBufferStack extends ElementArrayBuffer {
 	}
 	
 	@Override
-	public int size()
+	public int getMax()
 	{
-		return top != null ? top.buffer.size() : super.size();
+		return top != null ? top.buffer.getMax() : super.getMax();
 	}
 	
 	@Override
-	public void bind()
+	public int size()
 	{
-		if (top != null) top.buffer.bind();
-		else super.bind();
+		return top != null ? top.buffer.size() : super.size();
 	}
 	
 	@Override
@@ -117,9 +116,28 @@ public class ElementArrayBufferStack extends ElementArrayBuffer {
 	}
 	
 	@Override
+	protected void syncModify()
+	{
+		if (top != null) top.buffer.syncModify();
+		else super.syncModify();
+	}
+	
+	@Override
+	public int getId()
+	{
+		return top != null ? top.buffer.getId() : super.getId();
+	}
+	
+	@Override
+	public int getTarget()
+	{
+		return top != null ? top.buffer.getTarget() : super.getTarget();
+	}
+	
+	@Override
 	public String toString()
 	{
-		return "FloatArrayBufferStack{size=" + size + ", topValues=" + top.buffer.values + "}";
+		return "ElementArrayBufferStack{size=" + size + ", topValues=" + current().values + "}";
 	}
 	
 	private class Node {
