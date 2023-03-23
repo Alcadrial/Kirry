@@ -1,7 +1,9 @@
 package com.alcadrial.renderengine;
 
+import java.util.Comparator;
 import java.util.Iterator;
 
+import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.VK10;
@@ -9,7 +11,36 @@ import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
 
-public class PhysicalDevice {
+public class PhysicalDevice implements AutoCloseable {
+	
+	private static final int[] BEST_MATCHER_MAP = new int[] {4, 2, 0, 1, 3};
+	
+	/**
+	 * BestMatcher for {@link Vulkan#pickPhysicalDevices(java.util.function.Predicate, Comparable)} that use the device type
+	 * 
+	 * <table class="striped" style="text-align:center">
+	 * <thead>
+	 * <tr><th scope="col">Priority</th><th scope="col">Device Type</th></tr>
+	 * </thead>
+	 * <tbody>
+	 * <tr><th scope="row">4</th><td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU DISCRETE GPU}</td>
+	 * <tr><th scope="row">3</th><td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU VIRTUAL GPU}</td>
+	 * <tr><th scope="row">2</th><td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU INTEGRATED GPU}</td>
+	 * <tr><th scope="row">1</th><td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_CPU CPU}</td>
+	 * <tr><th scope="row">0</th><td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_OTHER OTHER}</td>
+	 * </tbody>
+	 * </table>
+	 * @param device
+	 * @return
+	 */
+	public static Comparator<PhysicalDevice> typeBestMatcher()
+	{
+		return Comparator.comparingInt(device -> {
+			int deviceType = device.getProperties().deviceType();
+			if (deviceType < 0 || deviceType >= BEST_MATCHER_MAP.length) return -1;
+			return BEST_MATCHER_MAP[deviceType];
+		});
+	}
 	
 	private VkPhysicalDevice device;
 	private VkPhysicalDeviceProperties properties;
@@ -18,6 +49,11 @@ public class PhysicalDevice {
 	public PhysicalDevice(VkPhysicalDevice device, long surface)
 	{
 		this.device = device;
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			properties = new VkPhysicalDeviceProperties(BufferUtils.createByteBuffer(VkPhysicalDeviceProperties.SIZEOF));
+			VK10.vkGetPhysicalDeviceProperties(device, properties);
+		}
 		queueFamilies = new QueueFamilies();
 		searchQueueSurfaceFamilyProperties(surface);
 	}
@@ -29,14 +65,6 @@ public class PhysicalDevice {
 	
 	public VkPhysicalDeviceProperties getProperties()
 	{
-		if (properties == null)
-		{
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				properties = new VkPhysicalDeviceProperties(stack.calloc(VkPhysicalDeviceProperties.SIZEOF));
-				VK10.vkGetPhysicalDeviceProperties(device, properties);
-			}
-		}
 		return properties;
 	}
 	
@@ -142,6 +170,12 @@ public class PhysicalDevice {
 	public int indices()
 	{
 		return queueFamilies.indices;
+	}
+	
+	@Override
+	public void close()
+	{
+		properties.close();
 	}
 	
 	private class QueueFamilies {

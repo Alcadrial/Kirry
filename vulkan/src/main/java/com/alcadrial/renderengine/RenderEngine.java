@@ -25,9 +25,13 @@ public class RenderEngine {
 	
 	public static PointerBuffer getValidationLayers(MemoryStack stack)
 	{
-		PointerBuffer array = stack.mallocPointer(VALIDATION_LAYERS.size());
-		for (String string : VALIDATION_LAYERS) array.put(stack.UTF8(string));
-		return array.rewind();
+		if (Properties.DEBUG.getValue())
+		{
+			PointerBuffer array = stack.mallocPointer(VALIDATION_LAYERS.size());
+			for (String string : VALIDATION_LAYERS) array.put(stack.UTF8(string));
+			return array.rewind();
+		}
+		return stack.mallocPointer(0);
 	}
 	
 	public static PointerBuffer getDeviceExtensions(MemoryStack stack)
@@ -79,18 +83,21 @@ public class RenderEngine {
 					createInfo.ppEnabledExtensionNames(requiredInstances);
 					createInfo.ppEnabledLayerNames(getValidationLayers(stack));
 					
-					VkDebugUtilsMessengerCreateInfoEXT info = VkDebugUtilsMessengerCreateInfoEXT.calloc(stack);
-					
-					info.sType(EXTDebugUtils.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT);
-					info.messageSeverity(EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT);
-					info.messageType(EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT);
-					info.pfnUserCallback(RenderEngine::debugCallback);
-					
-					createInfo.pNext(info.address());
-					
+					if (Properties.DEBUG.getValue())
+					{
+						VkDebugUtilsMessengerCreateInfoEXT info = VkDebugUtilsMessengerCreateInfoEXT.calloc(stack);
+						
+						info.sType(EXTDebugUtils.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT);
+						info.messageSeverity(EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT);
+						info.messageType(EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT);
+						info.pfnUserCallback(RenderEngine::debugCallback);
+						
+						createInfo.pNext(info.address());
+					}
 				}
 				instance = new Vulkan(windowId, createInfo);
 			}
+			if (Properties.DEBUG.getValue())
 			{
 				VkDebugUtilsMessengerCreateInfoEXT info = VkDebugUtilsMessengerCreateInfoEXT.calloc(stack);
 				
@@ -102,7 +109,8 @@ public class RenderEngine {
 				if (!instance.activateDebugMessenger(info)) System.out.println("Debug messenger not active");
 			}
 			instance.createSurface(windowId);
-			instance.pickPhysicalDevices();
+			instance.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueGraphicsFamilyProperties() != null);
+			instance.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
 			device = instance.getDevice();
 			SwapChain swapChain = device.getSwapChain();
 			Shader vertexShader;

@@ -2,7 +2,10 @@ package com.alcadrial.renderengine;
 
 import java.nio.LongBuffer;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Predicate;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFWVulkan;
@@ -22,11 +25,17 @@ import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 public class Vulkan implements AutoCloseable {
 	
 	private long window;
+	
 	private VkInstanceCreateInfo createInfo;
 	private VkInstance instance;
+	
 	private long debugMessengerId;
-	private PhysicalDevice physicalDevice;
+	
+	private Predicate<PhysicalDevice> physicalDeviceFilter;
 	private List<PhysicalDevice> physicalDevices;
+	private List<PhysicalDevice> validPhysicalDevices;
+	private PhysicalDevice physicalDevice;
+	
 	private long surface;
 	private Device device;
 	
@@ -41,6 +50,7 @@ public class Vulkan implements AutoCloseable {
 			this.createInfo = createInfo;
 			instance = new VkInstance(p.get(0), createInfo);
 		}
+		physicalDeviceFilter = d -> true;
 	}
 	
 	public boolean activateDebugMessenger(VkDebugUtilsMessengerCreateInfoEXT info)
@@ -65,31 +75,33 @@ public class Vulkan implements AutoCloseable {
 		surface = p[0];
 	}
 	
-	public void pickPhysicalDevices()
+	public void setPhysicalDeviceFilter(Predicate<PhysicalDevice> physicalDeviceFilter)
+	{
+		this.physicalDeviceFilter = VulkanErrorUtils.nonNull(physicalDeviceFilter);
+		validPhysicalDevices = null;
+	}
+	
+	public void pickPhysicalDevices(Comparator<PhysicalDevice> bestMatcher)
 	{
 		if (physicalDevice == null)
 		{
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				int[] p = new int[1];
-				VK10.vkEnumeratePhysicalDevices(instance, p, null);
-				PointerBuffer physicalDevicesArray = stack.mallocPointer(p[0]);
-				VK10.vkEnumeratePhysicalDevices(instance, p, physicalDevicesArray);
-				
-				for (PhysicalDevice device : getPhysicalDevices())
-				{
-					if (device.getQueueGraphicsFamilyProperties() != null)
-					{
-						physicalDevice = device;
-						return;
-					}
-				}
-				VulkanErrorUtils.nonNull(physicalDevice, "no physical device has the required graphics properties");
-			}
+			physicalDevice = getValidPhysicalDevices().stream().sorted(bestMatcher.reversed()).findFirst().orElseGet(() -> null);
+			VulkanErrorUtils.nonNull(physicalDevice, "no physical device has the required graphics properties");
 		}
 	}
 	
-	public List<PhysicalDevice> getPhysicalDevices()
+	public List<PhysicalDevice> getValidPhysicalDevices()
+	{
+		if (validPhysicalDevices == null)
+		{
+			validPhysicalDevices = new LinkedList<>();
+			for (PhysicalDevice device : getAvailablePhysicalDevices()) if (physicalDeviceFilter.test(device)) validPhysicalDevices.add(device);
+			validPhysicalDevices = List.copyOf(validPhysicalDevices);
+		}
+		return validPhysicalDevices;
+	}
+	
+	public List<PhysicalDevice> getAvailablePhysicalDevices()
 	{
 		if (physicalDevices == null)
 		{
@@ -105,6 +117,7 @@ public class Vulkan implements AutoCloseable {
 				{
 					physicalDevices.add(new PhysicalDevice(new VkPhysicalDevice(physicalDevicesArray.get(i), instance), surface));
 				}
+				physicalDevices = List.copyOf(physicalDevices);
 			}
 		}
 		return physicalDevices;
@@ -154,6 +167,7 @@ public class Vulkan implements AutoCloseable {
 	{
 		if (debugMessengerId != 0) EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(instance, debugMessengerId, null);
 		if (device != null) device.close();
+		for (PhysicalDevice physicalDevice : physicalDevices) physicalDevice.close();
 		if (surface != 0) KHRSurface.vkDestroySurfaceKHR(instance, surface, null);
 		VK10.vkDestroyInstance(instance, null);
 	}

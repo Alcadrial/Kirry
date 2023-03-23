@@ -241,28 +241,23 @@ public class Device implements AutoCloseable {
 			fragShaderStageInfo.module(fragShaderModule);
 			fragShaderStageInfo.pName(entryPoint);
 			
-			// ===> VERTEX STAGE <===
-			
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo = VkPipelineVertexInputStateCreateInfo.calloc(stack);
 			vertexInputInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
-			
-			// ===> ASSEMBLY STAGE <===
 			
 			VkPipelineInputAssemblyStateCreateInfo inputAssembly = VkPipelineInputAssemblyStateCreateInfo.calloc(stack);
 			inputAssembly.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO);
 			inputAssembly.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 			inputAssembly.primitiveRestartEnable(false);
 			
-			// ===> VIEWPORT & SCISSOR
 			VkExtent2D extent = swapChain.getExtent();
 			
 			VkViewport.Buffer viewport = VkViewport.calloc(1, stack);
-			viewport.x(0.0f);
-			viewport.y(0.0f);
+			viewport.x(0);
+			viewport.y(0);
 			viewport.width(extent.width());
 			viewport.height(extent.height());
-			viewport.minDepth(0.0f);
-			viewport.maxDepth(1.0f);
+			viewport.minDepth(0);
+			viewport.maxDepth(1);
 			
 			VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack);
 			scissor.offset(VkOffset2D.calloc(stack).set(0, 0));
@@ -273,26 +268,20 @@ public class Device implements AutoCloseable {
 			viewportState.pViewports(viewport);
 			viewportState.pScissors(scissor);
 			
-			// ===> RASTERIZATION STAGE <===
-			
 			VkPipelineRasterizationStateCreateInfo rasterizer = VkPipelineRasterizationStateCreateInfo.calloc(stack);
 			rasterizer.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO);
 			rasterizer.depthClampEnable(false);
 			rasterizer.rasterizerDiscardEnable(false);
 			rasterizer.polygonMode(VK10.VK_POLYGON_MODE_FILL);
-			rasterizer.lineWidth(1.0f);
+			rasterizer.lineWidth(1);
 			rasterizer.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 			rasterizer.frontFace(VK10.VK_FRONT_FACE_CLOCKWISE);
 			rasterizer.depthBiasEnable(false);
-			
-			// ===> MULTISAMPLING <===
 			
 			VkPipelineMultisampleStateCreateInfo multisampling = VkPipelineMultisampleStateCreateInfo.calloc(stack);
 			multisampling.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO);
 			multisampling.sampleShadingEnable(false);
 			multisampling.rasterizationSamples(VK10.VK_SAMPLE_COUNT_1_BIT);
-			
-			// ===> COLOR BLENDING <===
 			
 			VkPipelineColorBlendAttachmentState.Buffer colorBlendAttachment = VkPipelineColorBlendAttachmentState.calloc(1, stack);
 			colorBlendAttachment.colorWriteMask(VK10.VK_COLOR_COMPONENT_R_BIT | VK10.VK_COLOR_COMPONENT_G_BIT | VK10.VK_COLOR_COMPONENT_B_BIT | VK10.VK_COLOR_COMPONENT_A_BIT);
@@ -303,9 +292,7 @@ public class Device implements AutoCloseable {
 			colorBlending.logicOpEnable(false);
 			colorBlending.logicOp(VK10.VK_LOGIC_OP_COPY);
 			colorBlending.pAttachments(colorBlendAttachment);
-			colorBlending.blendConstants(stack.floats(0.0f, 0.0f, 0.0f, 0.0f));
-			
-			// ===> PIPELINE LAYOUT CREATION <===
+			colorBlending.blendConstants(stack.floats(0, 0, 0, 0));
 			
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
 			pipelineLayoutInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
@@ -334,8 +321,6 @@ public class Device implements AutoCloseable {
 			VulkanErrorUtils.assertNoError(VK10.vkCreateGraphicsPipelines(device, 0, pipelineInfo, null, p), "Failed to create graphics pipeline");
 			
 			pipeline = new Pipeline(this, pipelineLayout, p[0]);
-			
-			// ===> RELEASE RESOURCES <===
 			
 			VK10.vkDestroyShaderModule(device, vertShaderModule, null);
 			VK10.vkDestroyShaderModule(device, fragShaderModule, null);
@@ -384,7 +369,7 @@ public class Device implements AutoCloseable {
 				VulkanErrorUtils.assertNoError(VK10.vkCreateSemaphore(device, semaphoreInfo, null, p[1]), "Failed to create swapping buffers for the frame " + i);
 				VulkanErrorUtils.assertNoError(VK10.vkCreateFence(device, fenceInfo, null, p[2]), "Failed to create swapping buffers for the frame " + i);
 				
-				swappingBuffers.add(new SwappingBuffer(p[0][0], p[1][0], p[2][0]));
+				swappingBuffers.add(new SwappingBuffer(this, p[0][0], p[1][0], p[2][0]));
 			}
 		}
 		currentFrame = 0;
@@ -413,7 +398,7 @@ public class Device implements AutoCloseable {
 			LongBuffer p0 = stack.callocLong(1);
 			p0.put(0, buffer.getImageAvailable());
 			LongBuffer p1 = stack.callocLong(1);
-			p0.put(0, buffer.getRenderFinished());
+			p1.put(0, buffer.getRenderFinished());
 			
 			VkSubmitInfo submitInfo = VkSubmitInfo.calloc(stack);
 			submitInfo.sType(VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO);
@@ -428,7 +413,7 @@ public class Device implements AutoCloseable {
 			
 			VK10.vkResetFences(device, buffer.getFence());
 			
-			VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(graphicsQueue.getQueue(), submitInfo, buffer.getFence()), "Failed to submit draw command buffer");
+			VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(graphicsQueue.getQueue(), submitInfo, buffer.getFence()), "Failed to submit draw command buffer");// FAIL
 			
 			VkPresentInfoKHR presentInfo = VkPresentInfoKHR.calloc(stack);
 			presentInfo.sType(KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR);
@@ -501,6 +486,7 @@ public class Device implements AutoCloseable {
 	@Override
 	public void close()
 	{
+		if (swappingBuffers != null) for (SwappingBuffer swappingBuffer : swappingBuffers) swappingBuffer.close();
 		if (pipeline != null) pipeline.close();
 		VK10.vkDestroyRenderPass(device, renderPass, null);
 		swapChain.close();
