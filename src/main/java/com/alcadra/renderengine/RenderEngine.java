@@ -449,12 +449,15 @@ public class RenderEngine implements RenderTest {
 		RendererUtil.loadOrthoCube(renderer, Vector3f.getOrigin(), end, new Vector4f(255, 255, 0, 255));
 		RendererUtil.loadOrthoCube(renderer, viewer, end, end.add(end), new Vector4f(255, 255, 0, 255));
 		renderer.drawPoints(GL30.GL_QUADS, projected);
+		renderer.clear();
+		RendererUtil.loadSquare(renderer, 100, 100, 128, 128, 1, 255, 255, 0, 255);
+		renderer.drawPoints(GL30.GL_QUADS, compact);
 		Util.printError("TextureRender draw");
 		
-		textureRenderer.clear();
-		textureRenderer.loadQuad(0, 0, 256, 256, 0, 0, 0, 1, 1);
+		// textureRenderer.clear();
+		// textureRenderer.loadQuad(0, 0, 256, 256, 0, 0, 0, 1, 1);
 		// System.out.println(textureRenderer);
-		textureRenderer.drawVertices(GL30.GL_QUADS, compact);
+		// textureRenderer.drawVertices(GL30.GL_QUADS, compact);
 		
 		// frameBuffer.unbind();
 		window.update(compact, partialTicks);
