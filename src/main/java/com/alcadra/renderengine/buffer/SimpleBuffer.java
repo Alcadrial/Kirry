@@ -36,7 +36,7 @@ public abstract class SimpleBuffer {
 	
 	public void unbind()
 	{
-		getNull().bind();
+		GL15.glBindBuffer(getTarget(), 0);
 	}
 	
 	public int getTarget()
@@ -48,6 +48,4 @@ public abstract class SimpleBuffer {
 	{
 		return id;
 	}
-	
-	public abstract SimpleBuffer getNull();
 }

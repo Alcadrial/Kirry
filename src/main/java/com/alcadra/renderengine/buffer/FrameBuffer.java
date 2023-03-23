@@ -49,7 +49,7 @@ public class FrameBuffer extends SimpleBuffer {
 		this(GL32.GL_FRAMEBUFFER);
 		colorTexture = ColorTexture.getNull();
 		depthTexture = DepthTexture.getNull();
-		renderBuffer = RenderBuffer.NULL;
+		renderBuffer = null;
 	}
 	
 	protected FrameBuffer(int target)
@@ -63,7 +63,7 @@ public class FrameBuffer extends SimpleBuffer {
 		Util.printError("[INTERNAL] framebuffer");
 		colorTexture = ColorTexture.getNull();
 		depthTexture = DepthTexture.getNull();
-		renderBuffer = RenderBuffer.NULL;
+		renderBuffer = null;
 	}
 	
 	@Override
@@ -115,12 +115,6 @@ public class FrameBuffer extends SimpleBuffer {
 		return getId() != DEFAULT.getId();
 	}
 	
-	@Override
-	public SimpleBuffer getNull()
-	{
-		return DEFAULT;
-	}
-	
 	public void bindTexture(Texture texture, int attachment)
 	{
 		if (texture.nonNull())
@@ -170,7 +164,7 @@ public class FrameBuffer extends SimpleBuffer {
 	
 	public void bindRenderBuffer(RenderBuffer buffer)
 	{
-		if (renderBuffer.getId() != buffer.getId())
+		if (renderBuffer == null || renderBuffer.getId() != buffer.getId())
 		{
 			renderBuffer = buffer;
 			GL32.glFramebufferRenderbuffer(getTarget(), GL32.GL_COLOR_ATTACHMENT0, renderBuffer.getTarget(), renderBuffer.getId());
@@ -207,9 +201,14 @@ public class FrameBuffer extends SimpleBuffer {
 	
 	public String getError()
 	{
-		bind();
-		String error = getBindedError();
-		unbind();
-		return error;
+		try
+		{
+			bind();
+			return getBindedError();
+		}
+		finally
+		{
+			unbind();
+		}
 	}
 }

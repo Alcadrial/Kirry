@@ -41,7 +41,7 @@ public class FloatArrayBuffer extends SyncronizableArrayBuffer<FloatBuffer> {
 	
 	public void merge(FloatArrayBuffer arrayBuffer)
 	{
-		values.addAll(arrayBuffer.values);
+		values.addAll(arrayBuffer.asList());
 		isModified = true;
 	}
 	
@@ -108,17 +108,6 @@ public class FloatArrayBuffer extends SyncronizableArrayBuffer<FloatBuffer> {
 	protected int elementSize()
 	{
 		return 4;
-	}
-	
-	@Override
-	public float[] getGlFloatData()
-	{
-		FloatBuffer buffer = MemoryUtil.memAllocFloat(getGlSize());
-		GL15.glGetBufferSubData(getTarget(), 0, buffer);
-		float[] v = new float[buffer.limit()];
-		for (int i = 0; i < v.length; i++) v[i] = buffer.get(i);
-		MemoryUtil.memFree(buffer);
-		return v;
 	}
 	
 	@Override

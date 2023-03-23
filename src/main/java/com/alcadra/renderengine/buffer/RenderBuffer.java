@@ -7,7 +7,6 @@ import com.alcadra.renderengine.util.Util;
 
 public class RenderBuffer extends SimpleBuffer {
 	
-	public static final RenderBuffer NULL = new RenderBuffer(GL30.GL_RENDERBUFFER, 0, GL30.GL_RGBA, null);
 	private final Vector2i size;
 	
 	public RenderBuffer(int format, Vector2i size)
@@ -45,8 +44,8 @@ public class RenderBuffer extends SimpleBuffer {
 	}
 	
 	@Override
-	public RenderBuffer getNull()
+	public void unbind()
 	{
-		return NULL;
+		GL30.glBindRenderbuffer(getTarget(), 0);
 	}
 }

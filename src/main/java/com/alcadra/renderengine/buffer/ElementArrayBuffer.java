@@ -3,7 +3,6 @@ package com.alcadra.renderengine.buffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import org.lwjgl.opengl.GL15;
@@ -11,50 +10,16 @@ import org.lwjgl.system.MemoryUtil;
 
 public class ElementArrayBuffer extends SimpleBuffer {
 	
-	public static final ElementArrayBuffer NULL = new ElementArrayBuffer(0) {
-		
-		@Override
-		public void add(int i)
-		{}
-		
-		@Override
-		public void addAll(Collection<Integer> collection)
-		{}
-		
-		@Override
-		public void addAll(int[] indices)
-		{}
-		
-		@Override
-		public int get(int index)
-		{
-			throw new NoSuchElementException("Null buffer is always empty!");
-		}
-		
-		@Override
-		public void merge(ElementArrayBuffer arrayBuffer, int offset)
-		{}
-		
-		@Override
-		public void clear()
-		{}
-	};
-	
 	protected ArrayList<Integer> values;
 	private boolean isModified;
 	private int max;
 	
 	public ElementArrayBuffer()
 	{
-		this(GL15.glGenBuffers());
+		super(GL15.GL_ELEMENT_ARRAY_BUFFER, GL15.glGenBuffers());
 		values = new ArrayList<>();
 		isModified = false;
-		max = 0;
-	}
-	
-	private ElementArrayBuffer(int id)
-	{
-		super(GL15.GL_ELEMENT_ARRAY_BUFFER, id);
+		max = -1;
 	}
 	
 	public void add(int i)
@@ -96,7 +61,7 @@ public class ElementArrayBuffer extends SimpleBuffer {
 	public void merge(ElementArrayBuffer elementBuffer, int offset)
 	{
 		values.ensureCapacity(values.size() + elementBuffer.size());
-		for (Integer i : elementBuffer.values)
+		for (Integer i : elementBuffer.getValues())
 		{
 			int j = i + offset;
 			values.add(j);
@@ -108,8 +73,18 @@ public class ElementArrayBuffer extends SimpleBuffer {
 	public void clear()
 	{
 		values.clear();
-		max = 0;
+		max = -1;
 		isModified = true;
+	}
+	
+	public int getMax()
+	{
+		return max;
+	}
+	
+	public int size()
+	{
+		return values.size();
 	}
 	
 	public void sync()
@@ -144,20 +119,9 @@ public class ElementArrayBuffer extends SimpleBuffer {
 		return v;
 	}
 	
-	public int getMax()
+	private ArrayList<Integer> getValues()
 	{
-		return max;
-	}
-	
-	@Override
-	public SimpleBuffer getNull()
-	{
-		return NULL;
-	}
-	
-	public int size()
-	{
-		return values.size();
+		return values;
 	}
 	
 	@Override
