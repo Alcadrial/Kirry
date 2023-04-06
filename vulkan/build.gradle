@@ -11,6 +11,10 @@ println("Configuring RenderEngine's project")
 
 project.ext.lwjglVersion = "3.3.1"
 
+java {
+	modularity.inferModulePath = true
+}
+
 switch (OperatingSystem.current()) {
 	case OperatingSystem.LINUX:
 		def osArch = System.getProperty("os.arch")
@@ -37,25 +41,17 @@ repositories {
 }
 
 dependencies {
-	implementation(project(":core"))
+	api(project(":core"))
 	
-	implementation(":Math")
-	runtimeOnly(":Math-sources")
-	implementation(":Threads")
-	runtimeOnly(":Threads-sources")
-	implementation(":Tester")
-	runtimeOnly(":Tester-sources")
 	implementation(":Kroperties")
+	implementation(":Threads")
+	implementation(":Tester")
 	
     implementation("com.google.code.gson:gson:2.8.9")
-    implementation("org.lwjgl:lwjgl:$lwjglVersion")
-    implementation("org.lwjgl:lwjgl-glfw:$lwjglVersion")
 	implementation("org.lwjgl:lwjgl-openal:$lwjglVersion")
 	implementation("org.lwjgl:lwjgl-stb:$lwjglVersion")
 	implementation("org.lwjgl:lwjgl-vma:$lwjglVersion")
 	implementation("org.lwjgl:lwjgl-vulkan:$lwjglVersion")
-	runtimeOnly("org.lwjgl:lwjgl::$lwjglNatives")
-	runtimeOnly("org.lwjgl:lwjgl-glfw::$lwjglNatives")
 	runtimeOnly("org.lwjgl:lwjgl-openal::$lwjglNatives")
 	runtimeOnly("org.lwjgl:lwjgl-stb::$lwjglNatives")
 	runtimeOnly("org.lwjgl:lwjgl-vma::$lwjglNatives")

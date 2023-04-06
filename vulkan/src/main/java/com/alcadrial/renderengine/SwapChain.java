@@ -13,46 +13,49 @@ import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferAllocateInfo;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
 import org.lwjgl.vulkan.VkCommandPoolCreateInfo;
-import org.lwjgl.vulkan.VkExtent2D;
+import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkFramebufferCreateInfo;
 import org.lwjgl.vulkan.VkImageViewCreateInfo;
 import org.lwjgl.vulkan.VkOffset2D;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
-import org.lwjgl.vulkan.VkSurfaceFormatKHR;
+
+import com.alcadrial.renderengine.util.VulkanErrorUtils;
 
 public class SwapChain implements AutoCloseable {
 	
-	private Device device;
+	private Surface surface;
 	private long swapChain;
-	private int imageFormat;
-	private VkExtent2D extent;
 	private List<Long> images;
 	private List<Long> imageViews;
 	private List<FrameBuffer> frameBuffers;
 	private long commandPool;
 	private List<VkCommandBuffer> commands;
 	
-	public SwapChain(Device device, long swapChain, int[] availables, VkSurfaceFormatKHR format, VkExtent2D extent)
+	public SwapChain(Surface surface, long swapChain)
 	{
-		this.device = device;
+		this.surface = surface;
 		this.swapChain = swapChain;
-		VulkanErrorUtils.assertNoError(KHRSwapchain.vkGetSwapchainImagesKHR(device.getDevice(), swapChain, availables, null));
-		long[] p = new long[availables[0]];
-		VulkanErrorUtils.assertNoError(KHRSwapchain.vkGetSwapchainImagesKHR(device.getDevice(), swapChain, availables, p));
+		initialize();
+	}
+	
+	private void initialize()
+	{
+		Device device = RenderEngine.getVulkan().getDevice();
+		int[] p = new int[1];
+		VulkanErrorUtils.assertNoError(KHRSwapchain.vkGetSwapchainImagesKHR(device.getDevice(), swapChain, p, null));
+		long[] p0 = new long[p[0]];
+		VulkanErrorUtils.assertNoError(KHRSwapchain.vkGetSwapchainImagesKHR(device.getDevice(), swapChain, p, p0));
 		
-		images = new ArrayList<>(availables[0]);
+		images = new ArrayList<>(p[0]);
 		
-		for (long image : p) images.add(image);
-		
-		imageFormat = format.format();
-		this.extent = VkExtent2D.create().set(extent);
+		for (long image : p0) images.add(image);
 		
 		imageViews = new ArrayList<>(images.size());
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			p = new long[1];
+			p0 = new long[1];
 			
 			for (long image : images)
 			{
@@ -61,7 +64,7 @@ public class SwapChain implements AutoCloseable {
 				createInfo.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO);
 				createInfo.image(image);
 				createInfo.viewType(VK10.VK_IMAGE_VIEW_TYPE_2D);
-				createInfo.format(imageFormat);
+				createInfo.format(surface.getFormat().format());
 				
 				createInfo.components().r(VK10.VK_COMPONENT_SWIZZLE_IDENTITY);
 				createInfo.components().g(VK10.VK_COMPONENT_SWIZZLE_IDENTITY);
@@ -74,34 +77,37 @@ public class SwapChain implements AutoCloseable {
 				createInfo.subresourceRange().baseArrayLayer(0);
 				createInfo.subresourceRange().layerCount(1);
 				
-				VulkanErrorUtils.assertNoError(VK10.vkCreateImageView(device.getDevice(), createInfo, null, p), "Failed to create image views");
-				imageViews.add(p[0]);
+				VulkanErrorUtils.assertNoError(VK10.vkCreateImageView(device.getDevice(), createInfo, null, p0), "Failed to create image views");
+				imageViews.add(p0[0]);
 			}
 			
 			VkCommandPoolCreateInfo poolInfo = VkCommandPoolCreateInfo.calloc(stack);
 			poolInfo.sType(VK10.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO);
 			poolInfo.queueFamilyIndex(device.getPhysicalDevice().getQueueGraphicsFamilyIndex());
 			
-			VulkanErrorUtils.assertNoError(VK10.vkCreateCommandPool(device.getDevice(), poolInfo, null, p), "Failed to create command pool");
+			VulkanErrorUtils.assertNoError(VK10.vkCreateCommandPool(device.getDevice(), poolInfo, null, p0), "Failed to create command pool");
 			
-			commandPool = p[0];
+			commandPool = p0[0];
 		}
 	}
 	
-	public void createFrameBuffers()
+	public void createFrameBuffers(Window window)
 	{
+		Device device = RenderEngine.getVulkan().getDevice();
 		int size = imageViews.size();
 		frameBuffers = new ArrayList<>(size);
 		commands = new ArrayList<>(size);
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
+			System.out.println("siz " + surface.getSize());
+			System.out.println("ext " + surface.getExtent().width() + " " + surface.getExtent().height());
 			LongBuffer attachments = stack.mallocLong(1);
 			
 			VkFramebufferCreateInfo framebufferInfo = VkFramebufferCreateInfo.calloc(stack);
 			framebufferInfo.sType(VK10.VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO);
-			framebufferInfo.renderPass(device.getRenderPass());
-			framebufferInfo.width(extent.width());
-			framebufferInfo.height(extent.height());
+			framebufferInfo.renderPass(window.getRenderPass());
+			framebufferInfo.width(surface.getExtent().width());
+			framebufferInfo.height(surface.getExtent().height());
 			framebufferInfo.layers(1);
 			
 			VkCommandBufferAllocateInfo allocInfo = VkCommandBufferAllocateInfo.calloc(stack);
@@ -119,13 +125,13 @@ public class SwapChain implements AutoCloseable {
 			
 			VkRenderPassBeginInfo renderPassInfo = VkRenderPassBeginInfo.calloc(stack);
 			renderPassInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
-			renderPassInfo.renderPass(device.getRenderPass());
+			renderPassInfo.renderPass(window.getRenderPass());
 			VkRect2D renderArea = VkRect2D.calloc(stack);
 			renderArea.offset(VkOffset2D.calloc(stack).set(0, 0));
-			renderArea.extent(extent);
+			renderArea.extent(surface.getExtent());
 			renderPassInfo.renderArea(renderArea);
 			VkClearValue.Buffer clearValues = VkClearValue.calloc(1, stack);
-			clearValues.color().float32(stack.floats(0, 0, 0, 1));
+			clearValues.color().float32(stack.floats(0, 0, 0, 0));
 			renderPassInfo.pClearValues(clearValues);
 			
 			for (int i = 0; i < size; i++)
@@ -144,7 +150,7 @@ public class SwapChain implements AutoCloseable {
 				
 				VK10.vkCmdBeginRenderPass(commandBuffer, renderPassInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 				{
-					VK10.vkCmdBindPipeline(commandBuffer, VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, device.getPipeline().getPipeline());
+					VK10.vkCmdBindPipeline(commandBuffer, VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, window.getPipeline().getPipeline());
 					
 					VK10.vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 				}
@@ -156,9 +162,14 @@ public class SwapChain implements AutoCloseable {
 		}
 	}
 	
-	public Device getDevice()
+	public void reset(int width, int height)
 	{
-		return device;
+		
+	}
+	
+	public Surface getSurface()
+	{
+		return surface;
 	}
 	
 	public long getSwapchain()
@@ -168,12 +179,7 @@ public class SwapChain implements AutoCloseable {
 	
 	public int getImageFormat()
 	{
-		return imageFormat;
-	}
-	
-	public VkExtent2D getExtent()
-	{
-		return extent;
+		return surface.getFormat().format();
 	}
 	
 	public List<Long> getImages()
@@ -204,8 +210,10 @@ public class SwapChain implements AutoCloseable {
 	@Override
 	public void close()
 	{
-		VK10.vkDestroyCommandPool(device.getDevice(), commandPool, null);
+		VkDevice device = RenderEngine.getVulkan().getDevice().getDevice();
+		VK10.vkDestroyCommandPool(device, commandPool, null);
 		for (FrameBuffer frameBuffer : frameBuffers) frameBuffer.close();
-		for (long imageView : imageViews) VK10.vkDestroyImageView(device.getDevice(), imageView, null);
+		for (long imageView : imageViews) VK10.vkDestroyImageView(device, imageView, null);
+		KHRSwapchain.vkDestroySwapchainKHR(device, swapChain, null);
 	}
 }

@@ -1,6 +1,5 @@
 package com.alcadrial.renderengine;
 
-import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -8,10 +7,8 @@ import java.util.List;
 import java.util.function.Predicate;
 
 import org.lwjgl.PointerBuffer;
-import org.lwjgl.glfw.GLFWVulkan;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.EXTDebugUtils;
-import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCreateInfoEXT;
 import org.lwjgl.vulkan.VkDevice;
@@ -22,9 +19,11 @@ import org.lwjgl.vulkan.VkInstanceCreateInfo;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 
+import com.alcadrial.renderengine.util.VulkanErrorUtils;
+
 public class Vulkan implements AutoCloseable {
 	
-	private long window;
+	private Window window;
 	
 	private VkInstanceCreateInfo createInfo;
 	private VkInstance instance;
@@ -36,12 +35,10 @@ public class Vulkan implements AutoCloseable {
 	private List<PhysicalDevice> validPhysicalDevices;
 	private PhysicalDevice physicalDevice;
 	
-	private long surface;
 	private Device device;
 	
-	public Vulkan(long window, VkInstanceCreateInfo createInfo)
+	public Vulkan(VkInstanceCreateInfo createInfo)
 	{
-		this.window = window;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			PointerBuffer p = stack.mallocPointer(1);
@@ -53,26 +50,24 @@ public class Vulkan implements AutoCloseable {
 		physicalDeviceFilter = d -> true;
 	}
 	
+	public void setWindow(Window window)
+	{
+		this.window = window;
+	}
+	
 	public boolean activateDebugMessenger(VkDebugUtilsMessengerCreateInfoEXT info)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			LongBuffer p = stack.longs(VK10.VK_NULL_HANDLE);
+			long[] p = new long[1];
 			
 			if (VK10.vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT") == 0) return false;
 			if (EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(instance, info, null, p) != VK10.VK_SUCCESS) return false;
 			
 			createInfo.pNext(info.address());
-			debugMessengerId = p.get(0);
+			debugMessengerId = p[0];
 			return true;
 		}
-	}
-	
-	public void createSurface(long window)
-	{
-		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(GLFWVulkan.glfwCreateWindowSurface(instance, window, null, p), "Failed to create window surface");
-		surface = p[0];
 	}
 	
 	public void setPhysicalDeviceFilter(Predicate<PhysicalDevice> physicalDeviceFilter)
@@ -85,7 +80,7 @@ public class Vulkan implements AutoCloseable {
 	{
 		if (physicalDevice == null)
 		{
-			physicalDevice = getValidPhysicalDevices().stream().sorted(bestMatcher.reversed()).findFirst().orElseGet(() -> null);
+			physicalDevice = getValidPhysicalDevices().stream().sorted(bestMatcher).findFirst().orElseGet(() -> null);
 			VulkanErrorUtils.nonNull(physicalDevice, "no physical device has the required graphics properties");
 		}
 	}
@@ -115,7 +110,7 @@ public class Vulkan implements AutoCloseable {
 				physicalDevices = new ArrayList<>(p[0]);
 				for (int i = 0; i < p[0]; i++)
 				{
-					physicalDevices.add(new PhysicalDevice(new VkPhysicalDevice(physicalDevicesArray.get(i), instance), surface));
+					physicalDevices.add(new PhysicalDevice(new VkPhysicalDevice(physicalDevicesArray.get(i), instance), window.getSurface().getSurface()));
 				}
 				physicalDevices = List.copyOf(physicalDevices);
 			}
@@ -152,14 +147,34 @@ public class Vulkan implements AutoCloseable {
 				createInfo.ppEnabledLayerNames(RenderEngine.getValidationLayers(stack));
 				createInfo.ppEnabledExtensionNames(RenderEngine.getDeviceExtensions(stack));
 				
-				PointerBuffer pDevice = stack.pointers(VK10.VK_NULL_HANDLE);
-				VulkanErrorUtils.assertNoError(VK10.vkCreateDevice(physicalDevice.getDevice(), createInfo, null, pDevice), "Failed to create logical device");
-				device = new Device(instance, window, surface, new VkDevice(pDevice.get(0), physicalDevice.getDevice(), createInfo), physicalDevice);
+				PointerBuffer devicePointer = stack.pointers(VK10.VK_NULL_HANDLE);
+				VulkanErrorUtils.assertNoError(VK10.vkCreateDevice(physicalDevice.getDevice(), createInfo, null, devicePointer), "Failed to create logical device");
+				device = new Device(window, new VkDevice(devicePointer.get(0), physicalDevice.getDevice(), createInfo), physicalDevice);
 				device.setGraphicsQueue(new Queue(device, physicalDevice.getQueueGraphicsFamilyIndex()));
 				device.setPresentQueue(new Queue(device, physicalDevice.getQueueSurfaceFamilyIndex()));
 			}
 		}
 		return device;
+	}
+	
+	public void swapBuffers()
+	{
+		
+	}
+	
+	public VkInstance getInstance()
+	{
+		return instance;
+	}
+	
+	public PhysicalDevice getPhysicalDevice()
+	{
+		return physicalDevice;
+	}
+	
+	public Window getWindow()
+	{
+		return window;
 	}
 	
 	@Override
@@ -168,7 +183,6 @@ public class Vulkan implements AutoCloseable {
 		if (debugMessengerId != 0) EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(instance, debugMessengerId, null);
 		if (device != null) device.close();
 		for (PhysicalDevice physicalDevice : physicalDevices) physicalDevice.close();
-		if (surface != 0) KHRSurface.vkDestroySurfaceKHR(instance, surface, null);
 		VK10.vkDestroyInstance(instance, null);
 	}
 }

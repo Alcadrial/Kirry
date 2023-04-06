@@ -3,6 +3,8 @@ package com.alcadrial.renderengine;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkFramebufferCreateInfo;
 
+import com.alcadrial.renderengine.util.VulkanErrorUtils;
+
 public class FrameBuffer implements AutoCloseable {
 	
 	private final Device device;

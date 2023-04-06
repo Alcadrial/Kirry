@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
-import com.alcadrial.renderengine.Properties;
+import com.alcadrial.renderengine.util.Properties;
 
 public class Shader {
 	

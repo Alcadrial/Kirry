@@ -1,4 +1,4 @@
-package com.alcadrial.renderengine;
+package com.alcadrial.renderengine.util;
 
 import org.lwjgl.vulkan.VK10;
 
