@@ -2,7 +2,7 @@ package com.alcadrial.renderengine.renderer;
 
 import java.util.Objects;
 
-import com.alcadra.math.matrix.Matrix4f;
+import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.renderengine.buffer.ArrayBuffer;
 
 public abstract class AbstractRenderer<AB extends ArrayBuffer<?>> implements Renderer {
@@ -12,7 +12,7 @@ public abstract class AbstractRenderer<AB extends ArrayBuffer<?>> implements Ren
 	
 	protected AbstractRenderer(AB arrayBuffer)
 	{
-		this.vertexArray = new VertexArray();
+		vertexArray = new VertexArray();
 		this.arrayBuffer = Objects.requireNonNull(arrayBuffer);
 	}
 	

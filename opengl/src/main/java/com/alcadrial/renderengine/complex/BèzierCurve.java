@@ -1,7 +1,7 @@
 package com.alcadrial.renderengine.complex;
 
-import com.alcadra.math.Math;
-import com.alcadra.math.vector.Vector2f;
+import com.alcadrial.kector.Math;
+import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.renderengine.renderer.universal.UniversalRenderer;
 import com.alcadrial.renderengine.util.color.Color;
 

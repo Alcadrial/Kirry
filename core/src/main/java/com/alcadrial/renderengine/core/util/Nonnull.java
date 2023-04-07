@@ -1,10 +1,10 @@
-package com.alcadrial.renderengine.util;
+package com.alcadrial.renderengine.core.util;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
 
 /**
- * Indicates that the annotated element could be null.
+ * Indicates that the annotated element must be nonnull.
  * <p>
  * Based on the annotated element, various cases rises up:
  * 
@@ -13,13 +13,13 @@ import java.lang.annotation.Target;
  * 
  *   <li> For a package, all classes and sub-packages will inherit this annotation as well.
  * 
- *   <li> For an annotation, all attributes could be null.
+ *   <li> For an annotation, all attributes will never be null.
  *   <li> For a class, all fields and methods will inherit this annotation as well.
  *        
- *   <li> For a field, it could be null.
- *   <li> For a method, its return value could be null.
- *   <li> For a parameter, it's value could be null.
- *   <li> For a variable, it could be null.
+ *   <li> For a field, it will never be null.
+ *   <li> For a method, its return value will never be null.
+ *   <li> For a parameter, it's value must not be null.
+ *   <li> For a variable, it will never be null.
  * </ul>
  * 
  * @author Alcadrial
@@ -28,6 +28,6 @@ import java.lang.annotation.Target;
 	ElementType.PACKAGE,
 	ElementType.ANNOTATION_TYPE, ElementType.TYPE,
 	ElementType.RECORD_COMPONENT, ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER, ElementType.LOCAL_VARIABLE})
-public @interface Nullable {
+public @interface Nonnull {
 	
 }

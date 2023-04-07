@@ -2,7 +2,7 @@ package com.alcadrial.renderengine.shader.uniform;
 
 import org.lwjgl.opengl.GL20;
 
-import com.alcadra.math.vector.Vector3i;
+import com.alcadrial.kector.vector.Vector3i;
 
 class Vector3iUniform extends ShaderUniform<Vector3i> {
 	

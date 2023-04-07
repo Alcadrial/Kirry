@@ -1,6 +1,6 @@
 package com.alcadrial.renderengine.window.widget;
 
-import com.alcadra.math.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector2i;
 
 public interface ClickableWidget extends Widget {
 	

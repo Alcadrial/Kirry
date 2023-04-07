@@ -6,10 +6,6 @@ plugins {
     id("eclipse")
 }
 
-void printClass(Object obj) {
-	println(obj.class)
-}
-
 eclipse.project.name = "RenderEngine Core"
 println("Configuring RenderEngine's project")
 
@@ -22,6 +18,7 @@ java {
 	toolchain.languageVersion = JavaLanguageVersion.of(17)
 	withSourcesJar()
 	withJavadocJar()
+    modularity.inferModulePath = true
 }
 
 javadoc {
@@ -150,14 +147,8 @@ repositories {
 }
 
 dependencies {
-	implementation(":Math")
-	runtimeOnly(":Math-sources")
-	implementation(":Threads")
-	runtimeOnly(":Threads-sources")
-	implementation(":Tester")
-	runtimeOnly(":Tester-sources")
+	implementation(":Kector")
 	
-    implementation ("com.google.code.gson:gson:2.8.9")
     implementation ("org.lwjgl:lwjgl:$lwjglVersion")
     implementation ("org.lwjgl:lwjgl-glfw:$lwjglVersion")
 	runtimeOnly ("org.lwjgl:lwjgl::$lwjglNatives")

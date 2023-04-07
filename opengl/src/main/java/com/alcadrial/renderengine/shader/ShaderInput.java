@@ -2,9 +2,6 @@ package com.alcadrial.renderengine.shader;
 
 import java.util.Objects;
 
-import com.alcadrial.renderengine.util.WorkInProgress;
-
-@WorkInProgress
 public class ShaderInput {
 	
 	public static final ShaderInput VERTEX_POSITION = of(ShaderInputType.VECTOR_FLOAT_3, "vertexPosition");
@@ -50,8 +47,7 @@ public class ShaderInput {
 	{
 		int result = 1;
 		result = 31 * result + (type == null ? 0 : type.hashCode());
-		result = 31 * result + (name == null ? 0 : name.hashCode());
-		return result;
+		return 31 * result + (name == null ? 0 : name.hashCode());
 	}
 	
 	@Override

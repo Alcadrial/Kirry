@@ -5,9 +5,9 @@ import java.util.function.Supplier;
 
 import org.lwjgl.opengl.GL30;
 
-import com.alcadra.math.vector.Vector2f;
-import com.alcadra.math.vector.Vector3f;
-import com.alcadra.math.vector.Vector4f;
+import com.alcadrial.kector.vector.Vector2f;
+import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.renderengine.RenderEngine;
 
 public class Util {

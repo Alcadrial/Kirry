@@ -6,9 +6,9 @@ import java.util.List;
 
 import org.lwjgl.opengl.GL30;
 
+import com.alcadrial.renderengine.core.util.NotUsed;
 import com.alcadrial.renderengine.shader.uniform.ShaderUniform;
 import com.alcadrial.renderengine.util.Deletable;
-import com.alcadrial.renderengine.util.NotUsed;
 import com.alcadrial.renderengine.util.Util;
 
 public class ShaderProgram implements Deletable {

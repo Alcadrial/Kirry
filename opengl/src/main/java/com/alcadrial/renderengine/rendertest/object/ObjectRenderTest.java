@@ -6,11 +6,11 @@ import java.io.IOException;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 
-import com.alcadra.math.matrix.Matrix4f;
-import com.alcadra.math.vector.Vector2f;
-import com.alcadra.math.vector.Vector2i;
-import com.alcadra.math.vector.Vector3f;
-import com.alcadra.math.vector.axis.Axis;
+import com.alcadrial.kector.matrix.Matrix4f;
+import com.alcadrial.kector.vector.Vector2f;
+import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.axis.Axis;
 import com.alcadrial.renderengine.renderer.RenderingMode;
 import com.alcadrial.renderengine.renderer.font.Font;
 import com.alcadrial.renderengine.renderer.font.FontRenderer;

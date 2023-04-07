@@ -6,8 +6,8 @@ import java.util.Queue;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL32;
 
-import com.alcadra.math.vector.Vector2i;
-import com.alcadra.math.vector.Vector4i;
+import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.buffer.RenderBuffer;
 import com.alcadrial.renderengine.buffer.SimpleBuffer;
 import com.alcadrial.renderengine.textures.Texture;

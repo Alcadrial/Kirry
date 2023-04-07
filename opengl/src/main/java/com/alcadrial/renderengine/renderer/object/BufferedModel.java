@@ -3,8 +3,8 @@ package com.alcadrial.renderengine.renderer.object;
 import java.nio.FloatBuffer;
 
 import com.alcadrial.renderengine.buffer.ArrayBuffer;
+import com.alcadrial.renderengine.core.util.NotYetImplemented;
 import com.alcadrial.renderengine.shader.ShaderInput;
-import com.alcadrial.renderengine.util.NotYetImplemented;
 
 @NotYetImplemented
 public class BufferedModel extends ArrayBuffer<FloatBuffer> implements BufferableModel {

@@ -2,7 +2,7 @@ package com.alcadrial.renderengine.shader.uniform;
 
 import org.lwjgl.opengl.GL20;
 
-import com.alcadra.math.matrix.Matrix3f;
+import com.alcadrial.kector.matrix.Matrix3f;
 
 class Matrix3fUniform extends ShaderUniform<Matrix3f> {
 	

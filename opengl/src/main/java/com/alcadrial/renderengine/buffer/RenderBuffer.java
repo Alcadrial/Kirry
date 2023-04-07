@@ -2,9 +2,9 @@ package com.alcadrial.renderengine.buffer;
 
 import org.lwjgl.opengl.GL30;
 
-import com.alcadra.math.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.renderengine.core.util.WorkInProgress;
 import com.alcadrial.renderengine.util.Util;
-import com.alcadrial.renderengine.util.WorkInProgress;
 
 @WorkInProgress
 public class RenderBuffer extends SimpleBuffer {

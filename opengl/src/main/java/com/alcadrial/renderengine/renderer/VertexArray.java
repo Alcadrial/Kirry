@@ -2,7 +2,7 @@ package com.alcadrial.renderengine.renderer;
 
 import org.lwjgl.opengl.GL30;
 
-import com.alcadrial.renderengine.util.Nonnull;
+import com.alcadrial.renderengine.core.util.Nonnull;
 
 public class VertexArray {
 	

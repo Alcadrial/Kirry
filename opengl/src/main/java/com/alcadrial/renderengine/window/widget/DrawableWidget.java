@@ -1,7 +1,7 @@
 package com.alcadrial.renderengine.window.widget;
 
-import com.alcadra.math.matrix.Matrix4f;
-import com.alcadra.math.vector.Vector2i;
+import com.alcadrial.kector.matrix.Matrix4f;
+import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.renderer.ShaderRenderer;
 
 public interface DrawableWidget<R extends ShaderRenderer> extends Widget {

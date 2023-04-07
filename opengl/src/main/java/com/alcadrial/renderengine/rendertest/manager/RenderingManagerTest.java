@@ -8,11 +8,11 @@ import org.lwjgl.glfw.GLFWCursorPosCallbackI;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 
-import com.alcadra.math.angle.Angle;
-import com.alcadra.math.angle.AngleUnit;
-import com.alcadra.math.matrix.Matrix4f;
-import com.alcadra.math.vector.Vector2f;
-import com.alcadra.math.vector.Vector3f;
+import com.alcadrial.kector.angle.Angle;
+import com.alcadrial.kector.angle.AngleUnit;
+import com.alcadrial.kector.matrix.Matrix4f;
+import com.alcadrial.kector.vector.Vector2f;
+import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.renderer.RenderingMode;
 import com.alcadrial.renderengine.renderer.font.Font;
 import com.alcadrial.renderengine.renderer.font.FontRenderer;

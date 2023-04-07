@@ -1,4 +1,4 @@
-package com.alcadrial.renderengine.util.update;
+package com.alcadrial.renderengine.core.util.update;
 
 import static java.lang.annotation.ElementType.*;
 

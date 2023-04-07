@@ -23,14 +23,14 @@ import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.system.CallbackI;
 import org.lwjgl.system.MemoryUtil;
 
-import com.alcadra.math.matrix.Matrix4f;
-import com.alcadra.math.vector.Vector2i;
+import com.alcadrial.kector.matrix.Matrix4f;
+import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.renderengine.core.cursor.CursorInputMode;
+import com.alcadrial.renderengine.core.cursor.ICursor;
 import com.alcadrial.renderengine.framebuffer.FrameBuffer;
 import com.alcadrial.renderengine.renderer.ShaderRenderer;
 import com.alcadrial.renderengine.textures.Texture;
 import com.alcadrial.renderengine.util.Image;
-import com.alcadrial.renderengine.window.cursor.CursorInputMode;
-import com.alcadrial.renderengine.window.cursor.ICursor;
 import com.alcadrial.renderengine.window.widget.ClickableWidget;
 import com.alcadrial.renderengine.window.widget.DrawableWidget;
 
@@ -289,6 +289,8 @@ public class Window {
 		GLFW.glfwMakeContextCurrent(0);
 	}
 	
+	// --------------------------------------------------------------------------------------
+	
 	public final boolean shouldClose()
 	{
 		return GLFW.glfwWindowShouldClose(id);
@@ -368,12 +370,14 @@ public class Window {
 	{
 		GLFW.glfwPollEvents();
 	}
+	// --------------------------------------------------------------------------------------
 	
 	public final void swapBuffers()
 	{
 		GLFW.glfwSwapBuffers(id);
 	}
 	
+	// --------------------------------------------------------------------------------------
 	public final void removeCursor()
 	{
 		GLFW.glfwSetCursor(id, 0);

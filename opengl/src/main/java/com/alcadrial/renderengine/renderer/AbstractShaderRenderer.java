@@ -4,14 +4,14 @@ import java.util.List;
 
 import org.lwjgl.opengl.GL30;
 
-import com.alcadra.math.matrix.Matrix4f;
+import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.renderengine.buffer.ArrayBuffer;
 import com.alcadrial.renderengine.buffer.SyncronizableArrayBuffer;
+import com.alcadrial.renderengine.core.util.Nonnull;
 import com.alcadrial.renderengine.shader.ShaderInput;
 import com.alcadrial.renderengine.shader.ShaderInputType;
 import com.alcadrial.renderengine.shader.ShaderProgram;
 import com.alcadrial.renderengine.shader.ShaderUtil;
-import com.alcadrial.renderengine.util.Nonnull;
 
 @Nonnull
 public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> extends AbstractRenderer<AB> implements ShaderRenderer {
@@ -71,7 +71,6 @@ public abstract class AbstractShaderRenderer<AB extends ArrayBuffer<?>> extends 
 		}
 	}
 	
-	@SuppressWarnings("rawtypes")
 	protected void syncBuffers()
 	{
 		arrayBuffer.bind();

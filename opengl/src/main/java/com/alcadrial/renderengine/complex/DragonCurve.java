@@ -3,9 +3,9 @@ package com.alcadrial.renderengine.complex;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.alcadra.math.vector.Vector2f;
+import com.alcadrial.kector.vector.Vector2f;
+import com.alcadrial.renderengine.core.util.NotYetImplemented;
 import com.alcadrial.renderengine.renderer.universal.UniversalRenderer;
-import com.alcadrial.renderengine.util.NotYetImplemented;
 import com.alcadrial.renderengine.util.color.Color;
 
 @NotYetImplemented

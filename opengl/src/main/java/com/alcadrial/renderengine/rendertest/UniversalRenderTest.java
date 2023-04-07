@@ -13,13 +13,13 @@ import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.MemoryUtil;
 
-import com.alcadra.math.Math;
-import com.alcadra.math.matrix.Matrix4f;
-import com.alcadra.math.vector.Vector2f;
-import com.alcadra.math.vector.Vector2i;
-import com.alcadra.math.vector.Vector3f;
-import com.alcadra.math.vector.Vector3i;
 import com.alcadra.threads.TimeThread;
+import com.alcadrial.kector.Math;
+import com.alcadrial.kector.matrix.Matrix4f;
+import com.alcadrial.kector.vector.Vector2f;
+import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.renderengine.RenderEngine;
 import com.alcadrial.renderengine.buffer.ElementArrayBuffer;
 import com.alcadrial.renderengine.buffer.FloatArrayBuffer;
@@ -28,6 +28,7 @@ import com.alcadrial.renderengine.complex.EllipseCurve;
 import com.alcadrial.renderengine.complex.InterpolationCurve;
 import com.alcadrial.renderengine.complex.KochCurve;
 import com.alcadrial.renderengine.complex.RhodoneaCurve;
+import com.alcadrial.renderengine.core.cursor.StandardCursor;
 import com.alcadrial.renderengine.framebuffer.FrameBuffer;
 import com.alcadrial.renderengine.renderer.RenderingMode;
 import com.alcadrial.renderengine.renderer.font.Font;
@@ -49,7 +50,6 @@ import com.alcadrial.renderengine.util.Util;
 import com.alcadrial.renderengine.util.color.Color;
 import com.alcadrial.renderengine.util.wrapper.CullFaceMode;
 import com.alcadrial.renderengine.window.Window;
-import com.alcadrial.renderengine.window.cursor.StandardCursor;
 import com.alcadrial.renderengine.window.widget.VisibleButton;
 
 @SuppressWarnings("unused")

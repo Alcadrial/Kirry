@@ -277,7 +277,6 @@ public class PhysicalDevice implements AutoCloseable {
 			private QueueFamily family;
 			private FamilyNode next;
 			
-			@SuppressWarnings("exports")
 			public FamilyNode(QueueFamily family, FamilyNode next)
 			{
 				this.family = family;

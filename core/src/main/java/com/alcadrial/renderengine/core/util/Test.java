@@ -1,4 +1,4 @@
-package com.alcadrial.renderengine.util;
+package com.alcadrial.renderengine.core.util;
 
 /**
  * This Annotation is used to identify classes used for testing, 

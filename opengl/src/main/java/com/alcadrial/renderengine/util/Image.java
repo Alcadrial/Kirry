@@ -14,7 +14,7 @@ import javax.imageio.stream.ImageInputStream;
 
 import org.lwjgl.BufferUtils;
 
-import com.alcadra.math.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector2i;
 
 public class Image {
 	

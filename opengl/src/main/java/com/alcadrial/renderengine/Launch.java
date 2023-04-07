@@ -28,6 +28,7 @@ import com.alcadrial.renderengine.buffer.ElementArrayBufferStack;
 import com.alcadrial.renderengine.buffer.FloatArrayBuffer;
 import com.alcadrial.renderengine.buffer.FloatArrayBufferStack;
 import com.alcadrial.renderengine.buffer.SimpleBuffer;
+import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.shader.Shader;
 import com.alcadrial.renderengine.shader.ShaderInput;
 import com.alcadrial.renderengine.shader.ShaderProgram;
@@ -36,7 +37,6 @@ import com.alcadrial.renderengine.textures.Texture;
 import com.alcadrial.renderengine.textures.TextureTemplate;
 import com.alcadrial.renderengine.textures.TextureTemplateException;
 import com.alcadrial.renderengine.util.Deletable;
-import com.alcadrial.renderengine.util.Test;
 import com.alcadrial.renderengine.window.Window;
 
 @Test

@@ -2,8 +2,9 @@ package com.alcadrial.renderengine.renderer.object;
 
 import java.util.Objects;
 
-import com.alcadra.math.matrix.Matrix4f;
+import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.renderengine.buffer.ObjectArrayBuffer;
+import com.alcadrial.renderengine.core.util.WorkInProgress;
 import com.alcadrial.renderengine.renderer.AbstractShaderRenderer;
 import com.alcadrial.renderengine.renderer.RenderingMode;
 import com.alcadrial.renderengine.shader.ShaderInput;
@@ -11,7 +12,6 @@ import com.alcadrial.renderengine.shader.ShaderProgram;
 import com.alcadrial.renderengine.shader.uniform.ShaderUniform;
 import com.alcadrial.renderengine.shader.uniform.extra.ColorUniform;
 import com.alcadrial.renderengine.util.SwitchableTracker;
-import com.alcadrial.renderengine.util.WorkInProgress;
 import com.alcadrial.renderengine.util.color.Color;
 import com.alcadrial.renderengine.util.color.ColorFormat;
 

@@ -1,4 +1,4 @@
-package com.alcadrial.renderengine.util.update;
+package com.alcadrial.renderengine.core.util.update;
 
 public @interface UpdatedFrom {
 	

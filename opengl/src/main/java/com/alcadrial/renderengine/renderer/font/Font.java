@@ -83,6 +83,7 @@ public class Font {
 								case "before" -> before = reader.nextInt();
 								case "after" -> after = reader.nextInt();
 								case "offset" -> offset = reader.nextInt();
+								default -> reader.skipValue();
 							}
 						}
 						extraOffset.put(Map.entry(before, after), offset);

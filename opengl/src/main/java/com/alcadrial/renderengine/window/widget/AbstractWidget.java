@@ -1,7 +1,7 @@
 package com.alcadrial.renderengine.window.widget;
 
-import com.alcadra.math.vector.Vector2i;
-import com.alcadra.math.vector.Vector3i;
+import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.renderengine.window.Window;
 
 public abstract class AbstractWidget implements Widget {

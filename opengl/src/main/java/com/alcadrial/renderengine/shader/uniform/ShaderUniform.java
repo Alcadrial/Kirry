@@ -2,16 +2,16 @@ package com.alcadrial.renderengine.shader.uniform;
 
 import java.util.Objects;
 
-import com.alcadra.math.matrix.Matrix3f;
-import com.alcadra.math.matrix.Matrix4f;
-import com.alcadra.math.vector.Vector2f;
-import com.alcadra.math.vector.Vector2i;
-import com.alcadra.math.vector.Vector3f;
-import com.alcadra.math.vector.Vector3i;
-import com.alcadra.math.vector.Vector4f;
-import com.alcadra.math.vector.Vector4i;
-import com.alcadrial.renderengine.util.Nonnull;
-import com.alcadrial.renderengine.util.NotYetImplemented;
+import com.alcadrial.kector.matrix.Matrix3f;
+import com.alcadrial.kector.matrix.Matrix4f;
+import com.alcadrial.kector.vector.Vector2f;
+import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3i;
+import com.alcadrial.kector.vector.Vector4f;
+import com.alcadrial.kector.vector.Vector4i;
+import com.alcadrial.renderengine.core.util.Nonnull;
+import com.alcadrial.renderengine.core.util.NotYetImplemented;
 
 @Nonnull
 public abstract class ShaderUniform<T> {
@@ -92,7 +92,6 @@ public abstract class ShaderUniform<T> {
 		return name.hashCode();
 	}
 	
-	@SuppressWarnings("rawtypes")
 	@Override
 	public boolean equals(Object obj)
 	{

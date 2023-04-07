@@ -3,13 +3,13 @@ package com.alcadrial.renderengine.renderer.object;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.alcadrial.renderengine.core.util.WorkInProgress;
 import com.alcadrial.renderengine.renderer.AbstractVertexBuilder;
 import com.alcadrial.renderengine.renderer.IllegalBuildingState;
 import com.alcadrial.renderengine.renderer.data.FloatListVertexData;
 import com.alcadrial.renderengine.renderer.data.VertexData;
 import com.alcadrial.renderengine.shader.ShaderProgram;
 import com.alcadrial.renderengine.util.SwitchableTracker;
-import com.alcadrial.renderengine.util.WorkInProgress;
 
 @WorkInProgress
 public class ObjectBuilder {
@@ -35,8 +35,7 @@ public class ObjectBuilder {
 	
 	public <B extends BufferableModel> SwitchableTracker<B> end()
 	{
-		SwitchableTracker<B> tracker = renderer.build(this);
-		return tracker;
+		return renderer.build(this);
 	}
 	
 	private void addVertex(VertexData vertexData)

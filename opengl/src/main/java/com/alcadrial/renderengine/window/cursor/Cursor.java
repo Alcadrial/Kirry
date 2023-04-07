@@ -3,6 +3,8 @@ package com.alcadrial.renderengine.window.cursor;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWImage;
 
+import com.alcadrial.renderengine.core.cursor.CursorException;
+import com.alcadrial.renderengine.core.cursor.ICursor;
 import com.alcadrial.renderengine.util.Image;
 
 public class Cursor implements ICursor {

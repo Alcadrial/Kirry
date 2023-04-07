@@ -2,6 +2,8 @@ package com.alcadrial.renderengine.window.cursor;
 
 import org.lwjgl.glfw.GLFW;
 
+import com.alcadrial.renderengine.core.cursor.ICursor;
+
 public enum StandardCursor implements ICursor {
 	
 	ARROW(GLFW.GLFW_ARROW_CURSOR),

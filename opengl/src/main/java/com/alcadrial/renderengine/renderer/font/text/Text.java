@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.alcadrial.renderengine.util.Nonnull;
+import com.alcadrial.renderengine.core.util.Nonnull;
 
 public class Text implements Iterable<TextLine> {
 	

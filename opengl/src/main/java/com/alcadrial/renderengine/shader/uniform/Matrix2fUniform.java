@@ -1,6 +1,6 @@
 package com.alcadrial.renderengine.shader.uniform;
 
-import com.alcadrial.renderengine.util.NotYetImplemented;
+import com.alcadrial.renderengine.core.util.NotYetImplemented;
 
 @NotYetImplemented
 class Matrix2fUniform extends ShaderUniform<Void> {

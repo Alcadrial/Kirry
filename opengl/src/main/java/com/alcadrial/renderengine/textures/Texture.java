@@ -5,13 +5,13 @@ import java.util.Arrays;
 
 import org.lwjgl.opengl.GL45;
 
-import com.alcadra.math.vector.Vector2i;
-import com.alcadra.math.vector.Vector3i;
+import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.renderengine.RenderEngine;
+import com.alcadrial.renderengine.core.util.Broken;
+import com.alcadrial.renderengine.core.util.Optimizable;
 import com.alcadrial.renderengine.framebuffer.FrameBuffer;
-import com.alcadrial.renderengine.util.Broken;
 import com.alcadrial.renderengine.util.Deletable;
-import com.alcadrial.renderengine.util.Optimizable;
 import com.alcadrial.renderengine.util.Util;
 
 public final class Texture implements Deletable {
@@ -20,7 +20,7 @@ public final class Texture implements Deletable {
 	private static final int[] POINTER = new int[1];
 	
 	/**
-	 * Selects which texture unit subsequent texture state calls will affect. 
+	 * Selects which texture unit subsequent texture state calls will affect.
 	 * The number of texture units an implementation supports is implementation dependent in range [0; 31].
 	 *
 	 * @param unit the unit to activate
@@ -53,7 +53,7 @@ public final class Texture implements Deletable {
 	/**
 	 * Binds the a texture to a texture target.
 	 * <p>
-	 * While a texture object is bound, GL operations on the target to which it is bound affect the bound object, 
+	 * While a texture object is bound, GL operations on the target to which it is bound affect the bound object,
 	 * and queries of the target to which it is bound return state from the bound object.
 	 * <p>
 	 * Methods in this class doesn't require binding.
@@ -64,7 +64,7 @@ public final class Texture implements Deletable {
 	}
 	
 	/**
-	 * Generate a new 1D texture of length <code>width</code> using mipmap if <code>mipmapLevels</code> is greater than 0, and, 
+	 * Generate a new 1D texture of length <code>width</code> using mipmap if <code>mipmapLevels</code> is greater than 0, and,
 	 * if data isn't null, with <code>width</code> ints from data.
 	 * 
 	 * @param dataFormat the charateristics of the given data
@@ -85,7 +85,7 @@ public final class Texture implements Deletable {
 	}
 	
 	/**
-	 * Generate a new 2D texture of length <code>width * height</code> using mipmap if <code>mipmapLevels</code> is greater than 0, and, 
+	 * Generate a new 2D texture of length <code>width * height</code> using mipmap if <code>mipmapLevels</code> is greater than 0, and,
 	 * if data isn't null, with <code>width * height</code> ints from data.
 	 * 
 	 * @param dataFormat the charateristics of the given data
@@ -109,7 +109,7 @@ public final class Texture implements Deletable {
 	}
 	
 	/**
-	 * Generate a new 3D texture of length <code>width * height * depth</code> using mipmap if <code>mipmapLevels</code> is greater than 0, and, 
+	 * Generate a new 3D texture of length <code>width * height * depth</code> using mipmap if <code>mipmapLevels</code> is greater than 0, and,
 	 * if data isn't null, with <code>width * height * depth</code> ints from data.
 	 * 
 	 * @param dataFormat the charateristics of the given data
@@ -393,6 +393,7 @@ public final class Texture implements Deletable {
 	
 	/**
 	 * Returns an array containing all the pixels of this texture.
+	 * 
 	 * @return this texture as array
 	 */
 	public int[] getDataArray()
@@ -402,7 +403,9 @@ public final class Texture implements Deletable {
 	
 	/**
 	 * Returns an array containing all the pixels of this texture using the specified {@link TextureTemplate}.
+	 * 
 	 * @param template
+	 * 
 	 * @return this texture as array
 	 */
 	public int[] getDataArray(TextureTemplate template)

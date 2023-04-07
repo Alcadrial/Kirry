@@ -1,4 +1,4 @@
-package com.alcadrial.renderengine.util;
+package com.alcadrial.renderengine.core.util;
 
 /**
  * If an element is annotated as Instable, that element will be treated as excluded from any versioning rules,

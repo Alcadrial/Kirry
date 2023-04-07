@@ -3,7 +3,7 @@ package com.alcadrial.renderengine.rendertest.object;
 import java.util.Arrays;
 import java.util.Map;
 
-import com.alcadra.math.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.renderer.object.BufferableModel;
 import com.alcadrial.renderengine.renderer.object.DataGetter;
 import com.alcadrial.renderengine.shader.ShaderInput;
