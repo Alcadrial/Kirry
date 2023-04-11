@@ -28,7 +28,7 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.cursor.CursorInputMode;
 import com.alcadrial.renderengine.core.cursor.ICursor;
 import com.alcadrial.renderengine.framebuffer.FrameBuffer;
-import com.alcadrial.renderengine.renderer.ShaderRenderer;
+import com.alcadrial.renderengine.renderingmanager.RenderingManager;
 import com.alcadrial.renderengine.textures.Texture;
 import com.alcadrial.renderengine.util.Image;
 import com.alcadrial.renderengine.window.widget.ClickableWidget;
@@ -44,7 +44,7 @@ public class Window {
 	private float aspectRatio;
 	private CursorInputMode cursorInputMode;
 	
-	private List<Entry<Supplier<? extends ShaderRenderer>, DrawableWidget<ShaderRenderer>>> renderizableWidgets;
+	private List<Entry<Supplier<RenderingManager>, DrawableWidget>> renderizableWidgets;
 	private List<ClickableWidget> clickableWidgets;
 	
 	private List<GLFWCharCallbackI> charCallbackList;
@@ -153,15 +153,15 @@ public class Window {
 		}
 	}
 	
-	public <R extends ShaderRenderer> void render(Matrix4f matrix, float partialTicks)
+	public void render(Matrix4f matrix, float partialTicks)
 	{
-		for (Entry<Supplier<? extends ShaderRenderer>, DrawableWidget<ShaderRenderer>> entry : renderizableWidgets) entry.getValue().render(new Matrix4f(matrix), entry.getKey().get(), partialTicks);
+		for (Entry<Supplier<RenderingManager>, DrawableWidget> entry : renderizableWidgets) entry.getValue().render(new Matrix4f(matrix), entry.getKey().get(), partialTicks);
 		while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
 	}
 	
 	public void draw(Matrix4f matrix, float partialTicks)
 	{
-		for (Entry<Supplier<? extends ShaderRenderer>, DrawableWidget<ShaderRenderer>> entry : renderizableWidgets) entry.getValue().draw(new Matrix4f(matrix), entry.getKey().get(), partialTicks);
+		for (Entry<Supplier<RenderingManager>, DrawableWidget> entry : renderizableWidgets) entry.getValue().draw(new Matrix4f(matrix), entry.getKey().get(), partialTicks);
 	}
 	
 	public void update()
@@ -186,10 +186,10 @@ public class Window {
 		if (event instanceof GLFWWindowSizeCallbackI callback) windowSizeCallbackList.add(callback);
 	}
 	
-	public <R extends ShaderRenderer> void addWidget(DrawableWidget<R> widget, Supplier<R> renderer)
+	public void addWidget(DrawableWidget widget, Supplier<RenderingManager> manager)
 	{
 		if (widget instanceof ClickableWidget w) addWidget(w);
-		renderizableWidgets.add(cast(Map.entry(renderer, widget)));
+		renderizableWidgets.add(cast(Map.entry(manager, widget)));
 	}
 	
 	@SuppressWarnings("unchecked")

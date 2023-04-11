@@ -36,6 +36,7 @@ import com.alcadrial.renderengine.renderer.font.FontRenderer;
 import com.alcadrial.renderengine.renderer.font.text.Text;
 import com.alcadrial.renderengine.renderer.font.text.TextLine;
 import com.alcadrial.renderengine.renderer.universal.UniversalRenderer;
+import com.alcadrial.renderengine.renderingmanager.RenderingManager;
 import com.alcadrial.renderengine.rendertest.manager.RenderingManagerTest;
 import com.alcadrial.renderengine.rendertest.object.ObjectRenderTest;
 import com.alcadrial.renderengine.rendertest.object.RenderTest;
@@ -50,7 +51,6 @@ import com.alcadrial.renderengine.util.Util;
 import com.alcadrial.renderengine.util.color.Color;
 import com.alcadrial.renderengine.util.wrapper.CullFaceMode;
 import com.alcadrial.renderengine.window.Window;
-import com.alcadrial.renderengine.window.widget.VisibleButton;
 
 @SuppressWarnings("unused")
 public class UniversalRenderTest implements RenderTest {
@@ -195,6 +195,7 @@ public class UniversalRenderTest implements RenderTest {
 	private Vector2f cursor;
 	private ShaderProgram colorProgram, textureProgram;
 	private UniversalRenderer universalRenderer, widgetRenderer, textureRenderer;
+	private RenderingManager manager;
 	private FloatArrayBuffer buffer0, buffer1, buffer2;
 	private ElementArrayBuffer element0, element1, element2;
 	private FontRenderer fontRenderer;
@@ -346,6 +347,7 @@ public class UniversalRenderTest implements RenderTest {
 		}
 		fontRenderer = new FontRenderer(fontProgram, font);
 		Util.printError("font renderer");
+		manager = new RenderingManager();
 		
 		window.setIcon(icon);
 		window.show();
@@ -362,7 +364,7 @@ public class UniversalRenderTest implements RenderTest {
 			{
 				System.out.println("r");
 			}
-		}, () -> widgetRenderer);
+		}, () -> manager);
 		Util.printError("window");
 		
 		frameBuffer.bind();
@@ -445,8 +447,10 @@ public class UniversalRenderTest implements RenderTest {
 		Vector3f end = Vector3f.of(10, 10, 10);
 		Util.printError("compact");
 		
-		fontRenderer.loadText(new Text("ala.beta@delta"), Vector2i.of(0, (int) o % 360), Color.LIGHT_RED, -1, -1, -1, 0);
-		fontRenderer.loadText(new Text(Util.toPointString(cursor)), Vector2f.copyOf(cursor).subtract(window.getSize().xy().multiplyAll(0.5F)), Color.of(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight(), 0), -1, -1, -1, 0);
+		FontRenderer fontR = manager.startFont(RenderingMode.QUADS, textureProgram, font);
+		
+		fontR.loadText(new Text("ala.beta@delta"), Vector2i.of(0, (int) o % 360), Color.LIGHT_RED, -1, -1, -1, 0);
+		fontR.loadText(new Text(Util.toPointString(cursor)), Vector2f.copyOf(cursor).subtract(window.getSize().xy().multiplyAll(0.5F)), Color.of(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight(), 0), -1, -1, -1, 0);
 		Text text = new Text();
 		text.addLine(new TextLine("partial " + partialTicks));
 		text.addLine(new TextLine("time " + currentTime));
@@ -466,13 +470,14 @@ public class UniversalRenderTest implements RenderTest {
 		text.addLine(new TextLine("o " + o));
 		text.addLine(new TextLine(Double.toString(o % 180)));
 		text.addLine(new TextLine(Double.toString(o % 360)));
-		fontRenderer.loadText(text, Vector2i.of(-window.getWidth() / 2, window.getHeight() / 2 - 40), Color.BLACK, 16, -1, window.getHeight() / 16, 0);
+		fontR.loadText(text, Vector2i.of(-window.getWidth() / 2, window.getHeight() / 2 - 40), Color.BLACK, 16, -1, window.getHeight() / 16, 0);
 		Util.printError("FontRender texting");
-		fontRenderer.draw(compact);
+		fontR.draw(compact);
 		Util.printError("FontRender draw");
-		fontRenderer.clear();
-		fontRenderer.drawFontTexture(identity, 0, 0, 0, 1, 1);
-		fontRenderer.clear();
+		fontR.clear();
+		fontR.drawFontTexture(identity, 0, 0, 0, 1, 1);
+		fontR.clear();
+		manager.endFont(RenderingMode.QUADS, identity);
 		
 		// frameBuffer.bind();
 		Util.printError("FrameBuffer draw");
@@ -539,6 +544,11 @@ public class UniversalRenderTest implements RenderTest {
 	public Window getWindow()
 	{
 		return window;
+	}
+	
+	public ShaderProgram getColorProgram()
+	{
+		return colorProgram;
 	}
 	
 	/**

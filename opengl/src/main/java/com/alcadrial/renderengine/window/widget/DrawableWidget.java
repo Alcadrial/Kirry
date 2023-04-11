@@ -2,16 +2,16 @@ package com.alcadrial.renderengine.window.widget;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.renderengine.renderer.ShaderRenderer;
+import com.alcadrial.renderengine.renderingmanager.RenderingManager;
 
-public interface DrawableWidget<R extends ShaderRenderer> extends Widget {
+public interface DrawableWidget extends Widget {
 	
-	void render(Matrix4f matrix, R renderer, Vector2i pos, float partialTicks);
+	void render(Matrix4f matrix, RenderingManager manager, Vector2i pos, float partialTicks);
 	
-	default void render(Matrix4f matrix, R renderer, float partialTicks)
+	default void render(Matrix4f matrix, RenderingManager manager, float partialTicks)
 	{
-		render(matrix, renderer, getPos().xy(), partialTicks);
+		render(matrix, manager, getPos().xy(), partialTicks);
 	}
 	
-	void draw(Matrix4f matrix, R renderer, float partialTicks);
+	void draw(Matrix4f matrix, RenderingManager manager, float partialTicks);
 }

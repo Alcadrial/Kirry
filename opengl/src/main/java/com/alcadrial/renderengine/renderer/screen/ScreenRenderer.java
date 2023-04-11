@@ -25,7 +25,7 @@ class ScreenRenderer extends AbstractShaderRenderer<DataModel> {
 		super.initializeVertexArray();
 	}
 	
-	public void drawWidget(DrawableWidget<ScreenRenderer> widget)
+	public void drawWidget(DrawableWidget widget)
 	{
 		
 	}
