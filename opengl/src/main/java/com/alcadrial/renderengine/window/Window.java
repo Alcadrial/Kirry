@@ -27,10 +27,10 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.cursor.CursorInputMode;
 import com.alcadrial.renderengine.core.cursor.ICursor;
+import com.alcadrial.renderengine.core.util.Image;
 import com.alcadrial.renderengine.framebuffer.FrameBuffer;
 import com.alcadrial.renderengine.renderingmanager.RenderingManager;
 import com.alcadrial.renderengine.textures.Texture;
-import com.alcadrial.renderengine.util.Image;
 import com.alcadrial.renderengine.window.widget.ClickableWidget;
 import com.alcadrial.renderengine.window.widget.DrawableWidget;
 

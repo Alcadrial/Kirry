@@ -3,8 +3,13 @@ import org.gradle.internal.os.OperatingSystem
 plugins {
     id("java")
     id("java-library")
+    id("maven-publish")
     id("eclipse")
 }
+
+version = "2.0"
+group = "com.alcadrial.renderengine"
+archivesBaseName = "RenderEngine-core-${version}"
 
 eclipse.project.name = "RenderEngine Core"
 println("Configuring RenderEngine's project")
@@ -18,7 +23,6 @@ java {
 	toolchain.languageVersion = JavaLanguageVersion.of(17)
 	withSourcesJar()
 	withJavadocJar()
-    modularity.inferModulePath = true
 }
 
 javadoc {
@@ -88,56 +92,9 @@ switch (OperatingSystem.current()) {
 		break
 }
 
-tasks.named("jar") {
-	getDestinationDirectory().set(new File("jar"))
-	getArchiveFileName().set("$fileName-$version" + ".jar")
+tasks.sourcesJar {
+    duplicatesStrategy = "exclude"
 }
-tasks.named("javadocJar") {
-	getDestinationDirectory().set(new File("jar"))
-	getArchiveFileName().set("$fileName-$version-javadoc.jar")
-}
-tasks.named("sourcesJar") {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-	getDestinationDirectory().set(new File("jar"))
-	getArchiveFileName().set("$fileName-$version-sources.jar")
-}
-
-class AlcadrialTask extends DefaultTask {
-
-    AlcadrialTask() {
-        group = "alcadrial"
-    }
-}
-
-task export(type: AlcadrialTask) {
-	dependsOn("exportJar")
-	dependsOn("exportJavadoc")
-	dependsOn("exportSources")
-//	dependsOn("exportTestSources")
-}
-
-task exportJar(type: AlcadrialTask) {
-	dependsOn("jar")
-}
-
-task exportJavadoc(type: AlcadrialTask) {
-	dependsOn("javadocJar")
-}
-
-task exportSources(type: AlcadrialTask) {
-	dependsOn("sourcesJar")
-}
-
-task exportTestSources(type: AlcadrialTask) {
-//	tasks.named("sourcesJar") {getArchiveFileName().set("$fileName-$version-test.jar")}
-//	dependsOn("sourcesJar")
-//	excludeTestFiles = false;
-	doLast {
-		tasks.named("sourcesJar") {getArchiveFileName().set("$fileName-$version-sources.jar")}
-		excludeTestFiles = true
-	}
-}
-
 
 repositories {
 	flatDir {
@@ -147,7 +104,7 @@ repositories {
 }
 
 dependencies {
-	implementation(":Kector")
+	implementation("com.alcadrial.kector:Kector:$kectorVersion")
 	
     implementation ("org.lwjgl:lwjgl:$lwjglVersion")
     implementation ("org.lwjgl:lwjgl-glfw:$lwjglVersion")
@@ -166,5 +123,22 @@ def manifestAttributes = [
 ];
 
 jar.manifest.attributes(manifestAttributes)
-sourcesJar.manifest.attributes(manifestAttributes)
-javadocJar.manifest.attributes(manifestAttributes)
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifact jar
+            artifact sourcesJar
+            artifact javadocJar
+        }
+    }
+    repositories {
+        maven {
+            url("file://D:/maven")
+        }
+    }
+}
+
+javadoc {
+     options.addBooleanOption('html5', true)
+}

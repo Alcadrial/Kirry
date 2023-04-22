@@ -9,10 +9,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.alcadrial.renderengine.core.util.Image;
 import com.alcadrial.renderengine.renderer.font.text.TextLine;
 import com.alcadrial.renderengine.textures.Texture;
 import com.alcadrial.renderengine.textures.TextureTemplate;
-import com.alcadrial.renderengine.util.Image;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 

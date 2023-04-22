@@ -3,19 +3,25 @@ import org.gradle.internal.os.OperatingSystem
 plugins {
     id("java")
     id("java-library")
+    id("maven-publish")
     id("eclipse")
 }
 
-void printClass(Object obj) {
-	println(obj.class)
-}
-
-println("Configuring RenderEngine's project")
+version = "2.0"
+group = "com.alcadrial.renderengine"
+archivesBaseName = "RenderEngine-opengl-${version}"
 
 eclipse.project.name = "RenderEngine Opengl"
-project.ext.lwjglVersion = "3.3.1"
+println("Configuring RenderEngine's project")
 
-java.modularity.inferModulePath = true
+java {
+	toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+    withSourcesJar()
+    withJavadocJar()
+	modularity.inferModulePath = true
+}
+
+project.ext.lwjglVersion = "3.3.1"
 
 switch (OperatingSystem.current()) {
 	case OperatingSystem.LINUX:
@@ -43,15 +49,20 @@ repositories {
 }
 
 dependencies {
-	api(project(":core"))
+	implementation(project(":core"))
 	
+	implementation("com.alcadrial.kector:Kector:$kectorVersion")
 	implementation(":Kroperties")
 	implementation(":Threads")
 	implementation(":Tester")
 	
     implementation ("com.google.code.gson:gson:2.8.9")
+    implementation ("org.lwjgl:lwjgl:$lwjglVersion")
+    implementation ("org.lwjgl:lwjgl-glfw:$lwjglVersion")
     implementation ("org.lwjgl:lwjgl-openal:$lwjglVersion")
     implementation ("org.lwjgl:lwjgl-opengl:$lwjglVersion")
+	runtimeOnly ("org.lwjgl:lwjgl::$lwjglNatives")
+	runtimeOnly ("org.lwjgl:lwjgl-glfw::$lwjglNatives")
 	runtimeOnly ("org.lwjgl:lwjgl-openal::$lwjglNatives")
 	runtimeOnly ("org.lwjgl:lwjgl-opengl::$lwjglNatives")
 }
@@ -67,5 +78,22 @@ def manifestAttributes = [
 ];
 
 jar.manifest.attributes(manifestAttributes)
-//sourcesJar.manifest.attributes(manifestAttributes)
-//javadocJar.manifest.attributes(manifestAttributes)
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifact jar
+            artifact sourcesJar
+            artifact javadocJar
+        }
+    }
+    repositories {
+        maven {
+            url("file://D:/maven")
+        }
+    }
+}
+
+javadoc {
+     options.addBooleanOption('html5', true)
+}

@@ -1,27 +1,31 @@
 package com.alcadrial.renderengine.renderingmanager;
 
+import com.alcadrial.renderengine.renderer.RenderingMode;
+
 public class RenderingAlreadyStartedException extends RenderingException {
 	
-	public RenderingAlreadyStartedException()
-	{}
-	
-	public RenderingAlreadyStartedException(String message)
+	public RenderingAlreadyStartedException(RenderingMode mode)
 	{
-		super(message);
+		super(mode);
 	}
 	
-	public RenderingAlreadyStartedException(Throwable cause)
+	public RenderingAlreadyStartedException(RenderingMode mode, String message)
 	{
-		super(cause);
+		super(mode, message);
 	}
 	
-	public RenderingAlreadyStartedException(String message, Throwable cause)
+	public RenderingAlreadyStartedException(RenderingMode mode, Throwable cause)
 	{
-		super(message, cause);
+		super(mode, cause);
 	}
 	
-	public RenderingAlreadyStartedException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace)
+	public RenderingAlreadyStartedException(RenderingMode mode, String message, Throwable cause)
 	{
-		super(message, cause, enableSuppression, writableStackTrace);
+		super(mode, message, cause);
+	}
+	
+	public RenderingAlreadyStartedException(RenderingMode mode, String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace)
+	{
+		super(mode, message, cause, enableSuppression, writableStackTrace);
 	}
 }

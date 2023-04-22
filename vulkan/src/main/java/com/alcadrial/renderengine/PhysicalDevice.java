@@ -16,34 +16,38 @@ public class PhysicalDevice implements AutoCloseable {
 	private static final int[] BEST_MATCHER_MAP = new int[] {4, 2, 0, 1, 3};
 	
 	/**
-	 * BestMatcher for {@link Vulkan#pickPhysicalDevices(java.util.function.Predicate, Comparable)} that use the device type
+	 * BestMatcher for {@link Vulkan#pickPhysicalDevices(Comparator)} that use the device type
 	 * <table class="striped" style="text-align:center">
-	 * <thead>
-	 * <tr>
-	 * <th scope="col">Priority</th>
-	 * <th scope="col">Device Type</th>
-	 * </tr>
-	 * </thead>
-	 * <tbody>
-	 * <tr>
-	 * <th scope="row">4</th>
-	 * <td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU DISCRETE GPU}</td>
-	 * <tr>
-	 * <th scope="row">3</th>
-	 * <td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU VIRTUAL GPU}</td>
-	 * <tr>
-	 * <th scope="row">2</th>
-	 * <td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU INTEGRATED GPU}</td>
-	 * <tr>
-	 * <th scope="row">1</th>
-	 * <td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_CPU CPU}</td>
-	 * <tr>
-	 * <th scope="row">0</th>
-	 * <td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_OTHER OTHER}</td>
-	 * </tbody>
+	 *     <caption><b>Device Types hierarchy</b></caption>
+	 *     <thead>
+	 *         <tr>
+	 *             <th scope="col">Priority</th>
+	 *             <th scope="col">Device Type</th>
+	 *         </tr>
+	 *     </thead>
+	 *     <tbody>
+	 *         <tr>
+	 *             <th scope="row">4</th>
+	 *             <td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU DISCRETE GPU}</td>
+	 *         </tr>
+	 *         <tr>
+	 *             <th scope="row">3</th>
+	 *             <td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU VIRTUAL GPU}</td>
+	 *         </tr>
+	 *         <tr>
+	 *             <th scope="row">2</th>
+	 *             <td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU INTEGRATED GPU}</td>
+	 *         </tr>
+	 *         <tr>
+	 *             <th scope="row">1</th>
+	 *             <td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_CPU CPU}</td>
+	 *         </tr>
+	 *         <tr>
+	 *             <th scope="row">0</th>
+	 *             <td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_OTHER OTHER}</td>
+	 *         </tr>
+	 *     </tbody>
 	 * </table>
-	 * 
-	 * @param device
 	 * 
 	 * @return
 	 */

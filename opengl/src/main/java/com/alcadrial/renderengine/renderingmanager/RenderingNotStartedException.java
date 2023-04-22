@@ -1,27 +1,31 @@
 package com.alcadrial.renderengine.renderingmanager;
 
+import com.alcadrial.renderengine.renderer.RenderingMode;
+
 public class RenderingNotStartedException extends RenderingException {
 	
-	public RenderingNotStartedException()
-	{}
-	
-	public RenderingNotStartedException(String message)
+	public RenderingNotStartedException(RenderingMode mode)
 	{
-		super(message);
+		super(mode);
 	}
 	
-	public RenderingNotStartedException(Throwable cause)
+	public RenderingNotStartedException(RenderingMode mode, String message)
 	{
-		super(cause);
+		super(mode, message);
 	}
 	
-	public RenderingNotStartedException(String message, Throwable cause)
+	public RenderingNotStartedException(RenderingMode mode, Throwable cause)
 	{
-		super(message, cause);
+		super(mode, cause);
 	}
 	
-	public RenderingNotStartedException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace)
+	public RenderingNotStartedException(RenderingMode mode, String message, Throwable cause)
 	{
-		super(message, cause, enableSuppression, writableStackTrace);
+		super(mode, message, cause);
+	}
+	
+	public RenderingNotStartedException(RenderingMode mode, String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace)
+	{
+		super(mode, message, cause, enableSuppression, writableStackTrace);
 	}
 }
