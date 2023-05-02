@@ -2,14 +2,19 @@ package com.alcadrial.renderengine.renderer.object;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import com.alcadrial.renderengine.buffer.FloatArrayBuffer;
 import com.alcadrial.renderengine.core.util.WorkInProgress;
 import com.alcadrial.renderengine.renderer.AbstractVertexBuilder;
+import com.alcadrial.renderengine.renderer.IVertexResult;
 import com.alcadrial.renderengine.renderer.IllegalBuildingState;
 import com.alcadrial.renderengine.renderer.data.FloatListVertexData;
 import com.alcadrial.renderengine.renderer.data.VertexData;
+import com.alcadrial.renderengine.shader.ShaderInput;
 import com.alcadrial.renderengine.shader.ShaderProgram;
 import com.alcadrial.renderengine.util.SwitchableTracker;
+import com.alcadrial.renderengine.util.Tracker;
 
 @WorkInProgress
 public class ObjectBuilder {
@@ -43,7 +48,7 @@ public class ObjectBuilder {
 		data.add(vertexData);
 	}
 	
-	public class VertexBuilder extends AbstractVertexBuilder<VertexBuilder> {
+	public class VertexBuilder extends AbstractVertexBuilder<VertexBuilder, VertexResult> {
 		
 		private boolean building;
 		
@@ -54,13 +59,14 @@ public class ObjectBuilder {
 		}
 		
 		@Override
-		public void end()
+		public VertexResult end()
 		{
 			if (building)
 			{
 				map.clear();
 				building = false;
 			}
+			return null;
 		}
 		
 		public VertexBuilder next()
@@ -69,6 +75,63 @@ public class ObjectBuilder {
 			addVertex(new FloatListVertexData(map, 0));
 			map.clear();
 			return this;
+		}
+	}
+	
+	public class VertexResult implements IVertexResult {
+		
+		private FloatArrayBuffer buffer;
+		private Map<ShaderInput, Integer> inputs;
+		
+		public VertexResult(FloatArrayBuffer buffer, Map<ShaderInput, Integer> inputs)
+		{
+			this.buffer = buffer;
+			this.inputs = inputs;
+		}
+		
+		@Override
+		public Tracker<int[]> track(ShaderInput input)
+		{
+			return new InputTracker(inputs.get(input), buffer, input.getType().getSize());
+		}
+	}
+	
+	private class InputTracker implements Tracker<int[]> {
+		
+		private int index;
+		private FloatArrayBuffer buffer;
+		private int size;
+		private boolean valid;
+		
+		public InputTracker(int index, FloatArrayBuffer buffer, int size)
+		{
+			this.index = index;
+			this.buffer = buffer;
+			this.size = size;
+			valid = true;
+		}
+		
+		@Override
+		public void modify(int[] data)
+		{
+			if (valid)
+			{
+				int i = 0;
+				for (; i < data.length && i < size; i++) buffer.setFloat(i + index, Float.intBitsToFloat(data[i]));
+				for (; i < size; i++) buffer.setFloat(i + index, 0);
+			}
+		}
+		
+		@Override
+		public void remove()
+		{
+			if (valid) for (int i = index; i < size + index; i++) buffer.setFloat(i, 0);
+		}
+		
+		@Override
+		public boolean isValid()
+		{
+			return valid;
 		}
 	}
 }

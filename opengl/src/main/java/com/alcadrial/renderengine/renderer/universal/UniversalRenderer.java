@@ -1,5 +1,7 @@
 package com.alcadrial.renderengine.renderer.universal;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import com.alcadrial.kector.matrix.Matrix4f;
@@ -11,10 +13,13 @@ import com.alcadrial.renderengine.buffer.SimpleBuffer;
 import com.alcadrial.renderengine.core.util.Nonnull;
 import com.alcadrial.renderengine.renderer.AbstractIndicesRenderer;
 import com.alcadrial.renderengine.renderer.AbstractVertexBuilder;
+import com.alcadrial.renderengine.renderer.IVertexResult;
 import com.alcadrial.renderengine.renderer.RenderingMode;
+import com.alcadrial.renderengine.shader.ShaderInput;
 import com.alcadrial.renderengine.shader.ShaderProgram;
 import com.alcadrial.renderengine.shader.uniform.ShaderUniform;
 import com.alcadrial.renderengine.shader.uniform.extra.ColorUniform;
+import com.alcadrial.renderengine.util.Tracker;
 import com.alcadrial.renderengine.util.color.Color;
 import com.alcadrial.renderengine.util.color.ColorFormat;
 
@@ -187,7 +192,7 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 		vertexArray.bind();
 	}
 	
-	public class VertexBuilder extends AbstractVertexBuilder<VertexBuilder> {
+	public class VertexBuilder extends AbstractVertexBuilder<VertexBuilder, VertexResult> {
 		
 		public VertexBuilder(float x, float y, float z)
 		{
@@ -195,11 +200,77 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 		}
 		
 		@Override
-		public void end()
+		public VertexResult end()
 		{
+			int index = arrayBuffer.size();
 			arrayBuffer.addAll(gatherProgramData());
 			map.clear();
 			if (useIndices) elements.add(offset++);
+			Map<ShaderInput, Integer> inputs = new HashMap<>();
+			for (ShaderInput input : program.getProgramInputs())
+			{
+				inputs.put(input, index);
+				index += input.getType().getSize();
+			}
+			return new VertexResult(arrayBuffer.current(), inputs);
+		}
+	}
+	
+	public class VertexResult implements IVertexResult {
+		
+		private FloatArrayBuffer buffer;
+		private Map<ShaderInput, Integer> inputs;
+		
+		public VertexResult(FloatArrayBuffer buffer, Map<ShaderInput, Integer> inputs)
+		{
+			this.buffer = buffer;
+			this.inputs = inputs;
+		}
+		
+		@Override
+		public Tracker<int[]> track(ShaderInput input)
+		{
+			if (inputs.containsKey(input)) return new InputTracker(inputs.get(input), buffer, input.getType().getSize());
+			return Tracker.nullTracker();
+		}
+	}
+	
+	private class InputTracker implements Tracker<int[]> {
+		
+		private int index;
+		private FloatArrayBuffer buffer;
+		private int size;
+		private boolean valid;
+		
+		public InputTracker(int index, FloatArrayBuffer buffer, int size)
+		{
+			this.index = index;
+			this.buffer = buffer;
+			this.size = size;
+			valid = true;
+		}
+		
+		@Override
+		public void modify(int[] data)
+		{
+			if (valid)
+			{
+				int i = 0;
+				for (; i < data.length && i < size; i++) buffer.setFloat(i + index, Float.intBitsToFloat(data[i]));
+				for (; i < size; i++) buffer.setFloat(i + index, 0);
+			}
+		}
+		
+		@Override
+		public void remove()
+		{
+			if (valid) for (int i = index; i < size + index; i++) buffer.setFloat(i, 0);
+		}
+		
+		@Override
+		public boolean isValid()
+		{
+			return valid;
 		}
 	}
 	

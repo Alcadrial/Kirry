@@ -34,6 +34,13 @@ public class FloatArrayBuffer extends SyncronizableArrayBuffer<FloatBuffer> {
 		isModified = true;
 	}
 	
+	public float setFloat(int index, float f)
+	{
+		float f0 = values.set(index, f);
+		if (f0 != f && !Float.isNaN(f0) || !Float.isNaN(f)) isModified = true;
+		return f0;
+	}
+	
 	public float getFloat(int index)
 	{
 		return values.get(index);

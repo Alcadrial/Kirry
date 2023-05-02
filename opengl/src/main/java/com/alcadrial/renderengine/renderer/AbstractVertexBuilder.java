@@ -9,7 +9,7 @@ import com.alcadrial.renderengine.shader.ShaderInput;
 import com.alcadrial.renderengine.shader.ShaderInputType;
 import com.alcadrial.renderengine.shader.ShaderProgram;
 
-public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB>> {
+public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB, VR>, VR extends IVertexResult> {
 	
 	protected final Map<ShaderInput, float[]> map;
 	protected final ShaderProgram program;
@@ -139,7 +139,7 @@ public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB>
 		return List.copyOf(list);
 	}
 	
-	public abstract void end();
+	public abstract VR end();
 	
 	@SuppressWarnings("unchecked")
 	private VB myself()
