@@ -1,5 +1,3 @@
-import org.gradle.internal.os.OperatingSystem
-
 plugins {
     id("java")
     id("java-library")
@@ -7,122 +5,16 @@ plugins {
     id("eclipse")
 }
 
-version = "2.0"
-group = "com.alcadrial.renderengine"
-archivesBaseName = "RenderEngine-core-${version}"
-
 eclipse.project.name = "RenderEngine Core"
-println("Configuring RenderEngine's project")
-
-boolean printExcludedFiles = true
-boolean printExportedFiles = true
-boolean excludeTestFiles = true
-boolean printOnlyOnce = true
-
-java {
-	toolchain.languageVersion = JavaLanguageVersion.of(17)
-	withSourcesJar()
-	withJavadocJar()
-}
-
-javadoc {
-	options.tags("apiNote:a:API Note:", "implSpec:a:Implementation Requirements:", "implNote:a:Implementation Note:")
-}
-
-compileJava.options.encoding = "UTF-8"
-
-sourceSets.main.java {
-	srcDir("src/main/java")
-	
-	File start = null
-	
-	exclude(e -> {
-		if (printOnlyOnce)
-		{
-			if (start == null) start = e.getFile()
-			else if (start.equals(e.getFile()))
-			{
-				printExportedFiles = false
-				printExcludedFiles = false
-			}
-		}
-		if (!excludeTestFiles || e.getFile().isDirectory()) {
-			File packageFile = new File(e.getFile().getPath() + "/package-info.java")
-			if (packageFile.isFile())
-			{
-				String text = packageFile.text
-				boolean r = (text.contains("package com.alcadra.renderengine.util;") && text.contains("@Test")) || text.contains("@com.alcadra.renderengine.util.Test")
-				if (!r && printExportedFiles) System.out.println("D " + e.getFile())
-				if (r && printExcludedFiles) System.out.println("excluded D " + e.getFile())
-				return r
-			}
-			if (printExportedFiles) System.out.println("D " + e.getFile())
-			return false
-		}
-		boolean b = e.getFile().name.endsWith(".java")
-		String text = e.getFile().text
-		boolean b0 = text.contains("@Test")
-		boolean b1 = text.contains("import com.alcadra.renderengine.util.Test")
-		boolean b2 = text.contains("package com.alcadra.renderengine.util;")
-		boolean b3 = text.contains("@com.alcadra.renderengine.util.Test")
-		boolean result = b && ((b0 && (b1 || b2)) || b3)
-		if (printExportedFiles && !result) System.out.println("F " + e.getFile())
-		if (printExcludedFiles && result) System.out.println("excluded F " + e.getFile())
-		return result
-	})
-}
-
-project.ext.lwjglVersion = "3.3.1"
-
-switch (OperatingSystem.current()) {
-	case OperatingSystem.LINUX:
-		def osArch = System.getProperty("os.arch")
-		project.ext.lwjglNatives = osArch.startsWith("arm") || osArch.startsWith("aarch64")
-			? "natives-linux-${osArch.contains('64') || osArch.startsWith('armv8') ? 'arm64' : 'arm32'}"
-			: "natives-linux"
-		break
-	case OperatingSystem.MAC_OS:
-		project.ext.lwjglNatives = System.getProperty("os.arch").startsWith("aarch64") ? "natives-macos-arm64" : "natives-macos"
-		break
-	case OperatingSystem.WINDOWS:
-		def osArch = System.getProperty("os.arch")
-		project.ext.lwjglNatives = osArch.contains("64")
-			? "natives-windows${osArch.startsWith('aarch64') ? '-arm64' : ""}"
-			: "natives-windows-x86"
-		break
-}
-
-tasks.sourcesJar {
-    duplicatesStrategy = "exclude"
-}
-
-repositories {
-	flatDir {
-		dirs("libs")
-	}
-    mavenCentral()
-}
 
 dependencies {
-	implementation("com.alcadrial.kector:Kector:$kectorVersion")
+	implementation("com.alcadrial.kector:Kector:${kectorVersion}")
 	
-    implementation ("org.lwjgl:lwjgl:$lwjglVersion")
-    implementation ("org.lwjgl:lwjgl-glfw:$lwjglVersion")
-	runtimeOnly ("org.lwjgl:lwjgl::$lwjglNatives")
-	runtimeOnly ("org.lwjgl:lwjgl-glfw::$lwjglNatives")
+    implementation ("org.lwjgl:lwjgl:${lwjglVersion}")
+    implementation ("org.lwjgl:lwjgl-glfw:${lwjglVersion}")
+	runtimeOnly ("org.lwjgl:lwjgl::${lwjglNatives}")
+	runtimeOnly ("org.lwjgl:lwjgl-glfw::${lwjglNatives}")
 }
-
-def manifestAttributes = [
-	"Specification-Title"     : name,
-	"Specification-Version"   : version,
-	"Specification-Vendor"    : author,
-	"Implementation-Title"    : name,
-	"Implementation-Version"  : version,
-	"Implementation-Vendor"   : author,
-	"Implementation-Timestamp": new Date().format("dd/MM/yyyy HH:mm:ss")
-];
-
-jar.manifest.attributes(manifestAttributes)
 
 publishing {
     publications {
@@ -137,8 +29,4 @@ publishing {
             url("file://D:/maven")
         }
     }
-}
-
-javadoc {
-     options.addBooleanOption('html5', true)
 }
