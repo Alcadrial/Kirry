@@ -1,0 +1,19 @@
+package com.alcadrial.renderengine.opengl.shader.uniform;
+
+import org.lwjgl.opengl.GL20;
+
+import com.alcadrial.kector.vector.Vector2i;
+
+class Vector2iUniform extends ShaderUniform<Vector2i> {
+	
+	public Vector2iUniform(String name)
+	{
+		super(name);
+	}
+	
+	@Override
+	public void setValue(int location, Vector2i value)
+	{
+		GL20.glUniform2i(location, value.x(), value.y());
+	}
+}

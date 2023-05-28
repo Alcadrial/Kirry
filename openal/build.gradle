@@ -1,0 +1,40 @@
+plugins {
+    id("java")
+    id("java-library")
+    id("maven-publish")
+    id("eclipse")
+}
+
+eclipse.project.name = "RenderEngine ${moduleName}"
+
+dependencies {
+	implementation(project(":core"))
+	
+	implementation("com.alcadrial.kector:Kector:${kectorVersion}")
+	implementation(":Kroperties")
+	implementation(":Threads")
+	implementation(":Tester")
+	
+    implementation ("com.google.code.gson:gson:${gsonVersion}")
+    implementation ("org.lwjgl:lwjgl:${lwjglVersion}")
+    implementation ("org.lwjgl:lwjgl-glfw:${lwjglVersion}")
+    implementation ("org.lwjgl:lwjgl-openal:${lwjglVersion}")
+	runtimeOnly ("org.lwjgl:lwjgl::${lwjglNatives}")
+	runtimeOnly ("org.lwjgl:lwjgl-glfw::${lwjglNatives}")
+	runtimeOnly ("org.lwjgl:lwjgl-openal::${lwjglNatives}")
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifact jar
+            artifact sourcesJar
+            artifact javadocJar
+        }
+    }
+    repositories {
+        maven {
+            url("file://D:/maven")
+        }
+    }
+}
