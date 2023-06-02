@@ -106,6 +106,12 @@ public class FloatArrayBufferStack extends FloatArrayBuffer {
 	}
 	
 	@Override
+	public int byteSize()
+	{
+		return top != null ? top.buffer.byteSize() : super.byteSize();
+	}
+	
+	@Override
 	public void sync()
 	{
 		if (top != null) top.buffer.sync();
@@ -142,6 +148,18 @@ public class FloatArrayBufferStack extends FloatArrayBuffer {
 	public float[] getGpuFloatData()
 	{
 		return top != null ? top.buffer.getGpuFloatData() : super.getGpuFloatData();
+	}
+	
+	@Override
+	public int getGpuByteSize()
+	{
+		return top != null ? top.buffer.getGpuByteSize() : super.getGpuByteSize();
+	}
+	
+	@Override
+	protected int elementSize()
+	{
+		return top != null ? top.buffer.elementSize() : super.elementSize();
 	}
 	
 	@Override

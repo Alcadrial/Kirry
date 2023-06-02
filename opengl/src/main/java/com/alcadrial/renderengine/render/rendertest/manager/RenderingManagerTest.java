@@ -20,6 +20,7 @@ import com.alcadrial.renderengine.render.renderer.font.FontRenderer;
 import com.alcadrial.renderengine.render.renderer.font.text.Text;
 import com.alcadrial.renderengine.render.renderer.font.text.TextLine;
 import com.alcadrial.renderengine.render.renderer.universal.UniversalRenderer;
+import com.alcadrial.renderengine.render.renderingmanager.RendererPreferences;
 import com.alcadrial.renderengine.render.renderingmanager.RenderingManager;
 import com.alcadrial.renderengine.render.rendertest.UniversalRenderTest;
 import com.alcadrial.renderengine.render.rendertest.object.RenderTest;
@@ -188,7 +189,7 @@ public class RenderingManagerTest implements RenderTest {
 			e.printStackTrace();
 		}
 		
-		renderingManager = new RenderingManager();
+		renderingManager = new RenderingManager(RendererPreferences.create().autoSync(true).build());
 	}
 	
 	@Override

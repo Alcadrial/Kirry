@@ -40,7 +40,7 @@ public abstract class AbstractIndicesRenderer<AB extends GlBuffer> extends Abstr
 	
 	protected void drawIndices(RenderingMode mode)
 	{
-		drawIndices(mode, elements.size());
+		drawIndices(mode, -1);
 	}
 	
 	protected void drawIndices(RenderingMode mode, int count)
@@ -53,13 +53,13 @@ public abstract class AbstractIndicesRenderer<AB extends GlBuffer> extends Abstr
 		vertexArray.bind();
 		syncBuffers();
 		syncIndices();
-		GL11.glDrawElements(mode.ordinal(), count, GL11.GL_UNSIGNED_INT, offset);
+		GL11.glDrawElements(mode.ordinal(), count <= -1 ? elements.getGpuSize() : count, GL11.GL_UNSIGNED_INT, offset);
 	}
 	
 	@Override
 	public void draw(RenderingMode mode, Matrix4f matrix)
 	{
-		if (useIndices) draw(mode, matrix, elements.size());
+		if (useIndices) draw(mode, matrix, -1);
 		else super.draw(mode, matrix);
 	}
 	

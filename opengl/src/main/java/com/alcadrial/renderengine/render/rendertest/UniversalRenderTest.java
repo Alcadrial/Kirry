@@ -37,6 +37,7 @@ import com.alcadrial.renderengine.render.renderer.font.FontRenderer;
 import com.alcadrial.renderengine.render.renderer.font.text.Text;
 import com.alcadrial.renderengine.render.renderer.font.text.TextLine;
 import com.alcadrial.renderengine.render.renderer.universal.UniversalRenderer;
+import com.alcadrial.renderengine.render.renderingmanager.RendererPreferences;
 import com.alcadrial.renderengine.render.renderingmanager.RenderingManager;
 import com.alcadrial.renderengine.render.rendertest.manager.RenderingManagerTest;
 import com.alcadrial.renderengine.render.rendertest.object.ObjectRenderTest;
@@ -351,7 +352,7 @@ public class UniversalRenderTest implements RenderTest {
 		fontRenderer = new FontRenderer(fontProgram, font);
 		fontRenderer.setAutoSync(true);
 		Util.printError("font renderer");
-		manager = new RenderingManager();
+		manager = new RenderingManager(RendererPreferences.create().autoSync(true).build());
 		
 		window.setIcon(icon);
 		window.show();

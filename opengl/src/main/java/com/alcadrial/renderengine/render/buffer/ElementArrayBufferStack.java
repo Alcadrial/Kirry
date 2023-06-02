@@ -116,13 +116,6 @@ public class ElementArrayBufferStack extends ElementArrayBuffer {
 	}
 	
 	@Override
-	protected void syncModify()
-	{
-		if (top != null) top.buffer.syncModify();
-		else super.syncModify();
-	}
-	
-	@Override
 	public int getId()
 	{
 		return top != null ? top.buffer.getId() : super.getId();

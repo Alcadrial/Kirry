@@ -36,6 +36,7 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 	private Color color;
 	private int textureSampler;
 	private int offset;
+	private boolean hasNewBuffers;
 	
 	public UniversalRenderer(ShaderProgram program)
 	{
@@ -59,6 +60,7 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 		program.setUniform(TEXTURE_SAMPLER, textureSampler);
 		program.setUniform(COLOR, color);
 		program.setUniform(COLOR_RGB, color);
+		if (hasNewBuffers) initializeVertexArray();
 		super.draw(mode, matrix, count, offset);
 	}
 	
@@ -95,7 +97,7 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 		this.arrayBuffer.push(arrayBuffer);
 		elementStack.push(elementBuffer);
 		offset = elementBuffer.getMax() + 1;
-		initializeVertexArray();
+		hasNewBuffers = true;
 	}
 	
 	public void pushBufferMerge(FloatArrayBuffer buffer)
@@ -119,7 +121,7 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 		elementBuffer.merge(e, elementBuffer.getMax());
 		elementStack.push(elementBuffer);
 		offset = elementStack.getMax() + 1;
-		initializeVertexArray();
+		hasNewBuffers = true;
 	}
 	
 	private <B extends SimpleBuffer> B pushNewBuffer(B buffer)

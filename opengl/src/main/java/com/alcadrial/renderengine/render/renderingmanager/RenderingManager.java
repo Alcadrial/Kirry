@@ -16,17 +16,26 @@ public class RenderingManager {
 	private Map<RenderingMode, Rendering<UniversalRenderer>> universalRendering;
 	private Map<RenderingMode, Rendering<FontRenderer>> fontRendering;
 	
-	public RenderingManager()
+	private RendererPreferences defaultPreferences;
+	
+	public RenderingManager(RendererPreferences defaultPreferences)
 	{
 		universalRendering = new EnumMap<>(RenderingMode.class);
 		for (RenderingMode mode : RenderingMode.values()) universalRendering.put(mode, new Rendering<>(new UniversalRenderer(ShaderProgram.DEFAULT)));
 		fontRendering = new EnumMap<>(RenderingMode.class);
 		for (RenderingMode mode : RenderingMode.values()) fontRendering.put(mode, new Rendering<>(new FontRenderer(ShaderProgram.DEFAULT, null)));
+		
+		this.defaultPreferences = defaultPreferences;
 	}
 	
 	public UniversalRenderer start(RenderingMode mode, ShaderProgram program)
 	{
-		return startUniversal(mode, program);
+		return start(mode, program, defaultPreferences);
+	}
+	
+	public UniversalRenderer start(RenderingMode mode, ShaderProgram program, RendererPreferences preferences)
+	{
+		return startUniversal(mode, program, preferences);
 	}
 	
 	public UniversalRenderer get(RenderingMode mode)
@@ -41,10 +50,16 @@ public class RenderingManager {
 	
 	public UniversalRenderer startUniversal(RenderingMode mode, ShaderProgram program)
 	{
+		return startUniversal(mode, program, defaultPreferences);
+	}
+	
+	public UniversalRenderer startUniversal(RenderingMode mode, ShaderProgram program, RendererPreferences preferences)
+	{
 		Rendering<UniversalRenderer> rendering = universalRendering.get(mode);
 		if (rendering.rendering) throw new RenderingAlreadyStartedException(mode);
 		rendering.renderer.clear();
 		rendering.renderer.setShaderProgram(program);
+		if (preferences.autoSync()) rendering.renderer.setAutoSync(true);
 		rendering.rendering = true;
 		return rendering.renderer;
 	}
@@ -56,30 +71,25 @@ public class RenderingManager {
 	
 	public void endUniversal(RenderingMode mode, Matrix4f matrix)
 	{
-		endUniversal(mode, matrix, true);
-	}
-	
-	public void endUniversal(RenderingMode mode, Matrix4f matrix, boolean sync)
-	{
 		Rendering<UniversalRenderer> rendering = universalRendering.get(mode);
 		if (!rendering.rendering) throw new RenderingNotStartedException(mode);
-		rendering.renderer.setAutoSync(sync);
 		rendering.renderer.draw(mode, matrix);
 		rendering.rendering = false;
 	}
 	
 	public FontRenderer startFont(RenderingMode mode, ShaderProgram program, Font font)
 	{
-		return startFont(mode, program, font, true);
+		return startFont(mode, program, font, defaultPreferences);
 	}
 	
-	public FontRenderer startFont(RenderingMode mode, ShaderProgram program, Font font, boolean autoSync)
+	public FontRenderer startFont(RenderingMode mode, ShaderProgram program, Font font, RendererPreferences preferences)
 	{
 		Rendering<FontRenderer> rendering = fontRendering.get(mode);
 		if (rendering.rendering) throw new RenderingAlreadyStartedException(mode);
 		rendering.renderer.clear();
 		rendering.renderer.setShaderProgram(program);
 		rendering.renderer.setFont(font);
+		if (preferences.autoSync()) rendering.renderer.setAutoSync(true);
 		rendering.rendering = true;
 		return rendering.renderer;
 	}
@@ -91,14 +101,8 @@ public class RenderingManager {
 	
 	public void endFont(RenderingMode mode, Matrix4f matrix)
 	{
-		endFont(mode, matrix, true);
-	}
-	
-	public void endFont(RenderingMode mode, Matrix4f matrix, boolean sync)
-	{
 		Rendering<FontRenderer> rendering = fontRendering.get(mode);
 		if (!rendering.rendering) throw new RenderingNotStartedException(mode);
-		rendering.renderer.setAutoSync(sync);
 		rendering.renderer.draw(mode, matrix);
 		rendering.rendering = false;
 	}

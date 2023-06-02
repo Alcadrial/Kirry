@@ -12,7 +12,6 @@ import org.lwjgl.system.MemoryUtil;
 public class ElementArrayBuffer extends GlBuffer {
 	
 	protected ArrayList<Integer> values;
-	private boolean isModified;
 	private int max;
 	
 	public ElementArrayBuffer()
@@ -88,41 +87,6 @@ public class ElementArrayBuffer extends GlBuffer {
 	public int size()
 	{
 		return values.size();
-	}
-	
-	@Override
-	public void sync()
-	{
-		if (isModified)
-		{
-			syncModify();
-			isModified = false;
-		}
-	}
-	
-	protected void syncModify()
-	{
-		IntBuffer b = MemoryUtil.memAllocInt(values.size());
-		for (Integer i : values) b.put(i);
-		GL15.glBufferData(getTarget(), b.flip(), GL15.GL_DYNAMIC_DRAW);
-		MemoryUtil.memFree(b);
-	}
-	
-	@Override
-	public int getGpuSize()
-	{
-		return GL15.glGetBufferParameteri(getTarget(), GL15.GL_BUFFER_SIZE) / 4;
-	}
-	
-	@Override
-	public int[] getGpuIntData()
-	{
-		IntBuffer buffer = MemoryUtil.memAllocInt(getGpuSize());
-		GL15.glGetBufferSubData(getTarget(), 0, buffer);
-		int[] v = new int[buffer.limit()];
-		for (int i = 0; i < v.length; i++) v[i] = buffer.get(i);
-		MemoryUtil.memFree(buffer);
-		return v;
 	}
 	
 	private ArrayList<Integer> getValues()

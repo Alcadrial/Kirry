@@ -335,7 +335,7 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	@Override
 	public void draw(RenderingMode mode, Matrix4f matrix)
 	{
-		draw(mode, matrix, arrayBuffer.size() / vertexSize());
+		draw(mode, matrix, -1);
 	}
 	
 	@Override

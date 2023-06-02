@@ -68,18 +68,20 @@ public abstract class AbstractShaderRenderer<AB extends GlBuffer> extends Abstra
 		}
 	}
 	
+	@Override
 	protected void draw(RenderingMode mode)
 	{
-		draw(mode, arrayBuffer.size() * 4 / vertexSize());
+		draw(mode, -1);
 	}
 	
 	@Override
 	public void draw(RenderingMode mode, Matrix4f matrix)
 	{
-		draw(mode, matrix, arrayBuffer.size() * 4 / vertexSize());
+		draw(mode, matrix, -1);
 	}
 	
-	protected int vertexSize()
+	@Override
+	public int vertexSize()
 	{
 		return vertexSize;
 	}
