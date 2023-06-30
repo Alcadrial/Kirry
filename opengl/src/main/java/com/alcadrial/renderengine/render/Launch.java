@@ -487,11 +487,10 @@ public class Launch {
 				t.println("DEPTH_STENCIL_2D_TEXTURE = " + TextureTemplate.DEPTH_STENCIL_2D_TEXTURE);
 				if (!check(TextureTemplate.DEPTH_STENCIL_2D_TEXTURE, GL_TEXTURE_2D, GL_DEPTH_STENCIL, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, GL_DEPTH_STENCIL_ATTACHMENT)) return false;
 				
-				if (!checkException(() -> new TextureTemplate(0, GL_RGBA, GL_RGBA, GL_UNSIGNED_INT, GL_COLOR_ATTACHMENT0), TextureTemplateException.class)) return false;
-				if (!checkException(() -> new TextureTemplate(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT, GL_COLOR_ATTACHMENT0), TextureTemplateException.class)) return false;
-				if (!checkException(() -> new TextureTemplate(GL_TEXTURE_2D, GL_RGBA, 0, GL_UNSIGNED_INT, GL_COLOR_ATTACHMENT0), TextureTemplateException.class)) return false;
-				if (!checkException(() -> new TextureTemplate(GL_TEXTURE_2D, GL_RGBA, GL_RGBA, 0, GL_COLOR_ATTACHMENT0), TextureTemplateException.class)) return false;
-				if (!checkException(() -> new TextureTemplate(GL_TEXTURE_2D, GL_RGBA, GL_RGBA, GL_UNSIGNED_INT, 0), TextureTemplateException.class)) return false;
+				if (!checkException(() -> new TextureTemplate(0, GL_RGBA, GL_RGBA, GL_UNSIGNED_INT), TextureTemplateException.class)) return false;
+				if (!checkException(() -> new TextureTemplate(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT), TextureTemplateException.class)) return false;
+				if (!checkException(() -> new TextureTemplate(GL_TEXTURE_2D, GL_RGBA, 0, GL_UNSIGNED_INT), TextureTemplateException.class)) return false;
+				if (!checkException(() -> new TextureTemplate(GL_TEXTURE_2D, GL_RGBA, GL_RGBA, 0), TextureTemplateException.class)) return false;
 				
 				return true;
 			});
@@ -685,7 +684,7 @@ public class Launch {
 	
 	public static boolean check(TextureTemplate template, int target, int internalFormat, int textureFormat, int dataType, int attachment)
 	{
-		return template.target() == target && template.internalFormat() == internalFormat && template.textureFormat() == textureFormat && template.dataType() == dataType && template.attachment() == attachment;
+		return template.target() == target && template.internalFormat() == internalFormat && template.textureFormat() == textureFormat && template.dataType() == dataType;
 	}
 	
 	public static long l(byte b)

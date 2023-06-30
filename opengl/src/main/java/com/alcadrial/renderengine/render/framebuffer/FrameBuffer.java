@@ -128,12 +128,16 @@ public class FrameBuffer extends SimpleBuffer {
 	
 	public void setTexture(Texture texture)
 	{
-		setTexture(texture, 0);
+		setTexture(texture, GL32.GL_COLOR_ATTACHMENT0);
 	}
 	
-	public void setTexture(Texture texture, int mipmapLevel)
+	public void setTexture(Texture texture, int attachment)
 	{
-		int attachment = texture.getTemplate().attachment();
+		setTexture(texture, attachment, 0);
+	}
+	
+	public void setTexture(Texture texture, int attachment, int mipmapLevel)
+	{
 		switch (attachment)
 		{
 			case GL32.GL_DEPTH_ATTACHMENT -> depthTexture = new TextureHolder(texture, false);
@@ -144,14 +148,13 @@ public class FrameBuffer extends SimpleBuffer {
 		GL32.glFramebufferTexture(getTarget(), attachment, texture.getId(), mipmapLevel);
 	}
 	
-	private void setTextureInternal(Texture texture)
+	private void setTextureInternal(Texture texture, int attachment)
 	{
-		setTextureInternal(texture, 0);
+		setTextureInternal(texture, attachment, 0);
 	}
 	
-	private void setTextureInternal(Texture texture, int mipmapLevel)
+	private void setTextureInternal(Texture texture, int attachment, int mipmapLevel)
 	{
-		int attachment = texture.getTemplate().attachment();
 		switch (attachment)
 		{
 			case GL32.GL_DEPTH_ATTACHMENT -> depthTexture = new TextureHolder(texture, true);
@@ -169,27 +172,36 @@ public class FrameBuffer extends SimpleBuffer {
 			int[] data = new int[width * height];
 			if (useColorTexture)
 			{
-				if (colorTexture[0] != null && colorTexture[0].internal) colorTexture[0].texture.close();
+				if (colorTexture[0] != null && colorTexture[0].isInternal) colorTexture[0].texture.close();
 				Texture texture = new Texture(TextureTemplate.RGBA_2D_TEXTURE);
 				texture.setData2D(texture.getTemplate(), data, width, height, 0);
 				texture.disableAntiAlias();
-				setTextureInternal(texture);
+				setTextureInternal(texture, GL32.GL_COLOR_ATTACHMENT0);
 			}
-			if (useDepthTexture)
+			if (useDepthTexture && useStencilTexture)
 			{
-				if (depthTexture != null && depthTexture.internal) depthTexture.texture.close();
+				if (depthTexture != null && depthTexture.isInternal) depthTexture.texture.close();
+				if (stencilTexture != null && stencilTexture.isInternal && stencilTexture.texture != depthTexture.texture) stencilTexture.texture.close();
+				Texture texture = new Texture(TextureTemplate.DEPTH_STENCIL_2D_TEXTURE);
+				texture.setData2D(texture.getTemplate(), data, width, height, 0);
+				texture.disableAntiAlias();
+				setTextureInternal(texture, GL32.GL_DEPTH_STENCIL_ATTACHMENT);
+			}
+			else if (useDepthTexture)
+			{
+				if (depthTexture != null && depthTexture.isInternal) depthTexture.texture.close();
 				Texture texture = new Texture(TextureTemplate.DEPTH_2D_TEXTURE);
 				texture.setData2D(texture.getTemplate(), data, width, height, 0);
 				texture.disableAntiAlias();
-				setTextureInternal(texture);
+				setTextureInternal(texture, GL32.GL_DEPTH_ATTACHMENT);
 			}
-			if (useStencilTexture)
+			else if (useStencilTexture)
 			{
-				if (stencilTexture != null && stencilTexture.internal) stencilTexture.texture.close();
+				if (stencilTexture != null && stencilTexture.isInternal) stencilTexture.texture.close();
 				Texture texture = new Texture(TextureTemplate.STENCIL_2D_TEXTURE);
 				texture.setData2D(texture.getTemplate(), data, width, height, 0);
 				texture.disableAntiAlias();
-				setTextureInternal(texture);
+				setTextureInternal(texture, GL32.GL_STENCIL_ATTACHMENT);
 			}
 		}
 		setDrawArea(screen.x(), screen.y(), width, height);
@@ -333,12 +345,12 @@ public class FrameBuffer extends SimpleBuffer {
 	private final class TextureHolder {
 		
 		private Texture texture;
-		private boolean internal;
+		private boolean isInternal;
 		
-		public TextureHolder(Texture texture, boolean internal)
+		public TextureHolder(Texture texture, boolean isInternal)
 		{
 			this.texture = texture;
-			this.internal = internal;
+			this.isInternal = isInternal;
 		}
 	}
 }

@@ -4,7 +4,7 @@ import java.util.Set;
 
 import org.lwjgl.opengl.GL43;
 
-public record TextureTemplate(int target, int internalFormat, int textureFormat, int dataType, int attachment) {
+public record TextureTemplate(int target, int internalFormat, int textureFormat, int dataType) {
 	
 	private static final Set<Integer> VALID_TARGETS = Set.of(
 			GL43.GL_TEXTURE_1D,
@@ -72,68 +72,49 @@ public record TextureTemplate(int target, int internalFormat, int textureFormat,
 			GL43.GL_UNSIGNED_SHORT_4_4_4_4, GL43.GL_UNSIGNED_SHORT_4_4_4_4_REV, GL43.GL_UNSIGNED_SHORT_5_5_5_1, GL43.GL_UNSIGNED_SHORT_1_5_5_5_REV,
 			GL43.GL_UNSIGNED_INT_8_8_8_8, GL43.GL_UNSIGNED_INT_8_8_8_8_REV, GL43.GL_UNSIGNED_INT_10_10_10_2, GL43.GL_UNSIGNED_INT_2_10_10_10_REV,
 			GL43.GL_UNSIGNED_INT_24_8, GL43.GL_UNSIGNED_INT_10F_11F_11F_REV, GL43.GL_UNSIGNED_INT_5_9_9_9_REV, GL43.GL_FLOAT_32_UNSIGNED_INT_24_8_REV);
-	private static final Set<Integer> VALID_ATTACHMENTS = Set.of(
-			GL43.GL_COLOR_ATTACHMENT0, GL43.GL_COLOR_ATTACHMENT1, GL43.GL_COLOR_ATTACHMENT2, GL43.GL_COLOR_ATTACHMENT3,
-			GL43.GL_COLOR_ATTACHMENT4, GL43.GL_COLOR_ATTACHMENT5, GL43.GL_COLOR_ATTACHMENT6, GL43.GL_COLOR_ATTACHMENT7,
-			GL43.GL_COLOR_ATTACHMENT8, GL43.GL_COLOR_ATTACHMENT9, GL43.GL_COLOR_ATTACHMENT10, GL43.GL_COLOR_ATTACHMENT11,
-			GL43.GL_COLOR_ATTACHMENT12, GL43.GL_COLOR_ATTACHMENT13, GL43.GL_COLOR_ATTACHMENT14, GL43.GL_COLOR_ATTACHMENT15,
-			GL43.GL_COLOR_ATTACHMENT16, GL43.GL_COLOR_ATTACHMENT17, GL43.GL_COLOR_ATTACHMENT18, GL43.GL_COLOR_ATTACHMENT19,
-			GL43.GL_COLOR_ATTACHMENT20, GL43.GL_COLOR_ATTACHMENT21, GL43.GL_COLOR_ATTACHMENT22, GL43.GL_COLOR_ATTACHMENT23,
-			GL43.GL_COLOR_ATTACHMENT24, GL43.GL_COLOR_ATTACHMENT25, GL43.GL_COLOR_ATTACHMENT26, GL43.GL_COLOR_ATTACHMENT27,
-			GL43.GL_COLOR_ATTACHMENT28, GL43.GL_COLOR_ATTACHMENT29, GL43.GL_COLOR_ATTACHMENT30, GL43.GL_COLOR_ATTACHMENT31,
-			GL43.GL_DEPTH_ATTACHMENT,
-			GL43.GL_STENCIL_ATTACHMENT,
-			GL43.GL_DEPTH_STENCIL_ATTACHMENT);
 	
-	public static final TextureTemplate RGBA_2D_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_2D, GL43.GL_RGBA, GL43.GL_RGBA, GL43.GL_UNSIGNED_INT_8_8_8_8, GL43.GL_COLOR_ATTACHMENT0);
+	public static final TextureTemplate RGBA_2D_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_2D, GL43.GL_RGBA, GL43.GL_RGBA, GL43.GL_UNSIGNED_INT_8_8_8_8);
 	public static final TextureTemplate RGB_2D_TEXTURE = RGBA_2D_TEXTURE.withFormat(GL43.GL_RGB);
-	public static final TextureTemplate RGBA_CUBE_MAP_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_CUBE_MAP, GL43.GL_RGBA, GL43.GL_RGBA, GL43.GL_UNSIGNED_INT_8_8_8_8, GL43.GL_COLOR_ATTACHMENT0);
-	public static final TextureTemplate RGBA_RECTANGLE_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_RECTANGLE, GL43.GL_RGBA, GL43.GL_RGBA, GL43.GL_UNSIGNED_INT_8_8_8_8, GL43.GL_COLOR_ATTACHMENT0);
-	public static final TextureTemplate DEPTH_2D_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_2D, GL43.GL_DEPTH_COMPONENT, GL43.GL_DEPTH_COMPONENT, GL43.GL_FLOAT, GL43.GL_DEPTH_ATTACHMENT);
-	public static final TextureTemplate STENCIL_2D_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_2D, GL43.GL_DEPTH_STENCIL, GL43.GL_STENCIL_INDEX, GL43.GL_UNSIGNED_BYTE, GL43.GL_STENCIL_ATTACHMENT);
-	public static final TextureTemplate DEPTH_STENCIL_2D_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_2D, GL43.GL_DEPTH_STENCIL, GL43.GL_DEPTH_STENCIL, GL43.GL_UNSIGNED_INT_24_8, GL43.GL_DEPTH_STENCIL_ATTACHMENT);
+	public static final TextureTemplate RGBA_CUBE_MAP_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_CUBE_MAP, GL43.GL_RGBA, GL43.GL_RGBA, GL43.GL_UNSIGNED_INT_8_8_8_8);
+	public static final TextureTemplate RGBA_RECTANGLE_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_RECTANGLE, GL43.GL_RGBA, GL43.GL_RGBA, GL43.GL_UNSIGNED_INT_8_8_8_8);
+	public static final TextureTemplate DEPTH_2D_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_2D, GL43.GL_DEPTH_COMPONENT, GL43.GL_DEPTH_COMPONENT, GL43.GL_FLOAT);
+	public static final TextureTemplate STENCIL_2D_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_2D, GL43.GL_DEPTH_STENCIL, GL43.GL_STENCIL_INDEX, GL43.GL_UNSIGNED_BYTE);
+	public static final TextureTemplate DEPTH_STENCIL_2D_TEXTURE = new TextureTemplate(GL43.GL_TEXTURE_2D, GL43.GL_DEPTH_STENCIL, GL43.GL_DEPTH_STENCIL, GL43.GL_UNSIGNED_INT_24_8);
 	
-	public TextureTemplate(int target, int internalFormat, int textureFormat, int dataType, int attachment)
+	public TextureTemplate(int target, int internalFormat, int textureFormat, int dataType)
 	{
 		if (!VALID_TARGETS.contains(target)) throw new IllegalTargetException();
 		if (!VALID_INTERNAL_FORMATS.contains(internalFormat)) throw new IllegalInternalFormatException();
 		if (!VALID_TEXTURE_FORMATS.contains(textureFormat)) throw new IllegalTextureFormatException();
 		if (!VALID_DATA_TYPES.contains(dataType)) throw new IllegalDataTypeException();
-		if (!VALID_ATTACHMENTS.contains(attachment)) throw new IllegalAttachmentException();
 		this.target = target;
 		this.internalFormat = internalFormat;
 		this.textureFormat = textureFormat;
 		this.dataType = dataType;
-		this.attachment = attachment;
 	}
 	
 	public TextureTemplate withTarget(int target)
 	{
-		return new TextureTemplate(target, internalFormat, textureFormat, dataType, attachment);
+		return new TextureTemplate(target, internalFormat, textureFormat, dataType);
 	}
 	
 	public TextureTemplate withInternalFormat(int internalFormat)
 	{
-		return new TextureTemplate(target, internalFormat, textureFormat, dataType, attachment);
+		return new TextureTemplate(target, internalFormat, textureFormat, dataType);
 	}
 	
 	public TextureTemplate withTextureFormat(int textureFormat)
 	{
-		return new TextureTemplate(target, internalFormat, textureFormat, dataType, attachment);
+		return new TextureTemplate(target, internalFormat, textureFormat, dataType);
 	}
 	
 	public TextureTemplate withFormat(int format)
 	{
-		return new TextureTemplate(target, format, format, dataType, attachment);
+		return new TextureTemplate(target, format, format, dataType);
 	}
 	
 	public TextureTemplate withDataType(int dataType)
 	{
-		return new TextureTemplate(target, internalFormat, textureFormat, dataType, attachment);
-	}
-	
-	public TextureTemplate withAttachment(int attachment)
-	{
-		return new TextureTemplate(target, internalFormat, textureFormat, dataType, attachment);
+		return new TextureTemplate(target, internalFormat, textureFormat, dataType);
 	}
 }
