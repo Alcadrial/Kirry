@@ -40,6 +40,7 @@ public class RenderingManagerTest implements RenderTest {
 	protected float rotationX;
 	protected float rotationY;
 	private Vector3f position;
+	private float startTime;
 	private float enlapsedTime;
 	private RenderingManager renderingManager;
 	private ShaderProgram colorProgram, textureProgram, fontProgram;
@@ -190,6 +191,8 @@ public class RenderingManagerTest implements RenderTest {
 		}
 		
 		renderingManager = new RenderingManager(RendererPreferences.create().autoSync(true).build());
+		
+		startTime = System.currentTimeMillis();
 	}
 	
 	@Override
@@ -206,9 +209,9 @@ public class RenderingManagerTest implements RenderTest {
 	}
 	
 	@Override
-	public void loop(float enlapsedTime)
+	public void loop(float partialSecond)
 	{
-		this.enlapsedTime = enlapsedTime;
+		enlapsedTime = System.currentTimeMillis() - startTime;
 		{
 			Matrix4f matrix = new Matrix4f();
 			

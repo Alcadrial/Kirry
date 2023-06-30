@@ -227,14 +227,14 @@ public class ObjectRenderTest implements RenderTest {
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public void loop(float partialTicks)
+	public void loop(float partialSecond)
 	{
 		Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
 		Matrix4f orthographicPositive = new Matrix4f().orthographicPositive(window.getWidth(), window.getHeight());
 		Matrix4f projection = new Matrix4f().project(10, 100, 8, window.getAspectRatio());
 		
 		Text text = new Text();
-		text.addLine(new TextLine("partialticks " + partialTicks));
+		text.addLine(new TextLine("partialticks " + partialSecond));
 		text.addLine(new TextLine("time " + o));
 		fontRenderer.loadText(text, Vector2i.of(0, window.getHeight() - font.getLineHeight()), Color.BLACK, -1, -1, -1, 0);
 		fontRenderer.draw(orthographicPositive);
@@ -255,7 +255,7 @@ public class ObjectRenderTest implements RenderTest {
 		else if (i == 13) trackers[5].modify(cubes[0]);
 		cubeRenderer.draw(RenderingMode.QUADS, new Matrix4f(projection).multiply(new Matrix4f().view(Vector3f.of(10, 0, 10), 0, 0).multiply(new Matrix4f().rotate(Axis.Y, o * 8 / 13F % 360))));
 		
-		window.draw(orthographic, partialTicks);
+		window.draw(orthographic, partialSecond);
 		window.update();
 		window.clear(true, true, false);
 		o++;

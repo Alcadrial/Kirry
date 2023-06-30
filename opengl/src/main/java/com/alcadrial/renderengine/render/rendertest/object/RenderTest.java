@@ -6,7 +6,7 @@ public interface RenderTest {
 	
 	public void start();
 	public void restart();
-	public void loop(float partialTicks);
+	public void loop(float partialSecond);
 	
 	public Window getWindow();
 }

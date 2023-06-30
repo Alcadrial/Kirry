@@ -13,7 +13,6 @@ import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.MemoryUtil;
 
-import com.alcadra.threads.TimeThread;
 import com.alcadrial.kector.Math;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
@@ -52,6 +51,7 @@ import com.alcadrial.renderengine.render.util.Util;
 import com.alcadrial.renderengine.render.util.color.Color;
 import com.alcadrial.renderengine.render.util.wrapper.CullFaceMode;
 import com.alcadrial.renderengine.render.window.Window;
+import com.alcadrial.threads.TimeThread;
 
 @SuppressWarnings("unused")
 public class UniversalRenderTest implements RenderTest {
@@ -167,7 +167,7 @@ public class UniversalRenderTest implements RenderTest {
 	public void render() throws InterruptedException
 	{
 		activeTest = this;
-		thread = new TimeThread("Test", maxLoops, this::start, t -> !activeTest.getWindow().shouldClose(), this::loopMethod, RenderEngine::terminate);
+		thread = new TimeThread("Test", maxLoops, this::start, () -> !activeTest.getWindow().shouldClose(), this::loopMethod, RenderEngine::terminate);
 		thread.setDaemon(false);
 		thread.start();
 		synchronized (this)
@@ -176,10 +176,10 @@ public class UniversalRenderTest implements RenderTest {
 		}
 	}
 	
-	public void loopMethod(float partialTicks)
+	public void loopMethod(float partialSecond)
 	{
 		Util.printError("origin");
-		activeTest.loop(partialTicks);
+		activeTest.loop(partialSecond);
 		Util.printError("loop");
 		while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
 		RenderEngine.enableDepthTest();
@@ -429,7 +429,7 @@ public class UniversalRenderTest implements RenderTest {
 	private boolean rotating = false;
 	
 	@Override
-	public void loop(float partialTicks)
+	public void loop(float partialSecond)
 	{
 		long t = System.nanoTime();
 		currentTime = (t - time) / 1000000F / 50;
@@ -457,7 +457,7 @@ public class UniversalRenderTest implements RenderTest {
 		fontR.loadText(new Text("ala.beta@delta"), Vector2i.of(0, (int) o % 360), Color.LIGHT_RED, -1, -1, -1, 0);
 		fontR.loadText(new Text(Util.toPointString(cursor)), Vector2f.copyOf(cursor).subtract(window.getSize().xy().multiplyAll(0.5F)), Color.of(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight(), 0), -1, -1, -1, 0);
 		Text text = new Text();
-		text.addLine(new TextLine("partial " + partialTicks));
+		text.addLine(new TextLine("partial " + partialSecond));
 		text.addLine(new TextLine("time " + currentTime));
 		text.addLine(new TextLine("fps " + thread.getRunsPerSecond()));
 		text.addLine(new TextLine("xRot " + rotationX));
