@@ -26,15 +26,15 @@ public class ShaderProgram implements Deletable {
 	{
 		Util.printError("default program pre-build");
 		DEFAULT.attachShader(new Shader("""
-				#version 460
-				
-				layout (location = 0) in vec3 position;
-				
-				void main()
-				{
-					gl_Position = vec4(position, 1);
-				}
-				""", ShaderType.VERTEX));
+			#version 460
+			
+			layout (location = 0) in vec3 vertexPosition;
+			
+			void main()
+			{
+				gl_Position = vec4(vertexPosition, 1);
+			}
+			""", ShaderType.VERTEX));
 		DEFAULT.build();
 		DEFAULT.attachedShaders[0].get(0).delete();
 		Util.printError("default program build");
