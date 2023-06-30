@@ -111,7 +111,8 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 		float advanced = 0;
 		int lines = 0;
 		int line = -font.getLineOffset();
-		loop: for (List<RenderCharacter> fontString : fontText)
+		loop:
+		for (List<RenderCharacter> fontString : fontText)
 		{
 			if (lines >= maxLines) break loop;
 			for (int i = 0; i < fontString.size(); i++)
@@ -179,7 +180,8 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 		int lines = 0;
 		int line = -font.getLineOffset();
 		Vector4f vertex = Vector4f.of(0, 0, 0, 0);
-		loop: for (List<RenderCharacter> fontString : fontText)
+		loop:
+		for (List<RenderCharacter> fontString : fontText)
 		{
 			for (int i = 0; i < fontString.size(); i++)
 			{
@@ -333,12 +335,6 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	}
 	
 	@Override
-	public void draw(RenderingMode mode, Matrix4f matrix)
-	{
-		draw(mode, matrix, -1);
-	}
-	
-	@Override
 	public void draw(RenderingMode mode, Matrix4f matrix, int count, int offset)
 	{
 		font.getTexture().bind();
@@ -347,7 +343,7 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 		program.setUniform(COLOR, color);
 		program.setUniform(ALFA_MASK, alfaMask);
 		program.setUniform(TEXTURE_SAMPLER, textureSampler);
-		draw(mode, count * 4, offset * 4);
+		draw(mode, count * 4 * vertexSize(), offset * 4);
 	}
 	
 	/**

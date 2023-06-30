@@ -29,7 +29,7 @@ public abstract class AbstractRenderer<AB extends GlBuffer> implements Renderer 
 	{
 		vertexArray.bind();
 		syncBuffers();
-		GL30.glDrawArrays(mode.ordinal(), 0, arrayBuffer.getGpuSize());
+		GL30.glDrawArrays(mode.ordinal(), 0, arrayBuffer.getGpuByteSize() / vertexSize());
 	}
 	
 	protected void draw(RenderingMode mode, int count)
@@ -41,7 +41,7 @@ public abstract class AbstractRenderer<AB extends GlBuffer> implements Renderer 
 	{
 		vertexArray.bind();
 		syncBuffers();
-		GL30.glDrawArrays(mode.ordinal(), offset, count <= -1 ? arrayBuffer.getGpuSize() : count);
+		GL30.glDrawArrays(mode.ordinal(), offset, count <= -1 ? arrayBuffer.getGpuByteSize() / vertexSize() : count);
 	}
 	
 	@Override

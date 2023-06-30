@@ -25,7 +25,7 @@ public class Shader {
 		this.file = null;
 		this.type = type;
 		id = GL20.glCreateShader(type.getId());
-		code = file.split("[\r\n,\n,\r]");
+		code = file.split("[\r\n|\n|\r]");
 		programs = new LinkedList<>();
 		GL20.glShaderSource(id, file);
 		GL20.glCompileShader(id);
