@@ -56,22 +56,16 @@ public class FrameBuffer extends SimpleBuffer {
 	
 	public FrameBuffer(FrameBufferTarget target)
 	{
-		super(target.getTarget(), GL32.glGenFramebuffers());
+		this(target, GL32.glGenFramebuffers());
 		Util.printError("[INTERNAL] framebuffer");
-		screen = Vector4i.of(0, 0, 0, 0);
-		this.target = target;
-		colorTexture = new TextureHolder[GL32.glGetInteger(GL32.GL_MAX_COLOR_ATTACHMENTS)];
-		depthTexture = null;
-		stencilTexture = null;
-		renderBuffer = null;
 	}
 	
 	private FrameBuffer(FrameBufferTarget target, int id)
 	{
 		super(target.getTarget(), id);
-		this.target = target;
 		screen = Vector4i.of(0, 0, 0, 0);
-		colorTexture = null;
+		this.target = target;
+		colorTexture = new TextureHolder[GL32.glGetInteger(GL32.GL_MAX_COLOR_ATTACHMENTS)];
 		depthTexture = null;
 		stencilTexture = null;
 		renderBuffer = null;
