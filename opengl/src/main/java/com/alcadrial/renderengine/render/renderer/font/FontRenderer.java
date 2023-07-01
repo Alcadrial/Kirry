@@ -136,6 +136,7 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 			if (textLine.length() > 0)
 			{
 				Glyph fontCharBefore = font.getGlyph(textLine.get(0));
+				row.length += fontCharBefore.getAdvance();
 				for (int i = 1; i < textLine.length(); i++)
 				{
 					Glyph fontChar = font.getGlyph(textLine.get(i));
@@ -145,6 +146,7 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 					fontCharBefore = fontChar;
 					if (row.length > maxLength)
 					{
+						row.length -= c.getAdvance();
 						fontText.add(row);
 						if (fontText.size() == maxLines)
 						{
