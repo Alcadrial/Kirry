@@ -2,15 +2,22 @@ package com.alcadrial.renderengine.render.util.color;
 
 public interface Color {
 	
-	public static ColorRGB of(float r, float g, float b)
+	static ColorRGB of(float r, float g, float b)
 	{
 		return new ImmutableColorRGB(r, g, b);
 	}
 	
-	public static Color of(float r, float g, float b, float a)
+	static Color of(float r, float g, float b, float a)
 	{
 		return new ImmutableColor(r, g, b, a);
 	}
+	
+	ColorRGB VERY_LIGHT_RED = of(255, 191, 191);
+	ColorRGB VERY_LIGHT_GREEN = of(191, 255, 191);
+	ColorRGB VERY_LIGHT_BLUE = of(191, 191, 255);
+	ColorRGB VERY_LIGHT_YELLOW = of(255, 255, 128);
+	ColorRGB VERY_LIGHT_CYAN = of(128, 255, 255);
+	ColorRGB VERY_LIGHT_MAGENTA = of(255, 128, 255);
 	
 	ColorRGB LIGHT_RED = of(255, 128, 128);
 	ColorRGB LIGHT_GREEN = of(128, 255, 128);
@@ -41,9 +48,11 @@ public interface Color {
 	ColorRGB VERY_DARK_MAGENTA = of(32, 0, 32);
 	
 	ColorRGB WHITE = of(255, 255, 255);
-	ColorRGB LIGHT_GRAY = of(191, 191, 191);
-	ColorRGB GRAY = of(128, 128, 128);
-	ColorRGB DARK_GRAY = of(64, 64, 64);
+	ColorRGB VERY_LIGHT_GRAY = of(213, 213, 213);
+	ColorRGB LIGHT_GRAY = of(170, 170, 170);
+	ColorRGB GRAY = of(85, 85, 85);
+	ColorRGB DARK_GRAY = of(43, 43, 43);
+	ColorRGB VERY_DARK_GRAY = of(21, 21, 21);
 	ColorRGB BLACK = of(0, 0, 0);
 	
 	float r();

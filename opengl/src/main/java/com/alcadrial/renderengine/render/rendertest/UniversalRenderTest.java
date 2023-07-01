@@ -49,6 +49,7 @@ import com.alcadrial.renderengine.render.shader.uniform.ShaderUniform;
 import com.alcadrial.renderengine.render.util.RendererUtil;
 import com.alcadrial.renderengine.render.util.Util;
 import com.alcadrial.renderengine.render.util.color.Color;
+import com.alcadrial.renderengine.render.util.color.ColorRGB;
 import com.alcadrial.renderengine.render.util.wrapper.CullFaceMode;
 import com.alcadrial.renderengine.render.window.Window;
 import com.alcadrial.threads.TimeThread;
@@ -455,8 +456,9 @@ public class UniversalRenderTest implements RenderTest {
 		FontRenderer fontR = manager.startFont(RenderingMode.QUADS, textureProgram, font);
 		
 		fontR.loadText(new Text("ala.beta@delta"), Vector2i.of(0, (int) o % 360), Color.LIGHT_RED, -1, -1, -1, 0, true);
-		Vector2f cursorPosition = Vector2f.copyOf(cursor).subtract(window.getSize().xy().multiplyAll(0.5F));
-		fontR.loadText(new Text(Util.toPointString(cursor)), cursorPosition, Color.of(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight(), 0), -1, -1, -1, 0, true, Color.DARK_GRAY, 2);
+		ColorRGB color = Color.of(cursor.x() * 255F / window.getWidth(), cursor.y() * 255F / window.getHeight(), 0);
+		ColorRGB shadowColor = Color.of(cursor.x() * 255F / window.getWidth() / 2, cursor.y() * 255F / window.getHeight() / 2, 0);
+		fontR.loadText(new Text(Util.toPointString(cursor)), Vector2f.copyOf(cursor).subtract(window.getSize().xy().multiplyAll(0.5F)), color, -1, -1, -1, 0, true, shadowColor, 2);
 		Text text = new Text();
 		text.addLine(new TextLine("partial " + partialSecond));
 		text.addLine(new TextLine("time " + currentTime));
@@ -476,7 +478,7 @@ public class UniversalRenderTest implements RenderTest {
 		text.addLine(new TextLine("o " + o));
 		text.addLine(new TextLine(Double.toString(o % 180)));
 		text.addLine(new TextLine(Double.toString(o % 360)));
-		fontR.loadText(text, Vector2i.of(-window.getWidth() / 2, window.getHeight() / 2 - 40), Color.LIGHT_GRAY, 16, -1, window.getHeight() / 16, 0, false, Color.BLACK, 2);
+		fontR.loadText(text, Vector2i.of(-window.getWidth() / 2, window.getHeight() / 2 - 40), Color.VERY_LIGHT_GRAY, 16, -1, window.getHeight() / 16, 0, false, Color.BLACK, 2);
 		Util.printError("FontRender texting");
 		fontR.draw(compact);
 		Util.printError("FontRender draw");
