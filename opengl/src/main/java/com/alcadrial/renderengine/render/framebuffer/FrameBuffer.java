@@ -333,6 +333,9 @@ public class FrameBuffer extends SimpleBuffer {
 	@Override
 	public void close()
 	{
+		for (TextureHolder holder : colorTexture) if (holder != null && holder.isInternal) holder.texture.close();
+		if (depthTexture != null && depthTexture.isInternal) depthTexture.texture.close();
+		if (stencilTexture != null && stencilTexture.isInternal && stencilTexture.texture != depthTexture.texture) stencilTexture.texture.close();
 		GL32.glDeleteFramebuffers(getId());
 	}
 	
