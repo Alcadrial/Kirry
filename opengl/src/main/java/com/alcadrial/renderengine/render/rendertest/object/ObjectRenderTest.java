@@ -236,7 +236,7 @@ public class ObjectRenderTest implements RenderTest {
 		Text text = new Text();
 		text.addLine(new TextLine("partialticks " + partialSecond));
 		text.addLine(new TextLine("time " + o));
-		fontRenderer.loadText(text, Vector2i.of(0, window.getHeight() - font.getLineHeight()), Color.BLACK, -1, -1, -1, 0);
+		fontRenderer.loadText(text, Vector2i.of(0, window.getHeight() - font.getLineHeight()), Color.BLACK, -1, -1, -1, 0, false);
 		fontRenderer.draw(orthographicPositive);
 		
 		int i = o / 10 % 14;

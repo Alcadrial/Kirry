@@ -9,6 +9,7 @@ import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.renderengine.core.util.Broken;
+import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.buffer.FloatArrayBuffer;
 import com.alcadrial.renderengine.render.renderer.AbstractShaderRenderer;
 import com.alcadrial.renderengine.render.renderer.RenderingMode;
@@ -74,143 +75,164 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 		}
 	}
 	
-	public void loadText(Text text, Vector2i position, Color color, float size, int maxLength, int maxLines, float z)
+	public void loadText(Text text, Vector2i position, Color color, float size, int maxLength, int maxLines, float z, boolean centered)
 	{
-		loadText(text, Vector2f.of(position), color, size, maxLength, maxLines, z);
+		loadText(null, text, Vector2f.of(position), color, size, maxLength, maxLines, z, centered, null, 0);
 	}
 	
-	public void loadText(Text text, Vector2f position, Color color, float size, int maxLength, int maxLines, float z)
+	public void loadText(Text text, Vector2f position, Color color, float size, int maxLength, int maxLines, float z, boolean centered)
+	{
+		loadText(null, text, position, color, size, maxLength, maxLines, z, centered, null, 0);
+	}
+	
+	public void loadText(@Nullable Matrix4f matrix, Text text, Vector2i position, Color color, float size, int maxLength, int maxLines, float z, boolean centered)
+	{
+		loadText(matrix, text, Vector2f.of(position), color, size, maxLength, maxLines, z, centered, null, 0);
+	}
+	
+	public void loadText(@Nullable Matrix4f matrix, Text text, Vector2f position, Color color, float size, int maxLength, int maxLines, float z, boolean centered)
+	{
+		loadText(matrix, text, position, color, size, maxLength, maxLines, z, centered, null, 0);
+	}
+	
+	public void loadText(Text text, Vector2i position, Color color, float size, int maxLength, int maxLines, float z, boolean centered, @Nullable Color shadow, @Nullable float shadowDistance)
+	{
+		loadText(null, text, Vector2f.of(position), color, size, maxLength, maxLines, z, centered, shadow, shadowDistance);
+	}
+	
+	public void loadText(Text text, Vector2f position, Color color, float size, int maxLength, int maxLines, float z, boolean centered, @Nullable Color shadow, @Nullable float shadowDistance)
+	{
+		loadText(null, text, position, color, size, maxLength, maxLines, z, centered, shadow, shadowDistance);
+	}
+	
+	public void loadText(@Nullable Matrix4f matrix, Text text, Vector2i position, Color color, float size, int maxLength, int maxLines, float z, boolean centered, @Nullable Color shadow, @Nullable float shadowDistance)
+	{
+		loadText(matrix, text, Vector2f.of(position), color, size, maxLength, maxLines, z, centered, shadow, shadowDistance);
+	}
+	
+	public void loadText(@Nullable Matrix4f matrix, Text text, Vector2f position, Color color, float size, int maxLength, int maxLines, float z, boolean centered, @Nullable Color shadow, @Nullable float shadowDistance)
 	{
 		if (text.isEmpty()) return;
 		if (size < 0) size = 16;
 		size /= font.getSize();
 		if (maxLength < 0) maxLength = Integer.MAX_VALUE;
 		if (maxLines < 0) maxLines = Integer.MAX_VALUE;
-		List<List<RenderCharacter>> fontText = new ArrayList<>(Math.min(text.rows(), maxLines));
+		boolean hasShadow = shadow != null && shadowDistance != 0 && shadow.a() > 0;
+		
+		class Row {
+			
+			List<RenderCharacter> chars;
+			float length;
+		}
+		
+		List<Row> fontText = new ArrayList<>(Math.min(text.rows(), maxLines));
 		int textSize = 0;
+		out:
 		for (TextLine textLine : text)
 		{
-			List<RenderCharacter> fontString = new ArrayList<>(textLine.length());
+			Row row = new Row();
+			row.chars = new ArrayList<>(textLine.length());
+			
 			if (textLine.length() > 0)
 			{
 				Glyph fontCharBefore = font.getGlyph(textLine.get(0));
 				for (int i = 1; i < textLine.length(); i++)
 				{
 					Glyph fontChar = font.getGlyph(textLine.get(i));
-					fontString.add(new RenderCharacter(fontCharBefore, font.getExtraOffset(fontCharBefore.getName(), fontChar.getName())));
+					RenderCharacter c = new RenderCharacter(fontCharBefore, font.getExtraOffset(fontCharBefore.getName(), fontChar.getName()));
+					row.chars.add(c);
+					row.length += c.getAdvance();
 					fontCharBefore = fontChar;
+					if (row.length > maxLength)
+					{
+						fontText.add(row);
+						if (fontText.size() == maxLines)
+						{
+							textSize += i + 1;
+							break out;
+						}
+						row = new Row();
+						row.chars = new ArrayList<>(textLine.length());
+					}
 				}
-				fontString.add(new RenderCharacter(fontCharBefore, 0));
+				row.chars.add(new RenderCharacter(fontCharBefore, 0));
 				textSize += textLine.length();
 			}
-			fontText.add(fontString);
-			if (fontText.size() == maxLines) break;
+			fontText.add(row);
+			if (fontText.size() == maxLines) break out;
 		}
 		Texture texture = font.getTexture();
 		List<Float> vertices = new ArrayList<>(textSize * 4);
 		float advanced = 0;
-		int lines = 0;
+		float offset = 0;
 		int line = -font.getLineOffset();
-		loop:
-		for (List<RenderCharacter> fontString : fontText)
+		//loop:
 		{
-			if (lines >= maxLines) break loop;
-			for (int i = 0; i < fontString.size(); i++)
+			if (matrix != null)
 			{
-				if (advanced > maxLength)
+				Vector4f vertex = Vector4f.of(0, 0, 0, 0);
+				for (Row fontString : fontText)
 				{
+					if (centered) offset = -fontString.length / 2;
+					for (int i = 0; i < fontString.chars.size(); i++)
+					{
+						RenderCharacter formattedChar = fontString.chars.get(i);
+						float sx = (offset + advanced + formattedChar.getXOffset() + formattedChar.getExtraAdvance()) * size;
+						float sy = (line + formattedChar.getYOffset()) * size;
+						float x = position.x() + sx;
+						float y = position.y() - sy;
+						float w = formattedChar.getWidth() * size;
+						float h = -formattedChar.getHeight() * size;
+						float u0 = (float) formattedChar.getX() / texture.getWidth();
+						float v0 = (float) formattedChar.getY() / texture.getHeight();
+						float u1 = (float) formattedChar.getWidth() / texture.getWidth();
+						float v1 = (float) formattedChar.getHeight() / texture.getHeight();
+						Vector4f vertex0 = matrix.multiply(vertex.setAll(x, y, z, 1));
+						vertices.addAll(asList(color, vertex0.x(), vertex0.y(), vertex0.z(), w, h, u0, v0, u1, v1));
+						if (hasShadow)
+						{
+							float x0 = x + shadowDistance;
+							float y0 = y - shadowDistance;
+							Vector4f vertex1 = matrix.multiply(vertex.setAll(x0, y0, z, 1));
+							vertices.addAll(asList(shadow, vertex1.x(), vertex1.y(), vertex1.z(), w, h, u0, v0, u1, v1));
+						}
+						advanced += formattedChar.getAdvance();
+					}
 					advanced = 0;
 					line += font.getLineHeight();
-					lines++;
-					if (lines >= maxLines) break loop;
 				}
-				RenderCharacter formattedChar = fontString.get(i);
-				float x = position.x() + (advanced + formattedChar.getXOffset() + formattedChar.getExtraAdvance()) * size;
-				float y = position.y() - (line + formattedChar.getYOffset()) * size;
-				float w = formattedChar.getWidth() * size;
-				float h = -formattedChar.getHeight() * size;
-				float u0 = (float) formattedChar.getX() / texture.getWidth();
-				float v0 = (float) formattedChar.getY() / texture.getHeight();
-				float u1 = (float) formattedChar.getWidth() / texture.getWidth();
-				float v1 = (float) formattedChar.getHeight() / texture.getHeight();
-				vertices.addAll(asList(color, x, y, z, w, h, u0, v0, u1, v1));
-				advanced += formattedChar.getAdvance();
 			}
-			lines++;
-			advanced = 0;
-			line += font.getLineHeight();
-		}
-		arrayBuffer.addAll(vertices);
-	}
-	
-	public void loadText(Matrix4f matrix, Text text, Vector2i position, Color color, float size, int maxLength, int maxLines, float z)
-	{
-		loadText(matrix, text, Vector2f.of(position), color, size, maxLength, maxLines, z);
-	}
-	
-	public void loadText(Matrix4f matrix, Text text, Vector2f position, Color color, float size, int maxLength, int maxLines, float z)
-	{
-		if (text.isEmpty()) return;
-		if (size < 0) size = 16;
-		size /= font.getSize();
-		if (maxLength < 0) maxLength = Integer.MAX_VALUE;
-		if (maxLines < 0) maxLines = Integer.MAX_VALUE;
-		List<List<RenderCharacter>> fontText = new ArrayList<>(text.rows());
-		int textSize = 0;
-		for (TextLine textLine : text)
-		{
-			List<RenderCharacter> fontString = new ArrayList<>(textLine.length());
-			if (textLine.length() > 0)
+			else
 			{
-				Glyph fontCharBefore = font.getGlyph(textLine.get(0));
-				for (int i = 1; i < textLine.length(); i++)
+				for (Row fontString : fontText)
 				{
-					Glyph fontChar = font.getGlyph(textLine.get(i));
-					fontString.add(new RenderCharacter(fontCharBefore, font.getExtraOffset(fontCharBefore.getName(), fontChar.getName())));
-					fontCharBefore = fontChar;
-				}
-				textSize += textLine.length();
-			}
-			fontText.add(fontString);
-			if (fontText.size() == maxLines) break;
-		}
-		Texture texture = font.getTexture();
-		List<Float> vertices = new ArrayList<>(textSize * 4);
-		float advanced = 0;
-		int lines = 0;
-		int line = -font.getLineOffset();
-		Vector4f vertex = Vector4f.of(0, 0, 0, 0);
-		loop:
-		for (List<RenderCharacter> fontString : fontText)
-		{
-			for (int i = 0; i < fontString.size(); i++)
-			{
-				if (advanced > maxLength)
-				{
+					if (centered) offset = -fontString.length / 2;
+					for (int i = 0; i < fontString.chars.size(); i++)
+					{
+						RenderCharacter formattedChar = fontString.chars.get(i);
+						float sx = (offset + advanced + formattedChar.getXOffset() + formattedChar.getExtraAdvance()) * size;
+						float sy = (line + formattedChar.getYOffset()) * size;
+						float x = position.x() + sx;
+						float y = position.y() - sy;
+						float w = formattedChar.getWidth() * size;
+						float h = -formattedChar.getHeight() * size;
+						float u0 = (float) formattedChar.getX() / texture.getWidth();
+						float v0 = (float) formattedChar.getY() / texture.getHeight();
+						float u1 = (float) formattedChar.getWidth() / texture.getWidth();
+						float v1 = (float) formattedChar.getHeight() / texture.getHeight();
+						vertices.addAll(asList(color, x, y, z, w, h, u0, v0, u1, v1));
+						if (hasShadow)
+						{
+							float x0 = x + shadowDistance;
+							float y0 = y - shadowDistance;
+							vertices.addAll(asList(shadow, x0, y0, z, w, h, u0, v0, u1, v1));
+						}
+						advanced += formattedChar.getAdvance();
+					}
 					advanced = 0;
 					line += font.getLineHeight();
-					lines++;
-					if (lines >= maxLines) break loop;
 				}
-				RenderCharacter formattedChar = fontString.get(i);
-				float x = position.x() + (advanced + formattedChar.getXOffset() + formattedChar.getExtraAdvance()) * size;
-				float y = position.y() - (line + formattedChar.getYOffset()) * size;
-				float w = formattedChar.getWidth() * size;
-				float h = -formattedChar.getHeight() * size;
-				float u0 = (float) formattedChar.getX() / texture.getWidth();
-				float v0 = (float) formattedChar.getY() / texture.getHeight();
-				float u1 = (float) formattedChar.getWidth() / texture.getWidth();
-				float v1 = (float) formattedChar.getHeight() / texture.getHeight();
-				Vector4f vertex0 = matrix.multiply(vertex.setAll(x, y, z, 1));
-				x = vertex0.x();
-				y = vertex0.y();
-				z = vertex0.z();
-				vertices.addAll(asList(color, x, y, z, w, h, u0, v0, u1, v1));
-				advanced += formattedChar.getAdvance();
 			}
-			lines++;
-			advanced = 0;
-			line += font.getLineHeight();
 		}
 		arrayBuffer.addAll(vertices);
 	}

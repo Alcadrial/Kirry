@@ -4,7 +4,11 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
 
 /**
+ * <p>
  * Indicates that the annotated element could be null.
+ * If the annotated element is of a primitive type like int means that
+ * a value of 0 is considerable as null.
+ * </p>
  * <p>
  * Based on the annotated element, various cases rises up:
  * 

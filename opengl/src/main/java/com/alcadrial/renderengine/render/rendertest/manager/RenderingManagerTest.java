@@ -251,7 +251,7 @@ public class RenderingManagerTest implements RenderTest {
 			text.addNewLine();
 			
 			FontRenderer renderer = renderingManager.startFont(RenderingMode.QUADS, fontProgram, font);
-			renderer.loadText(text, Vector2f.of(0, 256), Color.BLUE, -1, 128, 8, 0);
+			renderer.loadText(text, Vector2f.of(0, 256), Color.BLUE, -1, 128, 8, 0, false);
 			renderingManager.endFont(RenderingMode.QUADS, matrix);
 		}
 		{
@@ -272,7 +272,7 @@ public class RenderingManagerTest implements RenderTest {
 			text.addLine(new TextLine("\u250C"));
 			
 			FontRenderer renderer = renderingManager.startFont(RenderingMode.QUADS, fontProgram, font);
-			renderer.loadText(text, Vector2f.of(0, 512), Color.DARK_MAGENTA, -1, -1, -1, 20);
+			renderer.loadText(text, Vector2f.of(0, 512), Color.DARK_MAGENTA, -1, -1, -1, 20, false);
 			renderingManager.endFont(RenderingMode.QUADS, matrix);
 		}
 		
