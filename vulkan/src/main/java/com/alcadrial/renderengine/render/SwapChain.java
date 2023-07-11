@@ -296,8 +296,6 @@ public class SwapChain implements AutoCloseable {
 		KHRSwapchain.vkDestroySwapchainKHR(device, swapChain, null);
 		renderPassInfo.pClearValues().forEach(v -> v.color().float32().clear());
 		renderPassInfo.pClearValues().close();
-		renderPassInfo.renderArea().offset().close();
-		renderPassInfo.renderArea().close();
 		renderPassInfo.close();
 	}
 }

@@ -2,6 +2,7 @@ package com.alcadrial.renderengine.render.test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.vulkan.VK10;
@@ -66,7 +67,7 @@ public class Tests {
 			f += 0.001F;
 		}
 		
-		RenderEngine.terminate();
+		System.out.println("Closing time = " + recordTime(RenderEngine::terminate, TimeUnit.MICROSECONDS) / 1000D + "ms");
 	}
 	
 	public static int debugCallback(int messageSeverity, int messageType, long callbackDataId, long userDataId)
@@ -76,5 +77,29 @@ public class Tests {
 		System.out.println("[Vulkan debug] " + callbackData.pMessageString());
 		
 		return VK10.VK_FALSE;
+	}
+	
+	public static long recordTime(Runnable runnable, TimeUnit unit)
+	{
+		long startTime;
+		TimeUnit localUnit;
+		if (unit == TimeUnit.MICROSECONDS || unit == TimeUnit.NANOSECONDS)
+		{
+			startTime = System.nanoTime();
+			localUnit = TimeUnit.NANOSECONDS;
+		}
+		else
+		{
+			startTime = System.currentTimeMillis();
+			localUnit = TimeUnit.MILLISECONDS;
+		}
+		
+		runnable.run();
+		
+		long endTime;
+		if (localUnit == TimeUnit.NANOSECONDS) endTime = System.nanoTime();
+		else endTime = System.currentTimeMillis();
+		
+		return unit.convert(endTime - startTime, localUnit);
 	}
 }
