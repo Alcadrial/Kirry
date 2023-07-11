@@ -3,7 +3,7 @@ package com.alcadrial.renderengine.render;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL30;
 
-import com.alcadrial.renderengine.render.util.color.Color;
+import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.util.wrapper.CullFaceMode;
 
 public class RenderEngine {

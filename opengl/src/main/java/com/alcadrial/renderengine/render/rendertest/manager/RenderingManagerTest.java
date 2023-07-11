@@ -14,6 +14,7 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.core.util.Image;
+import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.renderer.RenderingMode;
 import com.alcadrial.renderengine.render.renderer.font.Font;
 import com.alcadrial.renderengine.render.renderer.font.FontRenderer;
@@ -29,7 +30,6 @@ import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderStatus;
 import com.alcadrial.renderengine.render.util.Util;
-import com.alcadrial.renderengine.render.util.color.Color;
 import com.alcadrial.renderengine.render.window.Window;
 
 public class RenderingManagerTest implements RenderTest {

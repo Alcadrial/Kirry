@@ -1,4 +1,4 @@
-package com.alcadrial.renderengine.render.util.color;
+package com.alcadrial.renderengine.core.util.color;
 
 record ImmutableColorRGB(float r, float g, float b) implements ColorRGB {
 	

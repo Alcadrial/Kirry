@@ -29,6 +29,7 @@ import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 import org.lwjgl.vulkan.VkViewport;
 
+import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.shader.CompiledShader;
@@ -52,13 +53,16 @@ public class Window implements AutoCloseable {
 	private long renderPass;
 	private GraphicsPipeline pipeline;
 	
+	private Color clearColor;
+	
 	public Window(int width, int height, String title)
 	{
 		vulkan = RenderEngine.getVulkan();
 		id = VulkanErrorUtils.nonNull(GLFW.glfwCreateWindow(width, height, title, 0, 0), "Cannot create window");
 		this.width = width;
 		this.height = height;
-		surface = new Surface(vulkan, id);
+		surface = new Surface(vulkan, this);
+		clearColor = Color.BLACK;
 	}
 	
 	public void initialize()
@@ -109,10 +113,12 @@ public class Window implements AutoCloseable {
 			VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
 			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.getDevice(), surface.getSurface(), capabilities), "Failed to create swap chain");
 			
+			VulkanErrorUtils.assertStatement(capabilities.maxImageCount() >= 2, "Insufficient images for double-buffer");
+			
 			VkSwapchainCreateInfoKHR createInfo = VkSwapchainCreateInfoKHR.calloc(stack);
 			createInfo.sType(KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR);
 			createInfo.surface(surface.getSurface());
-			createInfo.minImageCount(capabilities.maxImageCount());
+			createInfo.minImageCount(2);
 			createInfo.imageFormat(surface.getFormat().format());
 			createInfo.imageColorSpace(surface.getFormat().colorSpace());
 			createInfo.imageExtent(surface.getExtent());
@@ -261,6 +267,8 @@ public class Window implements AutoCloseable {
 			
 			VK10.vkDestroyShaderModule(vulkan.getDevice().getDevice(), vertShaderModule, null);
 			VK10.vkDestroyShaderModule(vulkan.getDevice().getDevice(), fragShaderModule, null);
+			
+			swapChain.startRegisteringCommands();
 		}
 	}
 	
@@ -379,12 +387,23 @@ public class Window implements AutoCloseable {
 		GLFW.glfwPollEvents();
 	}
 	
+	public void setClearColor(Color clearColor)
+	{
+		this.clearColor = clearColor;
+		swapChain.setClearColor(clearColor);
+	}
+	
+	public Color getClearColor()
+	{
+		return clearColor;
+	}
+	
 	@Override
 	public void close()
 	{
+		swapChain.close();
 		if (pipeline != null) pipeline.close();
 		VK10.vkDestroyRenderPass(vulkan.getDevice().getDevice(), renderPass, null);
-		swapChain.close();
 		surface.close();
 		GLFW.glfwDestroyWindow(id);
 	}

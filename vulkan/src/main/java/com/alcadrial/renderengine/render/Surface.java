@@ -18,8 +18,9 @@ import com.alcadrial.renderengine.render.util.VulkanUtils;
 
 public class Surface implements AutoCloseable {
 	
-	private Vulkan vulkan;
-	private long surface;
+	private final Vulkan vulkan;
+	private final Window window;
+	private final long surface;
 	private Pair<VkSurfaceFormatKHR, ByteBuffer> format;
 	private int mode;
 	private Pair<VkExtent2D, ByteBuffer> extent;
@@ -27,11 +28,12 @@ public class Surface implements AutoCloseable {
 	private Vector2i minSize;
 	private Vector2i size;
 	
-	public Surface(Vulkan vulkan, long window)
+	public Surface(Vulkan vulkan, Window window)
 	{
 		this.vulkan = vulkan;
+		this.window = window;
 		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(GLFWVulkan.glfwCreateWindowSurface(vulkan.getInstance(), window, null, p), "Failed to create surface");
+		VulkanErrorUtils.assertNoError(GLFWVulkan.glfwCreateWindowSurface(vulkan.getInstance(), window.getId(), null, p), "Failed to create surface");
 		surface = p[0];
 	}
 	
@@ -93,6 +95,11 @@ public class Surface implements AutoCloseable {
 	public long getSurface()
 	{
 		return surface;
+	}
+	
+	public Window getWindow()
+	{
+		return window;
 	}
 	
 	public VkSurfaceFormatKHR getFormat()

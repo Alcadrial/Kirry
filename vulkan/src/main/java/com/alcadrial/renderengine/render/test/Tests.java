@@ -9,6 +9,7 @@ import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
 
 import com.alcadrial.kroperties.Property;
 import com.alcadrial.renderengine.core.util.Test;
+import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Vulkan;
@@ -55,13 +56,14 @@ public class Tests {
 		}
 		
 		window.buildGraphicsPipeline(vertexShader, fragmentShader);
-		window.getSwapChain().createFrameBuffers(window);
-		vulkan.getDevice().createSwappingBuffers(2);
 		
+		float f = 0;
 		while (!window.shouldClose())
 		{
 			window.pollEvents();
 			vulkan.getDevice().draw();
+			window.setClearColor(Color.of(f, 0, 0, 0));
+			f += 0.001F;
 		}
 		
 		RenderEngine.terminate();

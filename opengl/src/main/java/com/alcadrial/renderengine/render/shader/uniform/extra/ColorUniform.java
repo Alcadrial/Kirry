@@ -2,9 +2,9 @@ package com.alcadrial.renderengine.render.shader.uniform.extra;
 
 import org.lwjgl.opengl.GL20;
 
+import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.core.util.color.ColorFormat;
 import com.alcadrial.renderengine.render.shader.uniform.ShaderUniform;
-import com.alcadrial.renderengine.render.util.color.Color;
-import com.alcadrial.renderengine.render.util.color.ColorFormat;
 
 public class ColorUniform extends ShaderUniform<Color> {
 	

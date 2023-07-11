@@ -1,5 +1,6 @@
 package com.alcadrial.renderengine.render;
 
+import java.io.PrintStream;
 import java.util.List;
 
 import org.lwjgl.PointerBuffer;
@@ -14,6 +15,7 @@ import org.lwjgl.vulkan.VkDebugUtilsMessengerCreateInfoEXT;
 import org.lwjgl.vulkan.VkInstanceCreateInfo;
 
 import com.alcadrial.renderengine.core.RenderEngineCore;
+import com.alcadrial.renderengine.render.debug.Debug;
 
 public class RenderEngine extends RenderEngineCore {
 	
@@ -144,5 +146,10 @@ public class RenderEngine extends RenderEngineCore {
 	public static void setDebugMessengerCallback(VkDebugUtilsMessengerCallbackEXTI messenger)
 	{
 		RenderEngine.messenger = messenger;
+	}
+	
+	public static void setDebugOutput(PrintStream debugOutput)
+	{
+		Debug.setDebugOutput(debugOutput);
 	}
 }

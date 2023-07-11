@@ -84,4 +84,10 @@ public class VulkanErrorUtils {
 			default -> "UNKNOWN ERROR";
 		};
 	}
+	
+	public static void assertStatement(boolean value, String error)
+	{
+		if (value) return;
+		throw new AssertionError(error);
+	}
 }

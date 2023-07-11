@@ -5,8 +5,8 @@ import java.util.List;
 
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.renderengine.core.util.NotYetImplemented;
+import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.renderer.universal.UniversalRenderer;
-import com.alcadrial.renderengine.render.util.color.Color;
 
 @NotYetImplemented
 public class DragonCurve {

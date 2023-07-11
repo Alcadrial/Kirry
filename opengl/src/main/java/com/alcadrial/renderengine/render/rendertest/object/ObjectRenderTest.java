@@ -12,6 +12,8 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.axis.Axis;
 import com.alcadrial.renderengine.core.util.Image;
+import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.core.util.color.ColorRGB;
 import com.alcadrial.renderengine.render.renderer.RenderingMode;
 import com.alcadrial.renderengine.render.renderer.font.Font;
 import com.alcadrial.renderengine.render.renderer.font.FontRenderer;
@@ -26,8 +28,6 @@ import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.textures.Texture;
 import com.alcadrial.renderengine.render.textures.TextureTemplate;
 import com.alcadrial.renderengine.render.util.SwitchableTracker;
-import com.alcadrial.renderengine.render.util.color.Color;
-import com.alcadrial.renderengine.render.util.color.ColorRGB;
 import com.alcadrial.renderengine.render.window.Window;
 
 @SuppressWarnings("deprecation")

@@ -10,6 +10,8 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.renderengine.core.util.Broken;
 import com.alcadrial.renderengine.core.util.Nullable;
+import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.core.util.color.ColorFormat;
 import com.alcadrial.renderengine.render.buffer.FloatArrayBuffer;
 import com.alcadrial.renderengine.render.renderer.AbstractShaderRenderer;
 import com.alcadrial.renderengine.render.renderer.RenderingMode;
@@ -20,8 +22,6 @@ import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.uniform.ShaderUniform;
 import com.alcadrial.renderengine.render.shader.uniform.extra.ColorUniform;
 import com.alcadrial.renderengine.render.textures.Texture;
-import com.alcadrial.renderengine.render.util.color.Color;
-import com.alcadrial.renderengine.render.util.color.ColorFormat;
 
 public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	

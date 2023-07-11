@@ -7,6 +7,8 @@ import java.util.Objects;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.renderengine.core.buffer.SimpleBuffer;
 import com.alcadrial.renderengine.core.util.Nonnull;
+import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.core.util.color.ColorFormat;
 import com.alcadrial.renderengine.render.buffer.ElementArrayBuffer;
 import com.alcadrial.renderengine.render.buffer.ElementArrayBufferStack;
 import com.alcadrial.renderengine.render.buffer.FloatArrayBuffer;
@@ -20,8 +22,6 @@ import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.uniform.ShaderUniform;
 import com.alcadrial.renderengine.render.shader.uniform.extra.ColorUniform;
 import com.alcadrial.renderengine.render.util.Tracker;
-import com.alcadrial.renderengine.render.util.color.Color;
-import com.alcadrial.renderengine.render.util.color.ColorFormat;
 
 @Nonnull
 public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferStack> {

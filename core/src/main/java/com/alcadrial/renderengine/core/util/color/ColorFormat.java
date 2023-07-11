@@ -1,4 +1,4 @@
-package com.alcadrial.renderengine.render.util.color;
+package com.alcadrial.renderengine.core.util.color;
 
 import java.util.function.Function;
 

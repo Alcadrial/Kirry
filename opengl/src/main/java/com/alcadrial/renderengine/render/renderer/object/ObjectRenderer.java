@@ -4,6 +4,8 @@ import java.util.Objects;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.renderengine.core.util.WorkInProgress;
+import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.core.util.color.ColorFormat;
 import com.alcadrial.renderengine.render.buffer.ObjectArrayBuffer;
 import com.alcadrial.renderengine.render.renderer.AbstractShaderRenderer;
 import com.alcadrial.renderengine.render.renderer.RenderingMode;
@@ -12,8 +14,6 @@ import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.uniform.ShaderUniform;
 import com.alcadrial.renderengine.render.shader.uniform.extra.ColorUniform;
 import com.alcadrial.renderengine.render.util.SwitchableTracker;
-import com.alcadrial.renderengine.render.util.color.Color;
-import com.alcadrial.renderengine.render.util.color.ColorFormat;
 
 @WorkInProgress
 public class ObjectRenderer extends AbstractShaderRenderer<ObjectArrayBuffer<Object>> {
