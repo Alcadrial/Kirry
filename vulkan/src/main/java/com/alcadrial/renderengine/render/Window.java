@@ -1,7 +1,5 @@
 package com.alcadrial.renderengine.render;
 
-import java.nio.ByteBuffer;
-
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSurface;
@@ -17,22 +15,21 @@ import org.lwjgl.vulkan.VkPipelineInputAssemblyStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkPipelineMultisampleStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo;
-import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
 import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassCreateInfo;
-import org.lwjgl.vulkan.VkShaderModuleCreateInfo;
 import org.lwjgl.vulkan.VkSubpassDependency;
 import org.lwjgl.vulkan.VkSubpassDescription;
 import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
+import org.lwjgl.vulkan.VkVertexInputAttributeDescription;
+import org.lwjgl.vulkan.VkVertexInputBindingDescription;
 import org.lwjgl.vulkan.VkViewport;
 
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
-import com.alcadrial.renderengine.render.shader.CompiledShader;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderType;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
@@ -52,8 +49,12 @@ public class Window implements AutoCloseable {
 	private SwapChain swapChain;
 	private long renderPass;
 	private GraphicsPipeline pipeline;
+	private VertexBuffer vertexBuffer;
 	
+	private int cullMode;
 	private Color clearColor;
+	private int clockwiseFrontOrientation;
+	private boolean rebuildPipeline;
 	
 	public Window(int width, int height, String title)
 	{
@@ -62,7 +63,10 @@ public class Window implements AutoCloseable {
 		this.width = width;
 		this.height = height;
 		surface = new Surface(vulkan, this);
+		cullMode = VK10.VK_CULL_MODE_BACK_BIT;
 		clearColor = Color.BLACK;
+		clockwiseFrontOrientation = VK10.VK_FRONT_FACE_CLOCKWISE;
+		rebuildPipeline = false;
 	}
 	
 	public void initialize()
@@ -110,6 +114,8 @@ public class Window implements AutoCloseable {
 			VulkanErrorUtils.assertNoError(VK10.vkCreateRenderPass(vulkan.getDevice().getDevice(), renderPassInfo, null, p), "Failed to create render pass");
 			renderPass = p[0];
 			
+			vertexBuffer = new VertexBuffer();
+			
 			VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
 			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.getDevice(), surface.getSurface(), capabilities), "Failed to create swap chain");
 			
@@ -141,24 +147,6 @@ public class Window implements AutoCloseable {
 		}
 	}
 	
-	private long createShaderModule(byte[] binary)
-	{
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			VkShaderModuleCreateInfo createInfo = VkShaderModuleCreateInfo.calloc(stack);
-			
-			createInfo.sType(VK10.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);
-			ByteBuffer bb = stack.malloc(binary.length);
-			for (byte b : binary) bb.put(b);
-			createInfo.pCode(bb.rewind());
-			
-			long[] p = new long[1];
-			VulkanErrorUtils.assertNoError(VK10.vkCreateShaderModule(vulkan.getDevice().getDevice(), createInfo, null, p), "Failed to create shader module");
-			
-			return p[0];
-		}
-	}
-	
 	public void buildGraphicsPipeline(Shader vertexShader, Shader fragmentShader)
 	{
 		VulkanErrorUtils.nonNull(swapChain, "Cannot build the graphics pipeline without being initialized, use Window#initialize");
@@ -166,39 +154,36 @@ public class Window implements AutoCloseable {
 		VulkanErrorUtils.match(fragmentShader.getType(), ShaderType.FRAGMENT, "Not a fragment shader");
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			CompiledShader vertexCompiled = vertexShader.getOrCompile();
-			CompiledShader fragmentCompiled = fragmentShader.getOrCompile();
-			
-			if (vertexCompiled.hasErrors()) throw new IllegalStateException("Shader " + vertexShader.getFile() + " cannot be used");
-			if (fragmentCompiled.hasErrors()) throw new IllegalStateException("Shader " + fragmentShader.getFile() + " cannot be used");
-			
-			long vertShaderModule = createShaderModule(vertexCompiled.getBinary());
-			long fragShaderModule = createShaderModule(fragmentCompiled.getBinary());
-			
-			ByteBuffer entryPoint = stack.UTF8("main");
-			
-			VkPipelineShaderStageCreateInfo.Buffer shaderStages = VkPipelineShaderStageCreateInfo.calloc(2, stack);
-			
-			VkPipelineShaderStageCreateInfo vertShaderStageInfo = shaderStages.get(0);
-			
-			vertShaderStageInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
-			vertShaderStageInfo.stage(VK10.VK_SHADER_STAGE_VERTEX_BIT);
-			vertShaderStageInfo.module(vertShaderModule);
-			vertShaderStageInfo.pName(entryPoint);
-			
-			VkPipelineShaderStageCreateInfo fragShaderStageInfo = shaderStages.get(1);
-			
-			fragShaderStageInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
-			fragShaderStageInfo.stage(VK10.VK_SHADER_STAGE_FRAGMENT_BIT);
-			fragShaderStageInfo.module(fragShaderModule);
-			fragShaderStageInfo.pName(entryPoint);
-			
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo = VkPipelineVertexInputStateCreateInfo.calloc(stack);
 			vertexInputInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
 			
+			VkVertexInputBindingDescription.Buffer bindingDescription = VkVertexInputBindingDescription.calloc(1, stack);
+			
+			bindingDescription.binding(0);
+			bindingDescription.stride(28);
+			bindingDescription.inputRate(VK10.VK_VERTEX_INPUT_RATE_VERTEX);
+			
+			vertexInputInfo.pVertexBindingDescriptions(bindingDescription);
+			
+			VkVertexInputAttributeDescription.Buffer attributeDescriptions = VkVertexInputAttributeDescription.calloc(2);
+			
+			VkVertexInputAttributeDescription posDescription = attributeDescriptions.get(0);
+			posDescription.binding(0);
+			posDescription.location(0);
+			posDescription.format(VK10.VK_FORMAT_R32G32B32_SFLOAT);
+			posDescription.offset(0);
+			
+			VkVertexInputAttributeDescription colorDescription = attributeDescriptions.get(1);
+			colorDescription.binding(0);
+			colorDescription.location(1);
+			colorDescription.format(VK10.VK_FORMAT_R32G32B32A32_SFLOAT);
+			colorDescription.offset(12);
+			
+			vertexInputInfo.pVertexAttributeDescriptions(attributeDescriptions.rewind());
+			
 			VkPipelineInputAssemblyStateCreateInfo inputAssembly = VkPipelineInputAssemblyStateCreateInfo.calloc(stack);
 			inputAssembly.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO);
-			inputAssembly.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+			inputAssembly.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN);//MONO QUAD
 			inputAssembly.primitiveRestartEnable(false);
 			
 			VkViewport.Buffer viewport = VkViewport.calloc(1, stack);
@@ -224,8 +209,8 @@ public class Window implements AutoCloseable {
 			rasterizer.rasterizerDiscardEnable(false);
 			rasterizer.polygonMode(VK10.VK_POLYGON_MODE_FILL);
 			rasterizer.lineWidth(1);
-			rasterizer.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
-			rasterizer.frontFace(VK10.VK_FRONT_FACE_CLOCKWISE);
+			rasterizer.cullMode(cullMode);
+			rasterizer.frontFace(clockwiseFrontOrientation);
 			rasterizer.depthBiasEnable(false);
 			
 			VkPipelineMultisampleStateCreateInfo multisampling = VkPipelineMultisampleStateCreateInfo.calloc(stack);
@@ -251,7 +236,6 @@ public class Window implements AutoCloseable {
 			
 			VkGraphicsPipelineCreateInfo.Buffer pipelineInfo = VkGraphicsPipelineCreateInfo.calloc(1, stack);
 			pipelineInfo.sType(VK10.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
-			pipelineInfo.pStages(shaderStages);
 			pipelineInfo.pVertexInputState(vertexInputInfo);
 			pipelineInfo.pInputAssemblyState(inputAssembly);
 			pipelineInfo.pViewportState(viewportState);
@@ -263,48 +247,48 @@ public class Window implements AutoCloseable {
 			pipelineInfo.basePipelineHandle(VK10.VK_NULL_HANDLE);
 			pipelineInfo.basePipelineIndex(-1);
 			
-			pipeline = new GraphicsPipeline(vulkan.getDevice(), pipelineLayout, pipelineInfo);
-			
-			VK10.vkDestroyShaderModule(vulkan.getDevice().getDevice(), vertShaderModule, null);
-			VK10.vkDestroyShaderModule(vulkan.getDevice().getDevice(), fragShaderModule, null);
+			pipeline = new GraphicsPipeline(vulkan.getDevice(), pipelineLayout, pipelineInfo, vertexShader, fragmentShader);
 			
 			swapChain.startRegisteringCommands();
 		}
 	}
 	
-	public long getId()
+	public void update()
 	{
-		return id;
+		if (rebuildPipeline)
+		{
+			
+		}
 	}
 	
-	public Surface getSurface()
+	public void enablePipelineBackCulling()
 	{
-		return surface;
+		cullMode |= VK10.VK_CULL_MODE_BACK_BIT;
 	}
 	
-	public int getWidth()
+	public void enablePipelineFrontCulling()
 	{
-		return width;
+		cullMode |= VK10.VK_CULL_MODE_FRONT_BIT;
 	}
 	
-	public int getHeight()
+	public void disablePipelineBackCulling()
 	{
-		return height;
+		cullMode &= VK10.VK_CULL_MODE_FRONT_BIT;
 	}
 	
-	public SwapChain getSwapChain()
+	public void disablePipelineFrontCulling()
 	{
-		return swapChain;
+		cullMode &= VK10.VK_CULL_MODE_BACK_BIT;
 	}
 	
-	public long getRenderPass()
+	public void setPipelineFrontOrientation(boolean clockwise)
 	{
-		return renderPass;
+		clockwiseFrontOrientation = clockwise ? VK10.VK_FRONT_FACE_CLOCKWISE : VK10.VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	}
 	
-	public GraphicsPipeline getPipeline()
+	public void invalidatePipeline()
 	{
-		return pipeline;
+		rebuildPipeline = true;
 	}
 	
 	public final boolean shouldClose()
@@ -387,10 +371,44 @@ public class Window implements AutoCloseable {
 		GLFW.glfwPollEvents();
 	}
 	
-	public void setClearColor(Color clearColor)
+	public long getId()
 	{
-		this.clearColor = clearColor;
-		swapChain.setClearColor(clearColor);
+		return id;
+	}
+	
+	public Surface getSurface()
+	{
+		return surface;
+	}
+	
+	public int getWidth()
+	{
+		return width;
+	}
+	
+	public int getHeight()
+	{
+		return height;
+	}
+	
+	public VertexBuffer getVertexBuffer()
+	{
+		return vertexBuffer;
+	}
+	
+	public SwapChain getSwapChain()
+	{
+		return swapChain;
+	}
+	
+	public long getRenderPass()
+	{
+		return renderPass;
+	}
+	
+	public GraphicsPipeline getPipeline()
+	{
+		return pipeline;
 	}
 	
 	public Color getClearColor()
@@ -398,10 +416,17 @@ public class Window implements AutoCloseable {
 		return clearColor;
 	}
 	
+	public void setClearColor(Color clearColor)
+	{
+		this.clearColor = clearColor;
+		swapChain.setClearColor(clearColor);
+	}
+	
 	@Override
 	public void close()
 	{
 		swapChain.close();
+		vertexBuffer.close();
 		if (pipeline != null) pipeline.close();
 		VK10.vkDestroyRenderPass(vulkan.getDevice().getDevice(), renderPass, null);
 		surface.close();

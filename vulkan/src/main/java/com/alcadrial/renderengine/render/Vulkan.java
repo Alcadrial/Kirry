@@ -180,6 +180,7 @@ public class Vulkan implements AutoCloseable {
 	@Override
 	public void close()
 	{
+		device.waitIdle();
 		if (debugMessengerId != 0) EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(instance, debugMessengerId, null);
 		if (device != null) device.close();
 		for (PhysicalDevice physicalDevice : physicalDevices) physicalDevice.close();

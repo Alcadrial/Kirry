@@ -32,16 +32,24 @@ public class Device implements AutoCloseable {
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			SwapChain swapChain = window.getSwapChain();
-			swapChain.endRegisteringCommands();
 			CommandBufferData buffer = swapChain.getActiveCommandBufferData();
+			
+			VK10.vkCmdBindPipeline(buffer.getCommandBuffer(), VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, window.getPipeline().getPipeline());
+			window.getVertexBuffer().bind(buffer);
+			VK10.vkCmdDraw(buffer.getCommandBuffer(), 4, 1, 0, 0);
+			
+			swapChain.endRegisteringCommands();
 			
 			IntBuffer p = stack.callocInt(1);
 			
-			if (KHRSwapchain.vkAcquireNextImageKHR(device, swapChain.getSwapchain(), Integer.MAX_VALUE, buffer.getImageAvailableSemaphore(), 0, p) == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR)
+			int result = KHRSwapchain.vkAcquireNextImageKHR(device, swapChain.getSwapchain(), Integer.MAX_VALUE, buffer.getImageAvailableSemaphore(), 0, p);
+			if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR)
 			{
-				
+				//recreate swapchain
+				swapChain.startRegisteringCommands();
 				return;
 			}
+			VulkanErrorUtils.assertNoError(result, "Error Acquiring Next Image");
 			
 			LongBuffer p0 = stack.callocLong(1);
 			p0.put(0, buffer.getImageAvailableSemaphore());
@@ -73,6 +81,11 @@ public class Device implements AutoCloseable {
 			
 			swapChain.startRegisteringCommands();
 		}
+	}
+	
+	public void waitIdle()
+	{
+		VK10.vkDeviceWaitIdle(device);
 	}
 	
 	public VkDevice getDevice()

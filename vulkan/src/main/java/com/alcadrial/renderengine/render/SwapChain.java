@@ -14,7 +14,6 @@ import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferAllocateInfo;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
 import org.lwjgl.vulkan.VkCommandPoolCreateInfo;
-import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkFenceCreateInfo;
 import org.lwjgl.vulkan.VkFramebufferCreateInfo;
 import org.lwjgl.vulkan.VkImageViewCreateInfo;
@@ -178,7 +177,6 @@ public class SwapChain implements AutoCloseable {
 	public void startRegisteringCommands()
 	{
 		createFrameBuffers();
-		Window window = surface.getWindow();
 		CommandBufferData activeState = commands.get(activeCommandIndex);
 		if (!activeState.isRecording())
 		{
@@ -194,7 +192,6 @@ public class SwapChain implements AutoCloseable {
 			renderPassInfo.framebuffer(frameBuffers.get(activeCommandIndex).getId());
 			
 			VK10.vkCmdBeginRenderPass(commandBuffer, renderPassInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
-			VK10.vkCmdBindPipeline(commandBuffer, VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, window.getPipeline().getPipeline());
 			
 			activeState.startRecording();
 		}
@@ -284,16 +281,13 @@ public class SwapChain implements AutoCloseable {
 	@Override
 	public void close()
 	{
-		VkDevice device = RenderEngine.getVulkan().getDevice().getDevice();
-		for (CommandBufferData swappingBuffer : commands)
-		{
-			VK10.vkWaitForFences(device, swappingBuffer.getFence(), true, -1);
-			swappingBuffer.close();
-		}
-		VK10.vkDestroyCommandPool(device, commandPool, null);
+		Device device = RenderEngine.getVulkan().getDevice();
+		device.waitIdle();
+		for (CommandBufferData swappingBuffer : commands) swappingBuffer.close();
+		VK10.vkDestroyCommandPool(device.getDevice(), commandPool, null);
 		for (FrameBuffer frameBuffer : frameBuffers) frameBuffer.close();
-		for (long imageView : imageViews) VK10.vkDestroyImageView(device, imageView, null);
-		KHRSwapchain.vkDestroySwapchainKHR(device, swapChain, null);
+		for (long imageView : imageViews) VK10.vkDestroyImageView(device.getDevice(), imageView, null);
+		KHRSwapchain.vkDestroySwapchainKHR(device.getDevice(), swapChain, null);
 		renderPassInfo.pClearValues().forEach(v -> v.color().float32().clear());
 		renderPassInfo.pClearValues().close();
 		renderPassInfo.close();

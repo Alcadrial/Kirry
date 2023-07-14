@@ -5,7 +5,7 @@ layout (location = 1) in vec4 color;
 
 //uniform mat4 TRANSFORMATION;
 
-layout (location = 2) out vec4 color0;
+layout (location = 0) out vec4 color0;
 
 void main()
 {

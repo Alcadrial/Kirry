@@ -2,7 +2,7 @@
 
 layout (location = 0) in vec4 color0;
 
-layout (location = 1) out vec4 tex;
+layout (location = 0) out vec4 tex;
 
 void main()
 {

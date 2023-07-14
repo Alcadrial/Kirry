@@ -3,8 +3,10 @@ package com.alcadrial.renderengine.render.shader;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Optional;
 
 import com.alcadrial.renderengine.render.util.Properties;
+import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
 public class Shader {
 	
@@ -13,13 +15,15 @@ public class Shader {
 	private ShaderType type;
 	private String[] code;
 	private CompiledShader compiled;
+	private String entryPoint;
 	
-	public Shader(File file) throws IOException
+	public Shader(File file, String entryPoint) throws IOException
 	{
-		this.file = file;
+		this.file = VulkanErrorUtils.nonNull(file);
 		String pathname = file.getPath();
 		type = ShaderType.fromExtension(pathname.substring(pathname.lastIndexOf('.') + 1));
 		code = Files.readAllLines(file.toPath()).toArray(String[]::new);
+		this.entryPoint = VulkanErrorUtils.nonNull(entryPoint);
 	}
 	
 	public CompiledShader compile()
@@ -53,9 +57,9 @@ public class Shader {
 		return compiled;
 	}
 	
-	public CompiledShader getLastCompilation()
+	public Optional<CompiledShader> getLastCompilation()
 	{
-		return compiled;
+		return Optional.ofNullable(compiled);
 	}
 	
 	public File getFile()
@@ -71,5 +75,10 @@ public class Shader {
 	public String[] getCode()
 	{
 		return code;
+	}
+	
+	public String getEntryPoint()
+	{
+		return entryPoint;
 	}
 }
