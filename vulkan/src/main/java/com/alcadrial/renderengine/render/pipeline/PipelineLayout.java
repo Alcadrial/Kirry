@@ -15,6 +15,7 @@ public class PipelineLayout implements AutoCloseable {
 	{
 		this.device = device;
 		long[] p = new long[1];
+		createInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
 		VulkanErrorUtils.assertNoError(VK10.vkCreatePipelineLayout(device.getDevice(), createInfo, null, p), "Failed to create pipeline layout");
 		pipelineLayout = p[0];
 	}

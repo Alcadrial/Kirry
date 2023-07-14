@@ -1,13 +1,15 @@
 package com.alcadrial.renderengine.render.shader;
 
+import org.lwjgl.vulkan.VK10;
+
 public enum ShaderType {
 	
-	VERTEX("vert", 0),
-	FRAGMENT("frag", 0),
-	GEOMETRY("geom", 0),
-	COMPUTE("comp", 0),
-	TESS_CONTROL("tcon", 0),
-	TESS_EVALUATION("teva", 0),
+	VERTEX("vert", VK10.VK_SHADER_STAGE_VERTEX_BIT),
+	TESS_CONTROL("tcon", VK10.VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT),
+	TESS_EVALUATION("teva", VK10.VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT),
+	GEOMETRY("geom", VK10.VK_SHADER_STAGE_GEOMETRY_BIT),
+	FRAGMENT("frag", VK10.VK_SHADER_STAGE_FRAGMENT_BIT),
+	COMPUTE("comp", VK10.VK_SHADER_STAGE_COMPUTE_BIT),
 	UNKNOWN("", 0);
 	
 	public static ShaderType fromExtension(String extension)
@@ -17,12 +19,12 @@ public enum ShaderType {
 	}
 	
 	private String extension;
-	private int id;
+	private int stageBit;
 	
-	ShaderType(String extension, int id)
+	ShaderType(String extension, int stageBit)
 	{
 		this.extension = extension;
-		this.id = id;
+		this.stageBit = stageBit;
 	}
 	
 	public String getExtension()
@@ -30,8 +32,8 @@ public enum ShaderType {
 		return extension;
 	}
 	
-	public int getId()
+	public int getStageBit()
 	{
-		return id;
+		return stageBit;
 	}
 }

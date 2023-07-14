@@ -66,7 +66,7 @@ public class Tests {
 			return;
 		}
 		
-		window.setPipelineFrontOrientation(false);
+		window.setPipelineFrontOrientation(true);
 		
 		System.out.println("Graphics pipeline build time = " + recordTime(() -> window.buildGraphicsPipeline(vertexShader, fragmentShader), TimeUnit.MICROSECONDS) / 1000D + "ms");
 	}
@@ -75,15 +75,12 @@ public class Tests {
 	{
 		Device device = RenderEngine.getVulkan().getDevice();
 		Window window = device.getWindow();
-		float r = 0;
-		float g = 0;
-		float b = 0;
-		float a = 0;
+		
 		while (!window.shouldClose())
 		{
 			window.pollEvents();
 			device.draw();
-			window.setClearColor(Color.of(r, g, b, a));
+			window.setClearColor(Color.BLACK);
 		}
 	}
 	

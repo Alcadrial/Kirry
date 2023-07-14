@@ -89,7 +89,6 @@ public class Surface implements AutoCloseable {
 			extent = new Pair<>(e, null);
 		}
 		size = Vector2i.ofImmutable(extent.getLeft().width(), extent.getLeft().height());
-		System.out.println("size " + size);
 	}
 	
 	public long getSurface()

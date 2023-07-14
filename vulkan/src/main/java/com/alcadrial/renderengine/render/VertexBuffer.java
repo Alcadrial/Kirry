@@ -18,21 +18,17 @@ public class VertexBuffer implements AutoCloseable {
 	
 	private long id;
 	private long memory;
+	private int size;
 	
-	public VertexBuffer()
+	public VertexBuffer(float[] data)
 	{
+		//size = size;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			float[] data0 = new float[] {
-				-0.5F, 0.5F, 0, 0, 0, 1, 1,
-				0.5F, 0.5F, 0, 0, 1, 0, 1,
-				0.5F, -0.5F, 0, 1, 0, 0, 1,
-				-0.5F, -0.5F, 0, 1, 1, 1, 1,
-			};
 			Device device = RenderEngine.getVulkan().getDevice();
 			VkBufferCreateInfo bufferInfo = VkBufferCreateInfo.calloc(stack);
 			bufferInfo.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
-			bufferInfo.size(4 * data0.length);
+			bufferInfo.size(4 * data.length);
 			bufferInfo.usage(VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 			bufferInfo.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE);
 			
@@ -54,34 +50,28 @@ public class VertexBuffer implements AutoCloseable {
 			VkPhysicalDeviceMemoryProperties memProperties = VkPhysicalDeviceMemoryProperties.malloc(stack);
 			VK10.vkGetPhysicalDeviceMemoryProperties(RenderEngine.getVulkan().getPhysicalDevice().getDevice(), memProperties);
 			
-			System.out.println(Integer.toBinaryString(memRequirements.memoryTypeBits()));
 			for (index = 0; index < memProperties.memoryTypeCount(); index++)
 			{
-				System.out.println(Integer.toBinaryString(memProperties.memoryTypes(index).propertyFlags()));
 				if ((memRequirements.memoryTypeBits() & (1 << index)) != 0 && (memProperties.memoryTypes(index).propertyFlags() & properties) == properties)
 				{
 					break;
 				}
 			}
-			//VulkanErrorUtils.assertStatement(index == memProperties.memoryTypeCount(), "Failed to find suitable memory type");
 			
-			allocInfo.memoryTypeIndex(9);
+			VulkanErrorUtils.assertStatement(index < memProperties.memoryTypeCount(), "Failed to find suitable memory type");
+			
+			allocInfo.memoryTypeIndex(index);
 			
 			LongBuffer pVertexBufferMemory = stack.mallocLong(1);
-			
 			VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(device.getDevice(), allocInfo, null, pVertexBufferMemory), "Failed to allocate vertex buffer memory");
-			
 			memory = pVertexBufferMemory.get(0);
 			
-			VK10.vkBindBufferMemory(device.getDevice(), id, memory, 0);
+			VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getDevice(), id, memory, 0), "Failed to bind vertex buffer memory");
 			
-			PointerBuffer data = stack.mallocPointer(1);
-			
-			VK10.vkMapMemory(device.getDevice(), memory, 0, bufferInfo.size(), 0, data);
-			{
-				FloatBuffer d = data.getFloatBuffer((int) bufferInfo.size());
-				d.put(data0);
-			}
+			PointerBuffer gpuData = stack.mallocPointer(1);
+			VulkanErrorUtils.assertNoError(VK10.vkMapMemory(device.getDevice(), memory, 0, bufferInfo.size(), 0, gpuData), "Failed to map vertex buffer memory");
+			FloatBuffer d = gpuData.getFloatBuffer((int) bufferInfo.size());
+			d.put(data);
 			VK10.vkUnmapMemory(device.getDevice(), memory);
 		}
 	}

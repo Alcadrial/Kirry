@@ -3,6 +3,7 @@ package com.alcadrial.renderengine.render.util;
 import java.nio.ByteBuffer;
 import java.util.function.Function;
 
+import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.system.Struct;
 
@@ -21,5 +22,10 @@ public class VulkanUtils {
 	{
 		ByteBuffer buffer = MemoryUtil.memCalloc(size);
 		return new Pair<>(builder.apply(MemoryUtil.memAddress(buffer)), buffer);
+	}
+	
+	public static ByteBuffer allocate(MemoryStack stack, byte[] data)
+	{
+		return stack.malloc(data.length).put(data).rewind();
 	}
 }

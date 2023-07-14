@@ -15,7 +15,6 @@ import org.lwjgl.vulkan.VkPipelineInputAssemblyStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkPipelineMultisampleStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo;
-import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassCreateInfo;
@@ -23,8 +22,6 @@ import org.lwjgl.vulkan.VkSubpassDependency;
 import org.lwjgl.vulkan.VkSubpassDescription;
 import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
-import org.lwjgl.vulkan.VkVertexInputAttributeDescription;
-import org.lwjgl.vulkan.VkVertexInputBindingDescription;
 import org.lwjgl.vulkan.VkViewport;
 
 import com.alcadrial.renderengine.core.util.color.Color;
@@ -114,7 +111,12 @@ public class Window implements AutoCloseable {
 			VulkanErrorUtils.assertNoError(VK10.vkCreateRenderPass(vulkan.getDevice().getDevice(), renderPassInfo, null, p), "Failed to create render pass");
 			renderPass = p[0];
 			
-			vertexBuffer = new VertexBuffer();
+			vertexBuffer = new VertexBuffer(new float[] {
+				-0.5F, -0.5F, 0, 1, 1, 1, 1,
+				0.5F, -0.5F, 0, 1, 0, 0, 1,
+				0.5F, 0.5F, 0, 0, 1, 0, 1,
+				-0.5F, 0.5F, 0, 0, 0, 1, 1,
+			});
 			
 			VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
 			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.getDevice(), surface.getSurface(), capabilities), "Failed to create swap chain");
@@ -154,33 +156,6 @@ public class Window implements AutoCloseable {
 		VulkanErrorUtils.match(fragmentShader.getType(), ShaderType.FRAGMENT, "Not a fragment shader");
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VkPipelineVertexInputStateCreateInfo vertexInputInfo = VkPipelineVertexInputStateCreateInfo.calloc(stack);
-			vertexInputInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
-			
-			VkVertexInputBindingDescription.Buffer bindingDescription = VkVertexInputBindingDescription.calloc(1, stack);
-			
-			bindingDescription.binding(0);
-			bindingDescription.stride(28);
-			bindingDescription.inputRate(VK10.VK_VERTEX_INPUT_RATE_VERTEX);
-			
-			vertexInputInfo.pVertexBindingDescriptions(bindingDescription);
-			
-			VkVertexInputAttributeDescription.Buffer attributeDescriptions = VkVertexInputAttributeDescription.calloc(2);
-			
-			VkVertexInputAttributeDescription posDescription = attributeDescriptions.get(0);
-			posDescription.binding(0);
-			posDescription.location(0);
-			posDescription.format(VK10.VK_FORMAT_R32G32B32_SFLOAT);
-			posDescription.offset(0);
-			
-			VkVertexInputAttributeDescription colorDescription = attributeDescriptions.get(1);
-			colorDescription.binding(0);
-			colorDescription.location(1);
-			colorDescription.format(VK10.VK_FORMAT_R32G32B32A32_SFLOAT);
-			colorDescription.offset(12);
-			
-			vertexInputInfo.pVertexAttributeDescriptions(attributeDescriptions.rewind());
-			
 			VkPipelineInputAssemblyStateCreateInfo inputAssembly = VkPipelineInputAssemblyStateCreateInfo.calloc(stack);
 			inputAssembly.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO);
 			inputAssembly.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN);//MONO QUAD
@@ -229,14 +204,10 @@ public class Window implements AutoCloseable {
 			colorBlending.pAttachments(colorBlendAttachment);
 			colorBlending.blendConstants(stack.floats(0, 0, 0, 0));
 			
-			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
-			pipelineLayoutInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
-			
-			PipelineLayout pipelineLayout = new PipelineLayout(vulkan.getDevice(), pipelineLayoutInfo);
+			PipelineLayout pipelineLayout = new PipelineLayout(vulkan.getDevice(), VkPipelineLayoutCreateInfo.calloc(stack));
 			
 			VkGraphicsPipelineCreateInfo.Buffer pipelineInfo = VkGraphicsPipelineCreateInfo.calloc(1, stack);
 			pipelineInfo.sType(VK10.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
-			pipelineInfo.pVertexInputState(vertexInputInfo);
 			pipelineInfo.pInputAssemblyState(inputAssembly);
 			pipelineInfo.pViewportState(viewportState);
 			pipelineInfo.pRasterizationState(rasterizer);
@@ -247,7 +218,7 @@ public class Window implements AutoCloseable {
 			pipelineInfo.basePipelineHandle(VK10.VK_NULL_HANDLE);
 			pipelineInfo.basePipelineIndex(-1);
 			
-			pipeline = new GraphicsPipeline(vulkan.getDevice(), pipelineLayout, pipelineInfo, vertexShader, fragmentShader);
+			pipeline = GraphicsPipeline.create().vertexShader(vertexShader).fragmentShader(fragmentShader).build(vulkan.getDevice(), pipelineLayout, pipelineInfo);
 			
 			swapChain.startRegisteringCommands();
 		}

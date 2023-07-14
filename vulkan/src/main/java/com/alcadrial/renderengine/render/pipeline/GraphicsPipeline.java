@@ -1,84 +1,206 @@
 package com.alcadrial.renderengine.render.pipeline;
 
-import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
 import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
+import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo;
 import org.lwjgl.vulkan.VkShaderModuleCreateInfo;
+import org.lwjgl.vulkan.VkVertexInputAttributeDescription;
+import org.lwjgl.vulkan.VkVertexInputBindingDescription;
 
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.shader.CompiledShader;
+import com.alcadrial.renderengine.render.debug.Debug;
 import com.alcadrial.renderengine.render.shader.Shader;
+import com.alcadrial.renderengine.render.shader.ShaderInput;
+import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.VulkanUtils;
 
 public class GraphicsPipeline implements AutoCloseable {
+	
+	public static final class Builder {
+		
+		private Optional<Shader> vertexShader;
+		private Optional<Shader> tessellationControlShader;
+		private Optional<Shader> tessellationEvaluationShader;
+		private Optional<Shader> geometryShader;
+		private Optional<Shader> fragmentShader;
+		private Optional<Shader> computeShader;
+		
+		private Builder()
+		{
+			vertexShader = Optional.empty();
+			tessellationControlShader = Optional.empty();
+			tessellationEvaluationShader = Optional.empty();
+			geometryShader = Optional.empty();
+			fragmentShader = Optional.empty();
+			computeShader = Optional.empty();
+		}
+		
+		public Builder vertexShader(Shader shader)
+		{
+			Debug.printlnIf(shader.getOrCompile().hasErrors(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
+			vertexShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
+			return this;
+		}
+		
+		public Builder tessellationControlShader(Shader shader)
+		{
+			Debug.printlnIf(shader.getOrCompile().hasErrors(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
+			tessellationControlShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
+			return this;
+		}
+		
+		public Builder tessellationEvaluationShader(Shader shader)
+		{
+			Debug.printlnIf(shader.getOrCompile().hasErrors(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
+			tessellationEvaluationShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
+			return this;
+		}
+		
+		public Builder geometryShader(Shader shader)
+		{
+			Debug.printlnIf(shader.getOrCompile().hasErrors(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
+			geometryShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
+			return this;
+		}
+		
+		public Builder fragmentShader(Shader shader)
+		{
+			Debug.printlnIf(shader.getOrCompile().hasErrors(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
+			fragmentShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
+			return this;
+		}
+		
+		public Builder computeShader(Shader shader)
+		{
+			Debug.printlnIf(shader.getOrCompile().hasErrors(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
+			computeShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
+			return this;
+		}
+		
+		public GraphicsPipeline build(Device device, PipelineLayout layout, VkGraphicsPipelineCreateInfo.Buffer createInfo)
+		{
+			return new GraphicsPipeline(device, layout, createInfo, vertexShader, tessellationControlShader, tessellationEvaluationShader, geometryShader, fragmentShader, computeShader);
+		}
+	}
+	
+	public static Builder create()
+	{
+		return new Builder();
+	}
 	
 	private Device device;
 	private PipelineLayout layout;
 	private long pipeline;
 	
-	private Shader vertexShader;
-	private Shader fragmentShader;
+	private Optional<Shader> vertexShader;
+	private Optional<Shader> tessellationControlShader;
+	private Optional<Shader> tessellationEvaluationShader;
+	private Optional<Shader> geometryShader;
+	private Optional<Shader> fragmentShader;
+	private Optional<Shader> computeShader;
 	
-	public GraphicsPipeline(Device device, PipelineLayout layout, VkGraphicsPipelineCreateInfo.Buffer createInfo, Shader vertexShader, Shader fragmentShader)
+	private List<ShaderInput> inputs;
+	
+	private GraphicsPipeline(Device device, PipelineLayout layout, VkGraphicsPipelineCreateInfo.Buffer createInfo, Optional<Shader> vertexShader, Optional<Shader> tessellationControlShader, Optional<Shader> tessellationEvaluationShader, Optional<Shader> geometryShader, Optional<Shader> fragmentShader, Optional<Shader> computeShader)
 	{
 		this.device = device;
 		this.layout = layout;
 		this.vertexShader = vertexShader;
+		this.tessellationControlShader = tessellationControlShader;
+		this.tessellationEvaluationShader = tessellationEvaluationShader;
+		this.geometryShader = geometryShader;
 		this.fragmentShader = fragmentShader;
-		
-		long[] p = new long[1];
-		
-		CompiledShader vertexCompiled = vertexShader.getOrCompile();
-		CompiledShader fragmentCompiled = fragmentShader.getOrCompile();
-		
-		if (vertexCompiled.hasErrors()) throw new IllegalStateException("Shader " + vertexShader.getFile() + " cannot be used becouse of errors");
-		if (fragmentCompiled.hasErrors()) throw new IllegalStateException("Shader " + fragmentShader.getFile() + " cannot be used becouse of errors");
+		this.computeShader = computeShader;
+		inputs = List.of();
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			long vertShaderModule = createShaderModule(stack, vertexCompiled.getBinary());
-			long fragShaderModule = createShaderModule(stack, fragmentCompiled.getBinary());
+			if (vertexShader.isPresent())
+			{
+				VkPipelineVertexInputStateCreateInfo vertexInputInfo = VkPipelineVertexInputStateCreateInfo.calloc(stack);
+				vertexInputInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
+				
+				VkVertexInputBindingDescription.Buffer bindingDescription = VkVertexInputBindingDescription.calloc(1, stack);
+				
+				int size = 0;
+				int locationSize = 0;
+				Set<ShaderInput> inputs = vertexShader.get().getOrCompile().getInputs();
+				VkVertexInputAttributeDescription.Buffer attributeDescriptions = VkVertexInputAttributeDescription.calloc(inputs.size());
+				for (ShaderInput input : inputs)
+				{
+					ShaderInputType type = input.getType();
+					VkVertexInputAttributeDescription description = attributeDescriptions.get();
+					description.binding(0);
+					description.location(locationSize);
+					description.format(type.getType());
+					description.offset(size);
+					size += type.getSize() * 4;
+					locationSize += type.getLocationSize();
+				}
+				
+				bindingDescription.binding(0);
+				bindingDescription.stride(size);
+				bindingDescription.inputRate(VK10.VK_VERTEX_INPUT_RATE_VERTEX);
+				vertexInputInfo.pVertexBindingDescriptions(bindingDescription);
+				vertexInputInfo.pVertexAttributeDescriptions(attributeDescriptions.rewind());
+				createInfo.pVertexInputState(vertexInputInfo);
+				
+				this.inputs = List.copyOf(inputs);
+			}
 			
-			VkPipelineShaderStageCreateInfo.Buffer shaderStages = VkPipelineShaderStageCreateInfo.calloc(2, stack);
+			int stages = 0;
+			if (vertexShader.isPresent()) stages++;
+			if (tessellationControlShader.isPresent()) stages++;
+			if (tessellationEvaluationShader.isPresent()) stages++;
+			if (geometryShader.isPresent()) stages++;
+			if (fragmentShader.isPresent()) stages++;
+			if (computeShader.isPresent()) stages++;
 			
-			VkPipelineShaderStageCreateInfo vertShaderStageInfo = shaderStages.get(0);
-			vertShaderStageInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
-			vertShaderStageInfo.stage(VK10.VK_SHADER_STAGE_VERTEX_BIT);
-			vertShaderStageInfo.module(vertShaderModule);
-			vertShaderStageInfo.pName(stack.UTF8(vertexShader.getEntryPoint()));
+			VkPipelineShaderStageCreateInfo.Buffer shaderStages = VkPipelineShaderStageCreateInfo.calloc(stages, stack);
 			
-			VkPipelineShaderStageCreateInfo fragShaderStageInfo = shaderStages.get(1);
-			fragShaderStageInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
-			fragShaderStageInfo.stage(VK10.VK_SHADER_STAGE_FRAGMENT_BIT);
-			fragShaderStageInfo.module(fragShaderModule);
-			fragShaderStageInfo.pName(stack.UTF8(fragmentShader.getEntryPoint()));
+			vertexShader.ifPresent(shader -> fillShaderStageCreateInfo(stack, shaderStages.get(), shader));
+			tessellationControlShader.ifPresent(shader -> fillShaderStageCreateInfo(stack, shaderStages.get(), shader));
+			tessellationEvaluationShader.ifPresent(shader -> fillShaderStageCreateInfo(stack, shaderStages.get(), shader));
+			geometryShader.ifPresent(shader -> fillShaderStageCreateInfo(stack, shaderStages.get(), shader));
+			fragmentShader.ifPresent(shader -> fillShaderStageCreateInfo(stack, shaderStages.get(), shader));
+			computeShader.ifPresent(shader -> fillShaderStageCreateInfo(stack, shaderStages.get(), shader));
 			
-			createInfo.pStages(shaderStages);
+			createInfo.pStages(shaderStages.rewind());
 			createInfo.layout(layout.getPipelineLayout());
-			VulkanErrorUtils.assertNoError(VK10.vkCreateGraphicsPipelines(device.getDevice(), 0, createInfo, null, p), "Failed to create graphics pipeline");
 			
-			VK10.vkDestroyShaderModule(device.getDevice(), vertShaderModule, null);
-			VK10.vkDestroyShaderModule(device.getDevice(), fragShaderModule, null);
+			long[] p = new long[1];
+			VulkanErrorUtils.assertNoError(VK10.vkCreateGraphicsPipelines(device.getDevice(), 0, createInfo, null, p), "Failed to create graphics pipeline");
+			pipeline = p[0];
+			
+			for (VkPipelineShaderStageCreateInfo shaderStageCreateInfo : shaderStages)
+			{
+				VK10.vkDestroyShaderModule(device.getDevice(), shaderStageCreateInfo.module(), null);
+			}
 		}
-		pipeline = p[0];
 	}
 	
-	private long createShaderModule(MemoryStack stack, byte[] binary)
+	private void fillShaderStageCreateInfo(MemoryStack stack, VkPipelineShaderStageCreateInfo shaderStageInfo, Shader shader)
 	{
+		shaderStageInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
+		shaderStageInfo.stage(shader.getType().getStageBit());
+		
 		VkShaderModuleCreateInfo createInfo = VkShaderModuleCreateInfo.calloc(stack);
 		
 		createInfo.sType(VK10.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);
-		ByteBuffer bb = stack.malloc(binary.length);
-		for (byte b : binary) bb.put(b);
-		createInfo.pCode(bb.rewind());
+		createInfo.pCode(VulkanUtils.allocate(stack, shader.getOrCompile().getBinary()));
 		
 		long[] p = new long[1];
 		VulkanErrorUtils.assertNoError(VK10.vkCreateShaderModule(device.getDevice(), createInfo, null, p), "Failed to create shader module");
 		
-		return p[0];
+		shaderStageInfo.module(p[0]);
+		shaderStageInfo.pName(stack.UTF8(shader.getEntryPoint()));
 	}
 	
 	public PipelineLayout getLayout()
@@ -91,14 +213,39 @@ public class GraphicsPipeline implements AutoCloseable {
 		return pipeline;
 	}
 	
-	public Shader getVertexShader()
+	public List<ShaderInput> getInputs()
+	{
+		return inputs;
+	}
+	
+	public Optional<Shader> getVertexShader()
 	{
 		return vertexShader;
 	}
 	
-	public Shader getFragmentShader()
+	public Optional<Shader> getTessellationControlShader()
+	{
+		return tessellationControlShader;
+	}
+	
+	public Optional<Shader> getTessellationEvaluationShader()
+	{
+		return tessellationEvaluationShader;
+	}
+	
+	public Optional<Shader> getGeometryShader()
+	{
+		return geometryShader;
+	}
+	
+	public Optional<Shader> getFragmentShader()
 	{
 		return fragmentShader;
+	}
+	
+	public Optional<Shader> getComputeShader()
+	{
+		return computeShader;
 	}
 	
 	@Override

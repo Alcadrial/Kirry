@@ -16,6 +16,16 @@ public class Debug {
 		debugOutput.println(x);
 	}
 	
+	public static void printlnIf(boolean condition)
+	{
+		if (condition) println();
+	}
+	
+	public static void printlnIf(boolean condition, Object x)
+	{
+		if (condition) println(x);
+	}
+	
 	public static void setDebugOutput(PrintStream debugOutput)
 	{
 		Debug.debugOutput = debugOutput;

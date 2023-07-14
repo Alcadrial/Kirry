@@ -34,7 +34,7 @@ public class Shader {
 			new ProcessBuilder("\"" + GLSLC + "\" \"" + file + "\" -O -o \"" + binary + "\"").inheritIO().start().waitFor();
 			if (binary.exists())
 			{
-				compiled = CompiledShader.ofSuccess(Files.readAllBytes(binary.toPath()));
+				compiled = CompiledShader.ofSuccess(code, Files.readAllBytes(binary.toPath()));
 				binary.delete();
 			}
 			else
