@@ -1,0 +1,11 @@
+{
+	"entryPoint": "main",
+	"type": "frag",
+	"inputs": [
+		{
+			"location": 0,
+			"type": "vec4",
+			"name": "color"
+		}
+	]
+}

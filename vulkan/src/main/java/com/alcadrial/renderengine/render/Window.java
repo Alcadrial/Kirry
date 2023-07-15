@@ -218,7 +218,7 @@ public class Window implements AutoCloseable {
 			pipelineInfo.basePipelineHandle(VK10.VK_NULL_HANDLE);
 			pipelineInfo.basePipelineIndex(-1);
 			
-			pipeline = GraphicsPipeline.create().vertexShader(vertexShader).fragmentShader(fragmentShader).build(vulkan.getDevice(), pipelineLayout, pipelineInfo);
+			pipeline = GraphicsPipeline.create().shader(vertexShader).shader(fragmentShader).build(vulkan.getDevice(), pipelineLayout, pipelineInfo);
 			
 			swapChain.startRegisteringCommands();
 		}

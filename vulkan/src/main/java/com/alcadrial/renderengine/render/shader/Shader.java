@@ -1,12 +1,18 @@
 package com.alcadrial.renderengine.render.shader;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
+import com.alcadrial.renderengine.render.util.FileUtils;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.google.gson.stream.JsonReader;
 
 public class Shader {
 	
@@ -15,15 +21,95 @@ public class Shader {
 	private ShaderType type;
 	private String[] code;
 	private CompiledShader compiled;
-	private String entryPoint;
 	
-	public Shader(File file, String entryPoint) throws IOException
+	private String entryPoint;
+	private Map<ShaderInput, Integer> inputs;
+	
+	/**
+	 * DataFile must be a json file as follows:
+	 * <pre>
+	 * {
+	 *     "entryPoint": "main",                      // The starting point of the shader            [REQUIRED]
+	 *     "type": "{vert|tcon|teva|geom|frag|comp}",                                                [OPTIONAL]
+	 *     "inputs": [                                // A list of 0 or more inputs                  [REQUIRED]
+	 *         {
+	 *             "location": 0,                     // The location of the shader's input variable [REQUIRED]
+	 *             "type": "vec4",                    // The type of the shader's input variable     [REQUIRED]
+	 *             "name": "color"                    // The name of the shader's input variable     [REQUIRED]
+	 *         }
+	 *     ]
+	 * }
+	 * </pre>
+	 * 
+	 * @param file
+	 * @param dataFile
+	 * @throws IOException
+	 */
+	public Shader(File file, File dataFile) throws IOException
 	{
 		this.file = VulkanErrorUtils.nonNull(file);
-		String pathname = file.getPath();
-		type = ShaderType.fromExtension(pathname.substring(pathname.lastIndexOf('.') + 1));
 		code = Files.readAllLines(file.toPath()).toArray(String[]::new);
-		this.entryPoint = VulkanErrorUtils.nonNull(entryPoint);
+		FileUtils.assertExtension(dataFile, "json");
+		try (JsonReader reader = new JsonReader(new FileReader(dataFile)))
+		{
+			reader.beginObject();
+			while (reader.hasNext())
+			{
+				switch (reader.nextName())
+				{
+					case "entryPoint" -> entryPoint = reader.nextString();
+					case "type" -> type = ShaderType.fromExtension(reader.nextString());
+					case "inputs" ->
+					{
+						if (inputs != null) inputs.clear();
+						inputs = new HashMap<>();
+						reader.beginArray();
+						while (reader.hasNext())
+						{
+							Integer location = null;
+							ShaderInputType type = null;
+							String name = null;
+							reader.beginObject();
+							while (reader.hasNext())
+							{
+								switch (reader.nextName())
+								{
+									case "location" -> location = reader.nextInt();
+									case "type" -> type = ShaderInputType.of(reader.nextString());
+									case "name" -> name = reader.nextString();
+									default -> reader.skipValue();
+								}
+							}
+							if (location == null) throw new IOException(missing(reader, "location"));
+							if (type == null) throw new IOException(missing(reader, "type"));
+							if (name == null) throw new IOException(missing(reader, "name"));
+							reader.endObject();
+							
+							inputs.put(ShaderInput.of(type, name), location);
+						}
+						reader.endArray();
+					}
+					default -> reader.skipValue();
+				}
+			}
+			reader.endObject();
+		}
+		
+		if (type != null)
+		{
+			if (type != ShaderType.fromExtension(FileUtils.getExtension(file))) throw new IOException("Shader " + file + " extension doesn't match the type (" + type.getExtension() + ") in " + dataFile);
+		}
+		else type = ShaderType.fromExtension(FileUtils.getExtension(file));
+		entryPoint = VulkanErrorUtils.nonNull(entryPoint);
+		inputs = VulkanErrorUtils.nonNull(inputs);
+	}
+	
+	//public Shader(String[] code, Reader data) throws IOException
+	
+	private String missing(JsonReader reader, String object)
+	{
+		String path = reader.getPath();
+		return "Missing " + object + " at " + path.substring(0, path.lastIndexOf("."));
 	}
 	
 	public CompiledShader compile()
@@ -80,5 +166,10 @@ public class Shader {
 	public String getEntryPoint()
 	{
 		return entryPoint;
+	}
+	
+	public Set<ShaderInput> getInputs()
+	{
+		return inputs.keySet();
 	}
 }

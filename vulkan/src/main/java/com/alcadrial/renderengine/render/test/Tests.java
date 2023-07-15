@@ -27,7 +27,9 @@ public class Tests {
 		Property.parseProperties(args, Properties.PROPERTIES);
 		
 		System.out.println("Start time = " + recordTime(Tests::start, TimeUnit.MICROSECONDS) / 1000D + "ms");
+		if (!RenderEngine.isInitializated()) return;
 		System.out.println("Loop time = " + recordTime(Tests::loop, TimeUnit.MICROSECONDS) / 1000D + "ms");
+		if (!RenderEngine.isInitializated()) return;
 		System.out.println("End time = " + recordTime(Tests::end, TimeUnit.MICROSECONDS) / 1000D + "ms");
 	}
 	
@@ -56,8 +58,10 @@ public class Tests {
 		Shader fragmentShader;
 		try
 		{
-			vertexShader = new Shader(new File(Properties.RESOURCE_PATH.getValue(), "assets/renderengine/shader.vert"), "main");
-			fragmentShader = new Shader(new File(Properties.RESOURCE_PATH.getValue(), "assets/renderengine/shader.frag"), "main");
+			vertexShader = new Shader(getFile("shader.vert"), getFile("shader.vert.json"));
+			if (vertexShader.compile().hasErrors()) throw new IOException("Shader " + vertexShader.getFile() + " has errors");
+			fragmentShader = new Shader(getFile("shader.frag"), getFile("shader.frag.json"));
+			if (fragmentShader.compile().hasErrors()) throw new IOException("Shader " + fragmentShader.getFile() + " has errors");
 		}
 		catch (IOException e)
 		{
@@ -96,6 +100,11 @@ public class Tests {
 		System.out.println("[Vulkan debug] " + callbackData.pMessageString());
 		
 		return VK10.VK_FALSE;
+	}
+	
+	public static File getFile(String path)
+	{
+		return new File(Properties.RESOURCE_PATH.getValue(), "assets/renderengine/" + path);
 	}
 	
 	public static long recordTime(Runnable runnable, TimeUnit unit)

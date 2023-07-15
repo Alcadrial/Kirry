@@ -1,0 +1,16 @@
+{
+	"entryPoint": "main",
+	"type": "vert",
+	"inputs": [
+		{
+			"location": 0,
+			"type": "vec3",
+			"name": "vertexPosition"
+		},
+		{
+			"location": 1,
+			"type": "vec4",
+			"name": "color"
+		}
+	]
+}

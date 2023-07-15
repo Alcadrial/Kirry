@@ -285,7 +285,7 @@ public class SwapChain implements AutoCloseable {
 		device.waitIdle();
 		for (CommandBufferData swappingBuffer : commands) swappingBuffer.close();
 		VK10.vkDestroyCommandPool(device.getDevice(), commandPool, null);
-		for (FrameBuffer frameBuffer : frameBuffers) frameBuffer.close();
+		if (frameBuffers != null) for (FrameBuffer frameBuffer : frameBuffers) frameBuffer.close();
 		for (long imageView : imageViews) VK10.vkDestroyImageView(device.getDevice(), imageView, null);
 		KHRSwapchain.vkDestroySwapchainKHR(device.getDevice(), swapChain, null);
 		renderPassInfo.pClearValues().forEach(v -> v.color().float32().clear());

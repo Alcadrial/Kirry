@@ -42,6 +42,27 @@ public class GraphicsPipeline implements AutoCloseable {
 			computeShader = Optional.empty();
 		}
 		
+		/**
+		 * Use {@link Shader#getType()} to distinguish the type
+		 * @param shader
+		 * @return
+		 */
+		public Builder shader(Shader shader)
+		{
+			Debug.printlnIf(shader.getOrCompile().hasErrors(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
+			switch (shader.getType())
+			{
+				case VERTEX -> vertexShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
+				case TESS_CONTROL -> tessellationControlShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
+				case TESS_EVALUATION -> tessellationEvaluationShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
+				case GEOMETRY -> geometryShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
+				case FRAGMENT -> fragmentShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
+				case COMPUTE -> computeShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
+				default -> Debug.println("Shader " + shader.getFile() + " cannot be used becouse the type is not known");
+			}
+			return this;
+		}
+		
 		public Builder vertexShader(Shader shader)
 		{
 			Debug.printlnIf(shader.getOrCompile().hasErrors(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
@@ -131,7 +152,7 @@ public class GraphicsPipeline implements AutoCloseable {
 				
 				int size = 0;
 				int locationSize = 0;
-				Set<ShaderInput> inputs = vertexShader.get().getOrCompile().getInputs();
+				Set<ShaderInput> inputs = vertexShader.get().getInputs();
 				VkVertexInputAttributeDescription.Buffer attributeDescriptions = VkVertexInputAttributeDescription.calloc(inputs.size());
 				for (ShaderInput input : inputs)
 				{
