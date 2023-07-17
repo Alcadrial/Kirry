@@ -1,7 +1,14 @@
 package com.alcadrial.renderengine.render.buffer;
 
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.nio.LongBuffer;
+import java.nio.ShortBuffer;
 
+import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkBufferCreateInfo;
@@ -20,6 +27,7 @@ public class VulkanBuffer implements AutoCloseable {
 	protected long id;
 	protected long memory;
 	protected long size;
+	private ByteBuffer map;
 	
 	public VulkanBuffer(long size, int usage)
 	{
@@ -37,7 +45,7 @@ public class VulkanBuffer implements AutoCloseable {
 		Pair<Long, Long> data = new Pair<>(0L, 0L);
 		
 		Device device = RenderEngine.getVulkan().getDevice();
-		VkBufferCreateInfo bufferInfo = VulkanUtils.bufferCreateInfo(stack, 0, size, usage);
+		VkBufferCreateInfo bufferInfo = VulkanUtils.bufferInfo(stack, 0, size, usage);
 		bufferInfo.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE);
 		
 		long[] p = new long[1];
@@ -67,6 +75,51 @@ public class VulkanBuffer implements AutoCloseable {
 		
 		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getDevice(), data.getLeft(), data.getRigth(), 0), "Failed to bind buffer memory");
 		return data;
+	}
+	
+	public ByteBuffer asByteBuffer()
+	{
+		if (map == null)
+		{
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				Device device = RenderEngine.getVulkan().getDevice();
+				PointerBuffer gpuData = stack.mallocPointer(1);
+				VulkanErrorUtils.assertNoError(VK10.vkMapMemory(device.getDevice(), memory, 0, size, 0, gpuData), "Failed to map buffer memory");
+				map = gpuData.getByteBuffer((int) size);
+			}
+		}
+		return map;
+	}
+	
+	public CharBuffer asCharBuffer()
+	{
+		return asByteBuffer().asCharBuffer();
+	}
+	
+	public ShortBuffer asShortBuffer()
+	{
+		return asByteBuffer().asShortBuffer();
+	}
+	
+	public IntBuffer asIntBuffer()
+	{
+		return asByteBuffer().asIntBuffer();
+	}
+	
+	public LongBuffer asLongBuffer()
+	{
+		return asByteBuffer().asLongBuffer();
+	}
+	
+	public FloatBuffer asFloatBuffer()
+	{
+		return asByteBuffer().asFloatBuffer();
+	}
+	
+	public DoubleBuffer asDoubleBuffer()
+	{
+		return asByteBuffer().asDoubleBuffer();
 	}
 	
 	public long getId()

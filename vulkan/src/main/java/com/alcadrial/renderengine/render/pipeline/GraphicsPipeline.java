@@ -147,8 +147,6 @@ public class GraphicsPipeline implements AutoCloseable {
 				VkPipelineVertexInputStateCreateInfo vertexInputInfo = VkPipelineVertexInputStateCreateInfo.calloc(stack);
 				vertexInputInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
 				
-				VkVertexInputBindingDescription.Buffer bindingDescription = VkVertexInputBindingDescription.calloc(1, stack);
-				
 				int size = 0;
 				int locationSize = 0;
 				Set<ShaderInput> inputs = vertexShader.get().getInputs();
@@ -161,6 +159,7 @@ public class GraphicsPipeline implements AutoCloseable {
 					locationSize += type.getLocationSize();
 				}
 				
+				VkVertexInputBindingDescription.Buffer bindingDescription = VkVertexInputBindingDescription.calloc(1, stack);
 				bindingDescription.binding(0);
 				bindingDescription.stride(size);
 				bindingDescription.inputRate(VK10.VK_VERTEX_INPUT_RATE_VERTEX);
@@ -208,7 +207,7 @@ public class GraphicsPipeline implements AutoCloseable {
 		shaderStageInfo.stage(shader.getType().getStageBit());
 		
 		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(VK10.vkCreateShaderModule(device.getDevice(), VulkanUtils.shaderModuleCreateInfo(stack, shader.getOrCompile().getBinary()), null, p), "Failed to create shader module");
+		VulkanErrorUtils.assertNoError(VK10.vkCreateShaderModule(device.getDevice(), VulkanUtils.shaderModuleInfo(stack, shader.getOrCompile().getBinary()), null, p), "Failed to create shader module");
 		
 		shaderStageInfo.module(p[0]);
 		shaderStageInfo.pName(stack.UTF8(shader.getEntryPoint()));

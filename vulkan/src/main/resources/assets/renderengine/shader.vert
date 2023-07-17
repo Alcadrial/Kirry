@@ -3,12 +3,14 @@
 layout (location = 0) in vec3 vertexPosition;
 layout (location = 1) in vec4 color;
 
-//uniform mat4 TRANSFORMATION;
+layout (binding = 0) uniform U {
+	mat4 TRANSFORMATION;
+} GLOBAL;
 
 layout (location = 0) out vec4 color0;
 
 void main()
 {
-	gl_Position = /*TRANSFORMATION * */vec4(vertexPosition, 1);
+	gl_Position = GLOBAL.TRANSFORMATION * vec4(vertexPosition, 1);
 	color0 = color;
 }

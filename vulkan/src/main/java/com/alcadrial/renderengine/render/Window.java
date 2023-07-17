@@ -1,5 +1,10 @@
 package com.alcadrial.renderengine.render;
 
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCharCallbackI;
 import org.lwjgl.glfw.GLFWCharModsCallbackI;
@@ -24,6 +29,10 @@ import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkAttachmentDescription;
 import org.lwjgl.vulkan.VkAttachmentReference;
+import org.lwjgl.vulkan.VkCopyDescriptorSet;
+import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
+import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
+import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
 import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState;
@@ -33,17 +42,22 @@ import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkPipelineMultisampleStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo;
+import org.lwjgl.vulkan.VkPresentInfoKHR;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassCreateInfo;
+import org.lwjgl.vulkan.VkSubmitInfo;
 import org.lwjgl.vulkan.VkSubpassDependency;
 import org.lwjgl.vulkan.VkSubpassDescription;
 import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 import org.lwjgl.vulkan.VkViewport;
+import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
+import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.render.buffer.UniformBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
@@ -69,6 +83,10 @@ public class Window implements AutoCloseable {
 	private long renderPass;
 	private GraphicsPipeline pipeline;
 	private VertexBuffer vertexBuffer;
+	private List<UniformBuffer> uniformBuffers;
+	private long descriptorPool;
+	private List<Long> descriptorSetLayouts;
+	private List<Long> descriptorSets;
 	
 	private int cullMode;
 	private Color clearColor;
@@ -208,7 +226,75 @@ public class Window implements AutoCloseable {
 			colorBlending.pAttachments(colorBlendAttachment);
 			colorBlending.blendConstants(stack.floats(0, 0, 0, 0));
 			
-			PipelineLayout pipelineLayout = new PipelineLayout(vulkan.getDevice(), VkPipelineLayoutCreateInfo.calloc(stack));
+			VkDescriptorSetLayoutBinding.Buffer uniformLayoutBinding = VulkanUtils.descriptorSetLayoutBinding(stack, 2, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			VkDescriptorSetLayoutBinding vertexShaderUniformLayoutBinding = uniformLayoutBinding.get();
+			vertexShaderUniformLayoutBinding.binding(0);
+			vertexShaderUniformLayoutBinding.descriptorCount(1);
+			vertexShaderUniformLayoutBinding.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT);
+			VkDescriptorSetLayoutBinding fragmentShaderUniformLayoutBinding = uniformLayoutBinding.get();
+			fragmentShaderUniformLayoutBinding.binding(1);
+			fragmentShaderUniformLayoutBinding.descriptorCount(1);
+			fragmentShaderUniformLayoutBinding.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT);
+			uniformLayoutBinding.rewind();
+			
+			VkDevice device = vulkan.getDevice().getDevice();
+			
+			LongBuffer p = stack.callocLong(2);
+			
+			descriptorSetLayouts = new ArrayList<>(2);
+			for (int i = 0; i < 2; i++)
+			{
+				VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorSetLayout(device, VulkanUtils.descriptorSetLayoutInfo(stack, 0, uniformLayoutBinding), null, p), "failed to create descriptor set layout!");
+				
+				descriptorSetLayouts.add(p.get());
+			}
+			p.rewind();
+			
+			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
+			pipelineLayoutInfo.pSetLayouts(p);
+			
+			VkDescriptorPoolCreateInfo poolInfo = VulkanUtils.descriptorPoolCreateInfo(stack, VulkanUtils.descriptorPoolSize(stack, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2));
+			poolInfo.maxSets(2);
+			
+			long[] p0 = new long[1];
+			
+			VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorPool(device, poolInfo, null, p0), "failed to create descriptor pool!");
+			
+			descriptorPool = p0[0];
+			
+			long[] p1 = new long[2];
+			
+			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device, VulkanUtils.descriptorSetAllocateInfo(stack, descriptorPool, p), p1), "failed to allocate descriptor sets!");
+			
+			uniformBuffers = new ArrayList<>(2);
+			descriptorSets = new ArrayList<>(2);
+			
+			for (int i = 0; i < 2; i++)
+			{
+				UniformBuffer buffer = new UniformBuffer(16 * 4 + 4 * 4 + 256);
+				uniformBuffers.add(buffer);
+				
+				buffer.asFloatBuffer().put(new Matrix4f().toArray()).position(64).put(0.2F).put(0.2F).put(0.2F).put(0.8F);
+				
+				VkWriteDescriptorSet.Buffer descriptorWrite = VulkanUtils.writeDescriptorSet(stack, 2, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1);
+				VkWriteDescriptorSet vertexShaderDescriptorWrite = descriptorWrite.get();
+				vertexShaderDescriptorWrite.dstSet(p1[i]);
+				vertexShaderDescriptorWrite.dstBinding(0);
+				vertexShaderDescriptorWrite.dstArrayElement(0);
+				vertexShaderDescriptorWrite.pBufferInfo(VulkanUtils.descriptorBufferInfo(stack, buffer.getId(), 0, 16 * 4));
+				VkWriteDescriptorSet fragmentShaderDescriptorWrite = descriptorWrite.get();
+				fragmentShaderDescriptorWrite.dstSet(p1[i]);
+				fragmentShaderDescriptorWrite.dstBinding(1);
+				fragmentShaderDescriptorWrite.dstArrayElement(0);
+				fragmentShaderDescriptorWrite.pBufferInfo(VulkanUtils.descriptorBufferInfo(stack, buffer.getId(), 256, 4 * 4));
+				descriptorWrite.rewind();
+				
+				VK10.vkUpdateDescriptorSets(device, descriptorWrite, VkCopyDescriptorSet.calloc(0, stack));
+				
+				descriptorSets.add(p1[i]);
+			}
+			
+			PipelineLayout pipelineLayout = new PipelineLayout(vulkan.getDevice(), pipelineLayoutInfo);
 			
 			VkGraphicsPipelineCreateInfo.Buffer pipelineInfo = VkGraphicsPipelineCreateInfo.calloc(1, stack);
 			pipelineInfo.sType(VK10.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
@@ -223,6 +309,67 @@ public class Window implements AutoCloseable {
 			pipelineInfo.basePipelineIndex(-1);
 			
 			pipeline = GraphicsPipeline.create().shader(vertexShader).shader(fragmentShader).build(vulkan.getDevice(), pipelineLayout, pipelineInfo);
+			
+			swapChain.startRegisteringCommands();
+		}
+	}
+	
+	public void draw()
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			Device device = vulkan.getDevice();
+			
+			vertexBuffer.sync(swapChain.getCommandPool());
+			
+			CommandBufferData buffer = swapChain.getActiveCommandBufferData();
+			
+			VK10.vkCmdBindPipeline(buffer.getCommandBuffer(), VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getPipeline());
+			vertexBuffer.bind(buffer);
+			
+			VK10.vkCmdBindDescriptorSets(buffer.getCommandBuffer(), VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getLayout().getPipelineLayout(), 0, new long[] {descriptorSets.get(swapChain.getActiveCommandIndex())}, new int[0]);
+			VK10.vkCmdDraw(buffer.getCommandBuffer(), 4, 1, 0, 0);
+			
+			swapChain.endRegisteringCommands();
+			
+			IntBuffer p = stack.callocInt(1);
+			
+			int result = KHRSwapchain.vkAcquireNextImageKHR(device.getDevice(), swapChain.getSwapchain(), Integer.MAX_VALUE, buffer.getImageAvailableSemaphore(), 0, p);
+			if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR)
+			{
+				//recreate swapchain
+				swapChain.startRegisteringCommands();
+				return;
+			}
+			VulkanErrorUtils.assertNoError(result, "Error Acquiring Next Image");
+			
+			LongBuffer p0 = stack.callocLong(1);
+			p0.put(0, buffer.getImageAvailableSemaphore());
+			LongBuffer p1 = stack.callocLong(1);
+			p1.put(0, buffer.getRenderFinishedSemaphore());
+			
+			VkSubmitInfo submitInfo = VkSubmitInfo.calloc(stack);
+			submitInfo.sType(VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO);
+			submitInfo.waitSemaphoreCount(1);
+			submitInfo.pWaitSemaphores(p0);
+			submitInfo.pWaitDstStageMask(stack.ints(VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT));
+			submitInfo.pSignalSemaphores(p1);
+			submitInfo.pCommandBuffers(stack.pointers(buffer.getCommandBuffer()));
+			
+			VK10.vkResetFences(device.getDevice(), buffer.getFence());
+			
+			VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(device.getGraphicsQueue().getQueue(), submitInfo, buffer.getFence()), "Failed to submit draw command buffer");// FAIL
+			
+			VkPresentInfoKHR presentInfo = VkPresentInfoKHR.calloc(stack);
+			presentInfo.sType(KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR);
+			presentInfo.pWaitSemaphores(p1);
+			presentInfo.swapchainCount(1);
+			presentInfo.pSwapchains(stack.longs(swapChain.getSwapchain()));
+			presentInfo.pImageIndices(p);
+			
+			KHRSwapchain.vkQueuePresentKHR(device.getPresentQueue().getQueue(), presentInfo);
+			
+			swapChain.swapBuffer();
 			
 			swapChain.startRegisteringCommands();
 		}
@@ -277,11 +424,29 @@ public class Window implements AutoCloseable {
 		if (callback instanceof GLFWKeyCallbackI i) GLFW.glfwSetKeyCallback(id, i);
 		if (callback instanceof GLFWMouseButtonCallbackI i) GLFW.glfwSetMouseButtonCallback(id, i);
 		if (callback instanceof GLFWScrollCallbackI i) GLFW.glfwSetScrollCallback(id, i);
-		if (callback instanceof GLFWWindowCloseCallbackI i) GLFW.glfwSetWindowCloseCallback(id, i);
+		if (callback instanceof GLFWWindowCloseCallbackI i) GLFW.glfwSetWindowCloseCallback(id, w -> {
+			onHide();
+			i.invoke(w);
+		});
 		if (callback instanceof GLFWWindowContentScaleCallbackI i) GLFW.glfwSetWindowContentScaleCallback(id, i);
-		if (callback instanceof GLFWWindowFocusCallbackI i) GLFW.glfwSetWindowFocusCallback(id, i);
-		if (callback instanceof GLFWWindowIconifyCallbackI i) GLFW.glfwSetWindowIconifyCallback(id, i);
-		if (callback instanceof GLFWWindowMaximizeCallbackI i) GLFW.glfwSetWindowMaximizeCallback(id, i);
+		if (callback instanceof GLFWWindowFocusCallbackI i) GLFW.glfwSetWindowFocusCallback(id, (w, f) -> {
+			onFocus();
+			i.invoke(w, f);
+		});
+		if (callback instanceof GLFWWindowIconifyCallbackI i) GLFW.glfwSetWindowIconifyCallback(id, (w, c) -> {
+			if (c)
+			{
+				onIconify();
+				hasZeroSurface = true;
+			}
+			else onRestore();
+			i.invoke(w, c);
+		});
+		if (callback instanceof GLFWWindowMaximizeCallbackI i) GLFW.glfwSetWindowMaximizeCallback(id, (w, m) -> {
+			if (m) onMaximize();
+			else onRestore();
+			i.invoke(w, m);
+		});
 		if (callback instanceof GLFWWindowPosCallbackI i) GLFW.glfwSetWindowPosCallback(id, i);
 		if (callback instanceof GLFWWindowRefreshCallbackI i) GLFW.glfwSetWindowRefreshCallback(id, i);
 		if (callback instanceof GLFWWindowSizeCallbackI i) GLFW.glfwSetWindowSizeCallback(id, (p, w, h) -> {
@@ -482,6 +647,11 @@ public class Window implements AutoCloseable {
 		swapChain.close();
 		vertexBuffer.close();
 		if (pipeline != null) pipeline.close();
+		
+		if (descriptorPool != 0) VK10.vkDestroyDescriptorPool(vulkan.getDevice().getDevice(), descriptorPool, null);
+		if (descriptorSetLayouts != null) for (Long descriptorSetLayout : descriptorSetLayouts) VK10.vkDestroyDescriptorSetLayout(vulkan.getDevice().getDevice(), descriptorSetLayout, null);
+		if (uniformBuffers != null) for (UniformBuffer uniformBuffer : uniformBuffers) uniformBuffer.close();
+		
 		VK10.vkDestroyRenderPass(vulkan.getDevice().getDevice(), renderPass, null);
 		surface.close();
 		GLFW.glfwDestroyWindow(id);

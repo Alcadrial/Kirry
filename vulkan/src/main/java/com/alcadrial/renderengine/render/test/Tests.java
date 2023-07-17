@@ -122,12 +122,17 @@ public class Tests {
 		Device device = RenderEngine.getVulkan().getDevice();
 		Window window = device.getWindow();
 		
+		window.hide();
+		window.show();
+		window.maximize();
+		window.restore();
+		
 		window.setClearColor(Color.of(0, 0, 0, 0));
 		
 		while (!window.shouldClose())
 		{
 			window.pollEvents();
-			device.draw();
+			window.draw();
 		}
 	}
 	
