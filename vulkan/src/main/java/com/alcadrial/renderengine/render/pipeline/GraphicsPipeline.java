@@ -9,7 +9,6 @@ import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
 import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
 import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo;
-import org.lwjgl.vulkan.VkShaderModuleCreateInfo;
 import org.lwjgl.vulkan.VkVertexInputAttributeDescription;
 import org.lwjgl.vulkan.VkVertexInputBindingDescription;
 
@@ -157,12 +156,8 @@ public class GraphicsPipeline implements AutoCloseable {
 				for (ShaderInput input : inputs)
 				{
 					ShaderInputType type = input.getType();
-					VkVertexInputAttributeDescription description = attributeDescriptions.get();
-					description.binding(0);
-					description.location(locationSize);
-					description.format(type.getType());
-					description.offset(size);
-					size += type.getSize() * 4;
+					attributeDescriptions.get().set(locationSize, 0, type.getType(), size);
+					size += type.getLength();
 					locationSize += type.getLocationSize();
 				}
 				
@@ -212,13 +207,8 @@ public class GraphicsPipeline implements AutoCloseable {
 		shaderStageInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
 		shaderStageInfo.stage(shader.getType().getStageBit());
 		
-		VkShaderModuleCreateInfo createInfo = VkShaderModuleCreateInfo.calloc(stack);
-		
-		createInfo.sType(VK10.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);
-		createInfo.pCode(VulkanUtils.allocate(stack, shader.getOrCompile().getBinary()));
-		
 		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(VK10.vkCreateShaderModule(device.getDevice(), createInfo, null, p), "Failed to create shader module");
+		VulkanErrorUtils.assertNoError(VK10.vkCreateShaderModule(device.getDevice(), VulkanUtils.shaderModuleCreateInfo(stack, shader.getOrCompile().getBinary()), null, p), "Failed to create shader module");
 		
 		shaderStageInfo.module(p[0]);
 		shaderStageInfo.pName(stack.UTF8(shader.getEntryPoint()));

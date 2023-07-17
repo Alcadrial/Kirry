@@ -1,14 +1,31 @@
 package com.alcadrial.renderengine.render;
 
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWCharCallbackI;
+import org.lwjgl.glfw.GLFWCharModsCallbackI;
+import org.lwjgl.glfw.GLFWCursorEnterCallbackI;
+import org.lwjgl.glfw.GLFWCursorPosCallbackI;
+import org.lwjgl.glfw.GLFWDropCallbackI;
+import org.lwjgl.glfw.GLFWKeyCallbackI;
+import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
+import org.lwjgl.glfw.GLFWScrollCallbackI;
+import org.lwjgl.glfw.GLFWWindowCloseCallbackI;
+import org.lwjgl.glfw.GLFWWindowContentScaleCallbackI;
+import org.lwjgl.glfw.GLFWWindowFocusCallbackI;
+import org.lwjgl.glfw.GLFWWindowIconifyCallbackI;
+import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
+import org.lwjgl.glfw.GLFWWindowPosCallbackI;
+import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
+import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
+import org.lwjgl.system.CallbackI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkAttachmentDescription;
 import org.lwjgl.vulkan.VkAttachmentReference;
+import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
-import org.lwjgl.vulkan.VkOffset2D;
 import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState;
 import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineInputAssemblyStateCreateInfo;
@@ -24,12 +41,17 @@ import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 import org.lwjgl.vulkan.VkViewport;
 
+import com.alcadrial.kector.vector.Vector2f;
+import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderType;
+import com.alcadrial.renderengine.render.util.Pair;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.VulkanUtils;
 
 public class Window implements AutoCloseable {
 	
@@ -51,7 +73,9 @@ public class Window implements AutoCloseable {
 	private int cullMode;
 	private Color clearColor;
 	private int clockwiseFrontOrientation;
+	private boolean rebuildSwapchain;
 	private boolean rebuildPipeline;
+	private boolean hasZeroSurface;
 	
 	public Window(int width, int height, String title)
 	{
@@ -156,42 +180,22 @@ public class Window implements AutoCloseable {
 		VulkanErrorUtils.match(fragmentShader.getType(), ShaderType.FRAGMENT, "Not a fragment shader");
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VkPipelineInputAssemblyStateCreateInfo inputAssembly = VkPipelineInputAssemblyStateCreateInfo.calloc(stack);
-			inputAssembly.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO);
-			inputAssembly.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN);//MONO QUAD
-			inputAssembly.primitiveRestartEnable(false);
+			VkPipelineInputAssemblyStateCreateInfo inputAssembly = VulkanUtils.pipelineInputAssemblyStateInfo(stack, VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN, false);//MONO QUAD
 			
-			VkViewport.Buffer viewport = VkViewport.calloc(1, stack);
-			viewport.x(0);
-			viewport.y(0);
-			viewport.width(surface.getExtent().width());
-			viewport.height(surface.getExtent().height());
-			viewport.minDepth(0);
-			viewport.maxDepth(1);
+			VkExtent2D extent = surface.getExtent();
+			VkViewport.Buffer viewport = VulkanUtils.viewport(stack, 0, 0, extent.width(), extent.height(), 0, 1);
+			VkRect2D.Buffer scissor = VulkanUtils.rect2d(stack, VulkanUtils.offset(stack, 0, 0), extent);
 			
-			VkRect2D.Buffer scissor = VkRect2D.calloc(1, stack);
-			scissor.offset(VkOffset2D.calloc(stack).set(0, 0));
-			scissor.extent(surface.getExtent());
+			VkPipelineViewportStateCreateInfo viewportState = VulkanUtils.pipelineViewportStateInfo(stack, viewport, scissor);
 			
-			VkPipelineViewportStateCreateInfo viewportState = VkPipelineViewportStateCreateInfo.calloc(stack);
-			viewportState.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO);
-			viewportState.pViewports(viewport);
-			viewportState.pScissors(scissor);
-			
-			VkPipelineRasterizationStateCreateInfo rasterizer = VkPipelineRasterizationStateCreateInfo.calloc(stack);
-			rasterizer.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO);
+			VkPipelineRasterizationStateCreateInfo rasterizer = VulkanUtils.pipelineRasterizationStateInfo(stack, VK10.VK_POLYGON_MODE_FILL, cullMode, clockwiseFrontOrientation);
 			rasterizer.depthClampEnable(false);
 			rasterizer.rasterizerDiscardEnable(false);
-			rasterizer.polygonMode(VK10.VK_POLYGON_MODE_FILL);
 			rasterizer.lineWidth(1);
-			rasterizer.cullMode(cullMode);
-			rasterizer.frontFace(clockwiseFrontOrientation);
 			rasterizer.depthBiasEnable(false);
 			
-			VkPipelineMultisampleStateCreateInfo multisampling = VkPipelineMultisampleStateCreateInfo.calloc(stack);
-			multisampling.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO);
+			VkPipelineMultisampleStateCreateInfo multisampling = VulkanUtils.pipelineMultisampleStateInfo(stack, VK10.VK_SAMPLE_COUNT_1_BIT);
 			multisampling.sampleShadingEnable(false);
-			multisampling.rasterizationSamples(VK10.VK_SAMPLE_COUNT_1_BIT);
 			
 			VkPipelineColorBlendAttachmentState.Buffer colorBlendAttachment = VkPipelineColorBlendAttachmentState.calloc(1, stack);
 			colorBlendAttachment.colorWriteMask(VK10.VK_COLOR_COMPONENT_R_BIT | VK10.VK_COLOR_COMPONENT_G_BIT | VK10.VK_COLOR_COMPONENT_B_BIT | VK10.VK_COLOR_COMPONENT_A_BIT);
@@ -226,6 +230,7 @@ public class Window implements AutoCloseable {
 	
 	public void update()
 	{
+		
 		if (rebuildPipeline)
 		{
 			
@@ -262,6 +267,83 @@ public class Window implements AutoCloseable {
 		rebuildPipeline = true;
 	}
 	
+	public final void setCallback(CallbackI callback)
+	{
+		if (callback instanceof GLFWCharCallbackI i) GLFW.glfwSetCharCallback(id, i);
+		if (callback instanceof GLFWCharModsCallbackI i) GLFW.glfwSetCharModsCallback(id, i);
+		if (callback instanceof GLFWCursorEnterCallbackI i) GLFW.glfwSetCursorEnterCallback(id, i);
+		if (callback instanceof GLFWCursorPosCallbackI i) GLFW.glfwSetCursorPosCallback(id, i);
+		if (callback instanceof GLFWDropCallbackI i) GLFW.glfwSetDropCallback(id, i);
+		if (callback instanceof GLFWKeyCallbackI i) GLFW.glfwSetKeyCallback(id, i);
+		if (callback instanceof GLFWMouseButtonCallbackI i) GLFW.glfwSetMouseButtonCallback(id, i);
+		if (callback instanceof GLFWScrollCallbackI i) GLFW.glfwSetScrollCallback(id, i);
+		if (callback instanceof GLFWWindowCloseCallbackI i) GLFW.glfwSetWindowCloseCallback(id, i);
+		if (callback instanceof GLFWWindowContentScaleCallbackI i) GLFW.glfwSetWindowContentScaleCallback(id, i);
+		if (callback instanceof GLFWWindowFocusCallbackI i) GLFW.glfwSetWindowFocusCallback(id, i);
+		if (callback instanceof GLFWWindowIconifyCallbackI i) GLFW.glfwSetWindowIconifyCallback(id, i);
+		if (callback instanceof GLFWWindowMaximizeCallbackI i) GLFW.glfwSetWindowMaximizeCallback(id, i);
+		if (callback instanceof GLFWWindowPosCallbackI i) GLFW.glfwSetWindowPosCallback(id, i);
+		if (callback instanceof GLFWWindowRefreshCallbackI i) GLFW.glfwSetWindowRefreshCallback(id, i);
+		if (callback instanceof GLFWWindowSizeCallbackI i) GLFW.glfwSetWindowSizeCallback(id, (p, w, h) -> {
+			rebuildSwapchain = true;
+			i.invoke(p, w, h);
+		});
+	}
+	
+	public final Vector2f getMousePos(Vector2f holder)
+	{
+		double[][] p = new double[2][1];
+		GLFW.glfwGetCursorPos(id, p[0], p[1]);
+		return holder.setAll((float) p[0][0], (float) p[1][0]);
+	}
+	
+	public final Vector2f getMousePos()
+	{
+		double[][] p = new double[2][1];
+		GLFW.glfwGetCursorPos(id, p[0], p[1]);
+		return Vector2f.of((float) p[0][0], (float) p[1][0]);
+	}
+	
+	public final Pair<Double, Double> getHighPrecisionMousePos(Pair<Double, Double> holder)
+	{
+		double[][] p = new double[2][1];
+		GLFW.glfwGetCursorPos(id, p[0], p[1]);
+		holder.setLeft(p[0][0]);
+		holder.setRigth(p[1][0]);
+		return holder;
+	}
+	
+	public final Pair<Double, Double> getHighPrecisionMousePos()
+	{
+		double[][] p = new double[2][1];
+		GLFW.glfwGetCursorPos(id, p[0], p[1]);
+		return new Pair<>(p[0][0], p[1][0]);
+	}
+	
+	public final void setMousePos(Vector2f pos)
+	{
+		GLFW.glfwSetCursorPos(id, pos.x(), pos.y());
+	}
+	
+	public final Vector2i getPos(Vector2i holder)
+	{
+		int[][] p = new int[2][1];
+		GLFW.glfwGetWindowPos(id, p[0], p[1]);
+		return holder.setAll(p[0][0], p[1][0]);
+	}
+	
+	public final Vector2i getPos()
+	{
+		int[][] p = new int[2][1];
+		GLFW.glfwGetWindowPos(id, p[0], p[1]);
+		return Vector2i.of(p[0][0], p[1][0]);
+	}
+	
+	public final void setPos(Vector2i pos)
+	{
+		GLFW.glfwSetWindowPos(id, pos.x(), pos.y());
+	}
+	
 	public final boolean shouldClose()
 	{
 		return GLFW.glfwWindowShouldClose(id);
@@ -282,6 +364,7 @@ public class Window implements AutoCloseable {
 	{
 		GLFW.glfwHideWindow(id);
 		onHide();
+		hasZeroSurface = true;
 	}
 	
 	protected void onHide()

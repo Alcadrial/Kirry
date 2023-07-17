@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -62,7 +62,7 @@ public class Shader {
 					case "inputs" ->
 					{
 						if (inputs != null) inputs.clear();
-						inputs = new HashMap<>();
+						inputs = new LinkedHashMap<>();
 						reader.beginArray();
 						while (reader.hasNext())
 						{

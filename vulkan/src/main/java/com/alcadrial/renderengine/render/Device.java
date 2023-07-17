@@ -36,6 +36,7 @@ public class Device implements AutoCloseable {
 			
 			VK10.vkCmdBindPipeline(buffer.getCommandBuffer(), VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, window.getPipeline().getPipeline());
 			window.getVertexBuffer().bind(buffer);
+			window.getVertexBuffer().sync(swapChain.getCommandPool());
 			VK10.vkCmdDraw(buffer.getCommandBuffer(), 4, 1, 0, 0);
 			
 			swapChain.endRegisteringCommands();
