@@ -102,6 +102,9 @@ public class RenderEngine extends RenderEngineCore {
 		return array.rewind();
 	}
 	
+	/**
+	 * MUST BE CALLED ONLY AFTER ANY THREAD HAS FINISHED USING THE LIBRARY
+	 */
 	public static void terminate()
 	{
 		if (initializated)

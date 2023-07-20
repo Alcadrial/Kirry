@@ -6,9 +6,14 @@ import com.alcadrial.renderengine.render.CommandBufferData;
 
 public class VertexBuffer extends VulkanDoubleBuffer {
 	
+	public VertexBuffer(int size)
+	{
+		super(size * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+	}
+	
 	public VertexBuffer(float[] data)
 	{
-		super(data.length * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		this(data.length);
 		asFloatBuffer().put(data);
 	}
 	

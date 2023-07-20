@@ -13,7 +13,6 @@ import org.lwjgl.vulkan.VkClearValue;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferAllocateInfo;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
-import org.lwjgl.vulkan.VkCommandPoolCreateInfo;
 import org.lwjgl.vulkan.VkFenceCreateInfo;
 import org.lwjgl.vulkan.VkFramebufferCreateInfo;
 import org.lwjgl.vulkan.VkImageViewCreateInfo;
@@ -32,7 +31,6 @@ public class SwapChain implements AutoCloseable {
 	private List<Long> images;
 	private List<Long> imageViews;
 	private List<FrameBuffer> frameBuffers;
-	private long commandPool;
 	private VkRenderPassBeginInfo renderPassInfo;
 	private PointerBuffer commandBuffers;
 	private List<CommandBufferData> commands;
@@ -103,21 +101,13 @@ public class SwapChain implements AutoCloseable {
 				imageViews.add(p0[0]);
 			}
 			
-			VkCommandPoolCreateInfo poolInfo = VkCommandPoolCreateInfo.calloc(stack);
-			poolInfo.sType(VK10.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO);
-			poolInfo.queueFamilyIndex(device.getPhysicalDevice().getQueueGraphicsFamilyIndex());
-			poolInfo.flags(VK10.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-			
-			VulkanErrorUtils.assertNoError(VK10.vkCreateCommandPool(device.getDevice(), poolInfo, null, p0), "Failed to create command pool");
-			
-			commandPool = p0[0];
 			int size = imageViews.size();
 			commandBuffers = MemoryStack.stackMallocPointer(size);
 			commands = new ArrayList<>(size);
 			
 			VkCommandBufferAllocateInfo allocInfo = VkCommandBufferAllocateInfo.calloc(stack);
 			allocInfo.sType(VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO);
-			allocInfo.commandPool(commandPool);
+			allocInfo.commandPool(device.getResetCommandPool());
 			allocInfo.level(VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 			allocInfo.commandBufferCount(size);
 			
@@ -263,11 +253,6 @@ public class SwapChain implements AutoCloseable {
 		return frameBuffers;
 	}
 	
-	public long getCommandPool()
-	{
-		return commandPool;
-	}
-	
 	public int getActiveCommandIndex()
 	{
 		return activeCommandIndex;
@@ -284,7 +269,6 @@ public class SwapChain implements AutoCloseable {
 		Device device = RenderEngine.getVulkan().getDevice();
 		device.waitIdle();
 		for (CommandBufferData swappingBuffer : commands) swappingBuffer.close();
-		VK10.vkDestroyCommandPool(device.getDevice(), commandPool, null);
 		if (frameBuffers != null) for (FrameBuffer frameBuffer : frameBuffers) frameBuffer.close();
 		for (long imageView : imageViews) VK10.vkDestroyImageView(device.getDevice(), imageView, null);
 		KHRSwapchain.vkDestroySwapchainKHR(device.getDevice(), swapChain, null);

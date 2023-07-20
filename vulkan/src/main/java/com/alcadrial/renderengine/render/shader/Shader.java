@@ -116,7 +116,7 @@ public class Shader {
 	{
 		try
 		{
-			File binary = new File(file + ".bin");
+			File binary = new File(file + "" + Thread.currentThread().getId() + ".bin");
 			new ProcessBuilder("\"" + GLSLC + "\" \"" + file + "\" -O -o \"" + binary + "\"").inheritIO().start().waitFor();
 			if (binary.exists())
 			{

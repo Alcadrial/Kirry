@@ -29,6 +29,7 @@ import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkAttachmentDescription;
 import org.lwjgl.vulkan.VkAttachmentReference;
+import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCopyDescriptorSet;
 import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
@@ -59,6 +60,7 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.buffer.UniformBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanDoubleBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.shader.Shader;
@@ -83,6 +85,7 @@ public class Window implements AutoCloseable {
 	private long renderPass;
 	private GraphicsPipeline pipeline;
 	private VertexBuffer vertexBuffer;
+	private VulkanDoubleBuffer indexBuffer;
 	private List<UniformBuffer> uniformBuffers;
 	private long descriptorPool;
 	private List<Long> descriptorSetLayouts;
@@ -153,12 +156,8 @@ public class Window implements AutoCloseable {
 			VulkanErrorUtils.assertNoError(VK10.vkCreateRenderPass(vulkan.getDevice().getDevice(), renderPassInfo, null, p), "Failed to create render pass");
 			renderPass = p[0];
 			
-			vertexBuffer = new VertexBuffer(new float[] {
-				-0.5F, -0.5F, 0, 1, 1, 1, 1,
-				0.5F, -0.5F, 0, 1, 0, 0, 1,
-				0.5F, 0.5F, 0, 0, 1, 0, 1,
-				-0.5F, 0.5F, 0, 0, 0, 1, 1,
-			});
+			vertexBuffer = new VertexBuffer(1024);
+			indexBuffer = new VulkanDoubleBuffer(32 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 			
 			VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
 			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.getDevice(), surface.getSurface(), capabilities), "Failed to create swap chain");
@@ -198,7 +197,7 @@ public class Window implements AutoCloseable {
 		VulkanErrorUtils.match(fragmentShader.getType(), ShaderType.FRAGMENT, "Not a fragment shader");
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VkPipelineInputAssemblyStateCreateInfo inputAssembly = VulkanUtils.pipelineInputAssemblyStateInfo(stack, VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN, false);//MONO QUAD
+			VkPipelineInputAssemblyStateCreateInfo inputAssembly = VulkanUtils.pipelineInputAssemblyStateInfo(stack, VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, false);
 			
 			VkExtent2D extent = surface.getExtent();
 			VkViewport.Buffer viewport = VulkanUtils.viewport(stack, 0, 0, extent.width(), extent.height(), 0, 1);
@@ -274,7 +273,7 @@ public class Window implements AutoCloseable {
 				UniformBuffer buffer = new UniformBuffer(16 * 4 + 4 * 4 + 256);
 				uniformBuffers.add(buffer);
 				
-				buffer.asFloatBuffer().put(new Matrix4f().toArray()).position(64).put(0.2F).put(0.2F).put(0.2F).put(0.8F);
+				buffer.asFloatBuffer().put(new Matrix4f().orthographic(width, height, 100).toArray());
 				
 				VkWriteDescriptorSet.Buffer descriptorWrite = VulkanUtils.writeDescriptorSet(stack, 2, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1);
 				VkWriteDescriptorSet vertexShaderDescriptorWrite = descriptorWrite.get();
@@ -309,8 +308,6 @@ public class Window implements AutoCloseable {
 			pipelineInfo.basePipelineIndex(-1);
 			
 			pipeline = GraphicsPipeline.create().shader(vertexShader).shader(fragmentShader).build(vulkan.getDevice(), pipelineLayout, pipelineInfo);
-			
-			swapChain.startRegisteringCommands();
 		}
 	}
 	
@@ -320,15 +317,17 @@ public class Window implements AutoCloseable {
 		{
 			Device device = vulkan.getDevice();
 			
-			vertexBuffer.sync(swapChain.getCommandPool());
-			
 			CommandBufferData buffer = swapChain.getActiveCommandBufferData();
+			VkCommandBuffer commandBuffer = buffer.getCommandBuffer();
 			
-			VK10.vkCmdBindPipeline(buffer.getCommandBuffer(), VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getPipeline());
+			swapChain.startRegisteringCommands();
+			VK10.vkCmdBindPipeline(commandBuffer, VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getPipeline());
 			vertexBuffer.bind(buffer);
+			VK10.vkCmdBindIndexBuffer(commandBuffer, indexBuffer.getGpuId(), 0, VK10.VK_INDEX_TYPE_UINT32);
 			
-			VK10.vkCmdBindDescriptorSets(buffer.getCommandBuffer(), VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getLayout().getPipelineLayout(), 0, new long[] {descriptorSets.get(swapChain.getActiveCommandIndex())}, new int[0]);
-			VK10.vkCmdDraw(buffer.getCommandBuffer(), 4, 1, 0, 0);
+			VK10.vkCmdBindDescriptorSets(commandBuffer, VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getLayout().getPipelineLayout(), 0, new long[] {descriptorSets.get(swapChain.getActiveCommandIndex())}, new int[0]);
+			//VK10.vkCmdDraw(commandBuffer, 8, 1, 0, 0);
+			VK10.vkCmdDrawIndexed(commandBuffer, (int) (indexBuffer.getSize() / 4), 1, 0, 0, 0);
 			
 			swapChain.endRegisteringCommands();
 			
@@ -338,7 +337,6 @@ public class Window implements AutoCloseable {
 			if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR)
 			{
 				//recreate swapchain
-				swapChain.startRegisteringCommands();
 				return;
 			}
 			VulkanErrorUtils.assertNoError(result, "Error Acquiring Next Image");
@@ -354,7 +352,7 @@ public class Window implements AutoCloseable {
 			submitInfo.pWaitSemaphores(p0);
 			submitInfo.pWaitDstStageMask(stack.ints(VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT));
 			submitInfo.pSignalSemaphores(p1);
-			submitInfo.pCommandBuffers(stack.pointers(buffer.getCommandBuffer()));
+			submitInfo.pCommandBuffers(stack.pointers(commandBuffer));
 			
 			VK10.vkResetFences(device.getDevice(), buffer.getFence());
 			
@@ -371,7 +369,6 @@ public class Window implements AutoCloseable {
 			
 			swapChain.swapBuffer();
 			
-			swapChain.startRegisteringCommands();
 		}
 	}
 	
@@ -615,6 +612,11 @@ public class Window implements AutoCloseable {
 		return vertexBuffer;
 	}
 	
+	public VulkanDoubleBuffer getIndexBuffer()
+	{
+		return indexBuffer;
+	}
+	
 	public SwapChain getSwapChain()
 	{
 		return swapChain;
@@ -645,6 +647,7 @@ public class Window implements AutoCloseable {
 	public void close()
 	{
 		swapChain.close();
+		indexBuffer.close();
 		vertexBuffer.close();
 		if (pipeline != null) pipeline.close();
 		

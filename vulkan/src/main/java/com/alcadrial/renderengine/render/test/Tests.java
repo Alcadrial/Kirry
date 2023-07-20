@@ -24,6 +24,7 @@ import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.VertexAccumulator;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.Window;
 import com.alcadrial.renderengine.render.shader.Shader;
@@ -32,19 +33,12 @@ import com.alcadrial.renderengine.render.util.Properties;
 @Test
 public class Tests {
 	
+	private static final Object MONITOR = new Object();
+	
 	public static void main(String[] args)
 	{
 		Property.parseProperties(args, Properties.PROPERTIES);
 		
-		System.out.println("Start time = " + recordTime(Tests::start, TimeUnit.MICROSECONDS) / 1000D + "ms");
-		if (!RenderEngine.isInitializated()) return;
-		System.out.println("Loop time = " + recordTime(Tests::loop, TimeUnit.MICROSECONDS) / 1000D + "ms");
-		if (!RenderEngine.isInitializated()) return;
-		System.out.println("End time = " + recordTime(Tests::end, TimeUnit.MICROSECONDS) / 1000D + "ms");
-	}
-	
-	public static void start()
-	{
 		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
 		RenderEngine.setDebugMessengerCallback(Tests::debugCallback);
 		
@@ -56,12 +50,51 @@ public class Tests {
 		GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_TRUE);
 		//GLFW.glfwWindowHint(GLFW.GLFW_DECORATED, GLFW.GLFW_FALSE);
 		GLFW.glfwWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, GLFW.GLFW_TRUE);
+		
+		Thread t = new Thread(() -> {
+			start();
+			loop();
+			end();
+		});
+		t.start();
+		
+		System.out.println("Start time = " + recordTime(Tests::start, TimeUnit.MICROSECONDS) / 1000D + "ms");
+		if (!RenderEngine.isInitializated()) return;
+		System.out.println("Loop time = " + recordTime(Tests::loop, TimeUnit.MICROSECONDS) / 1000D + "ms");
+		if (!RenderEngine.isInitializated()) return;
+		System.out.println("End time = " + recordTime(Tests::end, TimeUnit.MICROSECONDS) / 1000D + "ms");
+		
+		Thread main = Thread.currentThread();
+		new Thread(() -> {
+			
+			while (t.isAlive() || main.isAlive())
+			{
+				synchronized (MONITOR)
+				{
+					try
+					{
+						MONITOR.wait();
+						MONITOR.wait(1000);
+					}
+					catch (InterruptedException e)
+					{}
+				}
+			}
+			
+			RenderEngine.terminate();
+		}).start();
+		
+	}
+	
+	public static void start()
+	{
 		Vulkan vulkan = RenderEngine.getVulkan();
 		
 		System.out.println("Window creation time = " + recordTime(() -> vulkan.setWindow(new Window(1080, 720, "Test")), TimeUnit.MICROSECONDS) / 1000D + "ms");
 		
 		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueGraphicsFamilyProperties() != null);
 		vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
+		vulkan.getDevice().initialize();
 		Window window = vulkan.getWindow();
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
 			System.out.println(iconified ? "Iconified" : "Restored");
@@ -112,9 +145,20 @@ public class Tests {
 			return;
 		}
 		
-		window.setPipelineFrontOrientation(true);
+		window.setPipelineFrontOrientation(false);
 		
 		System.out.println("Graphics pipeline build time = " + recordTime(() -> window.buildGraphicsPipeline(vertexShader, fragmentShader), TimeUnit.MICROSECONDS) / 1000D + "ms");
+		
+		VertexAccumulator vertexAccumulator = new VertexAccumulator(window.getPipeline(), window.getVertexBuffer());
+		vertexAccumulator.vertex(-200, 0, 0).color(255, 255, 255, 255).end();
+		vertexAccumulator.vertex(0, 0, 0).color(255, 0, 0, 255).end();
+		vertexAccumulator.vertex(0, -200, 0).color(0, 255, 0, 255).end();
+		vertexAccumulator.vertex(-200, -200, 0).color(0, 0, 255, 255).end();
+		vertexAccumulator.vertex(0, 200, 0).color(255, 255, 255, 255).end();
+		vertexAccumulator.vertex(200, 200, 0).color(255, 0, 0, 255).end();
+		vertexAccumulator.vertex(200, 0, 0).color(0, 255, 0, 255).end();
+		vertexAccumulator.vertex(0, 0, 0).color(0, 0, 255, 255).end();
+		window.getVertexBuffer().sendToGpu();
 	}
 	
 	public static void loop()
@@ -122,12 +166,10 @@ public class Tests {
 		Device device = RenderEngine.getVulkan().getDevice();
 		Window window = device.getWindow();
 		
-		window.hide();
-		window.show();
-		window.maximize();
-		window.restore();
-		
 		window.setClearColor(Color.of(0, 0, 0, 0));
+		
+		window.getIndexBuffer().asIntBuffer().put(0, new int[] {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4});
+		window.getIndexBuffer().sendToGpu();
 		
 		while (!window.shouldClose())
 		{
@@ -138,7 +180,11 @@ public class Tests {
 	
 	public static void end()
 	{
-		RenderEngine.terminate();
+		RenderEngine.getVulkan().getDevice().getWindow().hide();
+		synchronized (MONITOR)
+		{
+			MONITOR.notify();
+		}
 	}
 	
 	public static int debugCallback(int messageSeverity, int messageType, long callbackDataId, long userDataId)

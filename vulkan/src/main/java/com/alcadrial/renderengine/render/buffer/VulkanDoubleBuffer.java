@@ -4,9 +4,7 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkCommandBuffer;
-import org.lwjgl.vulkan.VkDevice;
 
-import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.Pair;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
@@ -16,6 +14,7 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 	
 	protected long gpuId;
 	protected long gpuMemory;
+	protected long gpuSize;
 	
 	public VulkanDoubleBuffer(long size, int usage)
 	{
@@ -28,33 +27,47 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 		}
 	}
 	
-	public void sync(long commandPool)
+	public void sendToGpu()
+	{
+		sendToGpu(0, size);
+	}
+	
+	public void sendToGpu(long offset, long size)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			Device device = RenderEngine.getVulkan().getDevice();
-			
 			PointerBuffer p = stack.callocPointer(1);
-			VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(RenderEngine.getVulkan().getDevice().getDevice(), VulkanUtils.commandBufferAllocateInfo(stack, commandPool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "a");
+			VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(RenderEngine.getVulkan().getDevice().getDevice(), VulkanUtils.commandBufferAllocateInfo(stack, device.getShortLivedCommandPool(), VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to send data to gpu");
 			VkCommandBuffer commandBuffer = new VkCommandBuffer(p.get(), device.getDevice());
 			
-			VulkanErrorUtils.assertNoError(VK10.vkBeginCommandBuffer(commandBuffer, VulkanUtils.commandBufferBeginInfo(stack, VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)), "b");
-			VK10.vkCmdCopyBuffer(commandBuffer, id, gpuId, VulkanUtils.bufferCopy(stack, 0, 0, size));
-			VulkanErrorUtils.assertNoError(VK10.vkEndCommandBuffer(commandBuffer), "c");
+			VulkanErrorUtils.assertNoError(VK10.vkBeginCommandBuffer(commandBuffer, VulkanUtils.commandBufferBeginInfo(stack, VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)), "Failed to send data to gpu");
+			VK10.vkCmdCopyBuffer(commandBuffer, id, gpuId, VulkanUtils.bufferCopy(stack, offset, offset, size));
+			VulkanErrorUtils.assertNoError(VK10.vkEndCommandBuffer(commandBuffer), "Failed to send data to gpu");
 			
-			VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(device.getGraphicsQueue().getQueue(), VulkanUtils.submitInfo(stack, commandBuffer), 0), "d");
-			VulkanErrorUtils.assertNoError(VK10.vkQueueWaitIdle(device.getGraphicsQueue().getQueue()), "e");
+			VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(device.getGraphicsQueue().getQueue(), VulkanUtils.submitInfo(stack, commandBuffer), 0), "Failed to send data to gpu");
+			VulkanErrorUtils.assertNoError(VK10.vkQueueWaitIdle(device.getGraphicsQueue().getQueue()), "Failed to send data to gpu");
 			
-			VK10.vkFreeCommandBuffers(device.getDevice(), commandPool, commandBuffer);
+			VK10.vkFreeCommandBuffers(device.getDevice(), device.getShortLivedCommandPool(), commandBuffer);
+			
+			gpuSize = size;
 		}
+	}
+	
+	public long getGpuId()
+	{
+		return gpuId;
+	}
+	
+	public long getGpuSize()
+	{
+		return gpuSize;
 	}
 	
 	@Override
 	public void close()
 	{
 		super.close();
-		VkDevice device = RenderEngine.getVulkan().getDevice().getDevice();
-		VK10.vkDestroyBuffer(device, gpuId, null);
-		VK10.vkFreeMemory(device, gpuMemory, null);
+		VK10.vkDestroyBuffer(device.getDevice(), gpuId, null);
+		VK10.vkFreeMemory(device.getDevice(), gpuMemory, null);
 	}
 }

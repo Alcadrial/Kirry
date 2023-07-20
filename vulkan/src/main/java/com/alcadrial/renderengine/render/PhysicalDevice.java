@@ -44,7 +44,7 @@ public class PhysicalDevice implements AutoCloseable {
 	private VkPhysicalDeviceProperties properties;
 	private QueueFamilies queueFamilies;
 	
-	public PhysicalDevice(VkPhysicalDevice device, long surface)
+	public PhysicalDevice(VkPhysicalDevice device)
 	{
 		this.device = device;
 		try (MemoryStack stack = MemoryStack.stackPush())
@@ -53,7 +53,6 @@ public class PhysicalDevice implements AutoCloseable {
 			VK10.vkGetPhysicalDeviceProperties(device, properties);
 		}
 		queueFamilies = new QueueFamilies();
-		searchQueueSurfaceFamilyProperties(surface);
 	}
 	
 	public VkPhysicalDevice getDevice()
@@ -195,7 +194,8 @@ public class PhysicalDevice implements AutoCloseable {
 		{
 			indicesHead = null;
 			queueFamilies.indices = 0;
-			family: for (QueueFamily family : iterateFamilies()) if (family.getProperties() != null)
+			family:
+			for (QueueFamily family : iterateFamilies()) if (family.getProperties() != null)
 			{
 				for (Integer index : iterateIndices()) if (family.getIndex() == index) continue family;
 				

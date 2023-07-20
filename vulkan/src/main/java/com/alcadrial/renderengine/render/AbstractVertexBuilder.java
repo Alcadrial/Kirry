@@ -9,7 +9,7 @@ import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.shader.ShaderInput;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 
-public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB>> {
+public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB, VR>, VR extends IVertexResult> {
 	
 	protected final Map<ShaderInput, float[]> map;
 	protected final GraphicsPipeline pipeline;
@@ -140,7 +140,22 @@ public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB>
 		return List.copyOf(list);
 	}
 	
-	public abstract /* VR */void end();
+	protected float[] gatherProgramDataArray()
+	{
+		List<ShaderInput> inputs = pipeline.getInputs();
+		List<Float> list = new ArrayList<>(inputs.size() * 4);
+		for (ShaderInput input : inputs)
+		{
+			float[] data = map.get(input);
+			if (data != null) for (float f : data) list.add(f);
+			else for (int j = input.getType().getSize(); j > 0; j--) list.add(0F);
+		}
+		float[] array = new float[list.size()];
+		for (int i = 0; i < list.size(); i++) array[i] = list.get(i);
+		return array;
+	}
+	
+	public abstract VR end();
 	
 	@SuppressWarnings("unchecked")
 	private VB myself()

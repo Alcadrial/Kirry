@@ -14,7 +14,6 @@ import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferAllocateInfo;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
 import org.lwjgl.vulkan.VkDescriptorBufferInfo;
-import org.lwjgl.vulkan.VkDescriptorBufferInfo.Buffer;
 import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
 import org.lwjgl.vulkan.VkDescriptorPoolSize;
 import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo;
@@ -315,9 +314,9 @@ public class VulkanUtils {
 	 * @param usage a bitmask of VkBufferUsageFlagBits specifying allowed usages of the buffer
 	 * @return
 	 */
-	public static VkBufferCreateInfo bufferInfo(MemoryStack stack, int flags, long size, int usage)
+	public static VkBufferCreateInfo bufferInfo(MemoryStack stack, long size, int usage)
 	{
-		return VkBufferCreateInfo.calloc(stack).sType(VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO).flags(flags).size(size).usage(usage);
+		return VkBufferCreateInfo.calloc(stack).sType(VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO).size(size).usage(usage);
 	}
 	
 	/**
@@ -373,7 +372,7 @@ public class VulkanUtils {
 	 * @param range the size in bytes that is used for this descriptor update, or WHOLE_SIZE to use the range from offset to the end of the buffer
 	 * @return
 	 */
-	public static Buffer descriptorBufferInfo(MemoryStack stack, long buffer, long offset, long range)
+	public static VkDescriptorBufferInfo.Buffer descriptorBufferInfo(MemoryStack stack, long buffer, long offset, long range)
 	{
 		return VkDescriptorBufferInfo.calloc(1, stack).buffer(buffer).offset(offset).range(range);
 	}
