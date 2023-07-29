@@ -15,12 +15,12 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.render.util.Pair;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
+import com.alcadrial.renderengine.render.window.Window;
 
 public class Surface implements AutoCloseable {
 	
-	private final Vulkan vulkan;
 	private final Window window;
-	private final long surface;
+	private long surface;
 	private Pair<VkSurfaceFormatKHR, ByteBuffer> format;
 	private int mode;
 	private Pair<VkExtent2D, ByteBuffer> extent;
@@ -28,22 +28,30 @@ public class Surface implements AutoCloseable {
 	private Vector2i minSize;
 	private Vector2i size;
 	
-	public Surface(Vulkan vulkan, Window window)
+	public Surface(Window window)
 	{
-		this.vulkan = vulkan;
 		this.window = window;
 		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(GLFWVulkan.glfwCreateWindowSurface(vulkan.getInstance(), window.getId(), null, p), "Failed to create surface");
+		VulkanErrorUtils.assertNoError(GLFWVulkan.glfwCreateWindowSurface(RenderEngine.getVulkan().getInstance(), window.getVk(), null, p), "Failed to create surface");
 		surface = p[0];
 	}
 	
-	public void init(PhysicalDevice physicalDevice, MemoryStack stack)
+	private void init(PhysicalDevice physicalDevice, MemoryStack stack, boolean recreate)
 	{
+		if (recreate)
+		{
+			close();
+			
+			long[] p = new long[1];
+			VulkanErrorUtils.assertNoError(GLFWVulkan.glfwCreateWindowSurface(RenderEngine.getVulkan().getInstance(), window.getVk(), null, p), "Failed to create surface");
+			surface = p[0];
+		}
+		
 		int[] p = new int[1];
-		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.getDevice(), surface, p, null), "Failed to initialize surface");
+		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.getVk(), surface, p, null), "Failed to initialize surface");
 		VulkanErrorUtils.nonNull(p[0], "Failed to initialize surface");
 		VkSurfaceFormatKHR.Buffer formats = VkSurfaceFormatKHR.malloc(p[0], stack);
-		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.getDevice(), surface, p, formats), "Failed to initialize surface");
+		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.getVk(), surface, p, formats), "Failed to initialize surface");
 		
 		VkSurfaceFormatKHR format = null;
 		for (VkSurfaceFormatKHR format0 : formats) if (format0.format() == VK10.VK_FORMAT_B8G8R8A8_UNORM && format0.colorSpace() == KHRSurface.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
@@ -54,9 +62,9 @@ public class Surface implements AutoCloseable {
 		VulkanErrorUtils.nonNull(format, "Valid format not found");
 		this.format = VulkanUtils.copy(format, VkSurfaceFormatKHR::create);
 		
-		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.getDevice(), surface, p, null), "Failed to initialize surface");
+		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.getVk(), surface, p, null), "Failed to initialize surface");
 		int[] presentModes = new int[p[0]];
-		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.getDevice(), surface, p, presentModes), "Failed to initialize surface");
+		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.getVk(), surface, p, presentModes), "Failed to initialize surface");
 		
 		mode = KHRSurface.VK_PRESENT_MODE_FIFO_KHR;
 		for (int i : presentModes) if (i == KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR)
@@ -66,7 +74,7 @@ public class Surface implements AutoCloseable {
 		}
 		
 		VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
-		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.getDevice(), surface, capabilities), "Failed to initialize surface");
+		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.getVk(), surface, capabilities), "Failed to initialize surface");
 		
 		if (capabilities.currentExtent().width() != -1) extent = VulkanUtils.copy(capabilities.currentExtent(), VkExtent2D::create);
 		else
@@ -89,6 +97,16 @@ public class Surface implements AutoCloseable {
 			extent = new Pair<>(e, null);
 		}
 		size = Vector2i.ofImmutable(extent.getLeft().width(), extent.getLeft().height());
+	}
+	
+	public void init(PhysicalDevice physicalDevice, MemoryStack stack)
+	{
+		init(physicalDevice, stack, false);
+	}
+	
+	public void recreate(PhysicalDevice physicalDevice, MemoryStack stack)
+	{
+		init(physicalDevice, stack, true);
 	}
 	
 	public long getSurface()
@@ -143,6 +161,7 @@ public class Surface implements AutoCloseable {
 	{
 		MemoryUtil.memFree(format.getRigth());
 		MemoryUtil.memFree(extent.getRigth());
-		KHRSurface.vkDestroySurfaceKHR(vulkan.getInstance(), surface, null);
+		KHRSurface.vkDestroySurfaceKHR(RenderEngine.getVulkan().getInstance(), surface, null);
+		surface = 0;
 	}
 }

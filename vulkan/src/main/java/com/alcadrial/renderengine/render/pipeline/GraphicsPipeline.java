@@ -12,33 +12,30 @@ import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo;
 import org.lwjgl.vulkan.VkVertexInputAttributeDescription;
 import org.lwjgl.vulkan.VkVertexInputBindingDescription;
 
+import com.alcadrial.renderengine.core.util.NotYetImplementedException;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.debug.Debug;
+import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInput;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
+import com.alcadrial.renderengine.render.util.DataAccumulator;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 
-public class GraphicsPipeline implements AutoCloseable {
+public class GraphicsPipeline extends Pipeline {
 	
-	public static final class Builder {
+	public static final class Builder extends DataAccumulator<Builder> {
 		
-		private Optional<Shader> vertexShader;
-		private Optional<Shader> tessellationControlShader;
-		private Optional<Shader> tessellationEvaluationShader;
-		private Optional<Shader> geometryShader;
-		private Optional<Shader> fragmentShader;
-		private Optional<Shader> computeShader;
-		
-		private Builder()
+		@Override
+		public Builder autoCloseLayout(boolean value)
 		{
-			vertexShader = Optional.empty();
-			tessellationControlShader = Optional.empty();
-			tessellationEvaluationShader = Optional.empty();
-			geometryShader = Optional.empty();
-			fragmentShader = Optional.empty();
-			computeShader = Optional.empty();
+			return super.autoCloseLayout(value);
+		}
+		
+		@Override
+		public Builder autoCloseRenderPass(boolean value)
+		{
+			return super.autoCloseRenderPass(value);
 		}
 		
 		/**
@@ -46,67 +43,51 @@ public class GraphicsPipeline implements AutoCloseable {
 		 * @param shader
 		 * @return
 		 */
+		@Override
 		public Builder shader(Shader shader)
 		{
-			Debug.printlnIf(shader.getOrCompile().hasErrors(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
-			switch (shader.getType())
-			{
-				case VERTEX -> vertexShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
-				case TESS_CONTROL -> tessellationControlShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
-				case TESS_EVALUATION -> tessellationEvaluationShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
-				case GEOMETRY -> geometryShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
-				case FRAGMENT -> fragmentShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
-				case COMPUTE -> computeShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
-				default -> Debug.println("Shader " + shader.getFile() + " cannot be used becouse the type is not known");
-			}
-			return this;
+			return super.genericShader(shader);
 		}
 		
+		@Override
 		public Builder vertexShader(Shader shader)
 		{
-			Debug.printlnIf(shader.getOrCompile().hasErrors(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
-			vertexShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
-			return this;
+			return super.vertexShader(shader);
 		}
 		
+		@Override
 		public Builder tessellationControlShader(Shader shader)
 		{
-			Debug.printlnIf(shader.getOrCompile().hasErrors(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
-			tessellationControlShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
-			return this;
+			return super.tessellationControlShader(shader);
 		}
 		
+		@Override
 		public Builder tessellationEvaluationShader(Shader shader)
 		{
-			Debug.printlnIf(shader.getOrCompile().hasErrors(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
-			tessellationEvaluationShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
-			return this;
+			return super.tessellationEvaluationShader(shader);
 		}
 		
+		@Override
 		public Builder geometryShader(Shader shader)
 		{
-			Debug.printlnIf(shader.getOrCompile().hasErrors(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
-			geometryShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
-			return this;
+			return super.geometryShader(shader);
 		}
 		
+		@Override
 		public Builder fragmentShader(Shader shader)
 		{
-			Debug.printlnIf(shader.getOrCompile().hasErrors(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
-			fragmentShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
-			return this;
+			return super.fragmentShader(shader);
 		}
 		
+		@Override
 		public Builder computeShader(Shader shader)
 		{
-			Debug.printlnIf(shader.getOrCompile().hasErrors(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
-			computeShader = shader.getOrCompile().hasErrors() ? Optional.empty() : Optional.ofNullable(shader);
-			return this;
+			return super.computeShader(shader);
 		}
 		
-		public GraphicsPipeline build(Device device, PipelineLayout layout, VkGraphicsPipelineCreateInfo.Buffer createInfo)
+		public GraphicsPipeline build(Device device, PipelineLayout layout, RenderPass renderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo)
 		{
-			return new GraphicsPipeline(device, layout, createInfo, vertexShader, tessellationControlShader, tessellationEvaluationShader, geometryShader, fragmentShader, computeShader);
+			return new GraphicsPipeline(device, layout, autoCloseLayout, renderPass, autoCloseRenderPass, createInfo, Optional.ofNullable(vertexShader), Optional.ofNullable(tessellationControlShader), Optional.ofNullable(tessellationEvaluationShader), Optional.ofNullable(geometryShader), Optional.ofNullable(fragmentShader), Optional.ofNullable(computeShader));
 		}
 	}
 	
@@ -115,9 +96,9 @@ public class GraphicsPipeline implements AutoCloseable {
 		return new Builder();
 	}
 	
-	private Device device;
-	private PipelineLayout layout;
-	private long pipeline;
+	private boolean autoCloseLayout;
+	private RenderPass renderPass;
+	private boolean autoCloseRenderPass;
 	
 	private Optional<Shader> vertexShader;
 	private Optional<Shader> tessellationControlShader;
@@ -128,10 +109,12 @@ public class GraphicsPipeline implements AutoCloseable {
 	
 	private List<ShaderInput> inputs;
 	
-	private GraphicsPipeline(Device device, PipelineLayout layout, VkGraphicsPipelineCreateInfo.Buffer createInfo, Optional<Shader> vertexShader, Optional<Shader> tessellationControlShader, Optional<Shader> tessellationEvaluationShader, Optional<Shader> geometryShader, Optional<Shader> fragmentShader, Optional<Shader> computeShader)
+	private GraphicsPipeline(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo, Optional<Shader> vertexShader, Optional<Shader> tessellationControlShader, Optional<Shader> tessellationEvaluationShader, Optional<Shader> geometryShader, Optional<Shader> fragmentShader, Optional<Shader> computeShader)
 	{
-		this.device = device;
-		this.layout = layout;
+		super(device, layout);
+		this.autoCloseLayout = autoCloseLayout;
+		this.renderPass = renderPass;
+		this.autoCloseRenderPass = autoCloseRenderPass;
 		this.vertexShader = vertexShader;
 		this.tessellationControlShader = tessellationControlShader;
 		this.tessellationEvaluationShader = tessellationEvaluationShader;
@@ -188,15 +171,16 @@ public class GraphicsPipeline implements AutoCloseable {
 			computeShader.ifPresent(shader -> fillShaderStageCreateInfo(stack, shaderStages.get(), shader));
 			
 			createInfo.pStages(shaderStages.rewind());
-			createInfo.layout(layout.getPipelineLayout());
+			createInfo.layout(layout.getVk());
+			createInfo.renderPass(renderPass.getVk());
 			
 			long[] p = new long[1];
-			VulkanErrorUtils.assertNoError(VK10.vkCreateGraphicsPipelines(device.getDevice(), 0, createInfo, null, p), "Failed to create graphics pipeline");
-			pipeline = p[0];
+			VulkanErrorUtils.assertNoError(VK10.vkCreateGraphicsPipelines(device.getVk(), 0, createInfo, null, p), "Failed to create graphics pipeline");
+			vk = p[0];
 			
 			for (VkPipelineShaderStageCreateInfo shaderStageCreateInfo : shaderStages)
 			{
-				VK10.vkDestroyShaderModule(device.getDevice(), shaderStageCreateInfo.module(), null);
+				VK10.vkDestroyShaderModule(device.getVk(), shaderStageCreateInfo.module(), null);
 			}
 		}
 	}
@@ -207,20 +191,32 @@ public class GraphicsPipeline implements AutoCloseable {
 		shaderStageInfo.stage(shader.getType().getStageBit());
 		
 		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(VK10.vkCreateShaderModule(device.getDevice(), VulkanUtils.shaderModuleInfo(stack, shader.getOrCompile().getBinary()), null, p), "Failed to create shader module");
+		VulkanErrorUtils.assertNoError(VK10.vkCreateShaderModule(device.getVk(), VulkanUtils.shaderModuleInfo(stack, shader.getOrCompile().getBinary()), null, p), "Failed to create shader module");
 		
 		shaderStageInfo.module(p[0]);
 		shaderStageInfo.pName(stack.UTF8(shader.getEntryPoint()));
 	}
 	
+	public void recreate()
+	{
+		throw new NotYetImplementedException();
+	}
+	
+	@Override
 	public PipelineLayout getLayout()
 	{
 		return layout;
 	}
 	
-	public long getPipeline()
+	public RenderPass getRenderPass()
 	{
-		return pipeline;
+		return renderPass;
+	}
+	
+	@Override
+	public int bindPoint()
+	{
+		return VK10.VK_PIPELINE_BIND_POINT_GRAPHICS;
 	}
 	
 	public List<ShaderInput> getInputs()
@@ -261,7 +257,8 @@ public class GraphicsPipeline implements AutoCloseable {
 	@Override
 	public void close()
 	{
-		layout.close();
-		VK10.vkDestroyPipeline(device.getDevice(), pipeline, null);
+		if (autoCloseLayout) layout.close();
+		if (autoCloseRenderPass) renderPass.close();
+		super.close();
 	}
 }

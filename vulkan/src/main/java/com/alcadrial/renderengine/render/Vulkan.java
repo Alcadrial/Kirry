@@ -21,6 +21,7 @@ import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.window.Window;
 
 public class Vulkan implements AutoCloseable {
 	
@@ -189,8 +190,16 @@ public class Vulkan implements AutoCloseable {
 				createInfo.ppEnabledExtensionNames(RenderEngine.getDeviceExtensions(stack));
 				
 				PointerBuffer devicePointer = stack.pointers(VK10.VK_NULL_HANDLE);
-				VulkanErrorUtils.assertNoError(VK10.vkCreateDevice(threadData.physicalDevice.getDevice(), createInfo, null, devicePointer), "Failed to create logical device");
-				threadData.device = new Device(threadData.window, new VkDevice(devicePointer.get(0), threadData.physicalDevice.getDevice(), createInfo), threadData.physicalDevice);
+				try
+				{
+					VulkanErrorUtils.assertNoError(VK10.vkCreateDevice(threadData.physicalDevice.getVk(), createInfo, null, devicePointer), "Failed to create logical device");
+				}
+				catch (Exception e)
+				{
+					System.out.println(createInfo.pQueueCreateInfos().capacity());
+					throw e;
+				}
+				threadData.device = new Device(new VkDevice(devicePointer.get(0), threadData.physicalDevice.getVk(), createInfo), threadData.physicalDevice);
 				threadData.device.setGraphicsQueue(new Queue(threadData.device, threadData.physicalDevice.getQueueGraphicsFamilyIndex()));
 				threadData.device.setPresentQueue(new Queue(threadData.device, threadData.physicalDevice.getQueueSurfaceFamilyIndex()));
 			}
@@ -233,6 +242,7 @@ public class Vulkan implements AutoCloseable {
 				threadData.device.close();
 				closingDevice = null;
 			}
+			if (threadData.window != null) threadData.window.close();
 		});
 		if (debugMessengerId != 0) EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(instance, debugMessengerId, null);
 		for (PhysicalDevice physicalDevice : physicalDevices) physicalDevice.close();

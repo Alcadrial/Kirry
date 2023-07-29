@@ -1,4 +1,4 @@
-package com.alcadrial.renderengine.render.debug;
+package com.alcadrial.renderengine.render;
 
 import java.io.PrintStream;
 

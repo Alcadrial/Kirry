@@ -4,30 +4,24 @@ import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 
 import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.util.LongDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
-public class PipelineLayout implements AutoCloseable {
-	
-	private Device device;
-	private long pipelineLayout;
+public class PipelineLayout extends LongDeviceResource {
 	
 	public PipelineLayout(Device device, VkPipelineLayoutCreateInfo createInfo)
 	{
-		this.device = device;
+		super(device);
 		long[] p = new long[1];
 		createInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
-		VulkanErrorUtils.assertNoError(VK10.vkCreatePipelineLayout(device.getDevice(), createInfo, null, p), "Failed to create pipeline layout");
-		pipelineLayout = p[0];
-	}
-	
-	public long getPipelineLayout()
-	{
-		return pipelineLayout;
+		VulkanErrorUtils.assertNoError(VK10.vkCreatePipelineLayout(device.getVk(), createInfo, null, p), "Failed to create pipeline layout");
+		vk = p[0];
 	}
 	
 	@Override
 	public void close()
 	{
-		VK10.vkDestroyPipelineLayout(device.getDevice(), pipelineLayout, null);
+		VK10.vkDestroyPipelineLayout(device.getVk(), vk, null);
+		super.close();
 	}
 }

@@ -11,7 +11,9 @@ import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
 
-public class PhysicalDevice implements AutoCloseable {
+import com.alcadrial.renderengine.render.util.VulkanResource;
+
+public class PhysicalDevice extends VulkanResource<VkPhysicalDevice> {
 	
 	private static final int[] BEST_MATCHER_MAP = new int[] {4, 2, 0, 1, 3};
 	
@@ -29,7 +31,7 @@ public class PhysicalDevice implements AutoCloseable {
 	 *     </tbody>
 	 * </table>
 	 * 
-	 * @return
+	 * @return a Compara 
 	 */
 	public static Comparator<PhysicalDevice> typeBestMatcher()
 	{
@@ -40,24 +42,18 @@ public class PhysicalDevice implements AutoCloseable {
 		});
 	}
 	
-	private VkPhysicalDevice device;
 	private VkPhysicalDeviceProperties properties;
 	private QueueFamilies queueFamilies;
 	
-	public PhysicalDevice(VkPhysicalDevice device)
+	public PhysicalDevice(VkPhysicalDevice vk)
 	{
-		this.device = device;
+		this.vk = vk;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			properties = new VkPhysicalDeviceProperties(BufferUtils.createByteBuffer(VkPhysicalDeviceProperties.SIZEOF));
-			VK10.vkGetPhysicalDeviceProperties(device, properties);
+			VK10.vkGetPhysicalDeviceProperties(vk, properties);
 		}
 		queueFamilies = new QueueFamilies();
-	}
-	
-	public VkPhysicalDevice getDevice()
-	{
-		return device;
 	}
 	
 	public VkPhysicalDeviceProperties getProperties()
@@ -77,9 +73,9 @@ public class PhysicalDevice implements AutoCloseable {
 			}
 			
 			int[] p0 = new int[1];
-			VK10.vkGetPhysicalDeviceQueueFamilyProperties(device, p0, null);
+			VK10.vkGetPhysicalDeviceQueueFamilyProperties(vk, p0, null);
 			VkQueueFamilyProperties.Buffer queueFamiliesArray = VkQueueFamilyProperties.malloc(p0[0], stack);
-			VK10.vkGetPhysicalDeviceQueueFamilyProperties(device, p0, queueFamiliesArray);
+			VK10.vkGetPhysicalDeviceQueueFamilyProperties(vk, p0, queueFamiliesArray);
 			
 			for (int i = 0; i < queueFamiliesArray.capacity(); i++)
 			{
@@ -119,13 +115,13 @@ public class PhysicalDevice implements AutoCloseable {
 			}
 			
 			int[] p = new int[1];
-			VK10.vkGetPhysicalDeviceQueueFamilyProperties(device, p, null);
+			VK10.vkGetPhysicalDeviceQueueFamilyProperties(vk, p, null);
 			VkQueueFamilyProperties.Buffer queueFamiliesArray = VkQueueFamilyProperties.malloc(p[0], stack);
-			VK10.vkGetPhysicalDeviceQueueFamilyProperties(device, p, queueFamiliesArray);
+			VK10.vkGetPhysicalDeviceQueueFamilyProperties(vk, p, queueFamiliesArray);
 			
 			for (int i = 0; i < queueFamiliesArray.capacity(); i++)
 			{
-				KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, p);
+				KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(vk, i, surface, p);
 				
 				if (p[0] == VK10.VK_TRUE)
 				{

@@ -1,6 +1,9 @@
 package com.alcadrial.renderengine.render;
 
 import java.nio.LongBuffer;
+import java.util.Deque;
+import java.util.LinkedList;
+import java.util.concurrent.Future;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
@@ -16,12 +19,13 @@ import org.lwjgl.vulkan.VkCommandPoolCreateInfo;
 import org.lwjgl.vulkan.VkDevice;
 
 import com.alcadrial.renderengine.render.buffer.VulkanBufferData;
+import com.alcadrial.renderengine.render.util.DeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.VulkanResource;
 
-public class Device implements AutoCloseable {
+public class Device extends VulkanResource<VkDevice> {
 	
-	private Window window;
-	private VkDevice device;
+	private Deque<DeviceResource<?>> destructionList;
 	private PhysicalDevice physicalDevice;
 	private Queue graphicsQueue;
 	private Queue presentQueue;
@@ -29,11 +33,11 @@ public class Device implements AutoCloseable {
 	private long shortLivedCommandPool;
 	private long vmaAllocator;
 	
-	public Device(Window window, VkDevice device, PhysicalDevice physicalDevice)
+	public Device(VkDevice device, PhysicalDevice physicalDevice)
 	{
-		this.window = VulkanErrorUtils.nonNull(window);
-		this.device = VulkanErrorUtils.nonNull(device);
+		vk = VulkanErrorUtils.nonNull(device);
 		this.physicalDevice = VulkanErrorUtils.nonNull(physicalDevice);
+		destructionList = new LinkedList<>();
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -56,7 +60,7 @@ public class Device implements AutoCloseable {
 	/**
 	 * Vma
 	 */
-	public void initialize()
+	public void initializeVma()
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -64,29 +68,29 @@ public class Device implements AutoCloseable {
 			
 			functions.vkGetPhysicalDeviceProperties(VK10.vkGetInstanceProcAddr(RenderEngine.getVulkan().getInstance(), "vkGetPhysicalDeviceProperties"));
 			functions.vkGetPhysicalDeviceMemoryProperties(VK10.vkGetInstanceProcAddr(RenderEngine.getVulkan().getInstance(), "vkGetPhysicalDeviceMemoryProperties"));
-			functions.vkAllocateMemory(VK10.vkGetDeviceProcAddr(device, "vkAllocateMemory"));
-			functions.vkFreeMemory(VK10.vkGetDeviceProcAddr(device, "vkFreeMemory"));
-			functions.vkMapMemory(VK10.vkGetDeviceProcAddr(device, "vkMapMemory"));
-			functions.vkUnmapMemory(VK10.vkGetDeviceProcAddr(device, "vkUnmapMemory"));
-			functions.vkFlushMappedMemoryRanges(VK10.vkGetDeviceProcAddr(device, "vkFlushMappedMemoryRanges"));
-			functions.vkInvalidateMappedMemoryRanges(VK10.vkGetDeviceProcAddr(device, "vkInvalidateMappedMemoryRanges"));
-			functions.vkBindBufferMemory(VK10.vkGetDeviceProcAddr(device, "vkBindBufferMemory"));
-			functions.vkBindImageMemory(VK10.vkGetDeviceProcAddr(device, "vkBindImageMemory"));
-			functions.vkGetBufferMemoryRequirements(VK10.vkGetDeviceProcAddr(device, "vkGetBufferMemoryRequirements"));
-			functions.vkGetImageMemoryRequirements(VK10.vkGetDeviceProcAddr(device, "vkGetImageMemoryRequirements"));
-			functions.vkCreateBuffer(VK10.vkGetDeviceProcAddr(device, "vkCreateBuffer"));
-			functions.vkDestroyBuffer(VK10.vkGetDeviceProcAddr(device, "vkDestroyBuffer"));
-			functions.vkCreateImage(VK10.vkGetDeviceProcAddr(device, "vkCreateImage"));
-			functions.vkDestroyImage(VK10.vkGetDeviceProcAddr(device, "vkDestroyImage"));
-			functions.vkCmdCopyBuffer(VK10.vkGetDeviceProcAddr(device, "vkCmdCopyBuffer"));
+			functions.vkAllocateMemory(VK10.vkGetDeviceProcAddr(vk, "vkAllocateMemory"));
+			functions.vkFreeMemory(VK10.vkGetDeviceProcAddr(vk, "vkFreeMemory"));
+			functions.vkMapMemory(VK10.vkGetDeviceProcAddr(vk, "vkMapMemory"));
+			functions.vkUnmapMemory(VK10.vkGetDeviceProcAddr(vk, "vkUnmapMemory"));
+			functions.vkFlushMappedMemoryRanges(VK10.vkGetDeviceProcAddr(vk, "vkFlushMappedMemoryRanges"));
+			functions.vkInvalidateMappedMemoryRanges(VK10.vkGetDeviceProcAddr(vk, "vkInvalidateMappedMemoryRanges"));
+			functions.vkBindBufferMemory(VK10.vkGetDeviceProcAddr(vk, "vkBindBufferMemory"));
+			functions.vkBindImageMemory(VK10.vkGetDeviceProcAddr(vk, "vkBindImageMemory"));
+			functions.vkGetBufferMemoryRequirements(VK10.vkGetDeviceProcAddr(vk, "vkGetBufferMemoryRequirements"));
+			functions.vkGetImageMemoryRequirements(VK10.vkGetDeviceProcAddr(vk, "vkGetImageMemoryRequirements"));
+			functions.vkCreateBuffer(VK10.vkGetDeviceProcAddr(vk, "vkCreateBuffer"));
+			functions.vkDestroyBuffer(VK10.vkGetDeviceProcAddr(vk, "vkDestroyBuffer"));
+			functions.vkCreateImage(VK10.vkGetDeviceProcAddr(vk, "vkCreateImage"));
+			functions.vkDestroyImage(VK10.vkGetDeviceProcAddr(vk, "vkDestroyImage"));
+			functions.vkCmdCopyBuffer(VK10.vkGetDeviceProcAddr(vk, "vkCmdCopyBuffer"));
 			functions.vkGetInstanceProcAddr(VK10.vkGetInstanceProcAddr(RenderEngine.getVulkan().getInstance(), "vkGetInstanceProcAddr"));
-			functions.vkGetDeviceProcAddr(VK10.vkGetDeviceProcAddr(device, "vkGetDeviceProcAddr"));
+			functions.vkGetDeviceProcAddr(VK10.vkGetDeviceProcAddr(vk, "vkGetDeviceProcAddr"));
 			
 			VmaAllocatorCreateInfo allocatorInfo = VmaAllocatorCreateInfo.calloc(stack);
 			allocatorInfo.flags(Vma.VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT);
 			allocatorInfo.vulkanApiVersion(VK12.VK_API_VERSION_1_2);
-			allocatorInfo.physicalDevice(physicalDevice.getDevice());
-			allocatorInfo.device(device);
+			allocatorInfo.physicalDevice(physicalDevice.getVk());
+			allocatorInfo.device(vk);
 			allocatorInfo.instance(RenderEngine.getVulkan().getInstance());
 			allocatorInfo.pVulkanFunctions(functions);
 			
@@ -113,14 +117,27 @@ public class Device implements AutoCloseable {
 		}
 	}
 	
-	public void waitIdle()
+	public void addToDestructionList(DeviceResource<?> resource)
 	{
-		VK10.vkDeviceWaitIdle(device);
+		if (resource.getDevice() == this) destructionList.add(resource);
 	}
 	
-	public VkDevice getDevice()
+	public void removeFromDestructionList(DeviceResource<?> resource)
 	{
-		return device;
+		destructionList.remove(resource);
+	}
+	
+	public void waitIdle()
+	{
+		VK10.vkDeviceWaitIdle(vk);
+	}
+	
+	public Future<?> waitAsyncIdle(Runnable runnable)
+	{
+		return RenderEngine.getExecutor().submit(() -> {
+			VK10.vkDeviceWaitIdle(vk);
+			runnable.run();
+		});
 	}
 	
 	public PhysicalDevice getPhysicalDevice()
@@ -150,11 +167,6 @@ public class Device implements AutoCloseable {
 		presentQueue = queue;
 	}
 	
-	public Window getWindow()
-	{
-		return window;
-	}
-	
 	public long getResetCommandPool()
 	{
 		return resetCommandPool;
@@ -169,9 +181,9 @@ public class Device implements AutoCloseable {
 	public void close()
 	{
 		waitIdle();
-		if (window != null) window.close();
-		VK10.vkDestroyCommandPool(device, resetCommandPool, null);
-		VK10.vkDestroyCommandPool(device, shortLivedCommandPool, null);
-		VK10.vkDestroyDevice(device, null);
+		while (destructionList.peek() != null) destructionList.poll().close();
+		VK10.vkDestroyCommandPool(vk, resetCommandPool, null);
+		VK10.vkDestroyCommandPool(vk, shortLivedCommandPool, null);
+		VK10.vkDestroyDevice(vk, null);
 	}
 }

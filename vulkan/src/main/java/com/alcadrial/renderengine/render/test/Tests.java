@@ -21,14 +21,17 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kroperties.Property;
 import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.core.util.color.Color;
-import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.VertexAccumulator;
 import com.alcadrial.renderengine.render.Vulkan;
-import com.alcadrial.renderengine.render.Window;
+import com.alcadrial.renderengine.render.buffer.IndexBuffer;
+import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.util.Properties;
+import com.alcadrial.renderengine.render.util.Version;
+import com.alcadrial.renderengine.render.window.Window;
 
 @Test
 public class Tests {
@@ -40,10 +43,9 @@ public class Tests {
 		Property.parseProperties(args, Properties.PROPERTIES);
 		
 		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
-		RenderEngine.setDebugMessengerCallback(Tests::debugCallback);
 		
 		System.out.println("Render Engine initialization time = " + recordTime(() -> {
-			if (!RenderEngine.initialize()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
+			if (!RenderEngine.create("Test", new Version(0, 0, 1, 0)).messenger(Tests::debugCallback).initialize()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
 		}, TimeUnit.MICROSECONDS) / 1000D + "ms");
 		
 		GLFW.glfwWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API);
@@ -56,7 +58,7 @@ public class Tests {
 			loop();
 			end();
 		});
-		t.start();
+		//t.start();
 		
 		System.out.println("Start time = " + recordTime(Tests::start, TimeUnit.MICROSECONDS) / 1000D + "ms");
 		if (!RenderEngine.isInitializated()) return;
@@ -74,7 +76,10 @@ public class Tests {
 					try
 					{
 						MONITOR.wait();
-						MONITOR.wait(1000);
+						synchronized (args)
+						{
+							args.wait(100);
+						}
 					}
 					catch (InterruptedException e)
 					{}
@@ -82,9 +87,12 @@ public class Tests {
 			}
 			
 			RenderEngine.terminate();
-		}).start();
-		
+		});//.start();
 	}
+	
+	private static Renderer renderer;
+	private static VertexBuffer vertexBuffer;
+	private static IndexBuffer indexBuffer;
 	
 	public static void start()
 	{
@@ -94,8 +102,11 @@ public class Tests {
 		
 		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueGraphicsFamilyProperties() != null);
 		vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
-		vulkan.getDevice().initialize();
+		vulkan.getDevice().initializeVma();
+		
 		Window window = vulkan.getWindow();
+		window.assignPhysicalDevice(vulkan.getPhysicalDevice());
+		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
 			System.out.println(iconified ? "Iconified" : "Restored");
 		});
@@ -128,7 +139,6 @@ public class Tests {
 			}
 		});
 		
-		System.out.println("Window initialization time = " + recordTime(window::initialize, TimeUnit.MICROSECONDS) / 1000D + "ms");
 		Shader vertexShader;
 		Shader fragmentShader;
 		try
@@ -145,46 +155,51 @@ public class Tests {
 			return;
 		}
 		
-		window.setPipelineFrontOrientation(false);
+		renderer = Renderer.create().vertexShader(vertexShader).fragmentShader(fragmentShader).build(window, vulkan.getDevice());
 		
-		System.out.println("Graphics pipeline build time = " + recordTime(() -> window.buildGraphicsPipeline(vertexShader, fragmentShader), TimeUnit.MICROSECONDS) / 1000D + "ms");
+		vertexBuffer = new VertexBuffer(56);
+		indexBuffer = new IndexBuffer(12);
+		renderer.setVertexBuffer(vertexBuffer);
+		renderer.setIndexBuffer(indexBuffer);
 		
-		VertexAccumulator vertexAccumulator = new VertexAccumulator(window.getPipeline(), window.getVertexBuffer());
-		vertexAccumulator.vertex(-200, 0, 0).color(255, 255, 255, 255).end();
-		vertexAccumulator.vertex(0, 0, 0).color(255, 0, 0, 255).end();
-		vertexAccumulator.vertex(0, -200, 0).color(0, 255, 0, 255).end();
+		VertexAccumulator vertexAccumulator = renderer.accumulate();
 		vertexAccumulator.vertex(-200, -200, 0).color(0, 0, 255, 255).end();
-		vertexAccumulator.vertex(0, 200, 0).color(255, 255, 255, 255).end();
-		vertexAccumulator.vertex(200, 200, 0).color(255, 0, 0, 255).end();
-		vertexAccumulator.vertex(200, 0, 0).color(0, 255, 0, 255).end();
+		vertexAccumulator.vertex(0, -200, 0).color(0, 255, 0, 255).end();
+		vertexAccumulator.vertex(0, 0, 0).color(255, 0, 0, 255).end();
+		vertexAccumulator.vertex(-200, 0, 0).color(255, 255, 255, 255).end();
 		vertexAccumulator.vertex(0, 0, 0).color(0, 0, 255, 255).end();
-		window.getVertexBuffer().sendToGpu();
+		vertexAccumulator.vertex(200, 0, 0).color(0, 255, 0, 255).end();
+		vertexAccumulator.vertex(200, 200, 0).color(255, 0, 0, 255).end();
+		vertexAccumulator.vertex(0, 200, 0).color(255, 255, 255, 255).end();
+		vertexBuffer.sendToGpu();
+		
+		indexBuffer.asIntBuffer().put(0, new int[] {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4});
+		indexBuffer.sendToGpu();
 	}
 	
 	public static void loop()
 	{
-		Device device = RenderEngine.getVulkan().getDevice();
-		Window window = device.getWindow();
+		Window window = RenderEngine.getVulkan().getWindow();
 		
-		window.setClearColor(Color.of(0, 0, 0, 0));
-		
-		window.getIndexBuffer().asIntBuffer().put(0, new int[] {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4});
-		window.getIndexBuffer().sendToGpu();
+		renderer.setClearColor(Color.of(0, 0, 0, 0));
 		
 		while (!window.shouldClose())
 		{
 			window.pollEvents();
-			window.draw();
+			renderer.draw(null);
+			window.update();
 		}
 	}
 	
 	public static void end()
 	{
-		RenderEngine.getVulkan().getDevice().getWindow().hide();
+		renderer.close();
+		RenderEngine.getVulkan().getWindow().hide();
 		synchronized (MONITOR)
 		{
 			MONITOR.notify();
 		}
+		RenderEngine.terminate();
 	}
 	
 	public static int debugCallback(int messageSeverity, int messageType, long callbackDataId, long userDataId)

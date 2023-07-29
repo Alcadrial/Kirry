@@ -2,11 +2,16 @@ package com.alcadrial.renderengine.render.util;
 
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
+import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
+import org.lwjgl.system.Pointer;
 import org.lwjgl.system.Struct;
+import org.lwjgl.system.StructBuffer;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkBufferCopy;
 import org.lwjgl.vulkan.VkBufferCreateInfo;
@@ -52,6 +57,46 @@ public class VulkanUtils {
 	public static ByteBuffer allocate(MemoryStack stack, byte[] data)
 	{
 		return stack.malloc(data.length).put(data).rewind();
+	}
+	
+	public static <S extends Struct, B extends StructBuffer<S, B>> B toBuffer(List<S> structs, Function<Integer, B> builder)
+	{
+		B buffer = builder.apply(structs.size());
+		for (S s : structs) buffer.put(s);
+		return buffer.rewind();
+	}
+	
+	public static <S extends Struct, B extends StructBuffer<S, B>> B toBuffer(MemoryStack stack, List<S> structs, BiFunction<Integer, MemoryStack, B> builder)
+	{
+		B buffer = builder.apply(structs.size(), stack);
+		for (S s : structs) buffer.put(s);
+		return buffer.rewind();
+	}
+	
+	@SafeVarargs
+	public static <VR extends VulkanResource<Long>> PointerBuffer toPointerBuffer(MemoryStack stack, VR... resources)
+	{
+		return toPointerBuffer(stack, List.of(resources));
+	}
+	
+	public static <VR extends VulkanResource<Long>> PointerBuffer toPointerBuffer(MemoryStack stack, List<VR> resources)
+	{
+		PointerBuffer buffer = stack.callocPointer(resources.size());
+		for (VR vr : resources) buffer.put(vr.getVk());
+		return buffer.rewind();
+	}
+	
+	@SafeVarargs
+	public static <VR extends VulkanResource<VK>, VK extends Pointer> PointerBuffer toAddressBuffer(MemoryStack stack, VR... resources)
+	{
+		return toAddressBuffer(stack, List.of(resources));
+	}
+	
+	public static <VR extends VulkanResource<VK>, VK extends Pointer> PointerBuffer toAddressBuffer(MemoryStack stack, List<VR> resources)
+	{
+		PointerBuffer buffer = stack.callocPointer(resources.size());
+		for (VR vr : resources) buffer.put(vr.vk.address());
+		return buffer.rewind();
 	}
 	
 	/**

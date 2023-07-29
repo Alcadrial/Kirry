@@ -2,13 +2,23 @@ package com.alcadrial.renderengine.render.buffer;
 
 import org.lwjgl.vulkan.VK10;
 
-import com.alcadrial.renderengine.render.CommandBufferData;
+import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.RenderEngine;
 
 public class VertexBuffer extends VulkanDoubleBuffer {
 	
+	private long offset;
+	
 	public VertexBuffer(int size)
 	{
-		super(size * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		this(RenderEngine.getVulkan().getDevice(), size * 4);
+		offset = 0;
+	}
+	
+	public VertexBuffer(Device device, int size)
+	{
+		super(device, size * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		offset = 0;
 	}
 	
 	public VertexBuffer(float[] data)
@@ -17,8 +27,13 @@ public class VertexBuffer extends VulkanDoubleBuffer {
 		asFloatBuffer().put(data);
 	}
 	
-	public void bind(CommandBufferData commandBufferData)
+	public long getOffset()
 	{
-		VK10.vkCmdBindVertexBuffers(commandBufferData.getCommandBuffer(), 0, new long[] {gpuId}, new long[] {0});
+		return offset;
+	}
+	
+	public void setOffset(long offset)
+	{
+		this.offset = offset;
 	}
 }

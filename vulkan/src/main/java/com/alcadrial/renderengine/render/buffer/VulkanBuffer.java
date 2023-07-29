@@ -16,27 +16,27 @@ import org.lwjgl.vulkan.VkMemoryRequirements;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.util.LongDeviceResource;
 import com.alcadrial.renderengine.render.util.Pair;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 
-public class VulkanBuffer implements AutoCloseable {
+public class VulkanBuffer extends LongDeviceResource {
 	
-	protected final Device device;
-	protected long id;
 	protected long memory;
 	protected long size;
+	protected Object closingMonitor;
 	private ByteBuffer map;
 	
-	public VulkanBuffer(long size, int usage)
+	public VulkanBuffer(Device device, long size, int usage)
 	{
-		device = RenderEngine.getVulkan().getDevice();
+		super(device);
 		this.size = size;
+		closingMonitor = new Object();
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			Pair<Long, Long> data = build(stack, size, usage, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-			id = data.getLeft();
+			vk = data.getLeft();
 			memory = data.getRigth();
 		}
 	}
@@ -49,15 +49,15 @@ public class VulkanBuffer implements AutoCloseable {
 		bufferInfo.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE);
 		
 		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(VK10.vkCreateBuffer(device.getDevice(), bufferInfo, null, p), "failed to create buffer");
+		VulkanErrorUtils.assertNoError(VK10.vkCreateBuffer(device.getVk(), bufferInfo, null, p), "failed to create buffer");
 		data.setLeft(p[0]);
 		
 		VkMemoryRequirements memRequirements = VkMemoryRequirements.malloc(stack);
-		VK10.vkGetBufferMemoryRequirements(device.getDevice(), data.getLeft(), memRequirements);
+		VK10.vkGetBufferMemoryRequirements(device.getVk(), data.getLeft(), memRequirements);
 		
 		int index;
 		VkPhysicalDeviceMemoryProperties memProperties = VkPhysicalDeviceMemoryProperties.malloc(stack);
-		VK10.vkGetPhysicalDeviceMemoryProperties(RenderEngine.getVulkan().getPhysicalDevice().getDevice(), memProperties);
+		VK10.vkGetPhysicalDeviceMemoryProperties(device.getPhysicalDevice().getVk(), memProperties);
 		
 		for (index = 0; index < memProperties.memoryTypeCount(); index++)
 		{
@@ -70,60 +70,60 @@ public class VulkanBuffer implements AutoCloseable {
 		VulkanErrorUtils.assertStatement(index < memProperties.memoryTypeCount(), "Failed to find suitable memory type");
 		
 		LongBuffer pVertexBufferMemory = stack.mallocLong(1);
-		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(device.getDevice(), VulkanUtils.memoryAllocateInfo(stack, memRequirements.size(), index), null, pVertexBufferMemory), "Failed to allocate buffer memory");
+		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(device.getVk(), VulkanUtils.memoryAllocateInfo(stack, memRequirements.size(), index), null, pVertexBufferMemory), "Failed to allocate buffer memory");
 		data.setRigth(pVertexBufferMemory.get(0));
 		
-		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getDevice(), data.getLeft(), data.getRigth(), 0), "Failed to bind buffer memory");
+		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), data.getLeft(), data.getRigth(), 0), "Failed to bind buffer memory");
 		return data;
 	}
 	
-	public ByteBuffer asByteBuffer()
+	private synchronized ByteBuffer getByteBuffer()
 	{
 		if (map == null)
 		{
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
 				PointerBuffer gpuData = stack.mallocPointer(1);
-				VulkanErrorUtils.assertNoError(VK10.vkMapMemory(device.getDevice(), memory, 0, size, 0, gpuData), "Failed to map buffer memory");
+				VulkanErrorUtils.assertNoError(VK10.vkMapMemory(device.getVk(), memory, 0, size, 0, gpuData), "Failed to map buffer memory");
 				map = gpuData.getByteBuffer((int) size);
 			}
 		}
 		return map;
 	}
 	
+	public ByteBuffer asByteBuffer()
+	{
+		return getByteBuffer().duplicate();
+	}
+	
 	public CharBuffer asCharBuffer()
 	{
-		return asByteBuffer().asCharBuffer();
+		return getByteBuffer().asCharBuffer();
 	}
 	
 	public ShortBuffer asShortBuffer()
 	{
-		return asByteBuffer().asShortBuffer();
+		return getByteBuffer().asShortBuffer();
 	}
 	
 	public IntBuffer asIntBuffer()
 	{
-		return asByteBuffer().asIntBuffer();
+		return getByteBuffer().asIntBuffer().duplicate();
 	}
 	
 	public LongBuffer asLongBuffer()
 	{
-		return asByteBuffer().asLongBuffer();
+		return getByteBuffer().asLongBuffer();
 	}
 	
 	public FloatBuffer asFloatBuffer()
 	{
-		return asByteBuffer().asFloatBuffer();
+		return getByteBuffer().asFloatBuffer().duplicate();
 	}
 	
 	public DoubleBuffer asDoubleBuffer()
 	{
-		return asByteBuffer().asDoubleBuffer();
-	}
-	
-	public long getId()
-	{
-		return id;
+		return getByteBuffer().asDoubleBuffer();
 	}
 	
 	public long getSize()
@@ -134,7 +134,12 @@ public class VulkanBuffer implements AutoCloseable {
 	@Override
 	public void close()
 	{
-		VK10.vkDestroyBuffer(device.getDevice(), id, null);
-		VK10.vkFreeMemory(device.getDevice(), memory, null);
+		synchronized (closingMonitor)
+		{
+			VK10.vkDestroyBuffer(device.getVk(), vk, null);
+			VK10.vkFreeMemory(device.getVk(), memory, null);
+			memory = 0;
+			super.close();
+		}
 	}
 }

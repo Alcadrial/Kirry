@@ -3,12 +3,11 @@ package com.alcadrial.renderengine.render;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkFramebufferCreateInfo;
 
+import com.alcadrial.renderengine.render.util.LongDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
-public class FrameBuffer implements AutoCloseable {
+public class FrameBuffer extends LongDeviceResource {
 	
-	private final Device device;
-	private final long id;
 	private final int type;
 	private final long renderPass;
 	private final int width;
@@ -17,20 +16,15 @@ public class FrameBuffer implements AutoCloseable {
 	
 	public FrameBuffer(Device device, VkFramebufferCreateInfo info)
 	{
-		this.device = device;
+		super(device);
 		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(VK10.vkCreateFramebuffer(device.getDevice(), info, null, p), "Failed to create framebuffer");
-		id = p[0];
+		VulkanErrorUtils.assertNoError(VK10.vkCreateFramebuffer(device.getVk(), info, null, p), "Failed to create framebuffer");
+		vk = p[0];
 		type = info.sType();
 		renderPass = info.renderPass();
 		width = info.width();
 		height = info.height();
 		layers = info.layers();
-	}
-	
-	public long getId()
-	{
-		return id;
 	}
 	
 	public int getType()
@@ -61,6 +55,7 @@ public class FrameBuffer implements AutoCloseable {
 	@Override
 	public void close()
 	{
-		VK10.vkDestroyFramebuffer(device.getDevice(), id, null);
+		VK10.vkDestroyFramebuffer(device.getVk(), vk, null);
+		super.close();
 	}
 }
