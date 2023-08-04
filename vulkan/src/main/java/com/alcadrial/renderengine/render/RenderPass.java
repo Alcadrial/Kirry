@@ -7,7 +7,8 @@ import com.alcadrial.renderengine.render.util.LongDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
 /**
- * An Object that knows the src and dest images in 1 pipeline execution (enough for now)
+ * An Object that knows the src and dest images in 1 pipeline execution (enough for now)</p>
+ * It's indipendent from the pipeline
  * 
  * @author Alcadrial
  */

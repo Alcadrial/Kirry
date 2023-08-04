@@ -13,6 +13,7 @@ public class VertexAccumulator {
 	
 	private GraphicsPipeline graphicsPipeline;
 	private VertexBuffer vertexBuffer;
+	private int bufferIndex;
 	private int index;
 	
 	public VertexAccumulator(GraphicsPipeline graphicsPipeline, VertexBuffer vertexBuffer)
@@ -23,23 +24,26 @@ public class VertexAccumulator {
 	
 	public VertexBuilder vertex(float x, float y, float z)
 	{
-		return new VertexBuilder(graphicsPipeline, x, y, z);
+		return new VertexBuilder(graphicsPipeline, x, y, z, index++);
 	}
 	
 	public class VertexBuilder extends AbstractVertexBuilder<VertexBuilder, VertexResult> {
 		
-		protected VertexBuilder(GraphicsPipeline pipeline, float x, float y, float z)
+		private int index;
+		
+		protected VertexBuilder(GraphicsPipeline pipeline, float x, float y, float z, int index)
 		{
 			super(pipeline, x, y, z);
+			this.index = index;
 		}
 		
 		@Override
 		public VertexResult end()
 		{
-			int vertexIndex = index;
+			int vertexIndex = bufferIndex;
 			float[] data = gatherProgramDataArray();
 			vertexBuffer.asFloatBuffer().put(vertexIndex, data);
-			index += data.length;
+			bufferIndex += data.length;
 			map.clear();
 			Map<ShaderInput, Integer> inputs = new HashMap<>();
 			for (ShaderInput input : graphicsPipeline.getInputs())
@@ -47,7 +51,7 @@ public class VertexAccumulator {
 				inputs.put(input, vertexIndex);
 				vertexIndex += input.getType().getSize();
 			}
-			return new VertexResult(vertexBuffer, inputs);
+			return new VertexResult(vertexBuffer, inputs, index);
 		}
 	}
 	
@@ -55,11 +59,13 @@ public class VertexAccumulator {
 		
 		private VertexBuffer vertexBuffer;
 		private Map<ShaderInput, Integer> inputs;
+		private int index;
 		
-		public VertexResult(VertexBuffer vertexBuffer, Map<ShaderInput, Integer> inputs)
+		public VertexResult(VertexBuffer vertexBuffer, Map<ShaderInput, Integer> inputs, int index)
 		{
 			this.vertexBuffer = vertexBuffer;
 			this.inputs = inputs;
+			this.index = index;
 		}
 		
 		@Override
@@ -73,18 +79,24 @@ public class VertexAccumulator {
 		{
 			return vertexBuffer;
 		}
+		
+		@Override
+		public int getIndex()
+		{
+			return index;
+		}
 	}
 	
 	private class InputTracker implements Tracker<int[]> {
 		
-		private int index;
+		private int bufferIndex;
 		private VertexBuffer vertexBuffer;
 		private int size;
 		private boolean valid;
 		
 		public InputTracker(int index, VertexBuffer vertexBuffer, int size)
 		{
-			this.index = index;
+			this.bufferIndex = index;
 			this.vertexBuffer = vertexBuffer;
 			this.size = size;
 			valid = true;
@@ -105,7 +117,7 @@ public class VertexAccumulator {
 		@Override
 		public void flush()
 		{
-			vertexBuffer.sendToGpu(index, size);
+			vertexBuffer.sendToGpu(bufferIndex, size);
 		}
 		
 		@Override
@@ -114,7 +126,7 @@ public class VertexAccumulator {
 			if (valid)
 			{
 				IntBuffer buffer = vertexBuffer.asIntBuffer();
-				for (int i = index; i < size + index; i++) buffer.put(i, 0);
+				for (int i = bufferIndex; i < size + bufferIndex; i++) buffer.put(i, 0);
 			}
 		}
 		

@@ -24,7 +24,9 @@ import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
+import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.VertexAccumulator;
+import com.alcadrial.renderengine.render.VertexAccumulator.VertexResult;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
@@ -154,26 +156,40 @@ public class Tests {
 			RenderEngine.terminate();
 			return;
 		}
-		
-		renderer = Renderer.create().vertexShader(vertexShader).fragmentShader(fragmentShader).build(window, vulkan.getDevice());
+		Builder builder = Renderer.create();
+		builder.vertexShader(vertexShader).fragmentShader(fragmentShader);
+		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
+		renderer = builder.build(window, vulkan.getDevice());
 		
 		vertexBuffer = new VertexBuffer(56);
-		indexBuffer = new IndexBuffer(12);
+		indexBuffer = new IndexBuffer(15);
 		renderer.setVertexBuffer(vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
 		
 		VertexAccumulator vertexAccumulator = renderer.accumulate();
-		vertexAccumulator.vertex(-200, -200, 0).color(0, 0, 255, 255).end();
-		vertexAccumulator.vertex(0, -200, 0).color(0, 255, 0, 255).end();
-		vertexAccumulator.vertex(0, 0, 0).color(255, 0, 0, 255).end();
-		vertexAccumulator.vertex(-200, 0, 0).color(255, 255, 255, 255).end();
-		vertexAccumulator.vertex(0, 0, 0).color(0, 0, 255, 255).end();
-		vertexAccumulator.vertex(200, 0, 0).color(0, 255, 0, 255).end();
-		vertexAccumulator.vertex(200, 200, 0).color(255, 0, 0, 255).end();
-		vertexAccumulator.vertex(0, 200, 0).color(255, 255, 255, 255).end();
+		VertexResult result0 = vertexAccumulator.vertex(-200, 0, 0).color(0, 255, 0, 255).end();
+		VertexResult result1 = vertexAccumulator.vertex(0, 0, 0).color(255, 0, 0, 255).end();
+		VertexResult result2 = vertexAccumulator.vertex(0, -200, 0).color(0, 255, 0, 255).end();
+		VertexResult result3 = vertexAccumulator.vertex(-200, -200, 0).color(0, 0, 255, 255).end();
+		VertexResult result4 = vertexAccumulator.vertex(-100, -100, 0).color(127, 127, 127, 255).end();
+		VertexResult result5 = vertexAccumulator.vertex(0, 0, 0).color(0, 0, 255, 255).end();
+		VertexResult result6 = vertexAccumulator.vertex(0, 200, 0).color(255, 255, 255, 255).end();
+		VertexResult result7 = vertexAccumulator.vertex(200, 200, 0).color(255, 0, 0, 255).end();
+		VertexResult result8 = vertexAccumulator.vertex(200, 0, 0).color(0, 255, 0, 255).end();
+		VertexResult result9 = vertexAccumulator.vertex(100, 100, 0).color(127, 127, 127, 255).end();
 		vertexBuffer.sendToGpu();
 		
-		indexBuffer.asIntBuffer().put(0, new int[] {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4});
+		indexBuffer.asIntBuffer().put(0, new int[] {
+			result0.getIndex(), result1.getIndex(), result4.getIndex(),
+			result1.getIndex(), result2.getIndex(), result4.getIndex(),
+			result4.getIndex(), result2.getIndex(), result3.getIndex(),
+			result0.getIndex(), result4.getIndex(), result3.getIndex(),
+			
+			result5.getIndex(), result6.getIndex(), result9.getIndex(),
+			result6.getIndex(), result7.getIndex(), result9.getIndex(),
+			result9.getIndex(), result7.getIndex(), result8.getIndex(),
+			result5.getIndex(), result9.getIndex(), result8.getIndex(),
+		});
 		indexBuffer.sendToGpu();
 	}
 	

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFW;
@@ -158,6 +159,18 @@ public class RenderEngine extends RenderEngineCore {
 			vulkan.close();
 			vulkan = null;
 			GLFW.glfwTerminate();
+			if (executor != null)
+			{
+				executor.shutdown();
+				try
+				{
+					executor.awaitTermination(1, TimeUnit.MILLISECONDS);
+				}
+				catch (InterruptedException e)
+				{}
+				executor.shutdownNow();
+				executor = null;
+			}
 			initializated = false;
 		}
 	}

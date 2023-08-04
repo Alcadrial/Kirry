@@ -13,6 +13,7 @@ import org.lwjgl.vulkan.VkVertexInputAttributeDescription;
 import org.lwjgl.vulkan.VkVertexInputBindingDescription;
 
 import com.alcadrial.renderengine.core.util.NotYetImplementedException;
+import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.shader.Shader;
@@ -27,13 +28,13 @@ public class GraphicsPipeline extends Pipeline {
 	public static final class Builder extends DataAccumulator<Builder> {
 		
 		@Override
-		public Builder autoCloseLayout(boolean value)
+		public Builder autoCloseLayout(@Nullable Boolean value)
 		{
 			return super.autoCloseLayout(value);
 		}
 		
 		@Override
-		public Builder autoCloseRenderPass(boolean value)
+		public Builder autoCloseRenderPass(@Nullable Boolean value)
 		{
 			return super.autoCloseRenderPass(value);
 		}
@@ -44,43 +45,43 @@ public class GraphicsPipeline extends Pipeline {
 		 * @return
 		 */
 		@Override
-		public Builder shader(Shader shader)
+		public Builder shader(@Nullable Shader shader)
 		{
 			return super.genericShader(shader);
 		}
 		
 		@Override
-		public Builder vertexShader(Shader shader)
+		public Builder vertexShader(@Nullable Shader shader)
 		{
 			return super.vertexShader(shader);
 		}
 		
 		@Override
-		public Builder tessellationControlShader(Shader shader)
+		public Builder tessellationControlShader(@Nullable Shader shader)
 		{
 			return super.tessellationControlShader(shader);
 		}
 		
 		@Override
-		public Builder tessellationEvaluationShader(Shader shader)
+		public Builder tessellationEvaluationShader(@Nullable Shader shader)
 		{
 			return super.tessellationEvaluationShader(shader);
 		}
 		
 		@Override
-		public Builder geometryShader(Shader shader)
+		public Builder geometryShader(@Nullable Shader shader)
 		{
 			return super.geometryShader(shader);
 		}
 		
 		@Override
-		public Builder fragmentShader(Shader shader)
+		public Builder fragmentShader(@Nullable Shader shader)
 		{
 			return super.fragmentShader(shader);
 		}
 		
 		@Override
-		public Builder computeShader(Shader shader)
+		public Builder computeShader(@Nullable Shader shader)
 		{
 			return super.computeShader(shader);
 		}

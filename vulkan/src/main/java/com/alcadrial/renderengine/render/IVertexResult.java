@@ -9,4 +9,6 @@ public interface IVertexResult {
 	Tracker<int[]> track(ShaderInput input);
 	
 	VertexBuffer getBuffer();
+	
+	int getIndex();
 }
