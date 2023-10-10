@@ -2,6 +2,7 @@ package com.alcadrial.renderengine.render;
 
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.List;
 
 import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryStack;
@@ -13,6 +14,17 @@ import org.lwjgl.vulkan.VkQueueFamilyProperties;
 
 import com.alcadrial.renderengine.render.util.VulkanResource;
 
+/**
+ * A physically connected device usable by vulkan that is necessary
+ * to create a {@link Device Logical Device} and a {@link Surface}.
+ * <p>
+ * A {@link List} of all the available Physical Devices can be queried by
+ * {@link Vulkan#getAvailablePhysicalDevices()} or {@link Vulkan#getValidPhysicalDevices()}
+ * to filter the returned Physical Devices.
+ * 
+ * @author Alcadrial
+ *
+ */
 public class PhysicalDevice extends VulkanResource<VkPhysicalDevice> {
 	
 	private static final int[] BEST_MATCHER_MAP = new int[] {4, 2, 0, 1, 3};

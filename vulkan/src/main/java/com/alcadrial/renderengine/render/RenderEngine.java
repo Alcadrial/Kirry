@@ -35,15 +35,17 @@ public class RenderEngine extends RenderEngineCore {
 	private static volatile ExecutorService executor = null;
 	
 	/**
-	 * <p>Creates a builder that can be used to choose various aspects of the engine</p>
-	 * <p>After all the data have been set, a call to {@link Builder#initialize()} will 
-	 * initialize the engine using the values of the builder</p>
-	 * <p>A builder can be used infinite times</p>
+	 * Creates a builder that can be used to choose various aspects of the engine</p>
+	 * <p>
+	 * After all the data have been set, a call to {@link Builder#initialize()} will 
+	 * initialize the engine using the values of the builder
+	 * <p>
+	 * A builder can be used infinite times
 	 * 
 	 * @param applicationName 
 	 * @param version 
-	 * 
 	 * @return a new {@link Builder}
+	 * @see #initialize(String, Version)
 	 */
 	public static Builder create(String applicationName, Version version)
 	{
@@ -51,16 +53,17 @@ public class RenderEngine extends RenderEngineCore {
 	}
 	
 	/**
-	 * <p>Initialize the library and return true if the library results as initialized after calling this method.</p>
-	 * 
-	 * <p>In order To terminate and release any resource allocated by the library, the function {@link #terminate()} must be called.</p>
-	 * 
-	 * <p>After a call to {@link #terminate()}, calling this function will re-initialize the library as of the first time</p>
+	 * Initialize the library and return true if the library results as initialized after calling this method.
+	 * <p>
+	 * In order To terminate and release any resource allocated by the library, the function {@link #terminate()} must be called.
+	 * <p>
+	 * After a call to terminate(), calling this function will re-initialize the library as of the first time
 	 * 
 	 * @param applicationName 
 	 * @param version 
-	 * 
 	 * @return true if the library is initialized, false otherwise
+	 * @see #create(String, Version)
+	 * 
 	 */
 	public static boolean initialize(String applicationName, Version version)
 	{
@@ -94,8 +97,15 @@ public class RenderEngine extends RenderEngineCore {
 			{
 				PointerBuffer requiredInstances = GLFWVulkan.glfwGetRequiredInstanceExtensions();
 				
-				PointerBuffer enlargedBuffer = stack.mallocPointer(requiredInstances.capacity() + 1);
-				enlargedBuffer.put(requiredInstances);
+				PointerBuffer enlargedBuffer;
+				
+				if (requiredInstances == null) enlargedBuffer = stack.mallocPointer(1);
+				else
+				{
+					enlargedBuffer = stack.mallocPointer(requiredInstances.capacity() + 1);
+					enlargedBuffer.put(requiredInstances);
+				}
+				
 				enlargedBuffer.put(stack.UTF8(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME));
 				enlargedBuffer.rewind();
 				
@@ -107,7 +117,7 @@ public class RenderEngine extends RenderEngineCore {
 					VkDebugUtilsMessengerCreateInfoEXT info = VkDebugUtilsMessengerCreateInfoEXT.calloc(stack);
 					
 					info.sType(EXTDebugUtils.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT);
-					info.messageSeverity(EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT);
+					info.messageSeverity(EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT);
 					info.messageType(EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT);
 					info.pfnUserCallback((VkDebugUtilsMessengerCallbackEXTI) (messageSeverity, messageType, callbackDataId, userDataId) -> {
 						if (debug) return builder.messenger.invoke(messageSeverity, messageType, callbackDataId, userDataId);
@@ -149,8 +159,8 @@ public class RenderEngine extends RenderEngineCore {
 	
 	/**
 	 * <b>MUST BE CALLED ONLY AFTER ANY THREAD HAS FINISHED USING THE LIBRARY.</b>
-	 * 
-	 * <p>After calling terminate(), {@link #initialize()} may be called again.</p>
+	 * <p>
+	 * After calling terminate, {@link #initialize} may be called again.
 	 */
 	public static void terminate()
 	{

@@ -39,7 +39,7 @@ import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
 public class VulkanUtils {
 	
-	public static <S extends Struct> Pair<S, ByteBuffer> copy(S struct, Function<Long, S> builder)
+	public static <S extends Struct<S>> Pair<S, ByteBuffer> copy(S struct, Function<Long, S> builder)
 	{
 		ByteBuffer buffer = MemoryUtil.memByteBuffer(struct.address(), struct.sizeof());
 		ByteBuffer copyBuffer = MemoryUtil.memCalloc(struct.sizeof());
@@ -48,7 +48,7 @@ public class VulkanUtils {
 		return new Pair<>(copyStruct, copyBuffer);
 	}
 	
-	public static <S extends Struct> Pair<S, ByteBuffer> allocate(int size, Function<Long, S> builder)
+	public static <S extends Struct<S>> Pair<S, ByteBuffer> allocate(int size, Function<Long, S> builder)
 	{
 		ByteBuffer buffer = MemoryUtil.memCalloc(size);
 		return new Pair<>(builder.apply(MemoryUtil.memAddress(buffer)), buffer);
@@ -59,14 +59,14 @@ public class VulkanUtils {
 		return stack.malloc(data.length).put(data).rewind();
 	}
 	
-	public static <S extends Struct, B extends StructBuffer<S, B>> B toBuffer(List<S> structs, Function<Integer, B> builder)
+	public static <S extends Struct<S>, B extends StructBuffer<S, B>> B toBuffer(List<S> structs, Function<Integer, B> builder)
 	{
 		B buffer = builder.apply(structs.size());
 		for (S s : structs) buffer.put(s);
 		return buffer.rewind();
 	}
 	
-	public static <S extends Struct, B extends StructBuffer<S, B>> B toBuffer(MemoryStack stack, List<S> structs, BiFunction<Integer, MemoryStack, B> builder)
+	public static <S extends Struct<S>, B extends StructBuffer<S, B>> B toBuffer(MemoryStack stack, List<S> structs, BiFunction<Integer, MemoryStack, B> builder)
 	{
 		B buffer = builder.apply(structs.size(), stack);
 		for (S s : structs) buffer.put(s);
@@ -104,7 +104,7 @@ public class VulkanUtils {
 	 * @param stack the stack from which to allocate
 	 * @param x the x offset
 	 * @param y the y offset
-	 * @return
+	 * @return a new {@link VkOffset2D} in the stack
 	 */
 	public static VkOffset2D offset(MemoryStack stack, int x, int y)
 	{
@@ -116,7 +116,7 @@ public class VulkanUtils {
 	 * @param stack the stack from which to allocate
 	 * @param width the width of the extent
 	 * @param height the height of the extent
-	 * @return
+	 * @return a new {@link VkExtent2D} in the stack
 	 */
 	public static VkExtent2D extent(MemoryStack stack, int width, int height)
 	{
@@ -129,7 +129,7 @@ public class VulkanUtils {
 	 * @param sourceOffset the starting offset in bytes from the start of srcBuffer
 	 * @param destinationOffset the starting offset in bytes from the start of dstBuffer
 	 * @param size the number of bytes to copy
-	 * @return
+	 * @return a new buffer of {@link VkBufferCopy}s in the stack
 	 */
 	public static VkBufferCopy.Buffer bufferCopy(MemoryStack stack, long sourceOffset, long destinationOffset, long size)
 	{
@@ -141,7 +141,7 @@ public class VulkanUtils {
 	 * @param stack the stack from which to allocate
 	 * @param offset a VkOffset2D specifying the rectangle offset
 	 * @param extent a VkExtent2D specifying the rectangle extent
-	 * @return
+	 * @return a new buffer of {@link VkRect2D}s in the stack
 	 */
 	public static VkRect2D.Buffer rect2d(MemoryStack stack, VkOffset2D offset, VkExtent2D extent)
 	{
@@ -157,7 +157,7 @@ public class VulkanUtils {
 	 * @param height see width
 	 * @param minDepth minDepth and maxDepth are the depth range for the viewport
 	 * @param maxDepth see minDepth 
-	 * @return
+	 * @return a new buffer of {@link VkViewport}s in the stack
 	 */
 	public static VkViewport.Buffer viewport(MemoryStack stack, float x, float y, float width, float height, float minDepth, float maxDepth)
 	{
@@ -168,7 +168,7 @@ public class VulkanUtils {
 	 * 
 	 * @param stack the stack from which to allocate
 	 * @param descriptorType a VkDescriptorType specifying which type of resource descriptors are used for this binding
-	 * @return
+	 * @return a new buffer of {@link VkDescriptorSetLayoutBinding}s in the stack
 	 */
 	public static VkDescriptorSetLayoutBinding.Buffer descriptorSetLayoutBinding(MemoryStack stack, int descriptorType)
 	{
@@ -180,7 +180,7 @@ public class VulkanUtils {
 	 * @param stack the stack from which to allocate
 	 * @param stackSize the number of elements to allocate
 	 * @param descriptorType a VkDescriptorType specifying which type of resource descriptors are used for this binding
-	 * @return
+	 * @return a new buffer of {@link VkDescriptorSetLayoutBinding}s in the stack
 	 */
 	public static VkDescriptorSetLayoutBinding.Buffer descriptorSetLayoutBinding(MemoryStack stack, int stackSize, int descriptorType)
 	{
@@ -195,7 +195,7 @@ public class VulkanUtils {
 	 * @param type the type of descriptor
 	 * @param count the number of descriptors of that type to allocate. If type is DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK then descriptorCount 
 	 * 		is the number of bytes to allocate for descriptors of this type
-	 * @return
+	 * @return a new buffer of {@link VkDescriptorPoolSize}s in the stack
 	 */
 	public static VkDescriptorPoolSize.Buffer descriptorPoolSize(MemoryStack stack, int type, int count)
 	{
@@ -218,7 +218,7 @@ public class VulkanUtils {
 	 * 			<li>a value matching the dataSize member of a VkWriteDescriptorSetInlineUniformBlock structure in the pNext chain</li>
 	 * 			<li>a value matching the accelerationStructureCount of a VkWriteDescriptorSetAccelerationStructureKHR structure in the pNext chain</li>
 	 * 		</ul>
-	 * @return
+	 * @return a new buffer of {@link VkWriteDescriptorSet}s in the stack
 	 */
 	public static VkWriteDescriptorSet.Buffer writeDescriptorSet(MemoryStack stack, int type, int count)
 	{
@@ -242,11 +242,26 @@ public class VulkanUtils {
 	 * 			<li>a value matching the dataSize member of a VkWriteDescriptorSetInlineUniformBlock structure in the pNext chain</li>
 	 * 			<li>a value matching the accelerationStructureCount of a VkWriteDescriptorSetAccelerationStructureKHR structure in the pNext chain</li>
 	 * 		</ul>
-	 * @return
+	 * @return a new buffer of {@link VkWriteDescriptorSet}s in the stack
 	 */
 	public static VkWriteDescriptorSet.Buffer writeDescriptorSet(MemoryStack stack, int stackSize, int type, int count)
 	{
 		VkWriteDescriptorSet.Buffer buffer = VkWriteDescriptorSet.calloc(stackSize, stack);
+		for (int i = 0; i < stackSize; i++) buffer.get().sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET).descriptorType(type).descriptorCount(count);
+		return buffer.rewind();
+	}
+	
+	/**
+	 * 
+	 * @param stackSize
+	 * @param type
+	 * @param count
+	 * @return a new buffer of {@link VkWriteDescriptorSet}s in the stack
+	 * @see VulkanUtils#writeDescriptorSet(MemoryStack, int, int, int)
+	 */
+	public static VkWriteDescriptorSet.Buffer writeDescriptorSet(int stackSize, int type, int count)
+	{
+		VkWriteDescriptorSet.Buffer buffer = VkWriteDescriptorSet.calloc(stackSize);
 		for (int i = 0; i < stackSize; i++) buffer.get().sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET).descriptorType(type).descriptorCount(count);
 		return buffer.rewind();
 	}
@@ -261,7 +276,7 @@ public class VulkanUtils {
 	 * 		indexType is equal to INDEX_TYPE_UINT8_EXT, or 0xFFFF when indexType is equal to INDEX_TYPE_UINT16. Primitive restart is not 
 	 * 		allowed for “list” topologies, unless one of the features primitiveTopologyPatchListRestart (for PRIMITIVE_TOPOLOGY_PATCH_LIST) 
 	 * 		or primitiveTopologyListRestart (for all other list topologies) is enabled
-	 * @return
+	 * @return a new {@link VkPipelineInputAssemblyStateCreateInfo} in the stack
 	 */
 	public static VkPipelineInputAssemblyStateCreateInfo pipelineInputAssemblyStateInfo(MemoryStack stack, int topology, boolean primitiveRestartEnable)
 	{
@@ -273,7 +288,7 @@ public class VulkanUtils {
 	 * @param stack the stack from which to allocate
 	 * @param viewports a pointer to an array of VkViewport structures, defining the viewport transforms. If the viewport state is dynamic, this member is ignored
 	 * @param scissors a pointer to an array of VkRect2D structures defining the rectangular bounds of the scissor for the corresponding viewport. If the scissor state is dynamic, this member is ignored
-	 * @return
+	 * @return a new {@link VkPipelineViewportStateCreateInfo} in the stack
 	 */
 	public static VkPipelineViewportStateCreateInfo pipelineViewportStateInfo(MemoryStack stack, VkViewport.Buffer viewports, VkRect2D.Buffer scissors)
 	{
@@ -286,7 +301,7 @@ public class VulkanUtils {
 	 * @param polygonMode the triangle rendering mode. See VkPolygonMode
 	 * @param cullMode the triangle facing direction used for primitive culling. See VkCullModeFlagBits
 	 * @param frontFace a VkFrontFace value specifying the front-facing triangle orientation to be used for culling
-	 * @return
+	 * @return a new {@link VkPipelineRasterizationStateCreateInfo} in the stack
 	 */
 	public static VkPipelineRasterizationStateCreateInfo pipelineRasterizationStateInfo(MemoryStack stack, int polygonMode, int cullMode, int frontFace)
 	{
@@ -297,7 +312,7 @@ public class VulkanUtils {
 	 * 
 	 * @param stack the stack from which to allocate
 	 * @param rasterizationSamples a VkSampleCountFlagBits value specifying the number of samples used in rasterization
-	 * @return
+	 * @return a new {@link VkPipelineMultisampleStateCreateInfo} in the stack
 	 */
 	public static VkPipelineMultisampleStateCreateInfo pipelineMultisampleStateInfo(MemoryStack stack, int rasterizationSamples)
 	{
@@ -310,7 +325,7 @@ public class VulkanUtils {
 	 * @param commandPool the command pool from which the command buffers are allocated
 	 * @param level a VkCommandBufferLevel value specifying the command buffer level
 	 * @param count the number of command buffers to allocate from the pool
-	 * @return
+	 * @return a new {@link VkCommandBufferAllocateInfo} in the stack
 	 */
 	public static VkCommandBufferAllocateInfo commandBufferAllocateInfo(MemoryStack stack, long commandPool, int level, int count)
 	{
@@ -321,7 +336,7 @@ public class VulkanUtils {
 	 * 
 	 * @param stack the stack from which to allocate
 	 * @param flags a bitmask of VkCommandBufferUsageFlagBits specifying usage behavior for the command buffer
-	 * @return
+	 * @return a new {@link VkCommandBufferBeginInfo} in the stack
 	 */
 	public static VkCommandBufferBeginInfo commandBufferBeginInfo(MemoryStack stack, int flags)
 	{
@@ -332,7 +347,7 @@ public class VulkanUtils {
 	 * 
 	 * @param stack the stack from which to allocate
 	 * @param commandBuffer a pointer to an array of VkCommandBuffer handles to execute in the batch
-	 * @return
+	 * @return a new {@link VkSubmitInfo} in the stack
 	 */
 	public static VkSubmitInfo submitInfo(MemoryStack stack, VkCommandBuffer... commandBuffer)
 	{
@@ -344,7 +359,7 @@ public class VulkanUtils {
 	 * @param stack the stack from which to allocate
 	 * @param allocationSize the size of the allocation in bytes
 	 * @param memoryTypeIndex an index identifying a memory type from the memoryTypes array of the VkPhysicalDeviceMemoryProperties structure
-	 * @return
+	 * @return a new {@link VkMemoryAllocateInfo} in the stack
 	 */
 	public static VkMemoryAllocateInfo memoryAllocateInfo(MemoryStack stack, long allocationSize, int memoryTypeIndex)
 	{
@@ -354,10 +369,9 @@ public class VulkanUtils {
 	/**
 	 * 
 	 * @param stack the stack from which to allocate
-	 * @param flags a bitmask of VkBufferCreateFlagBits specifying additional parameters of the buffer
 	 * @param size the size in bytes of the buffer to be created
 	 * @param usage a bitmask of VkBufferUsageFlagBits specifying allowed usages of the buffer
-	 * @return
+	 * @return a new {@link VkBufferCreateInfo} in the stack
 	 */
 	public static VkBufferCreateInfo bufferInfo(MemoryStack stack, long size, int usage)
 	{
@@ -368,7 +382,7 @@ public class VulkanUtils {
 	 * 
 	 * @param stack the stack from which to allocate
 	 * @param binary points to code that is used to create the shader module
-	 * @return
+	 * @return a new {@link VkShaderModuleCreateInfo} in the stack
 	 */
 	public static VkShaderModuleCreateInfo shaderModuleInfo(MemoryStack stack, byte[] binary)
 	{
@@ -380,7 +394,7 @@ public class VulkanUtils {
 	 * @param stack the stack from which to allocate
 	 * @param flags a bitmask of VkDescriptorSetLayoutCreateFlagBits specifying options for descriptor set layout creation
 	 * @param bindings a pointer to an array of VkDescriptorSetLayoutBinding structures
-	 * @return
+	 * @return a new {@link VkDescriptorSetLayoutCreateInfo} in the stack
 	 */
 	public static VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo(MemoryStack stack, int flags, VkDescriptorSetLayoutBinding.Buffer bindings)
 	{
@@ -391,7 +405,7 @@ public class VulkanUtils {
 	 * 
 	 * @param stack the stack from which to allocate
 	 * @param poolSizes a pointer to an array of VkDescriptorPoolSize structures, each containing a descriptor type and number of descriptors of that type to be allocated in the pool
-	 * @return
+	 * @return a new {@link VkDescriptorPoolCreateInfo} in the stack
 	 */
 	public static VkDescriptorPoolCreateInfo descriptorPoolCreateInfo(MemoryStack stack, VkDescriptorPoolSize.Buffer poolSizes)
 	{
@@ -403,7 +417,7 @@ public class VulkanUtils {
 	 * @param stack the stack from which to allocate
 	 * @param descriptorPool the pool which the sets will be allocated from
 	 * @param setLayouts a pointer to an array of descriptor set layouts, with each member specifying how the corresponding descriptor set is allocated
-	 * @return
+	 * @return a new {@link VkDescriptorSetAllocateInfo} in the stack
 	 */
 	public static VkDescriptorSetAllocateInfo descriptorSetAllocateInfo(MemoryStack stack, long descriptorPool, LongBuffer setLayouts)
 	{
@@ -415,7 +429,7 @@ public class VulkanUtils {
 	 * @param buffer NULL_HANDLE or the buffer resource
 	 * @param offset the offset in bytes from the start of buffer. Access to buffer memory via this descriptor uses addressing that is relative to this starting offset
 	 * @param range the size in bytes that is used for this descriptor update, or WHOLE_SIZE to use the range from offset to the end of the buffer
-	 * @return
+	 * @return a new buffer of {@link VkDescriptorBufferInfo}s in the stack
 	 */
 	public static VkDescriptorBufferInfo.Buffer descriptorBufferInfo(MemoryStack stack, long buffer, long offset, long range)
 	{

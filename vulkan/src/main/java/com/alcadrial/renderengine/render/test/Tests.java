@@ -16,6 +16,7 @@ import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
 
+import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kroperties.Property;
@@ -29,6 +30,7 @@ import com.alcadrial.renderengine.render.VertexAccumulator;
 import com.alcadrial.renderengine.render.VertexAccumulator.VertexResult;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
+import com.alcadrial.renderengine.render.buffer.UniformBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.util.Properties;
@@ -95,6 +97,8 @@ public class Tests {
 	private static Renderer renderer;
 	private static VertexBuffer vertexBuffer;
 	private static IndexBuffer indexBuffer;
+	private static float f;
+	private static int i;
 	
 	public static void start()
 	{
@@ -104,10 +108,10 @@ public class Tests {
 		
 		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueGraphicsFamilyProperties() != null);
 		vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
-		vulkan.getDevice().initializeVma();
+		vulkan.createDevice();
 		
 		Window window = vulkan.getWindow();
-		window.assignPhysicalDevice(vulkan.getPhysicalDevice());
+		window.assignDevice(vulkan.getDevice());
 		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
 			System.out.println(iconified ? "Iconified" : "Restored");
@@ -124,6 +128,7 @@ public class Tests {
 		window.setCallback((GLFWWindowMaximizeCallbackI) (w, maximized) -> {
 			System.out.println(maximized ? "Maximized" : "Restored");
 		});
+		
 		Vector2i[] oldPos = new Vector2i[] {Vector2i.of(0, 0)};
 		Vector2f[] oldMousePos = new Vector2f[] {Vector2f.of(0, 0), Vector2f.of(0, 0)};
 		boolean[] pressing = new boolean[2];
@@ -146,9 +151,9 @@ public class Tests {
 		try
 		{
 			vertexShader = new Shader(getFile("shader.vert"), getFile("shader.vert.json"));
-			if (vertexShader.compile().hasErrors()) throw new IOException("Shader " + vertexShader.getFile() + " has errors");
+			if (!vertexShader.isCompilationSuccessfull()) throw new IOException("Shader " + vertexShader.getFile() + " has errors");
 			fragmentShader = new Shader(getFile("shader.frag"), getFile("shader.frag.json"));
-			if (fragmentShader.compile().hasErrors()) throw new IOException("Shader " + fragmentShader.getFile() + " has errors");
+			if (!fragmentShader.isCompilationSuccessfull()) throw new IOException("Shader " + fragmentShader.getFile() + " has errors");
 		}
 		catch (IOException e)
 		{
@@ -158,13 +163,21 @@ public class Tests {
 		}
 		Builder builder = Renderer.create();
 		builder.vertexShader(vertexShader).fragmentShader(fragmentShader);
+		builder.cullMode(VK10.VK_CULL_MODE_NONE);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
+		builder.lineWidth(2F);
 		renderer = builder.build(window, vulkan.getDevice());
+		//renderer.startModificationPlan().lineWidth(3F).submit();
 		
 		vertexBuffer = new VertexBuffer(56);
 		indexBuffer = new IndexBuffer(15);
 		renderer.setVertexBuffer(vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
+		for (UniformBuffer uniformBuffer : renderer.getUniformBuffers())
+		{
+			uniformBuffer.set("TRANSFORMATION", new Matrix4f().orthographic(window.getWidth(), window.getHeight()));
+			uniformBuffer.updateDescriptorSets();
+		}
 		
 		VertexAccumulator vertexAccumulator = renderer.accumulate();
 		VertexResult result0 = vertexAccumulator.vertex(-200, 0, 0).color(0, 255, 0, 255).end();
@@ -191,6 +204,16 @@ public class Tests {
 			result5.getIndex(), result9.getIndex(), result8.getIndex(),
 		});
 		indexBuffer.sendToGpu();
+		
+		f = 1;
+		i = 0;
+		
+		//Renderer.create().vertexShader(vertexShader).build(window, vulkan.getDevice()).close();
+		//Renderer.create().vertexShader(vertexShader).build(window, vulkan.getDevice()).close();
+		//Renderer.create().vertexShader(vertexShader).build(window, vulkan.getDevice()).close();
+		//Renderer.create().vertexShader(vertexShader).build(window, vulkan.getDevice()).close();
+		//Renderer.create().vertexShader(vertexShader).build(window, vulkan.getDevice()).close();
+		//Renderer.create().vertexShader(vertexShader).build(window, vulkan.getDevice()).close();
 	}
 	
 	public static void loop()
@@ -201,6 +224,13 @@ public class Tests {
 		
 		while (!window.shouldClose())
 		{
+			if (i++ == 10)
+			{
+				f += 0.1F;
+				if (f > 5) f = 1;
+				//renderer.startModificationPlan().lineWidth(f).submit();
+				i = 0;
+			}
 			window.pollEvents();
 			renderer.draw(null);
 			window.update();
@@ -218,11 +248,30 @@ public class Tests {
 		RenderEngine.terminate();
 	}
 	
+	private static final String[] SEVERITIES = new String[] {"UNKNOWN", "VERBOSE", "INFO", "WARNING", "ERROR"};
+	private static final String[] TYPES = new String[] {"UNKNOWN", "GENERAL", "VALIDATION", "PERFORMANCE"};
+	
 	public static int debugCallback(int messageSeverity, int messageType, long callbackDataId, long userDataId)
 	{
 		VkDebugUtilsMessengerCallbackDataEXT callbackData = VkDebugUtilsMessengerCallbackDataEXT.create(callbackDataId);
 		
-		System.out.println("[Vulkan debug] " + callbackData.pMessageString());
+		int i = switch (messageSeverity)
+		{
+			case 0x0001 -> 1;
+			case 0x0010 -> 2;
+			case 0x0100 -> 3;
+			case 0x1000 -> 4;
+			default -> 0;
+		};
+		int j = switch (messageType)
+		{
+			case 0b001 -> 1;
+			case 0b010 -> 2;
+			case 0b100 -> 3;
+			default -> 0;
+		};
+		
+		System.out.println("[Vulkan debug/" + SEVERITIES[i] + " " + TYPES[j] + "] " + callbackData.pMessageString());
 		
 		return VK10.VK_FALSE;
 	}

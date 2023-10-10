@@ -5,6 +5,11 @@ import org.lwjgl.vulkan.VK10;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.util.LongDeviceResource;
 
+/**
+ * A sequence of operation that must be executed in order.
+ * 
+ * @author Alcadrial
+ */
 public abstract class Pipeline extends LongDeviceResource {
 	
 	protected PipelineLayout layout;

@@ -25,7 +25,7 @@ import org.lwjgl.system.MemoryStack;
 
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.renderengine.render.PhysicalDevice;
+import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Surface;
 import com.alcadrial.renderengine.render.util.Pair;
@@ -62,11 +62,11 @@ public class Window extends VulkanResource<Long> {
 		resizeActions.add(action);
 	}
 	
-	public void assignPhysicalDevice(PhysicalDevice physicalDevice)
+	public void assignDevice(Device device)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			surface.init(physicalDevice, stack);
+			surface.init(device, stack);
 		}
 	}
 	
@@ -77,7 +77,7 @@ public class Window extends VulkanResource<Long> {
 		//	 GLFW.glfwSetCursorEnterCallback(id, i);
 		//	 GLFW.glfwSetCursorPosCallback(id, i);
 		//	 GLFW.glfwSetDropCallback(id, i);
-		//	GLFW.glfwSetKeyCallback(id, i);
+		//	GLFW.glfwSetKeyCallback(id, i); 
 		//	 GLFW.glfwSetMouseButtonCallback(id, i);
 		//	 GLFW.glfwSetScrollCallback(id, i);
 		GLFW.glfwSetWindowCloseCallback(vk, w -> onHide());

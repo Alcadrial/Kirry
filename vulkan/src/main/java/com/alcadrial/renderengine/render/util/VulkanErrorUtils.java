@@ -1,9 +1,14 @@
 package com.alcadrial.renderengine.render.util;
 
+import org.lwjgl.vulkan.EXTDebugReport;
 import org.lwjgl.vulkan.EXTFullScreenExclusive;
+import org.lwjgl.vulkan.EXTImageCompressionControl;
+import org.lwjgl.vulkan.EXTShaderObject;
 import org.lwjgl.vulkan.KHRDisplaySwapchain;
 import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.KHRSwapchain;
+import org.lwjgl.vulkan.KHRVideoEncodeQueue;
+import org.lwjgl.vulkan.KHRVideoQueue;
 import org.lwjgl.vulkan.NVGLSLShader;
 import org.lwjgl.vulkan.VK13;
 
@@ -55,11 +60,6 @@ public class VulkanErrorUtils {
 		return pointer;
 	}
 	
-	public static void printError(int error)
-	{
-		if (error < 0) System.out.println(getErrorString(error));
-	}
-	
 	public static void assertNoError(int error, String details)
 	{
 		if (error < 0) throw new AssertionError(details + ": " + getErrorString(error));
@@ -86,18 +86,37 @@ public class VulkanErrorUtils {
 			case VK13.VK_ERROR_TOO_MANY_OBJECTS -> "ERROR TOO MANY OBJECTS";
 			case VK13.VK_ERROR_FORMAT_NOT_SUPPORTED -> "ERROR FORMAT NOT SUPPORTED";
 			case VK13.VK_ERROR_FRAGMENTED_POOL -> "ERROR FRAGMENTED POOL";
-			case KHRSurface.VK_ERROR_SURFACE_LOST_KHR -> "VK_ERROR_SURFACE_LOST_KHR";
-			case KHRSurface.VK_ERROR_NATIVE_WINDOW_IN_USE_KHR -> "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
-			case KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR -> "VK_ERROR_OUT_OF_DATE_KHR";
-			case KHRDisplaySwapchain.VK_ERROR_INCOMPATIBLE_DISPLAY_KHR -> "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
-			case NVGLSLShader.VK_ERROR_INVALID_SHADER_NV -> "VK_ERROR_INVALID_SHADER_NV";
 			case VK13.VK_ERROR_OUT_OF_POOL_MEMORY -> "VK_ERROR_OUT_OF_POOL_MEMORY";
 			case VK13.VK_ERROR_INVALID_EXTERNAL_HANDLE -> "VK_ERROR_INVALID_EXTERNAL_HANDLE";
 			case VK13.VK_ERROR_FRAGMENTATION -> "VK_ERROR_FRAGMENTATION";
 			case VK13.VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS -> "VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS";
+		
+			case KHRSurface.VK_ERROR_SURFACE_LOST_KHR -> "VK_ERROR_SURFACE_LOST_KHR";
+			case KHRSurface.VK_ERROR_NATIVE_WINDOW_IN_USE_KHR -> "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
+		
+			case KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR -> "ERROR OUT OF DATE KHR";
+		
+			case KHRDisplaySwapchain.VK_ERROR_INCOMPATIBLE_DISPLAY_KHR -> "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
+		
+			case NVGLSLShader.VK_ERROR_INVALID_SHADER_NV -> "VK_ERROR_INVALID_SHADER_NV";
+		
 			case EXTFullScreenExclusive.VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT -> "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
 		
-			default -> "UNKNOWN ERROR";
+			case EXTDebugReport.VK_ERROR_VALIDATION_FAILED_EXT -> "VK_ERROR_VALIDATION_FAILED_EXT";
+			case EXTImageCompressionControl.VK_ERROR_COMPRESSION_EXHAUSTED_EXT -> "VK_ERROR_COMPRESSION_EXHAUSTED_EXT";
+		
+			case KHRVideoQueue.VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR -> "VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR";
+			case KHRVideoQueue.VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR -> "VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR";
+			case KHRVideoQueue.VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR -> "VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR";
+			case KHRVideoQueue.VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR -> "VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR";
+			case KHRVideoQueue.VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR -> "VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR";
+			case KHRVideoQueue.VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR -> "VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR";
+			case KHRVideoEncodeQueue.VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR -> "VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR";
+		
+			case EXTShaderObject.VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT -> "VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT";
+		
+			case VK13.VK_ERROR_UNKNOWN -> "UNKNOWN ERROR";
+			default -> "UNKNOWN ERROR " + error;
 		};
 	}
 	

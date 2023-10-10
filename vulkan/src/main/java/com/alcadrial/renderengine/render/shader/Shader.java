@@ -5,6 +5,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -17,6 +19,7 @@ import com.google.gson.stream.JsonReader;
 public class Shader {
 	
 	public static final File GLSLC = new File(new File(Properties.SHADER_COMPILER_PATH.getValue()), "glslc");
+	
 	private File file;
 	private ShaderType type;
 	private String[] code;
@@ -24,6 +27,8 @@ public class Shader {
 	
 	private String entryPoint;
 	private Map<ShaderInput, Integer> inputs;
+	
+	private List<ShaderUniformBlock> uniformBlocks;
 	
 	/**
 	 * DataFile must be a json file as follows:
@@ -36,6 +41,18 @@ public class Shader {
 	 *             "location": 0,                     // The location of the shader's input variable [REQUIRED]
 	 *             "type": "vec4",                    // The type of the shader's input variable     [REQUIRED]
 	 *             "name": "color"                    // The name of the shader's input variable     [REQUIRED]
+	 *         }
+	 *     ],
+	 *     "uniformsBlocks": [                        // A list of 0 or more uniform blocks          [REQUIRED]
+	 *         {
+	 *             "binding": 0,                      // The binding of the block                    [REQUIRED]
+	 *             "name": "block"                    // The name of the block                       [OPTIONAL]
+	 *             "variables": [                     // A list of uniform variables                 [REQUIRED]
+	 *                 {
+	 *                     "type": "mat4",            // The type of the uniform variable            [REQUIRED]
+	 *                     "name": "TRANSFORMATION"   // The name of the uniform variable            [REQUIRED]
+	 *                 }
+	 *             ]
 	 *         }
 	 *     ]
 	 * }
@@ -63,12 +80,14 @@ public class Shader {
 					{
 						if (inputs != null) inputs.clear();
 						inputs = new LinkedHashMap<>();
+						
 						reader.beginArray();
 						while (reader.hasNext())
 						{
 							Integer location = null;
 							ShaderInputType type = null;
 							String name = null;
+							
 							reader.beginObject();
 							while (reader.hasNext())
 							{
@@ -89,6 +108,65 @@ public class Shader {
 						}
 						reader.endArray();
 					}
+					case "uniformBlocks" ->
+					{
+						if (uniformBlocks != null) uniformBlocks.clear();
+						uniformBlocks = new LinkedList<>();
+						
+						reader.beginArray();
+						while (reader.hasNext())
+						{
+							Integer binding = null;
+							String name = null;
+							List<ShaderUniform> uniforms = null;
+							
+							reader.beginObject();
+							while (reader.hasNext())
+							{
+								switch (reader.nextName())
+								{
+									case "binding" -> binding = reader.nextInt();
+									case "name" -> name = reader.nextString();
+									case "variables" ->
+									{
+										if (uniforms != null) uniforms.clear();
+										uniforms = new LinkedList<>();
+										
+										reader.beginArray();
+										while (reader.hasNext())
+										{
+											ShaderInputType type = null;
+											String variableName = null;
+											
+											reader.beginObject();
+											while (reader.hasNext())
+											{
+												switch (reader.nextName())
+												{
+													case "type" -> type = ShaderInputType.of(reader.nextString());
+													case "name" -> variableName = reader.nextString();
+													default -> reader.skipValue();
+												}
+											}
+											if (type == null) throw new IOException(missing(reader, "type"));
+											if (variableName == null) throw new IOException(missing(reader, "name"));
+											reader.endObject();
+											
+											uniforms.add(new ShaderUniform(type, variableName));
+										}
+										reader.endArray();
+									}
+									default -> reader.skipValue();
+								}
+							}
+							if (binding == null) throw new IOException(missing(reader, "binding"));
+							if (uniforms == null) throw new IOException(missing(reader, "uniforms"));
+							reader.endObject();
+							
+							uniformBlocks.add(new ShaderUniformBlock(binding, name, Set.copyOf(uniforms)));
+						}
+						reader.endArray();
+					}
 					default -> reader.skipValue();
 				}
 			}
@@ -100,11 +178,18 @@ public class Shader {
 			if (type != ShaderType.fromExtension(FileUtils.getExtension(file))) throw new IOException("Shader " + file + " extension doesn't match the type (" + type.getExtension() + ") in " + dataFile);
 		}
 		else type = ShaderType.fromExtension(FileUtils.getExtension(file));
-		entryPoint = VulkanErrorUtils.nonNull(entryPoint);
-		inputs = VulkanErrorUtils.nonNull(inputs);
+		entryPoint = require(entryPoint, "entryPoint");
+		inputs = require(inputs, "inputs");
+		uniformBlocks = require(uniformBlocks, "uniformBlocks");
 	}
 	
 	//public Shader(String[] code, Reader data) throws IOException
+	
+	private <T> T require(T t, String name) throws IOException
+	{
+		if (t == null) throw new IOException("Missing " + name);
+		return t;
+	}
 	
 	private String missing(JsonReader reader, String object)
 	{
@@ -148,6 +233,11 @@ public class Shader {
 		return Optional.ofNullable(compiled);
 	}
 	
+	public boolean isCompilationSuccessfull()
+	{
+		return !getOrCompile().hasErrors();
+	}
+	
 	public File getFile()
 	{
 		return file;
@@ -171,5 +261,10 @@ public class Shader {
 	public Set<ShaderInput> getInputs()
 	{
 		return inputs.keySet();
+	}
+	
+	public List<ShaderUniformBlock> getUniformsBlocks()
+	{
+		return uniformBlocks;
 	}
 }

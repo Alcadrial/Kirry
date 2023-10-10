@@ -132,6 +132,10 @@ public class Vulkan implements AutoCloseable {
 		return threadData.validPhysicalDevices;
 	}
 	
+	/**
+	 * 
+	 * @return A list of all the available Physical Devices
+	 */
 	public List<PhysicalDevice> getAvailablePhysicalDevices()
 	{
 		synchronized (physicalDevicesMonitor)
@@ -141,9 +145,9 @@ public class Vulkan implements AutoCloseable {
 				try (MemoryStack stack = MemoryStack.stackPush())
 				{
 					int[] p = new int[1];
-					VK10.vkEnumeratePhysicalDevices(instance, p, null);
+					VulkanErrorUtils.assertNoError(VK10.vkEnumeratePhysicalDevices(instance, p, null), "Cannot list available physical devices");
 					PointerBuffer physicalDevicesArray = stack.mallocPointer(p[0]);
-					VK10.vkEnumeratePhysicalDevices(instance, p, physicalDevicesArray);
+					VulkanErrorUtils.assertNoError(VK10.vkEnumeratePhysicalDevices(instance, p, physicalDevicesArray), "Cannot list available physical devices");
 					
 					physicalDevices = new ArrayList<>(p[0]);
 					for (int i = 0; i < p[0]; i++)
@@ -157,10 +161,9 @@ public class Vulkan implements AutoCloseable {
 		return physicalDevices;
 	}
 	
-	public Device getDevice()
+	public void createDevice()
 	{
 		ThreadData threadData = getData();
-		if (closingDevice != null) return closingDevice;
 		if (threadData.device == null)
 		{
 			VulkanErrorUtils.nonNull(threadData.physicalDevice, "Physical device must be picked before calling getDevice using #pickPhysicalDevices");
@@ -180,6 +183,7 @@ public class Vulkan implements AutoCloseable {
 				queueCreateInfos.rewind();
 				
 				VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc(stack);
+				deviceFeatures.wideLines(true);
 				
 				VkDeviceCreateInfo createInfo = VkDeviceCreateInfo.calloc(stack);
 				
@@ -204,7 +208,12 @@ public class Vulkan implements AutoCloseable {
 				threadData.device.setPresentQueue(new Queue(threadData.device, threadData.physicalDevice.getQueueSurfaceFamilyIndex()));
 			}
 		}
-		return threadData.device;
+	}
+	
+	public Device getDevice()
+	{
+		if (closingDevice != null) return closingDevice;
+		return getData().device;
 	}
 	
 	public void swapBuffers()
@@ -229,7 +238,7 @@ public class Vulkan implements AutoCloseable {
 	
 	private ThreadData getData()
 	{
-		return data.computeIfAbsent(Thread.currentThread(), k -> new ThreadData());
+		return data.computeIfAbsent(Thread.currentThread(), t -> new ThreadData());
 	}
 	
 	@Override

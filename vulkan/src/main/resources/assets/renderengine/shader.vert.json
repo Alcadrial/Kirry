@@ -12,5 +12,17 @@
 			"type": "vec4",
 			"name": "color"
 		}
+	],
+	"uniformBlocks": [
+		{
+			"binding": 0,
+			"name": "U",
+			"variables": [
+				{
+					"type": "mat4",
+					"name": "TRANSFORMATION"
+				}
+			]
+		}
 	]
 }

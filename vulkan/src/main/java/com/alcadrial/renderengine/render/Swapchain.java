@@ -28,7 +28,13 @@ import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.util.LongDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
-public class SwapChain extends LongDeviceResource {
+/**
+ * Describes all the data and how is used during the entire rendering process
+ * and the operation of it.
+ * 
+ * @author Alcadrial
+ */
+public class Swapchain extends LongDeviceResource {
 	
 	private RenderPass renderPass;
 	private List<Long> images;
@@ -40,7 +46,7 @@ public class SwapChain extends LongDeviceResource {
 	private int activeCommandIndex;
 	private Vector2i maxSize;
 	
-	public SwapChain(Device device, Surface surface, RenderPass renderPass, VkSwapchainCreateInfoKHR createInfo)
+	public Swapchain(Device device, Surface surface, RenderPass renderPass, VkSwapchainCreateInfoKHR createInfo)
 	{
 		super(device);
 		this.renderPass = renderPass;
@@ -56,7 +62,7 @@ public class SwapChain extends LongDeviceResource {
 			createInfo.imageColorSpace(surface.getFormat().colorSpace());
 			createInfo.imageExtent(surface.getExtent());
 			createInfo.presentMode(surface.getMode());
-			createInfo.oldSwapchain(VK10.VK_NULL_HANDLE);
+			if (surface.getSwapchain() != null) createInfo.oldSwapchain(surface.getSwapchain().getVk());
 			
 			long[] p = new long[1];
 			VulkanErrorUtils.assertNoError(KHRSwapchain.vkCreateSwapchainKHR(device.getVk(), createInfo, null, p), "Failed to create swap chain");
@@ -111,7 +117,6 @@ public class SwapChain extends LongDeviceResource {
 		images = new ArrayList<>(p[0]);
 		
 		for (long image : p0) images.add(image);
-		System.out.println("Images count " + images.size());
 		
 		imageViews = new ArrayList<>(images.size());
 		frameBuffers = new ArrayList<>(images.size());
@@ -224,8 +229,6 @@ public class SwapChain extends LongDeviceResource {
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			surface.init(device.getPhysicalDevice(), stack);
-			
 			VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
 			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device.getPhysicalDevice().getVk(), surface.getSurface(), capabilities), "Failed to create swap chain");
 			createInfo.preTransform(capabilities.currentTransform());
@@ -247,6 +250,11 @@ public class SwapChain extends LongDeviceResource {
 	public void swapBuffer()
 	{
 		activeCommandIndex = (activeCommandIndex + 1) % 2;
+	}
+	
+	public RenderPass getRenderPass()
+	{
+		return renderPass;
 	}
 	
 	public List<Long> getImages()
