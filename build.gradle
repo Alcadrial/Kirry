@@ -16,7 +16,7 @@ switch (OperatingSystem.current()) {
 	case OperatingSystem.LINUX:
 		def osArch = System.getProperty("os.arch")
 		ext.lwjglNatives = osArch.startsWith("arm") || osArch.startsWith("aarch64")
-			? "natives-linux-${osArch.contains('64') || osArch.startsWith('armv8') ? 'arm64' : 'arm32'}"
+			? "natives-linux-${osArch.contains("64") || osArch.startsWith("armv8") ? "arm64" : "arm32"}"
 			: "natives-linux"
 		break
 	case OperatingSystem.MAC_OS:
@@ -25,7 +25,7 @@ switch (OperatingSystem.current()) {
 	case OperatingSystem.WINDOWS:
 		def osArch = System.getProperty("os.arch")
 		ext.lwjglNatives = osArch.contains("64")
-			? "natives-windows${osArch.startsWith('aarch64') ? '-arm64' : ''}"
+			? "natives-windows${osArch.startsWith("aarch64") ? "-arm64" : ""}"
 			: "natives-windows-x86"
 		break
 }
@@ -45,7 +45,7 @@ subprojects {
 	
 	javadoc {
 		options.tags("apiNote:a:API Note:", "implSpec:a:Implementation Requirements:", "implNote:a:Implementation Note:")
-		options.addBooleanOption('html5', true)
+		options.addBooleanOption("html5", true)
 	}
 	
 	compileJava.options.encoding = "UTF-8"
