@@ -4,6 +4,7 @@ import java.nio.LongBuffer;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.concurrent.Future;
+import java.util.function.Consumer;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
@@ -127,16 +128,62 @@ public class Device extends VulkanResource<VkDevice> {
 		destructionList.remove(resource);
 	}
 	
-	public void waitIdle()
+	public synchronized void waitIdle()
 	{
 		VK10.vkDeviceWaitIdle(vk);
 	}
 	
-	public Future<?> waitAsyncIdle(Runnable runnable)
+	public Future<?> waitAsyncIdle(Runnable action)
 	{
 		return RenderEngine.getExecutor().submit(() -> {
-			VK10.vkDeviceWaitIdle(vk);
-			runnable.run();
+			waitIdle();
+			action.run();
+		});
+	}
+	
+	public Future<?> waitAsyncIdle(Consumer<Device> action)
+	{
+		return RenderEngine.getExecutor().submit(() -> {
+			waitIdle();
+			action.accept(this);
+		});
+	}
+	
+	/**
+	 * 
+	 * @param fences
+	 * @renderengine.vulkan 1.2
+	 */
+	public synchronized void waitForFences(long... fences)
+	{
+		while (VK12.vkWaitForFences(vk, fences, true, 0xFFFFFFFF) == VK10.VK_TIMEOUT);
+	}
+	
+	/**
+	 * 
+	 * @param action
+	 * @param fences
+	 * @renderengine.vulkan 1.2
+	 */
+	public synchronized Future<?> waitAsyncForFences(Runnable action, long... fences)
+	{
+		return RenderEngine.getExecutor().submit(() -> {
+			waitForFences(fences);
+			action.run();
+		});
+	}
+	
+	/**
+	 * 
+	 * @param action
+	 * @param fences
+	 * @renderengine.vulkan 1.2
+	 */
+	public synchronized Future<?> waitAsyncForFences(Consumer<Device> action, long... fences)
+	{
+		return RenderEngine.getExecutor().submit(() -> {
+			waitForFences(fences);
+			action.accept(this);
 		});
 	}
 	

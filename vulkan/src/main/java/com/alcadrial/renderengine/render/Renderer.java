@@ -5,6 +5,7 @@ import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -38,6 +39,7 @@ import com.alcadrial.renderengine.render.shader.ShaderUniform;
 import com.alcadrial.renderengine.render.shader.ShaderUniformBlock;
 import com.alcadrial.renderengine.render.util.DataAccumulator;
 import com.alcadrial.renderengine.render.util.Pair;
+import com.alcadrial.renderengine.render.util.UnsafeVulkanUtils;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 import com.alcadrial.renderengine.render.window.Window;
@@ -49,6 +51,7 @@ public class Renderer implements AutoCloseable {
 		return new Builder();
 	}
 	
+	private ModificationPlan modificationPlan;
 	private Device device;
 	private Window targetWindow;
 	private Swapchain swapchain;
@@ -61,8 +64,9 @@ public class Renderer implements AutoCloseable {
 	private long descriptorPool;
 	private List<UniformBuffer> uniformBuffers;
 	
-	private Renderer(Window targetWindow, Device device, Swapchain swapchain, GraphicsPipeline graphicsPipeline, List<Long> descriptorSetLayouts, long[] descriptorSets, long descriptorPool, List<UniformBuffer> uniformBuffers)
+	private Renderer(Builder builder, Window targetWindow, Device device, Swapchain swapchain, GraphicsPipeline graphicsPipeline, List<Long> descriptorSetLayouts, long[] descriptorSets, long descriptorPool, List<UniformBuffer> uniformBuffers)
 	{
+		modificationPlan = new ModificationPlan(builder);
 		this.device = device;
 		this.targetWindow = targetWindow;
 		this.swapchain = swapchain;
@@ -86,6 +90,11 @@ public class Renderer implements AutoCloseable {
 	
 	public synchronized void draw(Matrix4f matrix)
 	{
+		if (targetWindow.getWidth() == 0 || targetWindow.getHeight() == 0)
+		{
+			return;
+		}
+		
 		CommandBufferData commandBuffer = swapchain.startRegisteringCommands(null, null, clearColor);
 		commandBuffer.bindPipeline(graphicsPipeline);
 		commandBuffer.bindVertexBuffers(0, vertexBuffer);
@@ -96,7 +105,7 @@ public class Renderer implements AutoCloseable {
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			IntBuffer p = stack.callocInt(1);
+			IntBuffer p = stack.mallocInt(1);
 			
 			int result = KHRSwapchain.vkAcquireNextImageKHR(device.getVk(), swapchain.getVk(), Integer.MAX_VALUE, commandBuffer.getImageAvailableSemaphore(), 0, p);
 			if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR)
@@ -120,10 +129,8 @@ public class Renderer implements AutoCloseable {
 			}
 			VulkanErrorUtils.assertNoError(result, "Error acquiring next image");
 			
-			LongBuffer p0 = stack.callocLong(1);
-			p0.put(0, commandBuffer.getImageAvailableSemaphore());
-			LongBuffer p1 = stack.callocLong(1);
-			p1.put(0, commandBuffer.getRenderFinishedSemaphore());
+			LongBuffer p0 = stack.longs(commandBuffer.getImageAvailableSemaphore());
+			LongBuffer p1 = stack.longs(commandBuffer.getRenderFinishedSemaphore());
 			
 			VkSubmitInfo submitInfo = VkSubmitInfo.calloc(stack);
 			submitInfo.sType(VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO);
@@ -134,7 +141,7 @@ public class Renderer implements AutoCloseable {
 			submitInfo.pCommandBuffers(VulkanUtils.toAddressBuffer(stack, commandBuffer));
 			
 			commandBuffer.resetFence();
-			
+			device.getGraphicsQueue().waitIdle();
 			VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(device.getGraphicsQueue().getVk(), submitInfo, commandBuffer.getFence()), "Failed to submit draw command buffer");// FAIL
 			
 			VkPresentInfoKHR presentInfo = VkPresentInfoKHR.calloc(stack);
@@ -172,7 +179,13 @@ public class Renderer implements AutoCloseable {
 	
 	public ModificationPlan startModificationPlan()
 	{
-		return new ModificationPlan();
+		modificationPlan.pushStack();
+		return modificationPlan;
+	}
+	
+	public ModificationPlan getCurrentModificationPlan()
+	{
+		return modificationPlan;
 	}
 	
 	public void setClearColor(Color clearColor)
@@ -202,7 +215,13 @@ public class Renderer implements AutoCloseable {
 	
 	public class ModificationPlan extends RendererDataAccumulator<ModificationPlan> {
 		
-		private boolean isSubmitted;
+		private boolean isActive;
+		
+		private ModificationPlan(RendererDataAccumulator<?> defaultSource)
+		{
+			super(defaultSource);
+			isActive = false;
+		}
 		
 		@Override
 		public ModificationPlan device(@Nullable Device device)
@@ -218,112 +237,124 @@ public class Renderer implements AutoCloseable {
 		
 		public void submit()
 		{
-			if (!isSubmitted)
+			if (isActive)
 			{
 				synchronized (Renderer.this)
 				{
-					if (!isSubmitted)
-					{
-						isSubmitted = true;
-						submit0();
-					}
+					if (isActive) submit0();
 				}
 			}
 		}
 		
+		private void pushStack()
+		{
+			stack.push();
+			isActive = true;
+		}
+		
 		private void submit0()
 		{
-			Device newDevice = device;
-			Window newTargetWindow = targetWindow;
-			if (device == null) device = Renderer.this.device;
-			if (targetWindow == null) targetWindow = Renderer.this.targetWindow;
+			boolean deviceModified = device.isModified();
+			boolean targetWindowModified = targetWindow.isModified();
 			
-			physicalDevice = device.getPhysicalDevice();
-			surface = orElse(newTargetWindow, targetWindow).getSurface();
+			physicalDevice.set(device.require().getPhysicalDevice());
+			surface.set(targetWindow.require().getSurface());
 			
-			if (newDevice != null || newTargetWindow != null)
+			if (deviceModified || targetWindowModified)
 			{
-				renderPass = createRenderPass();
+				renderPass.set(createRenderPass());
 				
 				VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
-				VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.getVk(), surface.getSurface(), capabilities), "Failed to create swap chain");
+				VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.get().getVk(), surface.get().getSurface(), capabilities), "Failed to create swap chain");
 				VulkanErrorUtils.assertStatement(capabilities.maxImageCount() >= 2, "Insufficient images for double-buffer");
 				
-				swapchain = createSwapchain();
-			}
-			else
-			{
-				swapchain = Renderer.this.swapchain;
-				renderPass = swapchain.getRenderPass();
+				swapchain.set(createSwapchain());
 			}
 			
-			if (newDevice != null || vertexShader != null || tessellationControlShader != null || tessellationEvaluationShader != null || geometryShader != null || fragmentShader != null || computeShader != null)
+			if (deviceModified || vertexShader.isModified() || tessellationControlShader.isModified() || tessellationEvaluationShader.isModified() || geometryShader.isModified() || fragmentShader.isModified() || computeShader.isModified())
 			{
-				vertexShader = orElse(vertexShader, Renderer.this.graphicsPipeline.getVertexShader());
-				tessellationControlShader = orElse(tessellationControlShader, Renderer.this.graphicsPipeline.getTessellationControlShader().orElse(null));
-				tessellationEvaluationShader = orElse(tessellationEvaluationShader, Renderer.this.graphicsPipeline.getTessellationEvaluationShader().orElse(null));
-				geometryShader = orElse(geometryShader, Renderer.this.graphicsPipeline.getGeometryShader().orElse(null));
-				fragmentShader = orElse(fragmentShader, Renderer.this.graphicsPipeline.getFragmentShader().orElse(null));
-				computeShader = orElse(computeShader, Renderer.this.graphicsPipeline.getComputeShader().orElse(null));
+				createUniformBuffers();
+				
+				VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
+				pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayouts.get(0), descriptorSetLayouts.get(1)));
+				
+				pipelineLayout.set(new PipelineLayout(device.get(), pipelineLayoutInfo));
+				
+				List<Long> descriptorSetLayouts0 = Renderer.this.descriptorSetLayouts;
+				long descriptorPool0 = Renderer.this.descriptorPool;
+				
+				device.get().waitAsyncIdle(device0 -> {
+					for (long l : descriptorSetLayouts0) VK10.vkDestroyDescriptorSetLayout(device0.getVk(), l, null);
+					VK10.vkDestroyDescriptorPool(device0.getVk(), descriptorPool0, null);
+				});
+				
+				Renderer.this.descriptorSetLayouts = descriptorSetLayouts;
+				Renderer.this.descriptorSets = descriptorSets;
+				Renderer.this.descriptorPool = descriptorPool;
+				
+				Iterator<UniformBuffer> i = uniformBuffers.iterator();
+				Iterator<UniformBuffer> j = Renderer.this.uniformBuffers.iterator();
+				
+				for (UniformBuffer u0, u1; i.hasNext();)
+				{
+					u0 = i.next();
+					u1 = j.next();
+					u0.asByteBuffer().put(u1.asByteBuffer());
+					u0.updateDescriptorSets();
+				}
+				Renderer.this.uniformBuffers = uniformBuffers;
+			}
+			
+			Renderer.this.graphicsPipeline.getDevice().waitAsyncIdle(Renderer.this.graphicsPipeline::close);
+			graphicsPipeline.set(createGraphicsPipeline());
+			
+			Renderer.this.device = device.get();
+			Renderer.this.targetWindow = targetWindow.get();
+			Renderer.this.swapchain = swapchain.get();
+			Renderer.this.graphicsPipeline = graphicsPipeline.get();
+			
+			stack.pop();
+			isActive = false;
+		}
+	}
+	
+	public static class Builder extends RendererDataAccumulator<Builder> {
+		
+		private Builder()
+		{}
+		
+		public Renderer build(Window targetWindow, Device device)
+		{
+			try
+			{
+				this.device.setNonNull(device);
+				this.targetWindow.setNonNull(targetWindow);
+				physicalDevice.set(device.getPhysicalDevice());
+				surface.set(targetWindow.getSurface());
+				
+				renderPass.set(createRenderPass());
+				
+				VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
+				VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.get().getVk(), surface.get().getSurface(), capabilities), "Failed to create swap chain");
+				VulkanErrorUtils.assertStatement(capabilities.maxImageCount() >= 2, "Insufficient images for double-buffer");
+				
+				swapchain.set(createSwapchain());
 				
 				createUniformBuffers();
 				
 				VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
 				pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayouts.get(0), descriptorSetLayouts.get(1)));
 				
-				pipelineLayout = new PipelineLayout(device, pipelineLayoutInfo);
+				pipelineLayout.set(new PipelineLayout(device, pipelineLayoutInfo));
 				
-				Renderer.this.descriptorSetLayouts = descriptorSetLayouts;
-				Renderer.this.descriptorSets = descriptorSets;
-				Renderer.this.descriptorPool = descriptorPool;
-				Renderer.this.uniformBuffers = uniformBuffers;
+				graphicsPipeline.set(createGraphicsPipeline());
+				
+				return new Renderer(this, targetWindow, device, swapchain.get(), graphicsPipeline.get(), descriptorSetLayouts, descriptorSets, descriptorPool, uniformBuffers);
 			}
-			else
+			finally
 			{
-				vertexShader = orElse(vertexShader, Renderer.this.graphicsPipeline.getVertexShader());
-				pipelineLayout = Renderer.this.graphicsPipeline.getLayout();
+				close();
 			}
-			
-			Renderer.this.graphicsPipeline.getDevice().waitAsyncIdle(Renderer.this.graphicsPipeline::close);
-			graphicsPipeline = createGraphicsPipeline();
-			
-			Renderer.this.device = device;
-			Renderer.this.targetWindow = targetWindow;
-			Renderer.this.swapchain = swapchain;
-			Renderer.this.graphicsPipeline = graphicsPipeline;
-			close();
-		}
-	}
-	
-	public static class Builder extends RendererDataAccumulator<Builder> {
-		
-		public Renderer build(Window targetWindow, Device device)
-		{
-			this.device = orElseThrow(device);
-			this.targetWindow = orElseThrow(targetWindow);
-			physicalDevice = device.getPhysicalDevice();
-			surface = targetWindow.getSurface();
-			
-			renderPass = createRenderPass();
-			
-			VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
-			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.getVk(), surface.getSurface(), capabilities), "Failed to create swap chain");
-			VulkanErrorUtils.assertStatement(capabilities.maxImageCount() >= 2, "Insufficient images for double-buffer");
-			
-			swapchain = createSwapchain();
-			
-			createUniformBuffers();
-			
-			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
-			pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayouts.get(0), descriptorSetLayouts.get(1)));
-			
-			pipelineLayout = new PipelineLayout(device, pipelineLayoutInfo);
-			
-			graphicsPipeline = createGraphicsPipeline();
-			
-			close();
-			
-			return new Renderer(targetWindow, device, swapchain, graphicsPipeline, descriptorSetLayouts, descriptorSets, descriptorPool, uniformBuffers);
 		}
 	}
 	
@@ -334,29 +365,38 @@ public class Renderer implements AutoCloseable {
 		protected long descriptorPool;
 		protected List<UniformBuffer> uniformBuffers;
 		
+		protected RendererDataAccumulator()
+		{}
+		
+		protected RendererDataAccumulator(DataAccumulator<?> defaultSource)
+		{
+			super(defaultSource);
+		}
+		
 		protected void createUniformBuffers()
 		{
 			System.out.println("Creating uniform buffers");
+			device.require();
 			
 			VkDescriptorPoolCreateInfo poolInfo = VulkanUtils.descriptorPoolCreateInfo(stack, VulkanUtils.descriptorPoolSize(stack, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2));//static
 			poolInfo.maxSets(2);
 			
 			long[] p0 = new long[1];
 			
-			VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorPool(device.getVk(), poolInfo, null, p0), "failed to create descriptor pool!");
+			VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorPool(device.get().getVk(), poolInfo, null, p0), "failed to create descriptor pool!");
 			
 			descriptorPool = p0[0];
 			
 			Map<Integer, Pair<Integer, Set<ShaderUniform>>> bindingFlags = new HashMap<>();
-			extractData(vertexShader, bindingFlags);
-			extractData(tessellationControlShader, bindingFlags);
-			extractData(tessellationEvaluationShader, bindingFlags);
-			extractData(geometryShader, bindingFlags);
-			extractData(fragmentShader, bindingFlags);
-			extractData(computeShader, bindingFlags);
+			extractData(vertexShader.require(), bindingFlags);
+			extractData(tessellationControlShader.get(), bindingFlags);
+			extractData(tessellationEvaluationShader.get(), bindingFlags);
+			extractData(geometryShader.get(), bindingFlags);
+			extractData(fragmentShader.get(), bindingFlags);
+			extractData(computeShader.get(), bindingFlags);
 			
 			int uniformBufferSize = 0;
-			VkDescriptorSetLayoutBinding.Buffer uniformLayoutBindings = VulkanUtils.descriptorSetLayoutBinding(stack, bindingFlags.size(), VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);//static
+			VkDescriptorSetLayoutBinding.Buffer uniformLayoutBindings = UnsafeVulkanUtils.descriptorSetLayoutBinding(stack, bindingFlags.size(), VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);//static
 			for (Entry<Integer, Pair<Integer, Set<ShaderUniform>>> e : bindingFlags.entrySet())
 			{
 				VkDescriptorSetLayoutBinding uniformLayoutBinding = uniformLayoutBindings.get();
@@ -372,7 +412,7 @@ public class Renderer implements AutoCloseable {
 			descriptorSetLayouts = new ArrayList<>(2);
 			for (int i = 0; i < 2; i++)
 			{
-				VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorSetLayout(device.getVk(), VulkanUtils.descriptorSetLayoutInfo(stack, 0, uniformLayoutBindings), null, p), "failed to create descriptor set layout!");
+				VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorSetLayout(device.get().getVk(), VulkanUtils.descriptorSetLayoutInfo(stack, 0, uniformLayoutBindings), null, p), "failed to create descriptor set layout!");
 				
 				descriptorSetLayouts.add(p.get());
 			}
@@ -380,7 +420,7 @@ public class Renderer implements AutoCloseable {
 			
 			descriptorSets = new long[2];
 			
-			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), VulkanUtils.descriptorSetAllocateInfo(stack, descriptorPool, p), descriptorSets), "failed to allocate descriptor sets!");
+			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.get().getVk(), VulkanUtils.descriptorSetAllocateInfo(stack, descriptorPool, p), descriptorSets), "failed to allocate descriptor sets!");
 			
 			uniformBuffers = new ArrayList<>(2);
 			

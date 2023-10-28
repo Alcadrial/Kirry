@@ -27,25 +27,25 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 		}
 	}
 	
-	public void sendToGpu()
+	public void sendToPhysicalDevice()
 	{
-		sendToGpu(0, size);
+		sendToPhysicalDevice(0, size);
 	}
 	
-	public synchronized void sendToGpu(long offset, long size)
+	public synchronized void sendToPhysicalDevice(long offset, long size)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			PointerBuffer p = stack.callocPointer(1);
-			VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(device.getVk(), VulkanUtils.commandBufferAllocateInfo(stack, device.getShortLivedCommandPool(), VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to send data to gpu");
+			VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(device.getVk(), VulkanUtils.commandBufferAllocateInfo(stack, device.getShortLivedCommandPool(), VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to send data to physical device");
 			VkCommandBuffer commandBuffer = new VkCommandBuffer(p.get(), device.getVk());
 			
-			VulkanErrorUtils.assertNoError(VK10.vkBeginCommandBuffer(commandBuffer, VulkanUtils.commandBufferBeginInfo(stack, VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)), "Failed to send data to gpu");
+			VulkanErrorUtils.assertNoError(VK10.vkBeginCommandBuffer(commandBuffer, VulkanUtils.commandBufferBeginInfo(stack, VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)), "Failed to send data to physical device");
 			VK10.vkCmdCopyBuffer(commandBuffer, vk, gpuVk, VulkanUtils.bufferCopy(stack, offset, offset, size));
-			VulkanErrorUtils.assertNoError(VK10.vkEndCommandBuffer(commandBuffer), "Failed to send data to gpu");
+			VulkanErrorUtils.assertNoError(VK10.vkEndCommandBuffer(commandBuffer), "Failed to send data to physical device");
 			
-			VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(device.getGraphicsQueue().getVk(), VulkanUtils.submitInfo(stack, commandBuffer), 0), "Failed to send data to gpu");
-			VulkanErrorUtils.assertNoError(VK10.vkQueueWaitIdle(device.getGraphicsQueue().getVk()), "Failed to send data to gpu");
+			VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(device.getGraphicsQueue().getVk(), VulkanUtils.submitInfo(stack, commandBuffer), 0), "Failed to send data to physical device");
+			VulkanErrorUtils.assertNoError(VK10.vkQueueWaitIdle(device.getGraphicsQueue().getVk()), "Failed to send data to physical device");
 			
 			VK10.vkFreeCommandBuffers(device.getVk(), device.getShortLivedCommandPool(), commandBuffer);
 			

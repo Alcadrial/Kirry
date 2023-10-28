@@ -33,4 +33,16 @@ public class IndexBuffer extends VulkanDoubleBuffer {
 	{
 		return VK10.VK_INDEX_TYPE_UINT32;
 	}
+	
+	@Override
+	public void sendToPhysicalDevice()
+	{
+		super.sendToPhysicalDevice(0, size);
+	}
+	
+	@Override
+	public synchronized void sendToPhysicalDevice(long offset, long size)
+	{
+		super.sendToPhysicalDevice(offset * 4, size * 4);
+	}
 }

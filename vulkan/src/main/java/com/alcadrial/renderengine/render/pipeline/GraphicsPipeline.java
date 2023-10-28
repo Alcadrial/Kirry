@@ -1,7 +1,6 @@
 package com.alcadrial.renderengine.render.pipeline;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -96,7 +95,7 @@ public class GraphicsPipeline extends Pipeline {
 		{
 			try
 			{
-				return new GraphicsPipeline(device, layout, orElse(autoCloseLayout, true), renderPass, orElse(autoCloseRenderPass, true), createInfo, vertexShader, Optional.ofNullable(tessellationControlShader), Optional.ofNullable(tessellationEvaluationShader), Optional.ofNullable(geometryShader), Optional.ofNullable(fragmentShader), Optional.ofNullable(computeShader));
+				return new GraphicsPipeline(device, layout, autoCloseLayout.orElse(true), renderPass, autoCloseRenderPass.orElse(true), createInfo, vertexShader.require("The vertex shader is required"), tessellationControlShader.asOptional(), tessellationEvaluationShader.asOptional(), geometryShader.asOptional(), fragmentShader.asOptional(), computeShader.asOptional());
 			}
 			finally
 			{
@@ -129,7 +128,7 @@ public class GraphicsPipeline extends Pipeline {
 		this.autoCloseLayout = autoCloseLayout;
 		this.renderPass = renderPass;
 		this.autoCloseRenderPass = autoCloseRenderPass;
-		this.vertexShader = Objects.requireNonNull(vertexShader, "The vertex shader is required");
+		this.vertexShader = vertexShader;
 		this.tessellationControlShader = tessellationControlShader;
 		this.tessellationEvaluationShader = tessellationEvaluationShader;
 		this.geometryShader = geometryShader;

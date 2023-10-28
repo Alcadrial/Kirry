@@ -1,9 +1,11 @@
 package com.alcadrial.renderengine.render.util;
 
+import java.lang.reflect.Field;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
 
 import org.lwjgl.system.MemoryStack;
@@ -51,29 +53,30 @@ import com.alcadrial.renderengine.render.window.Window;
 
 public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	
-	protected MemoryStack stack;
-	protected Boolean autoCloseLayout;
-	protected Boolean autoCloseRenderPass;
-	protected Shader shader;
-	protected Shader vertexShader;
-	protected Shader tessellationControlShader;
-	protected Shader tessellationEvaluationShader;
-	protected Shader geometryShader;
-	protected Shader fragmentShader;
-	protected Shader computeShader;
-	protected Window targetWindow;
-	protected Device device;
-	protected PhysicalDevice physicalDevice;
-	protected GraphicsPipeline graphicsPipeline;
-	protected PipelineLayout pipelineLayout;
-	protected FrameBuffer frameBuffer;
-	protected RenderPass renderPass;
-	protected Surface surface;
-	protected Swapchain swapchain;
-	protected VertexBuffer vertexBuffer;
-	protected IndexBuffer indexBuffer;
-	protected UniformBuffer uniformBuffer;
-	protected VkDescriptorSetLayoutBinding descriptorSetLayoutBinding;
+	protected final MemoryStack stack;
+	protected final Field[] elements;
+	protected DataElement<Boolean> autoCloseLayout;
+	protected DataElement<Boolean> autoCloseRenderPass;
+	protected DataElement<Shader> shader;
+	protected DataElement<Shader> vertexShader;
+	protected DataElement<Shader> tessellationControlShader;
+	protected DataElement<Shader> tessellationEvaluationShader;
+	protected DataElement<Shader> geometryShader;
+	protected DataElement<Shader> fragmentShader;
+	protected DataElement<Shader> computeShader;
+	protected DataElement<Window> targetWindow;
+	protected DataElement<Device> device;
+	protected DataElement<PhysicalDevice> physicalDevice;
+	protected DataElement<GraphicsPipeline> graphicsPipeline;
+	protected DataElement<PipelineLayout> pipelineLayout;
+	protected DataElement<FrameBuffer> frameBuffer;
+	protected DataElement<RenderPass> renderPass;
+	protected DataElement<Surface> surface;
+	protected DataElement<Swapchain> swapchain;
+	protected DataElement<VertexBuffer> vertexBuffer;
+	protected DataElement<IndexBuffer> indexBuffer;
+	protected DataElement<UniformBuffer> uniformBuffer;
+	protected DataElement<VkDescriptorSetLayoutBinding> descriptorSetLayoutBinding;
 	// VkPipelineColorBlendAttachmentState {
 	protected Integer colorWriteMask;
 	protected Boolean blendEnable;
@@ -85,25 +88,25 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected Float[] blendConstants;
 	// }
 	// VkPipelineMultisampleStateCreateInfo {
-	protected Integer rasterizationSamples;//extra pixel in rasterization
-	protected Boolean sampleShadingEnable;
-	protected Float minSampleShading;
-	protected Boolean alphaToOneEnable;
-	protected Boolean alphaToCoverageEnable;
-	protected int[] sampleMask;
+	protected DataElement<Integer> rasterizationSamples;//extra pixel in rasterization
+	protected DataElement<Boolean> sampleShadingEnable;
+	protected DataElement<Float> minSampleShading;
+	protected DataElement<Boolean> alphaToOneEnable;
+	protected DataElement<Boolean> alphaToCoverageEnable;
+	protected DataElement<int[]> sampleMask;
 	// ...
 	// }
 	// VkPipelineRasterizationStateCreateInfo {
-	protected Integer polygonMode;
-	protected Integer cullMode;
-	protected Integer frontFace;
-	protected Boolean depthClampEnable;
-	protected Boolean rasterizerDiscardEnable;
-	protected Float lineWidth;
-	protected Boolean depthBiasEnable;
-	protected Float depthBiasConstantFactor;
-	protected Float depthBiasClamp;
-	protected Float depthBiasSlopeFactor;
+	protected DataElement<Integer> polygonMode;
+	protected DataElement<Integer> cullMode;
+	protected DataElement<Integer> frontFace;
+	protected DataElement<Boolean> depthClampEnable;
+	protected DataElement<Boolean> rasterizerDiscardEnable;
+	protected DataElement<Float> lineWidth;
+	protected DataElement<Boolean> depthBiasEnable;
+	protected DataElement<Float> depthBiasConstantFactor;
+	protected DataElement<Float> depthBiasClamp;
+	protected DataElement<Float> depthBiasSlopeFactor;
 	// }
 	// VkPipelineViewportStateCreateInfo (n*VkGraphicsPipelineCreateInfo) {
 	
@@ -115,8 +118,8 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected List<VkRect2D> scissors;
 	// }
 	// VkPipelineInputAssemblyStateCreateInfo {
-	protected Integer topology;
-	protected Boolean primitiveRestartEnable;
+	protected DataElement<Integer> topology;
+	protected DataElement<Boolean> primitiveRestartEnable;
 	// }
 	protected List<VkPipelineColorBlendAttachmentState> pipelineColorBlendAttachmentStates;
 	
@@ -124,6 +127,40 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	{
 		stack = MemoryStack.stackPush();
 		blendConstants = new Float[4];
+		Field[] allFields = DataAccumulator.class.getDeclaredFields();
+		Field[] fs = new Field[allFields.length];
+		int i = 0;
+		for (Field field : DataAccumulator.class.getDeclaredFields()) if (field.getType().equals(DataElement.class))
+		{
+			try
+			{
+				field.set(this, new DataElement<>());
+				fs[i++] = field;
+			}
+			catch (IllegalArgumentException | IllegalAccessException e)
+			{
+				throw new RuntimeException("The field \"" + field.getName() + "\" cannot be initialized, this cannot happen!");
+			}
+		}
+		elements = new Field[i];
+		for (int j = 0; j < i; j++) elements[j] = fs[j];
+	}
+	
+	@SuppressWarnings("unchecked")
+	protected DataAccumulator(DataAccumulator<?> defaultSource)
+	{
+		this();
+		for (Field field : elements)
+		{
+			try
+			{
+				((DataElement<Object>) field.get(this)).data = ((DataElement<Object>) field.get(defaultSource)).data;
+			}
+			catch (IllegalArgumentException | IllegalAccessException e)
+			{
+				throw new RuntimeException("The field \"" + field.getName() + "\" cannot be copied, this cannot happen!");
+			}
+		}
 	}
 	
 	protected <SSDA extends PipelineColorBlendAttachmentStateAccumulator<SSDA>> SSDA startPipelineColorBlendAttachmentState()
@@ -211,23 +248,23 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	
 	protected SDA autoCloseLayout(@Nullable Boolean value)
 	{
-		autoCloseLayout = value;
+		autoCloseLayout.set(value);
 		return myself();
 	}
 	
 	protected SDA autoCloseRenderPass(@Nullable Boolean value)
 	{
-		autoCloseRenderPass = value;
+		autoCloseRenderPass.set(value);
 		return myself();
 	}
 	
 	protected SDA shader(@Nullable Shader value)
 	{
-		if (value == null) shader = null;
+		if (value == null) shader.set(null);
 		else
 		{
 			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			shader = value.isCompilationSuccessfull() ? value : null;
+			shader.set(value.isCompilationSuccessfull() ? value : null);
 		}
 		return myself();
 	}
@@ -244,12 +281,12 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
 			switch (value.getType())
 			{
-				case VERTEX -> vertexShader = value.isCompilationSuccessfull() ? value : null;
-				case TESS_CONTROL -> tessellationControlShader = value.isCompilationSuccessfull() ? value : null;
-				case TESS_EVALUATION -> tessellationEvaluationShader = value.isCompilationSuccessfull() ? value : null;
-				case GEOMETRY -> geometryShader = value.isCompilationSuccessfull() ? value : null;
-				case FRAGMENT -> fragmentShader = value.isCompilationSuccessfull() ? value : null;
-				case COMPUTE -> computeShader = value.isCompilationSuccessfull() ? value : null;
+				case VERTEX -> vertexShader.set(value.isCompilationSuccessfull() ? value : null);
+				case TESS_CONTROL -> tessellationControlShader.set(value.isCompilationSuccessfull() ? value : null);
+				case TESS_EVALUATION -> tessellationEvaluationShader.set(value.isCompilationSuccessfull() ? value : null);
+				case GEOMETRY -> geometryShader.set(value.isCompilationSuccessfull() ? value : null);
+				case FRAGMENT -> fragmentShader.set(value.isCompilationSuccessfull() ? value : null);
+				case COMPUTE -> computeShader.set(value.isCompilationSuccessfull() ? value : null);
 				default -> Debug.println("Shader " + value.getFile() + " cannot be used becouse the type is unknown");
 			}
 		}
@@ -258,151 +295,151 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	
 	protected SDA vertexShader(@Nullable Shader value)
 	{
-		if (value == null) vertexShader = null;
+		if (value == null) vertexShader.set(null);
 		else
 		{
 			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			vertexShader = value.isCompilationSuccessfull() ? value : null;
+			vertexShader.set(value.isCompilationSuccessfull() ? value : null);
 		}
 		return myself();
 	}
 	
 	protected SDA tessellationControlShader(@Nullable Shader value)
 	{
-		if (value == null) tessellationControlShader = null;
+		if (value == null) tessellationControlShader.set(null);
 		else
 		{
 			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			tessellationControlShader = value.isCompilationSuccessfull() ? value : null;
+			tessellationControlShader.set(value.isCompilationSuccessfull() ? value : null);
 		}
 		return myself();
 	}
 	
 	protected SDA tessellationEvaluationShader(@Nullable Shader value)
 	{
-		if (value == null) tessellationEvaluationShader = null;
+		if (value == null) tessellationEvaluationShader.set(null);
 		else
 		{
 			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			tessellationEvaluationShader = value.isCompilationSuccessfull() ? value : null;
+			tessellationEvaluationShader.set(value.isCompilationSuccessfull() ? value : null);
 		}
 		return myself();
 	}
 	
 	protected SDA geometryShader(@Nullable Shader value)
 	{
-		if (value == null) geometryShader = null;
+		if (value == null) geometryShader.set(null);
 		else
 		{
 			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			geometryShader = value.isCompilationSuccessfull() ? value : null;
+			geometryShader.set(value.isCompilationSuccessfull() ? value : null);
 		}
 		return myself();
 	}
 	
 	protected SDA fragmentShader(@Nullable Shader value)
 	{
-		if (value == null) fragmentShader = null;
+		if (value == null) fragmentShader.set(null);
 		else
 		{
 			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			fragmentShader = value.isCompilationSuccessfull() ? value : null;
+			fragmentShader.set(value.isCompilationSuccessfull() ? value : null);
 		}
 		return myself();
 	}
 	
 	protected SDA computeShader(@Nullable Shader value)
 	{
-		if (value == null) computeShader = null;
+		if (value == null) computeShader.set(null);
 		else
 		{
 			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			computeShader = value.isCompilationSuccessfull() ? value : null;
+			computeShader.set(value.isCompilationSuccessfull() ? value : null);
 		}
 		return myself();
 	}
 	
 	protected SDA targetWindow(@Nullable Window value)
 	{
-		targetWindow = value;
+		targetWindow.set(value);
 		return myself();
 	}
 	
 	protected SDA device(@Nullable Device value)
 	{
-		device = value;
+		device.set(value);
 		return myself();
 	}
 	
 	protected SDA physicalDevice(@Nullable PhysicalDevice value)
 	{
-		physicalDevice = value;
+		physicalDevice.set(value);
 		return myself();
 	}
 	
 	protected SDA graphicsPipeline(@Nullable GraphicsPipeline value)
 	{
-		graphicsPipeline = value;
+		graphicsPipeline.set(value);
 		return myself();
 	}
 	
 	protected SDA pipelineLayout(@Nullable PipelineLayout value)
 	{
-		pipelineLayout = value;
+		pipelineLayout.set(value);
 		return myself();
 	}
 	
 	protected SDA frameBuffer(@Nullable FrameBuffer value)
 	{
-		frameBuffer = value;
+		frameBuffer.set(value);
 		return myself();
 	}
 	
 	protected SDA renderPass(@Nullable RenderPass value)
 	{
-		renderPass = value;
+		renderPass.set(value);
 		return myself();
 	}
 	
 	protected SDA surface(@Nullable Surface value)
 	{
-		surface = value;
+		surface.set(value);
 		return myself();
 	}
 	
 	protected SDA swapchain(@Nullable Swapchain value)
 	{
-		swapchain = value;
+		swapchain.set(value);
 		return myself();
 	}
 	
 	protected SDA vertexBuffer(@Nullable VertexBuffer value)
 	{
-		vertexBuffer = value;
+		vertexBuffer.set(value);
 		return myself();
 	}
 	
 	protected SDA indexBuffer(@Nullable IndexBuffer value)
 	{
-		indexBuffer = value;
+		indexBuffer.set(value);
 		return myself();
 	}
 	
 	protected SDA uniformBuffer(@Nullable UniformBuffer value)
 	{
-		uniformBuffer = value;
+		uniformBuffer.set(value);
 		return myself();
 	}
 	
 	protected SDA topology(@Nullable Integer value)
 	{
-		topology = value;
+		topology.set(value);
 		return myself();
 	}
 	
 	protected SDA primitiveRestartEnable(@Nullable Boolean value)
 	{
-		primitiveRestartEnable = value;
+		primitiveRestartEnable.set(value);
 		return myself();
 	}
 	
@@ -420,97 +457,97 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	
 	protected SDA depthClampEnable(@Nullable Boolean value)
 	{
-		depthClampEnable = value;
+		depthClampEnable.set(value);
 		return myself();
 	}
 	
 	protected SDA rasterizerDiscardEnable(@Nullable Boolean value)
 	{
-		rasterizerDiscardEnable = value;
+		rasterizerDiscardEnable.set(value);
 		return myself();
 	}
 	
 	protected SDA polygonMode(@Nullable Integer value)
 	{
-		polygonMode = value;
+		polygonMode.set(value);
 		return myself();
 	}
 	
 	protected SDA cullMode(@Nullable Integer value)
 	{
-		cullMode = value;
+		cullMode.set(value);
 		return myself();
 	}
 	
 	protected SDA frontFace(@Nullable Integer value)
 	{
-		frontFace = value;
+		frontFace.set(value);
 		return myself();
 	}
 	
 	protected SDA depthBiasEnable(@Nullable Boolean value)
 	{
-		depthBiasEnable = value;
+		depthBiasEnable.set(value);
 		return myself();
 	}
 	
 	protected SDA depthBiasConstantFactor(@Nullable Float value)
 	{
-		depthBiasConstantFactor = value;
+		depthBiasConstantFactor.set(value);
 		return myself();
 	}
 	
 	protected SDA depthBiasClamp(@Nullable Float value)
 	{
-		depthBiasClamp = value;
+		depthBiasClamp.set(value);
 		return myself();
 	}
 	
 	protected SDA depthBiasSlopeFactor(@Nullable Float value)
 	{
-		depthBiasSlopeFactor = value;
+		depthBiasSlopeFactor.set(value);
 		return myself();
 	}
 	
 	protected SDA lineWidth(@Nullable Float value)
 	{
-		lineWidth = value;
+		lineWidth.set(value);
 		return myself();
 	}
 	
 	protected SDA rasterizationSamples(@Nullable Integer value)
 	{
-		rasterizationSamples = value;
+		rasterizationSamples.set(value);
 		return myself();
 	}
 	
 	protected SDA sampleShadingEnable(@Nullable Boolean value)
 	{
-		sampleShadingEnable = value;
+		sampleShadingEnable.set(value);
 		return myself();
 	}
 	
 	protected SDA minSampleShading(@Nullable Float value)
 	{
-		minSampleShading = value;
+		minSampleShading.set(value);
 		return myself();
 	}
 	
 	protected SDA pSampleMask(@Nullable int[] value)
 	{
-		sampleMask = value;
+		sampleMask.set(value);
 		return myself();
 	}
 	
 	protected SDA alphaToCoverageEnable(@Nullable Boolean value)
 	{
-		alphaToCoverageEnable = value;
+		alphaToCoverageEnable.set(value);
 		return myself();
 	}
 	
 	protected SDA alphaToOneEnable(@Nullable Boolean value)
 	{
-		alphaToOneEnable = value;
+		alphaToOneEnable.set(value);
 		return myself();
 	}
 	
@@ -543,8 +580,8 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	 */
 	protected RenderPass createRenderPass()
 	{
-		Device device = Objects.requireNonNull(this.device, "Device missing");
-		Surface surface = Objects.requireNonNull(this.surface, "Surface missing");
+		Device device = this.device.require();
+		Surface surface = this.surface.require();
 		VulkanErrorUtils.assertStatement(surface.isInitialized(), "Surface not initialized");
 		
 		VkAttachmentDescription.Buffer colorAttachment = VkAttachmentDescription.calloc(1, stack);//static
@@ -595,10 +632,10 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	 */
 	protected Swapchain createSwapchain()
 	{
-		PhysicalDevice physicalDevice = Objects.requireNonNull(this.physicalDevice, "Device missing");
-		Surface surface = Objects.requireNonNull(this.surface, "Surface missing");
+		PhysicalDevice physicalDevice = this.physicalDevice.require();
+		Surface surface = this.surface.require();
 		VulkanErrorUtils.assertStatement(surface.isInitialized(), "Surface not initialized");
-		RenderPass renderPass = Objects.requireNonNull(this.renderPass, "Renderpass missing");
+		RenderPass renderPass = this.renderPass.require();
 		
 		VkSwapchainCreateInfoKHR createInfo = VkSwapchainCreateInfoKHR.calloc(stack);
 		createInfo.sType(KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR);
@@ -632,31 +669,31 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	 */
 	protected GraphicsPipeline createGraphicsPipeline()
 	{
-		VkPipelineInputAssemblyStateCreateInfo inputAssembly = VulkanUtils.pipelineInputAssemblyStateInfo(stack, orElse(topology, VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST), orElse(primitiveRestartEnable, false));
+		VkPipelineInputAssemblyStateCreateInfo inputAssembly = VulkanUtils.pipelineInputAssemblyStateInfo(stack, topology.orElse(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST), primitiveRestartEnable.orElse(false));
 		
-		VkExtent2D extent = surface.getExtent();
-		VkViewport.Buffer viewport = load(c -> VkViewport.calloc(c, stack), orElse(viewports, VkViewport.calloc(stack).set(0, extent.height(), extent.width(), -extent.height(), 0, 1)));//static
-		VkRect2D.Buffer scissor = load(c -> VkRect2D.calloc(c, stack), orElse(scissors, VkRect2D.calloc(stack).set(VulkanUtils.offset(stack, 0, 0), extent)));//static
+		VkExtent2D extent = surface.require().getExtent();
+		VkViewport.Buffer viewport = load(c -> VkViewport.malloc(c, stack), orElse(viewports, VkViewport.malloc(stack).set(0, extent.height(), extent.width(), -extent.height(), 0, 1)));//static
+		VkRect2D.Buffer scissor = load(c -> VkRect2D.malloc(c, stack), orElse(scissors, VkRect2D.malloc(stack).set(VulkanUtils.offset(stack, 0, 0), extent)));//static
 		
 		VkPipelineViewportStateCreateInfo viewportState = VulkanUtils.pipelineViewportStateInfo(stack, viewport, scissor);
 		
 		VkPipelineRasterizationStateCreateInfo pipelineRasterizationStateCreateInfo = VkPipelineRasterizationStateCreateInfo.calloc(stack);
 		pipelineRasterizationStateCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO);
-		pipelineRasterizationStateCreateInfo.polygonMode(orElse(polygonMode, VK10.VK_POLYGON_MODE_FILL));
-		pipelineRasterizationStateCreateInfo.cullMode(orElse(cullMode, VK10.VK_CULL_MODE_BACK_BIT));
-		pipelineRasterizationStateCreateInfo.frontFace(orElse(frontFace, VK10.VK_FRONT_FACE_CLOCKWISE));
-		pipelineRasterizationStateCreateInfo.depthClampEnable(orElse(depthClampEnable, false));
-		pipelineRasterizationStateCreateInfo.rasterizerDiscardEnable(orElse(rasterizerDiscardEnable, false));
-		pipelineRasterizationStateCreateInfo.lineWidth(orElse(lineWidth, 1F));
-		pipelineRasterizationStateCreateInfo.depthBiasEnable(orElse(depthBiasEnable, false));
+		pipelineRasterizationStateCreateInfo.polygonMode(polygonMode.orElse(VK10.VK_POLYGON_MODE_FILL));
+		pipelineRasterizationStateCreateInfo.cullMode(cullMode.orElse(VK10.VK_CULL_MODE_BACK_BIT));
+		pipelineRasterizationStateCreateInfo.frontFace(frontFace.orElse(VK10.VK_FRONT_FACE_CLOCKWISE));
+		pipelineRasterizationStateCreateInfo.depthClampEnable(depthClampEnable.orElse(false));
+		pipelineRasterizationStateCreateInfo.rasterizerDiscardEnable(rasterizerDiscardEnable.orElse(false));
+		pipelineRasterizationStateCreateInfo.lineWidth(lineWidth.orElse(1F));
+		pipelineRasterizationStateCreateInfo.depthBiasEnable(depthBiasEnable.orElse(false));
 		
 		VkPipelineMultisampleStateCreateInfo pipelineMultisampleStateCreateInfo = VkPipelineMultisampleStateCreateInfo.calloc(stack);
 		pipelineMultisampleStateCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO);
-		pipelineMultisampleStateCreateInfo.rasterizationSamples(orElse(rasterizationSamples, VK10.VK_SAMPLE_COUNT_1_BIT));
-		pipelineMultisampleStateCreateInfo.sampleShadingEnable(orElse(sampleShadingEnable, false));
-		pipelineMultisampleStateCreateInfo.minSampleShading(orElse(minSampleShading, 0F));
-		pipelineMultisampleStateCreateInfo.alphaToCoverageEnable(orElse(alphaToCoverageEnable, false));
-		pipelineMultisampleStateCreateInfo.alphaToOneEnable(orElse(alphaToOneEnable, false));
+		pipelineMultisampleStateCreateInfo.rasterizationSamples(rasterizationSamples.orElse(VK10.VK_SAMPLE_COUNT_1_BIT));
+		pipelineMultisampleStateCreateInfo.sampleShadingEnable(sampleShadingEnable.orElse(false));
+		pipelineMultisampleStateCreateInfo.minSampleShading(minSampleShading.orElse(0F));
+		pipelineMultisampleStateCreateInfo.alphaToCoverageEnable(alphaToCoverageEnable.orElse(false));
+		pipelineMultisampleStateCreateInfo.alphaToOneEnable(alphaToOneEnable.orElse(false));
 		
 		VkPipelineColorBlendStateCreateInfo pipelineColorBlendStateCreateInfo = VkPipelineColorBlendStateCreateInfo.calloc(stack);
 		pipelineColorBlendStateCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO);
@@ -672,7 +709,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		pipelineInfo.pRasterizationState(pipelineRasterizationStateCreateInfo);
 		pipelineInfo.pMultisampleState(pipelineMultisampleStateCreateInfo);
 		pipelineInfo.pColorBlendState(pipelineColorBlendStateCreateInfo);
-		pipelineInfo.renderPass(renderPass.getVk());
+		pipelineInfo.renderPass(renderPass.require().getVk());
 		pipelineInfo.subpass(0);
 		pipelineInfo.basePipelineHandle(VK10.VK_NULL_HANDLE);
 		pipelineInfo.basePipelineIndex(-1);
@@ -680,13 +717,13 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		GraphicsPipeline.Builder builder = GraphicsPipeline.create();
 		builder.autoCloseLayout(false);
 		builder.autoCloseRenderPass(false);
-		builder.vertexShader(vertexShader);
-		builder.tessellationControlShader(tessellationControlShader);
-		builder.tessellationEvaluationShader(tessellationEvaluationShader);
-		builder.geometryShader(geometryShader);
-		builder.fragmentShader(fragmentShader);
-		builder.computeShader(computeShader);
-		return builder.build(device, pipelineLayout, renderPass, pipelineInfo);
+		builder.vertexShader(vertexShader.get());
+		builder.tessellationControlShader(tessellationControlShader.get());
+		builder.tessellationEvaluationShader(tessellationEvaluationShader.get());
+		builder.geometryShader(geometryShader.get());
+		builder.fragmentShader(fragmentShader.get());
+		builder.computeShader(computeShader.get());
+		return builder.build(device.require(), pipelineLayout.require(), renderPass.require(), pipelineInfo);
 	}
 	
 	protected <T> T orElseThrow(@Nullable T requestedValue)
@@ -770,14 +807,28 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	
 	protected FloatBuffer load(Float[] array, float[] defaultValue)
 	{
-		FloatBuffer buffer = stack.callocFloat(array.length);
-		for (int i = 0; i < array.length; i++) buffer.put(orElse(array[i], defaultValue[i]));
+		FloatBuffer buffer;
+		if (array != null)
+		{
+			buffer = stack.callocFloat(array.length);
+			for (int i = 0; i < array.length; i++) buffer.put(orElse(array[i], defaultValue[i]));
+		}
+		else
+		{
+			buffer = stack.callocFloat(defaultValue.length);
+			for (float element : defaultValue) buffer.put(element);
+		}
 		return buffer.rewind();
 	}
 	
 	protected boolean isValid(Shader shader)
 	{
 		return shader != null && shader.isCompilationSuccessfull();
+	}
+	
+	protected void clearAllModificationMarks()
+	{
+		
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -789,5 +840,72 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected void close()
 	{
 		stack.close();
+	}
+	
+	protected class DataElement<T> {
+		
+		private T data;
+		private boolean isModified;
+		
+		public T get()
+		{
+			return data;
+		}
+		
+		public T require()
+		{
+			return Objects.requireNonNull(data);
+		}
+		
+		public T require(String error)
+		{
+			return Objects.requireNonNull(data, error);
+		}
+		
+		public T orElse(T data)
+		{
+			if (this.data == null) return data;
+			return this.data;
+		}
+		
+		public T newValueOrElse(T data)
+		{
+			if (isModified)
+			{
+				isModified = false;
+				return this.data;
+			}
+			return data;
+		}
+		
+		public void setNonNull(T data)
+		{
+			Objects.requireNonNull(data);
+			isModified = Objects.equals(data, this.data);
+			this.data = data;
+		}
+		
+		public void setNonNull(T data, String error)
+		{
+			Objects.requireNonNull(data, error);
+			isModified = Objects.equals(data, this.data);
+			this.data = data;
+		}
+		
+		public void set(T data)
+		{
+			isModified = Objects.equals(data, this.data);
+			this.data = data;
+		}
+		
+		public boolean isModified()
+		{
+			return isModified;
+		}
+		
+		public Optional<T> asOptional()
+		{
+			return Optional.ofNullable(data);
+		}
 	}
 }

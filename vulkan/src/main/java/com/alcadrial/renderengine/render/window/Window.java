@@ -42,6 +42,7 @@ public class Window extends VulkanResource<Long> {
 	private Surface surface;
 	private int width;
 	private int height;
+	private String title;
 	private List<WindowResizeAction> resizeActions;
 	
 	public Window(int width, int height, String title)
@@ -49,6 +50,7 @@ public class Window extends VulkanResource<Long> {
 		vk = VulkanErrorUtils.nonNull(GLFW.glfwCreateWindow(width, height, title, 0, 0), "Cannot create window");
 		this.width = width;
 		this.height = height;
+		this.title = title;
 		surface = new Surface(this);
 	}
 	
@@ -291,6 +293,17 @@ public class Window extends VulkanResource<Long> {
 	public int getHeight()
 	{
 		return height;
+	}
+	
+	public String getTitle()
+	{
+		return title;
+	}
+	
+	public void setTitle(String title)
+	{
+		GLFW.glfwSetWindowTitle(vk, title);
+		this.title = title;
 	}
 	
 	@Override

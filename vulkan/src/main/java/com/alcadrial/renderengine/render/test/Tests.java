@@ -26,6 +26,7 @@ import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
+import com.alcadrial.renderengine.render.Renderer.ModificationPlan;
 import com.alcadrial.renderengine.render.VertexAccumulator;
 import com.alcadrial.renderengine.render.VertexAccumulator.VertexResult;
 import com.alcadrial.renderengine.render.Vulkan;
@@ -98,7 +99,9 @@ public class Tests {
 	private static VertexBuffer vertexBuffer;
 	private static IndexBuffer indexBuffer;
 	private static float f;
-	private static int i;
+	@SuppressWarnings("unused")
+	private static int i, j, k, l, m;
+	private static int[] indices;
 	
 	public static void start()
 	{
@@ -118,6 +121,11 @@ public class Tests {
 		});
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			System.out.println("Resized " + width + "x" + height);
+			for (UniformBuffer uniformBuffer : renderer.getUniformBuffers())
+			{
+				uniformBuffer.set("TRANSFORMATION", new Matrix4f().orthographic(window.getWidth(), window.getHeight()));
+				uniformBuffer.updateDescriptorSets();
+			}
 		});
 		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
 			System.out.println("Refresh");
@@ -167,10 +175,9 @@ public class Tests {
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
 		builder.lineWidth(2F);
 		renderer = builder.build(window, vulkan.getDevice());
-		//renderer.startModificationPlan().lineWidth(3F).submit();
 		
-		vertexBuffer = new VertexBuffer(56);
-		indexBuffer = new IndexBuffer(15);
+		vertexBuffer = new VertexBuffer(70);
+		indexBuffer = new IndexBuffer(24);
 		renderer.setVertexBuffer(vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
 		for (UniformBuffer uniformBuffer : renderer.getUniformBuffers())
@@ -190,9 +197,9 @@ public class Tests {
 		VertexResult result7 = vertexAccumulator.vertex(200, 200, 0).color(255, 0, 0, 255).end();
 		VertexResult result8 = vertexAccumulator.vertex(200, 0, 0).color(0, 255, 0, 255).end();
 		VertexResult result9 = vertexAccumulator.vertex(100, 100, 0).color(127, 127, 127, 255).end();
-		vertexBuffer.sendToGpu();
+		vertexBuffer.sendToPhysicalDevice();
 		
-		indexBuffer.asIntBuffer().put(0, new int[] {
+		indices = new int[] {
 			result0.getIndex(), result1.getIndex(), result4.getIndex(),
 			result1.getIndex(), result2.getIndex(), result4.getIndex(),
 			result4.getIndex(), result2.getIndex(), result3.getIndex(),
@@ -202,19 +209,17 @@ public class Tests {
 			result6.getIndex(), result7.getIndex(), result9.getIndex(),
 			result9.getIndex(), result7.getIndex(), result8.getIndex(),
 			result5.getIndex(), result9.getIndex(), result8.getIndex(),
-		});
-		indexBuffer.sendToGpu();
+		};
+		
+		indexBuffer.asIntBuffer().put(0, indices);
+		indexBuffer.sendToPhysicalDevice();
 		
 		f = 1;
-		i = 0;
+		i = j = k = l = m = 0;
 		
-		//Renderer.create().vertexShader(vertexShader).build(window, vulkan.getDevice()).close();
-		//Renderer.create().vertexShader(vertexShader).build(window, vulkan.getDevice()).close();
-		//Renderer.create().vertexShader(vertexShader).build(window, vulkan.getDevice()).close();
-		//Renderer.create().vertexShader(vertexShader).build(window, vulkan.getDevice()).close();
-		//Renderer.create().vertexShader(vertexShader).build(window, vulkan.getDevice()).close();
-		//Renderer.create().vertexShader(vertexShader).build(window, vulkan.getDevice()).close();
 	}
+	
+	private static long time;
 	
 	public static void loop()
 	{
@@ -222,18 +227,75 @@ public class Tests {
 		
 		renderer.setClearColor(Color.of(0, 0, 0, 0));
 		
+		int maxfps = 120;
+		long firstHighMilestone = 1000000000;
+		long firstMilestone = 1000000000 / maxfps;
+		
+		time = System.nanoTime();
+		long current;
+		long frame = 0;
+		long milestone = firstMilestone;
+		long highMilestone = firstHighMilestone;
+		
+		ModificationPlan modificationPlan = renderer.getCurrentModificationPlan();
+		boolean modified = false;
+		
 		while (!window.shouldClose())
 		{
-			if (i++ == 10)
+			current = System.nanoTime();
+			long enlapsed = current - time;
+			long pauseTime = milestone - enlapsed;
+			if (pauseTime > 0)
 			{
-				f += 0.1F;
-				if (f > 5) f = 1;
-				//renderer.startModificationPlan().lineWidth(f).submit();
+				try
+				{
+					synchronized (window)
+					{
+						window.wait(pauseTime / 1000000, (int) (pauseTime % 1000000));
+					}
+				}
+				catch (InterruptedException e)
+				{
+					e.printStackTrace(System.out);
+				}
+				continue;
+			}
+			milestone += (1 - pauseTime / firstMilestone) * firstMilestone;
+			if (enlapsed >= highMilestone)
+			{
+				window.setTitle("Test fps=" + frame);
+				frame = 0;
+				highMilestone += (enlapsed - highMilestone + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
+			}
+			
+			if (i++ == 5)
+			{
+				f += 0.25F;
+				if (f > 50) f = 1;
+				modificationPlan.lineWidth(f);
+				modified = true;
 				i = 0;
+			}
+			if (j++ % 10 == 0)
+			{
+				if (k % 16 >= 8) indexBuffer.asIntBuffer().put(k % 8 * 3, indices, k % 8 * 3, 3);
+				else indexBuffer.asIntBuffer().put(k % 8 * 3, new int[] {0, 0, 0}, 0, 3);
+				indexBuffer.sendToPhysicalDevice(k % 8 * 3, 3);
+				k++;
+			}
+			if (++l % 25 == 0)
+			{
+				modificationPlan.topology(l % 50 == 0 ? VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST : VK10.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
+				modified = true;
+			}
+			if (modified)
+			{
+				renderer.startModificationPlan().submit();
 			}
 			window.pollEvents();
 			renderer.draw(null);
 			window.update();
+			frame++;
 		}
 	}
 	

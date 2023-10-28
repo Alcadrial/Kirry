@@ -215,20 +215,17 @@ public class Swapchain extends LongDeviceResource {
 		}
 	}
 	
-	public void recreate(Device device, Surface surface, VkSwapchainCreateInfoKHR createInfo)
+	public boolean recreate(Device device, Surface surface, VkSwapchainCreateInfoKHR createInfo)
 	{
 		Device oldDevice = this.device;
 		List<FrameBuffer> oldFrameBuffers = frameBuffers;
 		List<Long> oldImageViews = imageViews;
 		Long oldVk = vk;
-		device.waitAsyncIdle(() -> {
-			if (oldFrameBuffers != null) for (FrameBuffer frameBuffer : oldFrameBuffers) frameBuffer.close();
-			for (long imageView : oldImageViews) VK10.vkDestroyImageView(oldDevice.getVk(), imageView, null);
-			KHRSwapchain.vkDestroySwapchainKHR(oldDevice.getVk(), oldVk, null);
-		});
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
+			surface.init(device, stack);
+			
 			VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
 			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device.getPhysicalDevice().getVk(), surface.getSurface(), capabilities), "Failed to create swap chain");
 			createInfo.preTransform(capabilities.currentTransform());
@@ -237,14 +234,24 @@ public class Swapchain extends LongDeviceResource {
 			createInfo.imageColorSpace(surface.getFormat().colorSpace());
 			createInfo.imageExtent(surface.getExtent());
 			createInfo.presentMode(surface.getMode());
-			createInfo.oldSwapchain(VK10.VK_NULL_HANDLE);
+			createInfo.oldSwapchain(oldVk);
+			
+			if (surface.getExtent().width() == 0 || surface.getExtent().height() == 0) return false;
 			
 			long[] p = new long[1];
-			VulkanErrorUtils.assertNoError(KHRSwapchain.vkCreateSwapchainKHR(device.getVk(), createInfo, null, p), "Failed to create swap chain");
+			int error = KHRSwapchain.vkCreateSwapchainKHR(device.getVk(), createInfo, null, p);
+			if (error != VK10.VK_SUCCESS) return false;
 			vk = p[0];
+			
+			device.waitAsyncIdle(() -> {
+				if (oldFrameBuffers != null) for (FrameBuffer frameBuffer : oldFrameBuffers) frameBuffer.close();
+				for (long imageView : oldImageViews) VK10.vkDestroyImageView(oldDevice.getVk(), imageView, null);
+				KHRSwapchain.vkDestroySwapchainKHR(oldDevice.getVk(), oldVk, null);
+			});
 			
 			initialize(surface);
 		}
+		return true;
 	}
 	
 	public void swapBuffer()

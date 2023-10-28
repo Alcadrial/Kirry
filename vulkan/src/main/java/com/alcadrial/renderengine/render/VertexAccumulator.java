@@ -117,7 +117,7 @@ public class VertexAccumulator {
 		@Override
 		public void flush()
 		{
-			vertexBuffer.sendToGpu(bufferIndex, size);
+			vertexBuffer.sendToPhysicalDevice(bufferIndex, size);
 		}
 		
 		@Override

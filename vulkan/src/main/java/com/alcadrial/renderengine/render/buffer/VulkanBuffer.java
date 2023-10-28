@@ -49,7 +49,7 @@ public class VulkanBuffer extends LongDeviceResource {
 		bufferInfo.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE);
 		
 		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(VK10.vkCreateBuffer(device.getVk(), bufferInfo, null, p), "failed to create buffer");
+		VulkanErrorUtils.assertNoError(VK10.vkCreateBuffer(device.getVk(), bufferInfo, null, p), "Failed to create buffer");
 		data.setLeft(p[0]);
 		
 		VkMemoryRequirements memRequirements = VkMemoryRequirements.malloc(stack);

@@ -36,4 +36,16 @@ public class VertexBuffer extends VulkanDoubleBuffer {
 	{
 		this.offset = offset;
 	}
+	
+	@Override
+	public void sendToPhysicalDevice()
+	{
+		super.sendToPhysicalDevice(0, size);
+	}
+	
+	@Override
+	public synchronized void sendToPhysicalDevice(long offset, long size)
+	{
+		super.sendToPhysicalDevice(offset * 4, size * 4);
+	}
 }

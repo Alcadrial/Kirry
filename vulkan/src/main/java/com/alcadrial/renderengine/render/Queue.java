@@ -1,5 +1,8 @@
 package com.alcadrial.renderengine.render;
 
+import java.util.concurrent.Future;
+import java.util.function.Consumer;
+
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -18,5 +21,26 @@ public class Queue extends DeviceResource<VkQueue> {
 			VK10.vkGetDeviceQueue(device.getVk(), familyIndex, 0, pGraphicsQueue);
 			vk = new VkQueue(pGraphicsQueue.get(0), device.getVk());
 		}
+	}
+	
+	public synchronized void waitIdle()
+	{
+		VK10.vkQueueWaitIdle(vk);
+	}
+	
+	public Future<?> waitAsyncIdle(Runnable action)
+	{
+		return RenderEngine.getExecutor().submit(() -> {
+			waitIdle();
+			action.run();
+		});
+	}
+	
+	public Future<?> waitAsyncIdle(Consumer<Queue> action)
+	{
+		return RenderEngine.getExecutor().submit(() -> {
+			waitIdle();
+			action.accept(this);
+		});
 	}
 }

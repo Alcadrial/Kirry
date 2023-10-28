@@ -221,6 +221,15 @@ public class CommandBufferData extends DeviceResource<VkCommandBuffer> {
 		throw new NotYetImplementedException();
 	}
 	
+	/**
+	 * NYI
+	 */
+	public void setViewport()
+	{
+		//VK10.vkCmdSetViewport(vk);
+		throw new NotYetImplementedException();
+	}
+	
 	public boolean endRecording()
 	{
 		if (!isRecording) return false;

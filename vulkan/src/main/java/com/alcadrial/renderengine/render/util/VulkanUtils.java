@@ -42,13 +42,19 @@ public class VulkanUtils {
 	public static <S extends Struct<S>> Pair<S, ByteBuffer> copy(S struct, Function<Long, S> builder)
 	{
 		ByteBuffer buffer = MemoryUtil.memByteBuffer(struct.address(), struct.sizeof());
-		ByteBuffer copyBuffer = MemoryUtil.memCalloc(struct.sizeof());
+		ByteBuffer copyBuffer = MemoryUtil.memAlloc(struct.sizeof());
 		S copyStruct = builder.apply(MemoryUtil.memAddress(copyBuffer));
 		copyBuffer.put(buffer);
 		return new Pair<>(copyStruct, copyBuffer);
 	}
 	
 	public static <S extends Struct<S>> Pair<S, ByteBuffer> allocate(int size, Function<Long, S> builder)
+	{
+		ByteBuffer buffer = MemoryUtil.memAlloc(size);
+		return new Pair<>(builder.apply(MemoryUtil.memAddress(buffer)), buffer);
+	}
+	
+	public static <S extends Struct<S>> Pair<S, ByteBuffer> clearAllocate(int size, Function<Long, S> builder)
 	{
 		ByteBuffer buffer = MemoryUtil.memCalloc(size);
 		return new Pair<>(builder.apply(MemoryUtil.memAddress(buffer)), buffer);
@@ -81,7 +87,7 @@ public class VulkanUtils {
 	
 	public static <VR extends VulkanResource<Long>> PointerBuffer toPointerBuffer(MemoryStack stack, List<VR> resources)
 	{
-		PointerBuffer buffer = stack.callocPointer(resources.size());
+		PointerBuffer buffer = stack.mallocPointer(resources.size());
 		for (VR vr : resources) buffer.put(vr.getVk());
 		return buffer.rewind();
 	}
@@ -94,7 +100,7 @@ public class VulkanUtils {
 	
 	public static <VR extends VulkanResource<VK>, VK extends Pointer> PointerBuffer toAddressBuffer(MemoryStack stack, List<VR> resources)
 	{
-		PointerBuffer buffer = stack.callocPointer(resources.size());
+		PointerBuffer buffer = stack.mallocPointer(resources.size());
 		for (VR vr : resources) buffer.put(vr.vk.address());
 		return buffer.rewind();
 	}
@@ -108,7 +114,7 @@ public class VulkanUtils {
 	 */
 	public static VkOffset2D offset(MemoryStack stack, int x, int y)
 	{
-		return VkOffset2D.calloc(stack).set(x, y);
+		return VkOffset2D.malloc(stack).set(x, y);
 	}
 	
 	/**
@@ -120,7 +126,7 @@ public class VulkanUtils {
 	 */
 	public static VkExtent2D extent(MemoryStack stack, int width, int height)
 	{
-		return VkExtent2D.calloc(stack).set(width, height);
+		return VkExtent2D.malloc(stack).set(width, height);
 	}
 	
 	/**
@@ -133,7 +139,7 @@ public class VulkanUtils {
 	 */
 	public static VkBufferCopy.Buffer bufferCopy(MemoryStack stack, long sourceOffset, long destinationOffset, long size)
 	{
-		return VkBufferCopy.calloc(1, stack).apply(0, v -> v.set(sourceOffset, destinationOffset, size));
+		return VkBufferCopy.malloc(1, stack).apply(0, v -> v.set(sourceOffset, destinationOffset, size));
 	}
 	
 	/**
@@ -145,7 +151,7 @@ public class VulkanUtils {
 	 */
 	public static VkRect2D.Buffer rect2d(MemoryStack stack, VkOffset2D offset, VkExtent2D extent)
 	{
-		return VkRect2D.calloc(1, stack).apply(0, v -> v.set(offset, extent));
+		return VkRect2D.malloc(1, stack).apply(0, v -> v.set(offset, extent));
 	}
 	
 	/**
@@ -161,7 +167,7 @@ public class VulkanUtils {
 	 */
 	public static VkViewport.Buffer viewport(MemoryStack stack, float x, float y, float width, float height, float minDepth, float maxDepth)
 	{
-		return VkViewport.calloc(1, stack).apply(0, v -> v.set(x, y, width, height, minDepth, maxDepth));
+		return VkViewport.malloc(1, stack).apply(0, v -> v.set(x, y, width, height, minDepth, maxDepth));
 	}
 	
 	/**
@@ -172,7 +178,7 @@ public class VulkanUtils {
 	 */
 	public static VkDescriptorSetLayoutBinding.Buffer descriptorSetLayoutBinding(MemoryStack stack, int descriptorType)
 	{
-		return VkDescriptorSetLayoutBinding.calloc(1, stack).descriptorType(descriptorType);
+		return VkDescriptorSetLayoutBinding.malloc(1, stack).apply(0, v -> v.set(0, descriptorType, 0, 0, null));
 	}
 	
 	/**
@@ -184,8 +190,8 @@ public class VulkanUtils {
 	 */
 	public static VkDescriptorSetLayoutBinding.Buffer descriptorSetLayoutBinding(MemoryStack stack, int stackSize, int descriptorType)
 	{
-		VkDescriptorSetLayoutBinding.Buffer buffer = VkDescriptorSetLayoutBinding.calloc(stackSize, stack);
-		for (int i = 0; i < stackSize; i++) buffer.get().descriptorType(descriptorType);
+		VkDescriptorSetLayoutBinding.Buffer buffer = VkDescriptorSetLayoutBinding.malloc(stackSize, stack);
+		for (int i = 0; i < stackSize; i++) buffer.get().set(0, descriptorType, 0, 0, null);
 		return buffer.rewind();
 	}
 	
@@ -280,7 +286,7 @@ public class VulkanUtils {
 	 */
 	public static VkPipelineInputAssemblyStateCreateInfo pipelineInputAssemblyStateInfo(MemoryStack stack, int topology, boolean primitiveRestartEnable)
 	{
-		return VkPipelineInputAssemblyStateCreateInfo.calloc(stack).set(VK10.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO, 0, 0, topology, primitiveRestartEnable);
+		return VkPipelineInputAssemblyStateCreateInfo.malloc(stack).set(VK10.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO, 0, 0, topology, primitiveRestartEnable);
 	}
 	
 	/**
@@ -292,7 +298,7 @@ public class VulkanUtils {
 	 */
 	public static VkPipelineViewportStateCreateInfo pipelineViewportStateInfo(MemoryStack stack, VkViewport.Buffer viewports, VkRect2D.Buffer scissors)
 	{
-		return VkPipelineViewportStateCreateInfo.calloc(stack).set(VK10.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO, 0, 0, viewports.remaining(), viewports, scissors.remaining(), scissors);
+		return VkPipelineViewportStateCreateInfo.malloc(stack).set(VK10.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO, 0, 0, viewports.remaining(), viewports, scissors.remaining(), scissors);
 	}
 	
 	/**
