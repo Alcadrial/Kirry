@@ -100,7 +100,7 @@ public enum ShaderInputType {
 	private final int size;
 	private final int length;
 	
-	private ShaderInputType(int type, int size, int length)
+	ShaderInputType(int type, int size, int length)
 	{
 		this.type = type;
 		this.size = size;
@@ -118,7 +118,7 @@ public enum ShaderInputType {
 	}
 	
 	/**
-	 * Returns the number of primitives contained, e.g. for {@link VECTOR_INT_3} the value returned is 3.
+	 * Returns the number of primitives contained, e.g. for {@link #VECTOR_INT_3} the value returned is 3.
 	 * 
 	 * @return the number of values
 	 */

@@ -4,6 +4,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL32;
 
 import com.alcadrial.kector.vector.Vector2i;
@@ -40,6 +41,26 @@ public class FrameBuffer extends SimpleBuffer {
 			case GL32.GL_FRAMEBUFFER_UNDEFINED -> "FRAMEBUFFER UNDEFINED";
 			default -> "";
 		};
+	}
+	
+	public static FrameBuffer pushFrameBuffer()
+	{
+		FrameBuffer frameBuffer = new FrameBuffer();
+		frameBuffer.offer();
+		return frameBuffer;
+	}
+	
+	public static FrameBuffer pushFrameBuffer(Texture texture)
+	{
+		int target = texture.getTemplate().target();
+		boolean useColorTexture = target < GL30.GL_COLOR_ATTACHMENT0 || target > GL30.GL_COLOR_ATTACHMENT31;
+		boolean useDepthTexture = target != GL30.GL_DEPTH_ATTACHMENT && target != GL30.GL_DEPTH_STENCIL_ATTACHMENT;
+		boolean useStencilTexture = target != GL30.GL_STENCIL_ATTACHMENT && target != GL30.GL_DEPTH_STENCIL_ATTACHMENT;
+		
+		FrameBuffer frameBuffer = pushFrameBuffer();
+		frameBuffer.init(texture.getWidth(), texture.getHeight(), useColorTexture, useDepthTexture, useStencilTexture);
+		frameBuffer.setTexture(texture);
+		return frameBuffer;
 	}
 	
 	private final Vector4i screen;
@@ -137,7 +158,13 @@ public class FrameBuffer extends SimpleBuffer {
 			case GL32.GL_DEPTH_ATTACHMENT -> depthTexture = new TextureHolder(texture, false);
 			case GL32.GL_STENCIL_ATTACHMENT -> stencilTexture = new TextureHolder(texture, false);
 			case GL32.GL_DEPTH_STENCIL_ATTACHMENT -> depthTexture = stencilTexture = new TextureHolder(texture, false);
-			default -> colorTexture[attachment - GL32.GL_COLOR_ATTACHMENT0] = new TextureHolder(texture, false);
+			default ->
+			{
+				if (attachment >= GL32.GL_COLOR_ATTACHMENT0 && attachment <= GL32.GL_COLOR_ATTACHMENT31)
+				{
+					colorTexture[attachment - GL32.GL_COLOR_ATTACHMENT0] = new TextureHolder(texture, false);
+				}
+			}
 		}
 		GL32.glFramebufferTexture(getTarget(), attachment, texture.getId(), mipmapLevel);
 	}
@@ -333,6 +360,7 @@ public class FrameBuffer extends SimpleBuffer {
 	@Override
 	public void close()
 	{
+		poll();
 		for (TextureHolder holder : colorTexture) if (holder != null && holder.isInternal) holder.texture.close();
 		if (depthTexture != null && depthTexture.isInternal) depthTexture.texture.close();
 		if (stencilTexture != null && stencilTexture.isInternal && stencilTexture.texture != depthTexture.texture) stencilTexture.texture.close();
