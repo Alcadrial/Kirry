@@ -1,5 +1,6 @@
 package com.alcadrial.renderengine.render.window;
 
+import java.awt.Toolkit;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -33,8 +34,21 @@ import com.alcadrial.renderengine.render.renderingmanager.RenderingManager;
 import com.alcadrial.renderengine.render.textures.Texture;
 import com.alcadrial.renderengine.render.window.widget.ClickableWidget;
 import com.alcadrial.renderengine.render.window.widget.DrawableWidget;
+import com.alcadrial.renderengine.render.window.widget.Widget;
 
 public class Window {
+	
+	public static final int MULTI_CLICK_INTERVAL = (Integer) Toolkit.getDefaultToolkit().getDesktopProperty("awt.multiClickInterval");
+	
+	private class MouseButtonState {
+		
+		private long lastPressTimestamp;
+		private long lastReleaseTimestamp = 1;
+		private boolean canDrag;
+		private Vector2i lastMousePos;
+		private boolean isDragging;
+		private int clickCount;
+	}
 	
 	private long id;
 	private boolean isCreated;
@@ -47,6 +61,7 @@ public class Window {
 	private List<Entry<Supplier<RenderingManager>, DrawableWidget>> renderizableWidgets;
 	private List<ClickableWidget> clickableWidgets;
 	
+	private List<List<Object>> callbacksList;
 	private List<GLFWCharCallbackI> charCallbackList;
 	private List<GLFWCursorPosCallbackI> cursorPosCallbackList;
 	private List<GLFWCursorEnterCallbackI> cursorEnterCallbackList;
@@ -54,6 +69,11 @@ public class Window {
 	private List<GLFWMouseButtonCallbackI> mouseButtonCallbackList;
 	private List<GLFWScrollCallbackI> scrollCallbackList;
 	private List<GLFWWindowSizeCallbackI> windowSizeCallbackList;
+	private List<MouseClickCallback> mouseClickCallbackList;
+	private List<MouseDragStartCallback> mouseDragStartCallbackList;
+	private List<MouseDragEndCallback> mouseDragEndCallbackList;
+	
+	private List<MouseButtonState> mouseButtonStates;
 	
 	private GLCapabilities glCapabilities;
 	
@@ -91,6 +111,24 @@ public class Window {
 		mouseButtonCallbackList = new ArrayList<>(1);
 		scrollCallbackList = new ArrayList<>(1);
 		windowSizeCallbackList = new ArrayList<>(1);
+		mouseClickCallbackList = new ArrayList<>(1);
+		mouseDragStartCallbackList = new ArrayList<>(1);
+		mouseDragEndCallbackList = new ArrayList<>(1);
+		
+		callbacksList = new ArrayList<>(7);
+		callbacksList.add(cast(charCallbackList));
+		callbacksList.add(cast(cursorPosCallbackList));
+		callbacksList.add(cast(cursorEnterCallbackList));
+		callbacksList.add(cast(keyCallbackList));
+		callbacksList.add(cast(mouseButtonCallbackList));
+		callbacksList.add(cast(scrollCallbackList));
+		callbacksList.add(cast(windowSizeCallbackList));
+		callbacksList.add(cast(mouseClickCallbackList));
+		callbacksList.add(cast(mouseDragStartCallbackList));
+		callbacksList.add(cast(mouseDragEndCallbackList));
+		
+		mouseButtonStates = new ArrayList<>(GLFW.GLFW_MOUSE_BUTTON_LAST + 1);
+		for (int i = 0; i <= GLFW.GLFW_MOUSE_BUTTON_LAST; i++) mouseButtonStates.add(new MouseButtonState());
 	}
 	
 	protected void charCallback(long id, int codepoint)
@@ -102,6 +140,19 @@ public class Window {
 	{
 		mousePos.setAll((int) x, getHeight() - (int) y);
 		for (GLFWCursorPosCallbackI callback : cursorPosCallbackList) callback.invoke(id, x, y);
+		
+		for (int i = 0; i < mouseButtonStates.size(); i++)
+		{
+			MouseButtonState state = mouseButtonStates.get(i);
+			if (state.canDrag && !state.isDragging)
+			{
+				if (Math.abs(mousePos.x() - state.lastMousePos.x()) > 5 || Math.abs(mousePos.y() - state.lastMousePos.y()) > 5)
+				{
+					state.isDragging = true;
+					for (MouseDragStartCallback callback : mouseDragStartCallbackList) callback.invoke(id, i, state.lastMousePos.x(), state.lastMousePos.y());
+				}
+			}
+		}
 	}
 	
 	protected void cursorEnterCallback(long id, boolean entered)
@@ -117,7 +168,54 @@ public class Window {
 	protected void mouseButtonCallback(long id, int button, int action, int mods)
 	{
 		for (GLFWMouseButtonCallbackI callback : mouseButtonCallbackList) callback.invoke(id, button, action, mods);
-		if (action == GLFW.GLFW_PRESS) for (ClickableWidget e : clickableWidgets) if (e.isMouseHover()) e.onClick(button, mousePos);
+		MouseButtonState state = mouseButtonStates.get(button);
+		switch (action)
+		{
+			case GLFW.GLFW_PRESS ->
+			{
+				for (ClickableWidget e : clickableWidgets) if (e.isMouseHover()) e.onClick(button, mousePos);
+				
+				if (state.lastPressTimestamp < state.lastReleaseTimestamp)//release -> press
+				{
+					state.lastMousePos = Vector2i.copyOfImmutable(mousePos);
+					
+					long now = System.currentTimeMillis();
+					
+					if (now - state.lastPressTimestamp > MULTI_CLICK_INTERVAL)
+					{
+						state.canDrag = true;
+						state.clickCount = 0;
+					}
+					else
+					{
+						state.clickCount++;
+						for (MouseClickCallback callback : mouseClickCallbackList) callback.invoke(id, button, state.clickCount, mods);
+					}
+					
+					state.lastPressTimestamp = now;
+				}
+			}
+			case GLFW.GLFW_RELEASE ->
+			{
+				if (state.lastPressTimestamp > state.lastReleaseTimestamp)//press -> release
+				{
+					if (state.isDragging)
+					{
+						for (MouseDragEndCallback callback : mouseDragEndCallbackList) callback.invoke(id, button, mousePos.x(), mousePos.y());
+					}
+					else if (state.clickCount == 0)
+					{
+						state.clickCount = 1;
+						for (MouseClickCallback callback : mouseClickCallbackList) callback.invoke(id, button, state.clickCount, mods);
+					}
+				}
+				
+				long now = System.currentTimeMillis();
+				state.lastReleaseTimestamp = now;
+				state.isDragging = false;
+				state.canDrag = false;
+			}
+		}
 	}
 	
 	protected void windowSizeCallback(long id, int width, int height)
@@ -153,15 +251,31 @@ public class Window {
 		}
 	}
 	
-	public void render(Matrix4f matrix, float partialTicks)
+	public void initializeWidgets(Matrix4f matrix, float partialTicks)
 	{
-		for (Entry<Supplier<RenderingManager>, DrawableWidget> entry : renderizableWidgets) entry.getValue().render(new Matrix4f(matrix), entry.getKey().get(), partialTicks);
-		while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
+		for (Entry<Supplier<RenderingManager>, DrawableWidget> entry : renderizableWidgets)
+		{
+			while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
+			entry.getValue().initializeRendering(new Matrix4f(matrix), entry.getKey().get(), partialTicks);
+		}
 	}
 	
-	public void draw(Matrix4f matrix, float partialTicks)
+	public void renderWidgets(Matrix4f matrix, float partialTicks)
 	{
-		for (Entry<Supplier<RenderingManager>, DrawableWidget> entry : renderizableWidgets) entry.getValue().draw(new Matrix4f(matrix), entry.getKey().get(), partialTicks);
+		for (Entry<Supplier<RenderingManager>, DrawableWidget> entry : renderizableWidgets)
+		{
+			while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
+			entry.getValue().render(new Matrix4f(matrix), entry.getKey().get(), partialTicks);
+		}
+	}
+	
+	public void drawWidgets(Matrix4f matrix, float partialTicks)
+	{
+		for (Entry<Supplier<RenderingManager>, DrawableWidget> entry : renderizableWidgets)
+		{
+			while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
+			entry.getValue().draw(new Matrix4f(matrix), entry.getKey().get(), partialTicks);
+		}
 	}
 	
 	public void update()
@@ -186,16 +300,31 @@ public class Window {
 		if (event instanceof GLFWWindowSizeCallbackI callback) windowSizeCallbackList.add(callback);
 	}
 	
+	public void addEvent(ExtraCallback event)
+	{
+		if (event instanceof MouseClickCallback callback) mouseClickCallbackList.add(callback);
+	}
+	
+	public void removeEvent(CallbackI event)
+	{
+		for (List<Object> list : callbacksList) list.remove(event);
+	}
+	
+	public void removeEvent(ExtraCallback event)
+	{
+		for (List<Object> list : callbacksList) list.remove(event);
+	}
+	
 	public void addWidget(DrawableWidget widget, Supplier<RenderingManager> manager)
 	{
 		if (widget instanceof ClickableWidget w) addWidget(w);
 		renderizableWidgets.add(cast(Map.entry(manager, widget)));
 	}
 	
-	@SuppressWarnings("unchecked")
-	private <T, X> X cast(T t)
+	public void removeWidget(Widget widget)
 	{
-		return (X) t;
+		renderizableWidgets.removeIf(e -> e.getValue().equals(widget));
+		clickableWidgets.remove(widget);
 	}
 	
 	public void addWidget(ClickableWidget widget)
@@ -291,7 +420,7 @@ public class Window {
 	
 	// --------------------------------------------------------------------------------------
 	
-	public final boolean shouldClose()
+	public boolean shouldClose()
 	{
 		return GLFW.glfwWindowShouldClose(id);
 	}
@@ -441,5 +570,11 @@ public class Window {
 		Buffer b = GLFWImage.malloc(1).put(0, GLFWImage.malloc().set(image.getBuffered().getWidth(), image.getBuffered().getHeight(), image.toByteBuffer()));
 		GLFW.glfwSetWindowIcon(id, b);
 		b.get().free();
+	}
+	
+	@SuppressWarnings("unchecked")
+	private <T, X> X cast(T t)
+	{
+		return (X) t;
 	}
 }

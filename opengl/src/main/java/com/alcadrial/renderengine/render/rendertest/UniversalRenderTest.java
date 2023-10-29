@@ -168,7 +168,15 @@ public class UniversalRenderTest implements RenderTest {
 	public void render() throws InterruptedException
 	{
 		activeTest = this;
-		thread = new TimeThread("Test", maxLoops, this::start, () -> !activeTest.getWindow().shouldClose(), this::loopMethod, RenderEngine::terminate);
+		thread = new TimeThread("Test", maxLoops, this::start, () -> !activeTest.getWindow().shouldClose(), this::loopMethod, RenderEngine::terminate) {
+			
+			@Override
+			protected boolean onException(Exception e)
+			{
+				e.printStackTrace(System.out);
+				return false;
+			}
+		};
 		thread.setDaemon(false);
 		thread.start();
 		synchronized (this)
@@ -405,7 +413,9 @@ public class UniversalRenderTest implements RenderTest {
 		RendererUtil.loadRectangle(textureRenderer, 0, 0, 1, 1, 1, 0, 0, 1, 1);
 		textureRenderer.pullBuffer();
 		
-		window.render(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
+		Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
+		window.initializeWidgets(orthographic, 0);
+		window.renderWidgets(orthographic, 0);
 		
 		Util.printError("renderer load");
 	}
@@ -415,7 +425,7 @@ public class UniversalRenderTest implements RenderTest {
 	{
 		window.show();
 		window.makeContextCurrent();
-		window.render(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
+		window.renderWidgets(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
 	}
 	
 	private FrameBuffer frameBuffer;
@@ -541,7 +551,7 @@ public class UniversalRenderTest implements RenderTest {
 		textureRenderer.draw(RenderingMode.QUADS, identity);
 		textureRenderer.pullBuffer();
 		
-		window.draw(compact, currentTime);
+		window.drawWidgets(compact, currentTime);
 		window.update();
 		window.clear(true, true, false);
 		Util.printError("window update");
@@ -557,6 +567,11 @@ public class UniversalRenderTest implements RenderTest {
 	public ShaderProgram getColorProgram()
 	{
 		return colorProgram;
+	}
+	
+	public ShaderProgram getTextureProgram()
+	{
+		return textureProgram;
 	}
 	
 	/**

@@ -180,7 +180,7 @@ public class ObjectRenderTest implements RenderTest {
 		trackers[8] = track(cube3, cubeRenderer);
 		trackers[8].disable();
 		
-		window.render(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
+		window.renderWidgets(new Matrix4f().orthographic(window.getWidth(), window.getHeight()), 0);
 	}
 	
 	private SwitchableTracker<BufferableModel> buildQuad(Quad quad, Color color)
@@ -255,7 +255,7 @@ public class ObjectRenderTest implements RenderTest {
 		else if (i == 13) trackers[5].modify(cubes[0]);
 		cubeRenderer.draw(RenderingMode.QUADS, new Matrix4f(projection).multiply(new Matrix4f().view(Vector3f.of(10, 0, 10), 0, 0).multiply(new Matrix4f().rotate(Axis.Y, o * 8 / 13F % 360))));
 		
-		window.draw(orthographic, partialSecond);
+		window.drawWidgets(orthographic, partialSecond);
 		window.update();
 		window.clear(true, true, false);
 		o++;
