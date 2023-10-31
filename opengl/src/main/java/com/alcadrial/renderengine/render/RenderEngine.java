@@ -97,6 +97,6 @@ public class RenderEngine {
 	
 	public static void setClearColor(float r, float g, float b, float a)
 	{
-		GL30.glClearColor(r, g, b, a);
+		GL30.glClearColor(r / 255, g / 255, b / 255, a / 255);
 	}
 }

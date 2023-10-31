@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.stream.Stream;
 
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFW;
@@ -45,12 +46,17 @@ import com.alcadrial.renderengine.render.rendertest.object.ObjectRenderTest;
 import com.alcadrial.renderengine.render.rendertest.object.RenderTest;
 import com.alcadrial.renderengine.render.shader.ProgramStatus;
 import com.alcadrial.renderengine.render.shader.Shader;
+import com.alcadrial.renderengine.render.shader.ShaderInput;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderStatus;
 import com.alcadrial.renderengine.render.shader.uniform.ShaderUniform;
 import com.alcadrial.renderengine.render.util.RendererUtil;
+import com.alcadrial.renderengine.render.util.RendererUtil.RectangleVertexResult;
 import com.alcadrial.renderengine.render.util.Util;
 import com.alcadrial.renderengine.render.util.wrapper.CullFaceMode;
+import com.alcadrial.renderengine.render.window.DropCallback;
+import com.alcadrial.renderengine.render.window.MouseDragEndCallback;
+import com.alcadrial.renderengine.render.window.MouseDragStartCallback;
 import com.alcadrial.renderengine.render.window.Window;
 import com.alcadrial.threads.TimeThread;
 
@@ -197,7 +203,7 @@ public class UniversalRenderTest implements RenderTest {
 		RenderEngine.setBlendFactors(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA);
 		RenderEngine.setCullFace(CullFaceMode.BACK);
 		RenderEngine.setFrontFaceDirection(true);
-		RenderEngine.setClearColor(0.6F, 0.7F, 1, 1);
+		RenderEngine.setClearColor(64, 64, 64, 255);
 		Util.printError("renew");
 	}
 	
@@ -210,6 +216,7 @@ public class UniversalRenderTest implements RenderTest {
 	private ElementArrayBuffer element0, element1, element2;
 	private FontRenderer fontRenderer;
 	private Font font;
+	private Vector2f startDrag;
 	
 	@Override
 	public void start()
@@ -226,7 +233,7 @@ public class UniversalRenderTest implements RenderTest {
 			private double x = 0, y = 0;
 			
 			@Override
-			public void invoke(long id, double xPos, double yPos)
+			public void invoke(long w, double xPos, double yPos)
 			{
 				if (rotating)
 				{
@@ -246,7 +253,7 @@ public class UniversalRenderTest implements RenderTest {
 			UniversalRenderTest.this.window.setWidth(width);
 			UniversalRenderTest.this.window.setHeight(height);
 		});
-		window.addEvent((GLFWKeyCallbackI) (id, key, scancode, action, mods) -> {
+		window.addEvent((GLFWKeyCallbackI) (w, key, scancode, action, mods) -> {
 			if (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT)
 			{
 				if ((mods & GLFW.GLFW_MOD_NUM_LOCK) == 0 && key == GLFW.GLFW_KEY_KP_2)
@@ -268,8 +275,18 @@ public class UniversalRenderTest implements RenderTest {
 			else if (action == GLFW.GLFW_RELEASE && key == GLFW.GLFW_KEY_R)
 			{
 				rotating = !rotating;
-				GLFW.glfwSetInputMode(id, GLFW.GLFW_CURSOR, rotating ? GLFW.GLFW_CURSOR_DISABLED : GLFW.GLFW_CURSOR_NORMAL);
+				GLFW.glfwSetInputMode(w, GLFW.GLFW_CURSOR, rotating ? GLFW.GLFW_CURSOR_DISABLED : GLFW.GLFW_CURSOR_NORMAL);
 			}
+		});
+		window.addEvent((MouseDragStartCallback) (w, button, x, y) -> {
+			startDrag = Vector2f.of((float) x, (float) (window.getHeight() - y));
+		});
+		window.addEvent((MouseDragEndCallback) (w, button, x, y) -> {
+			startDrag = null;
+		});
+		window.addEvent((DropCallback) (w, names) -> {
+			System.out.println("Dropped files:");
+			for (String name : names) System.out.println("\t" + name);
 		});
 		window.setCursor(StandardCursor.CROSSHAIR);
 		Util.printError("events");
@@ -365,18 +382,24 @@ public class UniversalRenderTest implements RenderTest {
 		
 		window.setIcon(icon);
 		window.show();
-		window.addWidget(new VisibleButton(Vector3i.of(10, 10, 0), Vector2i.of(16, 16), window) {
+		window.addWidget(new Button(Vector3i.of(10, 10, 0), Vector2i.of(64, 64), window) {
 			
 			@Override
-			public void onLeftClick(Vector2i mousePos)
+			public void onClick(int button, int count, Vector2i mousePos)
 			{
-				System.out.println("l");
+				System.out.println("click " + button + ", " + count + " times");
 			}
 			
 			@Override
-			public void onRightClick(Vector2i mousePos)
+			public void onPress(int button, Vector2i mousePos)
 			{
-				System.out.println("r");
+				System.out.println("press " + button);
+			}
+			
+			@Override
+			public void onRelease(int button, Vector2i mousePos)
+			{
+				System.out.println("release " + button);
 			}
 		}, () -> manager);
 		Util.printError("window");
@@ -514,7 +537,7 @@ public class UniversalRenderTest implements RenderTest {
 		EllipseCurve.renderCurve(universalRenderer, cursor, 100, 100, 50, Color.BLUE);
 		universalRenderer.draw(RenderingMode.LINE_LOOP, positive);
 		universalRenderer.clear();
-		RhodoneaCurve.renderCurve(universalRenderer, cursor, 100, 2, 0, 750, Color.GREEN);
+		RhodoneaCurve.renderCurve(universalRenderer, cursor, 100, 2, 0, 750, Color.VERY_DARK_GREEN);
 		universalRenderer.draw(RenderingMode.LINE_STRIP, positive);
 		universalRenderer.clear();
 		InterpolationCurve.renderCurve(universalRenderer, Vector2f.origin(), Vector2f.of(200, 200), x -> x, 3, Color.LIGHT_BLUE);
@@ -551,9 +574,30 @@ public class UniversalRenderTest implements RenderTest {
 		textureRenderer.draw(RenderingMode.QUADS, identity);
 		textureRenderer.pullBuffer();
 		
-		window.drawWidgets(compact, currentTime);
+		window.drawWidgets(positive, currentTime);
+		
+		if (startDrag != null)
+		{
+			RenderEngine.disableCullFace();
+			RenderEngine.disableDepthTest();
+			float sX = startDrag.x() - window.getWidth() / 2F;
+			float sY = window.getHeight() / 2F - startDrag.y();
+			float eX = cursor.x() - window.getWidth() / 2F;
+			float eY = cursor.y() - window.getHeight() / 2F;
+			universalRenderer.pushBuffer();
+			RectangleVertexResult result = RendererUtil.loadRectangle(universalRenderer, sX, sY, eX, eY, 0, 45, 45, 120, 127);
+			universalRenderer.draw(RenderingMode.QUADS, compact);
+			result.track(ShaderInput.COLOR, r -> r.modify(Stream.of(90F, 90F, 200F, 127F).map(f -> f / 255).mapToInt(Float::floatToIntBits).toArray()));
+			universalRenderer.vertex(sX, eY, 0).color(90, 90, 200, 127).end();
+			universalRenderer.draw(RenderingMode.LINE_STRIP, compact);
+			universalRenderer.pullBuffer();
+			RenderEngine.enableDepthTest();
+			RenderEngine.enableCullFace();
+		}
+		
 		window.update();
 		window.clear(true, true, false);
+		
 		Util.printError("window update");
 		o += currentTime * 1;
 	}

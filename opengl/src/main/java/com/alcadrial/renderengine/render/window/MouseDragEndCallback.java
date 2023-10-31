@@ -1,8 +1,6 @@
 package com.alcadrial.renderengine.render.window;
 
-import org.lwjgl.system.NativeType;
-
-public interface MouseDragEndCallback {
+public interface MouseDragEndCallback extends ExtraCallback {
 	
-	void invoke(@NativeType("GLFWwindow *") long window, int button, double x, double y);
+	void invoke(Window window, int button, double x, double y);
 }

@@ -1,5 +1,7 @@
 package com.alcadrial.renderengine.core.util.color;
 
+import com.alcadrial.kector.Math;
+
 public interface Color {
 	
 	static ColorRGB of(float r, float g, float b)
@@ -10,6 +12,26 @@ public interface Color {
 	static Color of(float r, float g, float b, float a)
 	{
 		return new ImmutableColor(r, g, b, a);
+	}
+	
+	static ColorRGB mix(ColorRGB c0, ColorRGB c1)
+	{
+		return mix(c0, c1, 0.5F);
+	}
+	
+	static ColorRGB mix(ColorRGB c0, ColorRGB c1, float f)
+	{
+		return of(Math.lerp(c0.r(), c1.r(), f), Math.lerp(c0.g(), c1.g(), f), Math.lerp(c0.b(), c1.b(), f));
+	}
+	
+	static Color mix(Color c0, Color c1)
+	{
+		return mix(c0, c1, 0.5F);
+	}
+	
+	static Color mix(Color c0, Color c1, float f)
+	{
+		return of(Math.lerp(c0.r(), c1.r(), f), Math.lerp(c0.g(), c1.g(), f), Math.lerp(c0.b(), c1.b(), f), Math.lerp(c0.a(), c1.a(), f));
 	}
 	
 	ColorRGB VERY_LIGHT_RED = of(255, 191, 191);

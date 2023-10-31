@@ -1,11 +1,15 @@
 package com.alcadrial.renderengine.render.util;
 
+import java.util.function.Consumer;
+
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.renderer.universal.UniversalRenderer;
+import com.alcadrial.renderengine.render.renderer.universal.UniversalRenderer.VertexResult;
+import com.alcadrial.renderengine.render.shader.ShaderInput;
 
 @Test
 public class RendererUtil {
@@ -63,12 +67,57 @@ public class RendererUtil {
 		loadRectangle(renderer, start.x(), start.y(), end.x(), end.y(), z, color.r(), color.g(), color.b(), color.a());
 	}
 	
-	public static void loadRectangle(UniversalRenderer renderer, float sX, float sY, float eX, float eY, float z, float r, float g, float b, float a)
+	public static class RectangleVertexResult {
+		
+		private VertexResult[] result;
+		
+		public RectangleVertexResult(VertexResult r0, VertexResult r1, VertexResult r2, VertexResult r3)
+		{
+			result = new VertexResult[4];
+			result[0] = r0;
+			result[1] = r1;
+			result[2] = r2;
+			result[3] = r3;
+		}
+		
+		public VertexResult getR0()
+		{
+			return result[0];
+		}
+		
+		public VertexResult getR1()
+		{
+			return result[1];
+		}
+		
+		public VertexResult getR2()
+		{
+			return result[2];
+		}
+		
+		public VertexResult getR3()
+		{
+			return result[3];
+		}
+		
+		public void foreach(Consumer<VertexResult> action)
+		{
+			for (VertexResult r : result) action.accept(r);
+		}
+		
+		public void track(ShaderInput input, Consumer<Tracker<int[]>> action)
+		{
+			for (VertexResult r : result) action.accept(r.track(input));
+		}
+	}
+	
+	public static RectangleVertexResult loadRectangle(UniversalRenderer renderer, float sX, float sY, float eX, float eY, float z, float r, float g, float b, float a)
 	{
-		renderer.vertex(sX, eY, z).color(r, g, b, a).end();
-		renderer.vertex(eX, eY, z).color(r, g, b, a).end();
-		renderer.vertex(eX, sY, z).color(r, g, b, a).end();
-		renderer.vertex(sX, sY, z).color(r, g, b, a).end();
+		VertexResult r0 = renderer.vertex(sX, eY, z).color(r, g, b, a).end();
+		VertexResult r1 = renderer.vertex(eX, eY, z).color(r, g, b, a).end();
+		VertexResult r2 = renderer.vertex(eX, sY, z).color(r, g, b, a).end();
+		VertexResult r3 = renderer.vertex(sX, sY, z).color(r, g, b, a).end();
+		return new RectangleVertexResult(r0, r1, r2, r3);
 	}
 	
 	public static void loadTexturedRectangle(UniversalRenderer renderer, float sX, float sY, float eX, float eY, float z, float u0, float v0, float u1, float v1)

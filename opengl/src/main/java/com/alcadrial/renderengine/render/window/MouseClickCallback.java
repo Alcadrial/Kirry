@@ -1,8 +1,6 @@
 package com.alcadrial.renderengine.render.window;
 
-import org.lwjgl.system.NativeType;
-
-public interface MouseClickCallback {
+public interface MouseClickCallback extends ExtraCallback {
 	
-	void invoke(@NativeType("GLFWwindow *") long window, int button, int count, int mods);
+	void invoke(Window window, int button, int count, int mods);
 }

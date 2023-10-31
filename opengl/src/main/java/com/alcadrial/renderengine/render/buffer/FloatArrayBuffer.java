@@ -11,11 +11,18 @@ import org.lwjgl.system.MemoryUtil;
 
 public class FloatArrayBuffer extends GlBuffer {
 	
-	protected ArrayList<Float> values = new ArrayList<>();
+	protected ArrayList<Float> values;
 	
 	public FloatArrayBuffer()
 	{
 		super(GL15.GL_ARRAY_BUFFER);
+		values = new ArrayList<>();
+	}
+	
+	public FloatArrayBuffer(int size)
+	{
+		super(GL15.GL_ARRAY_BUFFER);
+		values = new ArrayList<>(size);
 	}
 	
 	public void add(float f)
@@ -53,6 +60,11 @@ public class FloatArrayBuffer extends GlBuffer {
 	{
 		values.addAll(arrayBuffer.asList());
 		isModified = true;
+	}
+	
+	public void trimToSize()
+	{
+		values.trimToSize();
 	}
 	
 	@Override

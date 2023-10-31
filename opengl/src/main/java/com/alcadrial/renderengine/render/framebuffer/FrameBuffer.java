@@ -63,6 +63,18 @@ public class FrameBuffer extends SimpleBuffer {
 		return frameBuffer;
 	}
 	
+	public static FrameBuffer pushFrameBuffer(Vector2i size, boolean useColorTexture, boolean useDepthTexture, boolean useStencilTexture)
+	{
+		return pushFrameBuffer(size.x(), size.y(), useColorTexture, useDepthTexture, useStencilTexture);
+	}
+	
+	public static FrameBuffer pushFrameBuffer(int width, int height, boolean useColorTexture, boolean useDepthTexture, boolean useStencilTexture)
+	{
+		FrameBuffer frameBuffer = pushFrameBuffer();
+		frameBuffer.init(width, height, useColorTexture, useDepthTexture, useStencilTexture);
+		return frameBuffer;
+	}
+	
 	private final Vector4i screen;
 	private FrameBufferTarget target;
 	private TextureHolder[] colorTexture;
@@ -312,8 +324,24 @@ public class FrameBuffer extends SimpleBuffer {
 		return pointer;
 	}
 	
+	public Texture getColorTexture()
+	{
+		return getColorTexture(0);
+	}
+	
 	public Texture getColorTexture(int index)
 	{
+		return colorTexture[index].texture;
+	}
+	
+	public Texture retriveColorTexture()
+	{
+		return retriveColorTexture(0);
+	}
+	
+	public Texture retriveColorTexture(int index)
+	{
+		colorTexture[index].isInternal = false;
 		return colorTexture[index].texture;
 	}
 	
@@ -322,8 +350,20 @@ public class FrameBuffer extends SimpleBuffer {
 		return depthTexture.texture;
 	}
 	
+	public Texture retriveDepthTexture()
+	{
+		depthTexture.isInternal = false;
+		return depthTexture.texture;
+	}
+	
 	public Texture getStencilTexture()
 	{
+		return stencilTexture.texture;
+	}
+	
+	public Texture retriveStencilTexture()
+	{
+		stencilTexture.isInternal = false;
 		return stencilTexture.texture;
 	}
 	

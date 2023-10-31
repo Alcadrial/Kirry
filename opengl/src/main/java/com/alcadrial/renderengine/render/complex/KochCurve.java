@@ -26,7 +26,7 @@ public class KochCurve {
 			next(renderer, v2, end, precision - 1, color);
 			return;
 		}
-		renderer.vertex(start.x(), start.y(), start.z()).color(color.r(), color.g(), color.b(), color.a()).end();
-		renderer.vertex(end.x(), end.y(), end.z()).color(color.r(), color.g(), color.b(), color.a()).end();
+		renderer.vertex(start.x(), start.y(), 0).color(color.r(), color.g(), color.b(), color.a()).end();
+		renderer.vertex(end.x(), end.y(), 0).color(color.r(), color.g(), color.b(), color.a()).end();
 	}
 }

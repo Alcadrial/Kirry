@@ -9,10 +9,12 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Supplier;
 
+import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCharCallbackI;
 import org.lwjgl.glfw.GLFWCursorEnterCallbackI;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
+import org.lwjgl.glfw.GLFWDropCallbackI;
 import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.glfw.GLFWImage.Buffer;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
@@ -44,8 +46,9 @@ public class Window {
 		
 		private long lastPressTimestamp;
 		private long lastReleaseTimestamp = 1;
+		private boolean canClick;
 		private boolean canDrag;
-		private Vector2i lastMousePos;
+		private Vector2i lastMousePos = Vector2i.copyOfImmutable(mousePos);
 		private boolean isDragging;
 		private int clickCount;
 	}
@@ -60,18 +63,21 @@ public class Window {
 	
 	private List<Entry<Supplier<RenderingManager>, DrawableWidget>> renderizableWidgets;
 	private List<ClickableWidget> clickableWidgets;
+	private List<ClickableWidget> draggingWidgets;
 	
 	private List<List<Object>> callbacksList;
-	private List<GLFWCharCallbackI> charCallbackList;
-	private List<GLFWCursorPosCallbackI> cursorPosCallbackList;
-	private List<GLFWCursorEnterCallbackI> cursorEnterCallbackList;
-	private List<GLFWKeyCallbackI> keyCallbackList;
-	private List<GLFWMouseButtonCallbackI> mouseButtonCallbackList;
-	private List<GLFWScrollCallbackI> scrollCallbackList;
-	private List<GLFWWindowSizeCallbackI> windowSizeCallbackList;
+	private List<GLFWCharCallbackI> glfwCharCallbackList;
+	private List<GLFWCursorPosCallbackI> glfwCursorPosCallbackList;
+	private List<GLFWCursorEnterCallbackI> glfwCursorEnterCallbackList;
+	private List<GLFWDropCallbackI> glfwDropCallbackList;
+	private List<GLFWKeyCallbackI> glfwKeyCallbackList;
+	private List<GLFWMouseButtonCallbackI> glfwMouseButtonCallbackList;
+	private List<GLFWScrollCallbackI> glfwScrollCallbackList;
+	private List<GLFWWindowSizeCallbackI> glfwWindowSizeCallbackList;
+	private List<DropCallback> dropCallbackList;
 	private List<MouseClickCallback> mouseClickCallbackList;
-	private List<MouseDragStartCallback> mouseDragStartCallbackList;
 	private List<MouseDragEndCallback> mouseDragEndCallbackList;
+	private List<MouseDragStartCallback> mouseDragStartCallbackList;
 	
 	private List<MouseButtonState> mouseButtonStates;
 	
@@ -103,29 +109,35 @@ public class Window {
 	{
 		renderizableWidgets = new LinkedList<>();
 		clickableWidgets = new LinkedList<>();
+		draggingWidgets = new LinkedList<>();
 		
-		charCallbackList = new ArrayList<>(1);
-		cursorPosCallbackList = new ArrayList<>(1);
-		cursorEnterCallbackList = new ArrayList<>(1);
-		keyCallbackList = new ArrayList<>(1);
-		mouseButtonCallbackList = new ArrayList<>(1);
-		scrollCallbackList = new ArrayList<>(1);
-		windowSizeCallbackList = new ArrayList<>(1);
+		glfwCharCallbackList = new ArrayList<>(1);
+		glfwCursorPosCallbackList = new ArrayList<>(1);
+		glfwCursorEnterCallbackList = new ArrayList<>(1);
+		glfwDropCallbackList = new ArrayList<>(1);
+		glfwKeyCallbackList = new ArrayList<>(1);
+		glfwMouseButtonCallbackList = new ArrayList<>(1);
+		glfwScrollCallbackList = new ArrayList<>(1);
+		glfwWindowSizeCallbackList = new ArrayList<>(1);
+		dropCallbackList = new ArrayList<>(1);
 		mouseClickCallbackList = new ArrayList<>(1);
-		mouseDragStartCallbackList = new ArrayList<>(1);
 		mouseDragEndCallbackList = new ArrayList<>(1);
+		mouseDragStartCallbackList = new ArrayList<>(1);
 		
 		callbacksList = new ArrayList<>(7);
-		callbacksList.add(cast(charCallbackList));
-		callbacksList.add(cast(cursorPosCallbackList));
-		callbacksList.add(cast(cursorEnterCallbackList));
-		callbacksList.add(cast(keyCallbackList));
-		callbacksList.add(cast(mouseButtonCallbackList));
-		callbacksList.add(cast(scrollCallbackList));
-		callbacksList.add(cast(windowSizeCallbackList));
+		callbacksList.add(cast(glfwCharCallbackList));
+		callbacksList.add(cast(glfwCursorPosCallbackList));
+		callbacksList.add(cast(glfwCursorEnterCallbackList));
+		callbacksList.add(cast(glfwDropCallbackList));
+		callbacksList.add(cast(glfwKeyCallbackList));
+		callbacksList.add(cast(glfwMouseButtonCallbackList));
+		callbacksList.add(cast(glfwScrollCallbackList));
+		callbacksList.add(cast(glfwWindowSizeCallbackList));
+		
+		callbacksList.add(cast(dropCallbackList));
 		callbacksList.add(cast(mouseClickCallbackList));
-		callbacksList.add(cast(mouseDragStartCallbackList));
 		callbacksList.add(cast(mouseDragEndCallbackList));
+		callbacksList.add(cast(mouseDragStartCallbackList));
 		
 		mouseButtonStates = new ArrayList<>(GLFW.GLFW_MOUSE_BUTTON_LAST + 1);
 		for (int i = 0; i <= GLFW.GLFW_MOUSE_BUTTON_LAST; i++) mouseButtonStates.add(new MouseButtonState());
@@ -133,23 +145,32 @@ public class Window {
 	
 	protected void charCallback(long id, int codepoint)
 	{
-		for (GLFWCharCallbackI callback : charCallbackList) callback.invoke(id, codepoint);
+		for (GLFWCharCallbackI callback : glfwCharCallbackList) callback.invoke(id, codepoint);
 	}
 	
 	protected void cursorPosCallback(long id, double x, double y)
 	{
 		mousePos.setAll((int) x, getHeight() - (int) y);
-		for (GLFWCursorPosCallbackI callback : cursorPosCallbackList) callback.invoke(id, x, y);
+		for (GLFWCursorPosCallbackI callback : glfwCursorPosCallbackList) callback.invoke(id, x, y);
 		
 		for (int i = 0; i < mouseButtonStates.size(); i++)
 		{
 			MouseButtonState state = mouseButtonStates.get(i);
-			if (state.canDrag && !state.isDragging)
+			boolean flag = state.canDrag && !state.isDragging;
+			if (state.canClick || flag)
 			{
-				if (Math.abs(mousePos.x() - state.lastMousePos.x()) > 5 || Math.abs(mousePos.y() - state.lastMousePos.y()) > 5)
+				int xOffset = Math.abs(mousePos.x() - state.lastMousePos.x());
+				int yOffset = Math.abs(mousePos.y() - state.lastMousePos.y());
+				if (state.canClick && (xOffset > 2 || yOffset > 2)) state.canClick = false;
+				if (flag && (xOffset > 5 || yOffset > 5))
 				{
 					state.isDragging = true;
-					for (MouseDragStartCallback callback : mouseDragStartCallbackList) callback.invoke(id, i, state.lastMousePos.x(), state.lastMousePos.y());
+					for (MouseDragStartCallback callback : mouseDragStartCallbackList) callback.invoke(this, i, state.lastMousePos.x(), state.lastMousePos.y());
+					for (ClickableWidget w : clickableWidgets) if (w.isHovered(state.lastMousePos))
+					{
+						w.onDragStart(state.lastMousePos);
+						draggingWidgets.add(w);
+					}
 				}
 			}
 		}
@@ -157,56 +178,69 @@ public class Window {
 	
 	protected void cursorEnterCallback(long id, boolean entered)
 	{
-		for (GLFWCursorEnterCallbackI callback : cursorEnterCallbackList) callback.invoke(id, entered);
+		for (GLFWCursorEnterCallbackI callback : glfwCursorEnterCallbackList) callback.invoke(id, entered);
 	}
 	
 	protected void keyCallback(long id, int key, int scancode, int action, int mods)
 	{
-		for (GLFWKeyCallbackI callback : keyCallbackList) callback.invoke(id, key, scancode, action, mods);
+		for (GLFWKeyCallbackI callback : glfwKeyCallbackList) callback.invoke(id, key, scancode, action, mods);
 	}
 	
 	protected void mouseButtonCallback(long id, int button, int action, int mods)
 	{
-		for (GLFWMouseButtonCallbackI callback : mouseButtonCallbackList) callback.invoke(id, button, action, mods);
+		for (GLFWMouseButtonCallbackI callback : glfwMouseButtonCallbackList) callback.invoke(id, button, action, mods);
+		
+		List<ClickableWidget> hovereds = new LinkedList<>();
+		for (ClickableWidget e : clickableWidgets) if (e.isMouseHover()) hovereds.add(e);
+		
 		MouseButtonState state = mouseButtonStates.get(button);
 		switch (action)
 		{
 			case GLFW.GLFW_PRESS ->
 			{
-				for (ClickableWidget e : clickableWidgets) if (e.isMouseHover()) e.onClick(button, mousePos);
-				
+				for (ClickableWidget w : hovereds) w.onPress(button, mousePos);
 				if (state.lastPressTimestamp < state.lastReleaseTimestamp)//release -> press
 				{
-					state.lastMousePos = Vector2i.copyOfImmutable(mousePos);
-					
 					long now = System.currentTimeMillis();
 					
 					if (now - state.lastPressTimestamp > MULTI_CLICK_INTERVAL)
 					{
-						state.canDrag = true;
+						state.canClick = true;
 						state.clickCount = 0;
 					}
-					else
+					else if (state.canClick)
 					{
 						state.clickCount++;
-						for (MouseClickCallback callback : mouseClickCallbackList) callback.invoke(id, button, state.clickCount, mods);
+						for (MouseClickCallback callback : mouseClickCallbackList) callback.invoke(this, button, state.clickCount, mods);
+						for (ClickableWidget w : hovereds) w.onClick(button, state.clickCount, mousePos);
 					}
+					else state.clickCount = 0;
 					
 					state.lastPressTimestamp = now;
+					state.lastMousePos = Vector2i.copyOfImmutable(mousePos);
+					state.canDrag = true;
 				}
 			}
 			case GLFW.GLFW_RELEASE ->
 			{
+				for (ClickableWidget w : hovereds) w.onRelease(button, mousePos);
 				if (state.lastPressTimestamp > state.lastReleaseTimestamp)//press -> release
 				{
 					if (state.isDragging)
 					{
-						for (MouseDragEndCallback callback : mouseDragEndCallbackList) callback.invoke(id, button, mousePos.x(), mousePos.y());
+						for (MouseDragEndCallback callback : mouseDragEndCallbackList) callback.invoke(this, button, mousePos.x(), mousePos.y());
+						for (ClickableWidget w : draggingWidgets)
+						{
+							w.onDragEnd(mousePos);
+							w.onDrag(state.lastMousePos, mousePos);
+						}
+						draggingWidgets.clear();
 					}
-					else if (state.clickCount == 0)
+					else if (state.clickCount == 0 && state.canClick)
 					{
 						state.clickCount = 1;
-						for (MouseClickCallback callback : mouseClickCallbackList) callback.invoke(id, button, state.clickCount, mods);
+						for (MouseClickCallback callback : mouseClickCallbackList) callback.invoke(this, button, state.clickCount, mods);
+						for (ClickableWidget w : hovereds) w.onClick(button, state.clickCount, mousePos);
 					}
 				}
 				
@@ -214,20 +248,30 @@ public class Window {
 				state.lastReleaseTimestamp = now;
 				state.isDragging = false;
 				state.canDrag = false;
+				state.canClick = true;
 			}
 		}
+	}
+	
+	protected void windowScrollCallback(long id, double x, double y)
+	{
+		for (GLFWScrollCallbackI callback : glfwScrollCallbackList) callback.invoke(id, x, y);
 	}
 	
 	protected void windowSizeCallback(long id, int width, int height)
 	{
 		size.setAll(width, height);
 		FrameBuffer.DEFAULT.setDrawArea(0, 0, width, height);
-		for (GLFWWindowSizeCallbackI callback : windowSizeCallbackList) callback.invoke(id, width, height);
+		for (GLFWWindowSizeCallbackI callback : glfwWindowSizeCallbackList) callback.invoke(id, width, height);
 	}
 	
-	protected void windowScrollCallback(long id, double x, double y)
+	protected void dropCallback(long id, int count, long names)
 	{
-		for (GLFWScrollCallbackI callback : scrollCallbackList) callback.invoke(id, x, y);
+		for (GLFWDropCallbackI callback : glfwDropCallbackList) callback.invoke(id, count, names);
+		PointerBuffer p = MemoryUtil.memPointerBuffer(names, count);
+		String[] s = new String[count];
+		for (int i = 0; i < count; i++) s[i] = MemoryUtil.memUTF8(p.get());
+		for (DropCallback callback : dropCallbackList) callback.invoke(this, s);
 	}
 	
 	public void create()
@@ -244,6 +288,7 @@ public class Window {
 			GLFW.glfwSetCharCallback(id, this::charCallback);
 			GLFW.glfwSetCursorEnterCallback(id, this::cursorEnterCallback);
 			GLFW.glfwSetCursorPosCallback(id, this::cursorPosCallback);
+			GLFW.glfwSetDropCallback(id, this::dropCallback);
 			GLFW.glfwSetKeyCallback(id, this::keyCallback);
 			GLFW.glfwSetMouseButtonCallback(id, this::mouseButtonCallback);
 			GLFW.glfwSetScrollCallback(id, this::windowScrollCallback);
@@ -291,18 +336,22 @@ public class Window {
 	
 	public void addEvent(CallbackI event)
 	{
-		if (event instanceof GLFWCharCallbackI callback) charCallbackList.add(callback);
-		if (event instanceof GLFWCursorPosCallbackI callback) cursorPosCallbackList.add(callback);
-		if (event instanceof GLFWCursorEnterCallbackI callback) cursorEnterCallbackList.add(callback);
-		if (event instanceof GLFWKeyCallbackI callback) keyCallbackList.add(callback);
-		if (event instanceof GLFWMouseButtonCallbackI callback) mouseButtonCallbackList.add(callback);
-		if (event instanceof GLFWScrollCallbackI callback) scrollCallbackList.add(callback);
-		if (event instanceof GLFWWindowSizeCallbackI callback) windowSizeCallbackList.add(callback);
+		if (event instanceof GLFWCharCallbackI callback) glfwCharCallbackList.add(callback);
+		if (event instanceof GLFWCursorPosCallbackI callback) glfwCursorPosCallbackList.add(callback);
+		if (event instanceof GLFWCursorEnterCallbackI callback) glfwCursorEnterCallbackList.add(callback);
+		if (event instanceof GLFWDropCallbackI callback) glfwDropCallbackList.add(callback);
+		if (event instanceof GLFWKeyCallbackI callback) glfwKeyCallbackList.add(callback);
+		if (event instanceof GLFWMouseButtonCallbackI callback) glfwMouseButtonCallbackList.add(callback);
+		if (event instanceof GLFWScrollCallbackI callback) glfwScrollCallbackList.add(callback);
+		if (event instanceof GLFWWindowSizeCallbackI callback) glfwWindowSizeCallbackList.add(callback);
 	}
 	
 	public void addEvent(ExtraCallback event)
 	{
+		if (event instanceof DropCallback callback) dropCallbackList.add(callback);
 		if (event instanceof MouseClickCallback callback) mouseClickCallbackList.add(callback);
+		if (event instanceof MouseDragEndCallback callback) mouseDragEndCallbackList.add(callback);
+		if (event instanceof MouseDragStartCallback callback) mouseDragStartCallbackList.add(callback);
 	}
 	
 	public void removeEvent(CallbackI event)
