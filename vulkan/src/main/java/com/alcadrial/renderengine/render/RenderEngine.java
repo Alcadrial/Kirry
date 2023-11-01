@@ -35,7 +35,7 @@ public class RenderEngine extends RenderEngineCore {
 	private static volatile ExecutorService executor = null;
 	
 	/**
-	 * Creates a builder that can be used to choose various aspects of the engine</p>
+	 * Creates a builder that can be used to choose various aspects of the engine
 	 * <p>
 	 * After all the data have been set, a call to {@link Builder#initialize()} will 
 	 * initialize the engine using the values of the builder

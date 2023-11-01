@@ -274,7 +274,7 @@ public class UnsafeVulkanUtils {
 	 * 		This enable only applies to indexed draws (CmdDrawIndexed, CmdDrawMultiIndexedEXT, and CmdDrawIndexedIndirect), and the special 
 	 * 		index value is either 0xFFFFFFFF when the indexType parameter of vkCmdBindIndexBuffer is equal to INDEX_TYPE_UINT32, 0xFF when 
 	 * 		indexType is equal to INDEX_TYPE_UINT8_EXT, or 0xFFFF when indexType is equal to INDEX_TYPE_UINT16. Primitive restart is not 
-	 * 		allowed for “list” topologies, unless one of the features primitiveTopologyPatchListRestart (for PRIMITIVE_TOPOLOGY_PATCH_LIST) 
+	 * 		allowed for "list" topologies, unless one of the features primitiveTopologyPatchListRestart (for PRIMITIVE_TOPOLOGY_PATCH_LIST) 
 	 * 		or primitiveTopologyListRestart (for all other list topologies) is enabled
 	 * @return a new {@link VkPipelineInputAssemblyStateCreateInfo} in the stack
 	 */

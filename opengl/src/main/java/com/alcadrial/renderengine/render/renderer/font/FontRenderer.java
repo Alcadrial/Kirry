@@ -189,8 +189,6 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 						float v0 = (float) formattedChar.getY() / texture.getHeight();
 						float u1 = (float) formattedChar.getWidth() / texture.getWidth();
 						float v1 = (float) formattedChar.getHeight() / texture.getHeight();
-						Vector4f vertex0 = matrix.multiply(vertex.setAll(x, y, z, 1));
-						vertices.addAll(asList(color, vertex0.x(), vertex0.y(), vertex0.z(), w, h, u0, v0, u1, v1));
 						if (hasShadow)
 						{
 							float x0 = x + shadowDistance;
@@ -198,6 +196,8 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 							Vector4f vertex1 = matrix.multiply(vertex.setAll(x0, y0, z, 1));
 							vertices.addAll(asList(shadow, vertex1.x(), vertex1.y(), vertex1.z(), w, h, u0, v0, u1, v1));
 						}
+						Vector4f vertex0 = matrix.multiply(vertex.setAll(x, y, z, 1));
+						vertices.addAll(asList(color, vertex0.x(), vertex0.y(), vertex0.z(), w, h, u0, v0, u1, v1));
 						advanced += formattedChar.getAdvance();
 					}
 					advanced = 0;
@@ -222,13 +222,13 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 						float v0 = (float) formattedChar.getY() / texture.getHeight();
 						float u1 = (float) formattedChar.getWidth() / texture.getWidth();
 						float v1 = (float) formattedChar.getHeight() / texture.getHeight();
-						vertices.addAll(asList(color, x, y, z, w, h, u0, v0, u1, v1));
 						if (hasShadow)
 						{
 							float x0 = x + shadowDistance;
 							float y0 = y - shadowDistance;
 							vertices.addAll(asList(shadow, x0, y0, z, w, h, u0, v0, u1, v1));
 						}
+						vertices.addAll(asList(color, x, y, z, w, h, u0, v0, u1, v1));
 						advanced += formattedChar.getAdvance();
 					}
 					advanced = 0;

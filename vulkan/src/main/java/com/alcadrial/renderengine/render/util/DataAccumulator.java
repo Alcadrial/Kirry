@@ -572,7 +572,6 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	/**
 	 * Creates a new render pass using the required fields.
 	 * 
-	 * @param stack
 	 * @return a new render pass
 	 * @renderengine.Requires
 	 * 		{@link #device(Device) device}<br>
@@ -623,7 +622,6 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	/**
 	 * Creates a new swapchain.
 	 * 
-	 * @param stack
 	 * @return a new render pass
 	 * @renderengine.Requires
 	 * 		{@link #physicalDevice}<br>
@@ -659,7 +657,6 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	/**
 	 * Creates a new swapchain.
 	 * 
-	 * @param stack
 	 * @return a new render pass
 	 * @renderengine.Requires
 	 * 		{@link #device}<br>
