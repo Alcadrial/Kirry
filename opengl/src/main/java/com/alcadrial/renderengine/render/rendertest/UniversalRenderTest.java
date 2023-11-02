@@ -193,18 +193,19 @@ public class UniversalRenderTest implements RenderTest {
 	
 	public void loopMethod(float partialSecond)
 	{
-		Util.printError("origin");
-		activeTest.loop(partialSecond);
-		Util.printError("loop");
-		while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
-		RenderEngine.enableDepthTest();
-		RenderEngine.enableBlend();
-		RenderEngine.enableCullFace();
-		RenderEngine.setBlendFactors(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA);
-		RenderEngine.setCullFace(CullFaceMode.BACK);
-		RenderEngine.setFrontFaceDirection(true);
-		RenderEngine.setClearColor(64, 64, 64, 255);
-		Util.printError("renew");
+		try (var v = RenderEngine.configure()//@off
+				.depthTest(true)
+				.blend(true).setBlendFactors(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA)
+				.cullFace(true).setCullFace(CullFaceMode.BACK).setFrontFaceDirection(true)
+				.setClearColor(64, 64, 64, 255).setClearDepth(1).setClearStencil(0)
+				.apply())//@on
+		{
+			Util.printError("origin");
+			activeTest.loop(partialSecond);
+			Util.printError("loop");
+			while (FrameBuffer.getBinded().notDefault()) FrameBuffer.getBinded().unbind();
+			Util.printError("renew");
+		}
 	}
 	
 	private Window window;
@@ -578,21 +579,20 @@ public class UniversalRenderTest implements RenderTest {
 		
 		if (startDrag != null)
 		{
-			RenderEngine.disableCullFace();
-			RenderEngine.disableDepthTest();
-			float sX = startDrag.x() - window.getWidth() / 2F;
-			float sY = window.getHeight() / 2F - startDrag.y();
-			float eX = cursor.x() - window.getWidth() / 2F;
-			float eY = cursor.y() - window.getHeight() / 2F;
-			universalRenderer.pushBuffer();
-			RectangleVertexResult result = RendererUtil.loadRectangle(universalRenderer, sX, sY, eX, eY, 0, 45, 45, 120, 127);
-			universalRenderer.draw(RenderingMode.QUADS, compact);
-			result.track(ShaderInput.COLOR, r -> r.modify(Stream.of(90F, 90F, 200F, 127F).map(f -> f / 255).mapToInt(Float::floatToIntBits).toArray()));
-			universalRenderer.vertex(sX, eY, 0).color(90, 90, 200, 127).end();
-			universalRenderer.draw(RenderingMode.LINE_STRIP, compact);
-			universalRenderer.pullBuffer();
-			RenderEngine.enableDepthTest();
-			RenderEngine.enableCullFace();
+			try (var a = RenderEngine.configure().cullFace(false).depthTest(false).apply())
+			{
+				float sX = startDrag.x() - window.getWidth() / 2F;
+				float sY = window.getHeight() / 2F - startDrag.y();
+				float eX = cursor.x() - window.getWidth() / 2F;
+				float eY = cursor.y() - window.getHeight() / 2F;
+				universalRenderer.pushBuffer();
+				RectangleVertexResult result = RendererUtil.loadRectangle(universalRenderer, sX, sY, eX, eY, 0, 45, 45, 120, 127);
+				universalRenderer.draw(RenderingMode.QUADS, compact);
+				result.track(ShaderInput.COLOR, r -> r.modify(Stream.of(90F, 90F, 200F, 127F).map(f -> f / 255).mapToInt(Float::floatToIntBits).toArray()));
+				universalRenderer.vertex(sX, eY, 0).color(90, 90, 200, 127).end();
+				universalRenderer.draw(RenderingMode.LINE_STRIP, compact);
+				universalRenderer.pullBuffer();
+			}
 		}
 		
 		window.update();

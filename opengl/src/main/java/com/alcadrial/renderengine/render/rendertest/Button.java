@@ -36,15 +36,13 @@ public abstract class Button extends AbstractWidget implements DrawableWidget {
 	@Override
 	public void render(Matrix4f matrix, RenderingManager manager, float partialFrame)
 	{
-		try (FrameBuffer frameBuffer = FrameBuffer.pushFrameBuffer(getSize(), true, false, false))
+		try (var s = RenderEngine.configure().cullFace(false).setFrameBuffer(FrameBuffer.createFrameBuffer(getSize())).apply())
 		{
-			RenderEngine.disableCullFace();
 			UniversalRenderer renderer = manager.startUniversal(RenderingMode.QUADS, UniversalRenderTest.RENDER_ENGINE_TEST.getColorProgram());
 			renderer.setIndicesUse(false);
 			RendererUtil.loadRectangle(renderer, Vector2f.of(-1, -1), Vector2f.of(1, 1), 0, Color.mix(Color.RED, Color.YELLOW));
 			manager.endUniversal(RenderingMode.QUADS, Matrix4f.IDENTITY);
-			RenderEngine.enableCullFace();
-			texture = frameBuffer.retriveColorTexture();
+			texture = FrameBuffer.getBinded().retriveColorTexture();
 			
 			renderer.clear();
 			renderer.setShaderProgram(UniversalRenderTest.RENDER_ENGINE_TEST.getTextureProgram());
@@ -58,14 +56,15 @@ public abstract class Button extends AbstractWidget implements DrawableWidget {
 	@Override
 	public void draw(Matrix4f matrix, RenderingManager manager, float partialFrame)
 	{
-		RenderEngine.disableCullFace();
-		UniversalRenderer renderer = manager.startUniversal(RenderingMode.QUADS, UniversalRenderTest.RENDER_ENGINE_TEST.getTextureProgram());
-		texture.bind();
-		renderer.setIndicesUse(false);
-		renderer.pushBuffer(buffer);
-		manager.endUniversal(RenderingMode.QUADS, matrix);
-		renderer.pullBuffer();
-		RenderEngine.enableCullFace();
+		try (var s = RenderEngine.configure().cullFace(false).apply())
+		{
+			UniversalRenderer renderer = manager.startUniversal(RenderingMode.QUADS, UniversalRenderTest.RENDER_ENGINE_TEST.getTextureProgram());
+			texture.bind();
+			renderer.setIndicesUse(false);
+			renderer.pushBuffer(buffer);
+			manager.endUniversal(RenderingMode.QUADS, matrix);
+			renderer.pullBuffer();
+		}
 	}
 	
 	@Override

@@ -17,7 +17,7 @@ import com.alcadrial.renderengine.render.util.Util;
 
 public class FrameBuffer extends SimpleBuffer {
 	
-	public static final FrameBuffer DEFAULT = new FrameBuffer(FrameBufferTarget.BOTH, 0);
+	public static final FrameBuffer DEFAULT = new FrameBuffer(0);
 	private static FrameBuffer binded = DEFAULT;
 	private static final Queue<FrameBuffer> BINDED_QUEUE = new LinkedList<>();
 	
@@ -43,35 +43,42 @@ public class FrameBuffer extends SimpleBuffer {
 		};
 	}
 	
-	public static FrameBuffer pushFrameBuffer()
-	{
-		FrameBuffer frameBuffer = new FrameBuffer();
-		frameBuffer.offer();
-		return frameBuffer;
-	}
-	
-	public static FrameBuffer pushFrameBuffer(Texture texture)
+	public static FrameBuffer createFrameBuffer(Texture texture)
 	{
 		int target = texture.getTemplate().target();
 		boolean useColorTexture = target < GL30.GL_COLOR_ATTACHMENT0 || target > GL30.GL_COLOR_ATTACHMENT31;
 		boolean useDepthTexture = target != GL30.GL_DEPTH_ATTACHMENT && target != GL30.GL_DEPTH_STENCIL_ATTACHMENT;
 		boolean useStencilTexture = target != GL30.GL_STENCIL_ATTACHMENT && target != GL30.GL_DEPTH_STENCIL_ATTACHMENT;
 		
-		FrameBuffer frameBuffer = pushFrameBuffer();
+		FrameBuffer frameBuffer = new FrameBuffer();
+		frameBuffer.offer();
 		frameBuffer.init(texture.getWidth(), texture.getHeight(), useColorTexture, useDepthTexture, useStencilTexture);
 		frameBuffer.setTexture(texture);
+		frameBuffer.poll();
 		return frameBuffer;
 	}
 	
-	public static FrameBuffer pushFrameBuffer(Vector2i size, boolean useColorTexture, boolean useDepthTexture, boolean useStencilTexture)
+	public static FrameBuffer createFrameBuffer(Vector2i size)
 	{
-		return pushFrameBuffer(size.x(), size.y(), useColorTexture, useDepthTexture, useStencilTexture);
+		return createFrameBuffer(size.x(), size.y(), true, false, false);
 	}
 	
-	public static FrameBuffer pushFrameBuffer(int width, int height, boolean useColorTexture, boolean useDepthTexture, boolean useStencilTexture)
+	public static FrameBuffer createFullFrameBuffer(Vector2i size)
 	{
-		FrameBuffer frameBuffer = pushFrameBuffer();
+		return createFrameBuffer(size.x(), size.y(), true, true, true);
+	}
+	
+	public static FrameBuffer createFrameBuffer(Vector2i size, boolean useColorTexture, boolean useDepthTexture, boolean useStencilTexture)
+	{
+		return createFrameBuffer(size.x(), size.y(), useColorTexture, useDepthTexture, useStencilTexture);
+	}
+	
+	public static FrameBuffer createFrameBuffer(int width, int height, boolean useColorTexture, boolean useDepthTexture, boolean useStencilTexture)
+	{
+		FrameBuffer frameBuffer = new FrameBuffer();
+		frameBuffer.offer();
 		frameBuffer.init(width, height, useColorTexture, useDepthTexture, useStencilTexture);
+		frameBuffer.poll();
 		return frameBuffer;
 	}
 	
@@ -85,6 +92,13 @@ public class FrameBuffer extends SimpleBuffer {
 	public FrameBuffer()
 	{
 		this(FrameBufferTarget.BOTH);
+	}
+	
+	private FrameBuffer(int placeholder)
+	{
+		super(FrameBufferTarget.BOTH.getTarget(), 0);
+		screen = Vector4i.of(0, 0, 0, 0);
+		target = FrameBufferTarget.BOTH;
 	}
 	
 	public FrameBuffer(FrameBufferTarget target)

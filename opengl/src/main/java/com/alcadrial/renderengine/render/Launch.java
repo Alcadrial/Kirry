@@ -33,6 +33,7 @@ import java.util.Spliterators;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.lwjgl.glfw.GLFW;
@@ -181,8 +182,7 @@ public class Launch {
 				}), builder.get());
 				return true;
 			}), FloatArrayBuffer::new);
-			@SuppressWarnings("unused")
-			boolean floatArrayBufferStack = false;
+			@SuppressWarnings("unused") boolean floatArrayBufferStack = false;
 			if (floatArrayBuffer) floatArrayBufferStack = t.test("Float Array Buffer Stack", enclosiveContext(() -> {
 				t.assertTest("Constructor", b -> b.size() == 0 && b.current() == b, new FloatArrayBufferStack());
 				t.println();
@@ -356,8 +356,7 @@ public class Launch {
 				}), builder.get());
 				return true;
 			}), ElementArrayBuffer::new);
-			@SuppressWarnings("unused")
-			boolean elementArrayBufferStack = false;
+			@SuppressWarnings("unused") boolean elementArrayBufferStack = false;
 			if (elementArrayBuffer) elementArrayBufferStack = t.test("Element Array Buffer Stack", enclosiveContext(() -> {
 				t.assertTest("Constructor", b -> b.size() == 0 && b.current() == b, new ElementArrayBufferStack());
 				t.println();
@@ -917,25 +916,25 @@ public class Launch {
 		
 		public MultipleOutputStream(OutputStream... streams)
 		{
-			this.streams = streams;
+			streams = Stream.of(streams).filter(s -> s != null).toArray(OutputStream[]::new);
 		}
 		
 		@Override
 		public void write(int b) throws IOException
 		{
-			for (OutputStream outputStream : streams) if (outputStream != null) outputStream.write(b);
+			for (OutputStream outputStream : streams) outputStream.write(b);
 		}
 		
 		@Override
 		public void write(byte[] b, int off, int len) throws IOException
 		{
-			for (OutputStream outputStream : streams) if (outputStream != null) outputStream.write(b, off, len);
+			for (OutputStream outputStream : streams) outputStream.write(b, off, len);
 		}
 		
 		@Override
 		public void flush() throws IOException
 		{
-			for (OutputStream outputStream : streams) if (outputStream != null) outputStream.flush();
+			for (OutputStream outputStream : streams) outputStream.flush();
 		}
 	}
 }
