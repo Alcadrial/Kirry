@@ -7,6 +7,7 @@ import java.util.List;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.renderengine.core.util.Broken;
 import com.alcadrial.renderengine.core.util.Nullable;
@@ -77,47 +78,48 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 	
 	public void loadText(Text text, Vector2i position, Color color, float size, int maxLength, int maxLines, float z, boolean centered)
 	{
-		loadText(null, text, Vector2f.of(position), color, size, maxLength, maxLines, z, centered, null, 0);
+		loadText(null, text, Vector2f.of(position), color, size, maxLength, maxLines, z, centered, null, null);
 	}
 	
 	public void loadText(Text text, Vector2f position, Color color, float size, int maxLength, int maxLines, float z, boolean centered)
 	{
-		loadText(null, text, position, color, size, maxLength, maxLines, z, centered, null, 0);
+		loadText(null, text, position, color, size, maxLength, maxLines, z, centered, null, null);
 	}
 	
 	public void loadText(@Nullable Matrix4f matrix, Text text, Vector2i position, Color color, float size, int maxLength, int maxLines, float z, boolean centered)
 	{
-		loadText(matrix, text, Vector2f.of(position), color, size, maxLength, maxLines, z, centered, null, 0);
+		loadText(matrix, text, Vector2f.of(position), color, size, maxLength, maxLines, z, centered, null, null);
 	}
 	
 	public void loadText(@Nullable Matrix4f matrix, Text text, Vector2f position, Color color, float size, int maxLength, int maxLines, float z, boolean centered)
 	{
-		loadText(matrix, text, position, color, size, maxLength, maxLines, z, centered, null, 0);
+		loadText(matrix, text, position, color, size, maxLength, maxLines, z, centered, null, null);
 	}
 	
-	public void loadText(Text text, Vector2i position, Color color, float size, int maxLength, int maxLines, float z, boolean centered, @Nullable Color shadow, @Nullable float shadowDistance)
+	public void loadText(Text text, Vector2i position, Color color, float size, int maxLength, int maxLines, float z, boolean centered, @Nullable Color shadow, @Nullable Vector3f shadowDistance)
 	{
 		loadText(null, text, Vector2f.of(position), color, size, maxLength, maxLines, z, centered, shadow, shadowDistance);
 	}
 	
-	public void loadText(Text text, Vector2f position, Color color, float size, int maxLength, int maxLines, float z, boolean centered, @Nullable Color shadow, @Nullable float shadowDistance)
+	public void loadText(Text text, Vector2f position, Color color, float size, int maxLength, int maxLines, float z, boolean centered, @Nullable Color shadow, @Nullable Vector3f shadowDistance)
 	{
 		loadText(null, text, position, color, size, maxLength, maxLines, z, centered, shadow, shadowDistance);
 	}
 	
-	public void loadText(@Nullable Matrix4f matrix, Text text, Vector2i position, Color color, float size, int maxLength, int maxLines, float z, boolean centered, @Nullable Color shadow, @Nullable float shadowDistance)
+	public void loadText(@Nullable Matrix4f matrix, Text text, Vector2i position, Color color, float size, int maxLength, int maxLines, float z, boolean centered, @Nullable Color shadow, @Nullable Vector3f shadowDistance)
 	{
 		loadText(matrix, text, Vector2f.of(position), color, size, maxLength, maxLines, z, centered, shadow, shadowDistance);
 	}
 	
-	public void loadText(@Nullable Matrix4f matrix, Text text, Vector2f position, Color color, float size, int maxLength, int maxLines, float z, boolean centered, @Nullable Color shadow, @Nullable float shadowDistance)
+	@SuppressWarnings("null")
+	public void loadText(@Nullable Matrix4f matrix, Text text, Vector2f position, Color color, float size, int maxLength, int maxLines, float z, boolean centered, @Nullable Color shadow, @Nullable Vector3f shadowDistance)
 	{
 		if (text.isEmpty()) return;
 		if (size < 0) size = 16;
 		size /= font.getSize();
 		if (maxLength < 0) maxLength = Integer.MAX_VALUE;
 		if (maxLines < 0) maxLines = Integer.MAX_VALUE;
-		boolean hasShadow = shadow != null && shadowDistance != 0 && shadow.a() > 0;
+		boolean hasShadow = shadow != null && shadowDistance != null && shadow.a() > 0;
 		
 		class Row {
 			
@@ -191,9 +193,10 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 						float v1 = (float) formattedChar.getHeight() / texture.getHeight();
 						if (hasShadow)
 						{
-							float x0 = x + shadowDistance;
-							float y0 = y - shadowDistance;
-							Vector4f vertex1 = matrix.multiply(vertex.setAll(x0, y0, z, 1));
+							float x0 = x + shadowDistance.x();
+							float y0 = y - shadowDistance.y();
+							float z0 = z - shadowDistance.z();
+							Vector4f vertex1 = matrix.multiply(vertex.setAll(x0, y0, z0, 1));
 							vertices.addAll(asList(shadow, vertex1.x(), vertex1.y(), vertex1.z(), w, h, u0, v0, u1, v1));
 						}
 						Vector4f vertex0 = matrix.multiply(vertex.setAll(x, y, z, 1));
@@ -224,9 +227,10 @@ public class FontRenderer extends AbstractShaderRenderer<FloatArrayBuffer> {
 						float v1 = (float) formattedChar.getHeight() / texture.getHeight();
 						if (hasShadow)
 						{
-							float x0 = x + shadowDistance;
-							float y0 = y - shadowDistance;
-							vertices.addAll(asList(shadow, x0, y0, z, w, h, u0, v0, u1, v1));
+							float x0 = x + shadowDistance.x();
+							float y0 = y - shadowDistance.y();
+							float z0 = z - shadowDistance.z();
+							vertices.addAll(asList(shadow, x0, y0, z0, w, h, u0, v0, u1, v1));
 						}
 						vertices.addAll(asList(color, x, y, z, w, h, u0, v0, u1, v1));
 						advanced += formattedChar.getAdvance();
