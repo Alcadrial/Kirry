@@ -48,7 +48,7 @@ public class Window {
 		private long lastReleaseTimestamp = 1;
 		private boolean canClick;
 		private boolean canDrag;
-		private Vector2i lastMousePos = Vector2i.copyOfImmutable(mousePos);
+		private Vector2i lastMousePos = mousePos;
 		private boolean isDragging;
 		private int clickCount;
 	}
@@ -89,7 +89,7 @@ public class Window {
 		size = Vector2i.of(width, height);
 		aspectRatio = (float) size.x() / size.y();
 		isCreated = false;
-		mousePos = Vector2i.of(0, 0);
+		mousePos = Vector2i.ofImmutable(0, 0);
 		cursorInputMode = CursorInputMode.NORMAL;
 		firstInit();
 	}
@@ -100,7 +100,7 @@ public class Window {
 		this.size = Vector2i.copyOf(size);
 		aspectRatio = (float) size.x() / size.y();
 		isCreated = false;
-		mousePos = Vector2i.of(0, 0);
+		mousePos = Vector2i.ofImmutable(0, 0);
 		cursorInputMode = CursorInputMode.NORMAL;
 		firstInit();
 	}
@@ -150,7 +150,7 @@ public class Window {
 	
 	protected void cursorPosCallback(long id, double x, double y)
 	{
-		mousePos.setAll((int) x, getHeight() - (int) y);
+		mousePos = Vector2i.ofImmutable((int) x, getHeight() - (int) y);
 		for (GLFWCursorPosCallbackI callback : glfwCursorPosCallbackList) callback.invoke(id, x, y);
 		
 		for (int i = 0; i < mouseButtonStates.size(); i++)
@@ -191,7 +191,7 @@ public class Window {
 		for (GLFWMouseButtonCallbackI callback : glfwMouseButtonCallbackList) callback.invoke(id, button, action, mods);
 		
 		List<ClickableWidget> hovereds = new LinkedList<>();
-		for (ClickableWidget e : clickableWidgets) if (e.isMouseHover()) hovereds.add(e);
+		for (ClickableWidget e : clickableWidgets) if (e.isHovered(mousePos)) hovereds.add(e);
 		
 		MouseButtonState state = mouseButtonStates.get(button);
 		switch (action)
@@ -217,7 +217,7 @@ public class Window {
 					else state.clickCount = 0;
 					
 					state.lastPressTimestamp = now;
-					state.lastMousePos = Vector2i.copyOfImmutable(mousePos);
+					state.lastMousePos = mousePos;
 					state.canDrag = true;
 				}
 			}
@@ -398,7 +398,7 @@ public class Window {
 	
 	public Vector2i getMousePos()
 	{
-		return Vector2i.copyOf(mousePos);
+		return mousePos;
 	}
 	
 	public final Vector2i getSize()
@@ -599,7 +599,7 @@ public class Window {
 	{
 		if (!this.mousePos.equals(mousePos))
 		{
-			this.mousePos = mousePos;
+			this.mousePos = Vector2i.copyOfImmutable(mousePos);
 			GLFW.glfwSetCursorPos(id, mousePos.x(), mousePos.y());
 		}
 	}
