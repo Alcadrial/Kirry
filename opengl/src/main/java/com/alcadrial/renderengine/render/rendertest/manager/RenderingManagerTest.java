@@ -30,11 +30,11 @@ import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderStatus;
 import com.alcadrial.renderengine.render.util.Util;
-import com.alcadrial.renderengine.render.window.Window;
+import com.alcadrial.renderengine.render.window.OpenGlWindow;
 
 public class RenderingManagerTest implements RenderTest {
 	
-	private Window window;
+	private OpenGlWindow window;
 	private Vector2f cursor;
 	private boolean rotating;
 	protected float rotationX;
@@ -51,7 +51,7 @@ public class RenderingManagerTest implements RenderTest {
 	@Override
 	public void start()
 	{
-		window = new Window(1080, 720, "Test");
+		window = new OpenGlWindow(1080, 720, "Test");
 		window.create();
 		window.makeContextCurrent();
 		window.init();
@@ -283,7 +283,7 @@ public class RenderingManagerTest implements RenderTest {
 	}
 	
 	@Override
-	public Window getWindow()
+	public OpenGlWindow getWindow()
 	{
 		return window;
 	}

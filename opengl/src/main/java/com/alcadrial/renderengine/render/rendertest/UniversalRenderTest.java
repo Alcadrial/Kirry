@@ -20,6 +20,9 @@ import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3i;
+import com.alcadrial.renderengine.core.callback.DropCallback;
+import com.alcadrial.renderengine.core.callback.MouseDragEndCallback;
+import com.alcadrial.renderengine.core.callback.MouseDragStartCallback;
 import com.alcadrial.renderengine.core.cursor.StandardCursor;
 import com.alcadrial.renderengine.core.util.Image;
 import com.alcadrial.renderengine.core.util.color.Color;
@@ -54,10 +57,7 @@ import com.alcadrial.renderengine.render.util.RendererUtil;
 import com.alcadrial.renderengine.render.util.RendererUtil.RectangleVertexResult;
 import com.alcadrial.renderengine.render.util.Util;
 import com.alcadrial.renderengine.render.util.wrapper.CullFaceMode;
-import com.alcadrial.renderengine.render.window.DropCallback;
-import com.alcadrial.renderengine.render.window.MouseDragEndCallback;
-import com.alcadrial.renderengine.render.window.MouseDragStartCallback;
-import com.alcadrial.renderengine.render.window.Window;
+import com.alcadrial.renderengine.render.window.OpenGlWindow;
 import com.alcadrial.threads.TimeThread;
 
 @SuppressWarnings("unused")
@@ -208,7 +208,7 @@ public class UniversalRenderTest implements RenderTest {
 		}
 	}
 	
-	private Window window;
+	private OpenGlWindow window;
 	private Vector2f cursor;
 	private ShaderProgram colorProgram, textureProgram;
 	private UniversalRenderer universalRenderer, widgetRenderer, textureRenderer;
@@ -222,7 +222,7 @@ public class UniversalRenderTest implements RenderTest {
 	@Override
 	public void start()
 	{
-		window = new Window(1080, 720, "Test");
+		window = new OpenGlWindow(1080, 720, "Test");
 		window.create();
 		window.makeContextCurrent();
 		window.init();
@@ -609,7 +609,7 @@ public class UniversalRenderTest implements RenderTest {
 	}
 	
 	@Override
-	public Window getWindow()
+	public OpenGlWindow getWindow()
 	{
 		return window;
 	}

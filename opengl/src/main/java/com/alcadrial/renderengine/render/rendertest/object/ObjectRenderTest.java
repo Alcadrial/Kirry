@@ -28,12 +28,12 @@ import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.textures.Texture;
 import com.alcadrial.renderengine.render.textures.TextureTemplate;
 import com.alcadrial.renderengine.render.util.SwitchableTracker;
-import com.alcadrial.renderengine.render.window.Window;
+import com.alcadrial.renderengine.render.window.OpenGlWindow;
 
 @SuppressWarnings("deprecation")
 public class ObjectRenderTest implements RenderTest {
 	
-	private Window window;
+	private OpenGlWindow window;
 	private Font font;
 	
 	private FontRenderer fontRenderer;
@@ -45,7 +45,7 @@ public class ObjectRenderTest implements RenderTest {
 	@Override
 	public void start()
 	{
-		window = new Window(1080, 720, "ObjectRenderTest");
+		window = new OpenGlWindow(1080, 720, "ObjectRenderTest");
 		window.create();
 		window.makeContextCurrent();
 		window.init();
@@ -262,7 +262,7 @@ public class ObjectRenderTest implements RenderTest {
 	}
 	
 	@Override
-	public Window getWindow()
+	public OpenGlWindow getWindow()
 	{
 		return window;
 	}

@@ -6,8 +6,8 @@ import java.util.Optional;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL30;
 
-import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Nonnull;
+import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.framebuffer.FrameBuffer;
 import com.alcadrial.renderengine.render.util.wrapper.CullFaceMode;
@@ -182,7 +182,7 @@ public class RenderEngine {
 		
 		public StateConfigurator setBlendFactors(int sourceFactor, int destinationFactor)
 		{
-			blendFactors = Optional.of(Vector2i.of(sourceFactor, destinationFactor));
+			blendFactors = Optional.of(new Pair<>(sourceFactor, destinationFactor));
 			return this;
 		}
 		
@@ -269,7 +269,7 @@ public class RenderEngine {
 			depthTest.ifPresent(RenderEngine::depthTest);
 			blend.ifPresent(RenderEngine::blend);
 			cullFace.ifPresent(RenderEngine::cullFace);
-			blendFactors.ifPresent(v -> setBlendFactors(v.x(), v.y()));
+			blendFactors.ifPresent(p -> setBlendFactors(p.l(), p.r()));
 			clearColor.ifPresent(RenderEngine::setClearColor);
 			clearDepth.ifPresent(RenderEngine::setClearDepth);
 			clearStencil.ifPresent(RenderEngine::setClearStencil);
@@ -290,7 +290,7 @@ public class RenderEngine {
 		protected Optional<Boolean> depthTest;
 		protected Optional<Boolean> blend;
 		protected Optional<Boolean> cullFace;
-		protected Optional<Vector2i> blendFactors;
+		protected Optional<Pair<Integer, Integer>> blendFactors;
 		protected Optional<Color> clearColor;
 		protected Optional<Float> clearDepth;
 		protected Optional<Integer> clearStencil;

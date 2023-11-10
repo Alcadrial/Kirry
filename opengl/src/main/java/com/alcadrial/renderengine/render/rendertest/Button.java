@@ -13,7 +13,7 @@ import com.alcadrial.renderengine.render.renderer.universal.UniversalRenderer;
 import com.alcadrial.renderengine.render.renderingmanager.RenderingManager;
 import com.alcadrial.renderengine.render.textures.Texture;
 import com.alcadrial.renderengine.render.util.RendererUtil;
-import com.alcadrial.renderengine.render.window.Window;
+import com.alcadrial.renderengine.render.window.OpenGlWindow;
 import com.alcadrial.renderengine.render.window.widget.AbstractWidget;
 import com.alcadrial.renderengine.render.window.widget.DrawableWidget;
 
@@ -22,7 +22,7 @@ public abstract class Button extends AbstractWidget implements DrawableWidget {
 	private Texture texture;
 	private FloatArrayBuffer buffer;
 	
-	public Button(Vector3i pos, Vector2i size, Window window)
+	public Button(Vector3i pos, Vector2i size, OpenGlWindow window)
 	{
 		super(window, pos, size);
 	}

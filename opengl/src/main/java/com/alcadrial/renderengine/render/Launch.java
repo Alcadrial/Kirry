@@ -52,12 +52,12 @@ import com.alcadrial.renderengine.render.textures.Texture;
 import com.alcadrial.renderengine.render.textures.TextureTemplate;
 import com.alcadrial.renderengine.render.textures.TextureTemplateException;
 import com.alcadrial.renderengine.render.util.Deletable;
-import com.alcadrial.renderengine.render.window.Window;
+import com.alcadrial.renderengine.render.window.OpenGlWindow;
 
 @Test
 public class Launch {
 	
-	private static Window window;
+	private static OpenGlWindow window;
 	
 	public static void main(String[] args) throws IOException
 	{
@@ -67,7 +67,7 @@ public class Launch {
 		
 		RenderEngine.enableDebug();
 		if (!GLFW.glfwInit()) return;
-		window = new Window(1080, 720, "Test");
+		window = new OpenGlWindow(1080, 720, "Test");
 		window.create();
 		if (!window.isCreated())
 		{

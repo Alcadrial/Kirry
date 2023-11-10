@@ -5,17 +5,17 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.render.renderingmanager.RenderingManager;
-import com.alcadrial.renderengine.render.window.Window;
+import com.alcadrial.renderengine.render.window.OpenGlWindow;
 
 public abstract class AbstractWidget implements ClickableWidget, DrawableWidget {
 	
-	protected Window window;
+	protected OpenGlWindow window;
 	protected Vector3i pos;
 	protected Vector2i size;
 	private boolean isDrawn;
 	private boolean isRendered;
 	
-	public AbstractWidget(Window window, Vector3i pos, Vector2i size)
+	public AbstractWidget(OpenGlWindow window, Vector3i pos, Vector2i size)
 	{
 		this.window = window;
 		this.pos = Vector3i.copyOf(pos);

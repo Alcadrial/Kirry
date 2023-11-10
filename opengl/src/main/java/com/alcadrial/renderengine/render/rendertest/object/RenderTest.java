@@ -1,6 +1,6 @@
 package com.alcadrial.renderengine.render.rendertest.object;
 
-import com.alcadrial.renderengine.render.window.Window;
+import com.alcadrial.renderengine.render.window.OpenGlWindow;
 
 public interface RenderTest {
 	
@@ -8,5 +8,5 @@ public interface RenderTest {
 	public void restart();
 	public void loop(float partialSecond);
 	
-	public Window getWindow();
+	public OpenGlWindow getWindow();
 }
