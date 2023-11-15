@@ -88,12 +88,12 @@ public class VulkanUtils {
 	}
 	
 	@SafeVarargs
-	public static <VR extends VulkanResource<Long>> PointerBuffer toPointerBuffer(MemoryStack stack, VR... resources)
+	public static <VR extends AbstractVulkanResource<Long>> PointerBuffer toPointerBuffer(MemoryStack stack, VR... resources)
 	{
 		return toPointerBuffer(stack, List.of(resources));
 	}
 	
-	public static <VR extends VulkanResource<Long>> PointerBuffer toPointerBuffer(MemoryStack stack, List<VR> resources)
+	public static <VR extends AbstractVulkanResource<Long>> PointerBuffer toPointerBuffer(MemoryStack stack, List<VR> resources)
 	{
 		PointerBuffer buffer = stack.mallocPointer(resources.size());
 		for (VR vr : resources) buffer.put(vr.getVk());
@@ -101,12 +101,12 @@ public class VulkanUtils {
 	}
 	
 	@SafeVarargs
-	public static <VR extends VulkanResource<VK>, VK extends Pointer> PointerBuffer toAddressBuffer(MemoryStack stack, VR... resources)
+	public static <VR extends AbstractVulkanResource<VK>, VK extends Pointer> PointerBuffer toAddressBuffer(MemoryStack stack, VR... resources)
 	{
 		return toAddressBuffer(stack, List.of(resources));
 	}
 	
-	public static <VR extends VulkanResource<VK>, VK extends Pointer> PointerBuffer toAddressBuffer(MemoryStack stack, List<VR> resources)
+	public static <VR extends AbstractVulkanResource<VK>, VK extends Pointer> PointerBuffer toAddressBuffer(MemoryStack stack, List<VR> resources)
 	{
 		PointerBuffer buffer = stack.mallocPointer(resources.size());
 		for (VR vr : resources) buffer.put(vr.vk.address());

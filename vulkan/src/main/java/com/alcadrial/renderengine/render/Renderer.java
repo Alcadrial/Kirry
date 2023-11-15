@@ -73,12 +73,12 @@ public class Renderer implements AutoCloseable {
 	private VertexBuffer vertexBuffer;
 	private IndexBuffer indexBuffer;
 	private List<Long> descriptorSetLayouts;
-	private long[] descriptorSets;
+	private long[][] descriptorSets;
 	private long descriptorPool;
 	private List<UniformBuffer> uniformBuffers;
 	private List<Deque<Consumer<UniformBuffer>>> uniformBuffersUpdates;
 	
-	private Renderer(Builder builder, VulkanWindow targetWindow, Device device, Swapchain swapchain, GraphicsPipeline graphicsPipeline, List<Long> descriptorSetLayouts, long[] descriptorSets, long descriptorPool, List<UniformBuffer> uniformBuffers)
+	private Renderer(Builder builder, VulkanWindow targetWindow, Device device, Swapchain swapchain, GraphicsPipeline graphicsPipeline, List<Long> descriptorSetLayouts, long[][] descriptorSets, long descriptorPool, List<UniformBuffer> uniformBuffers)
 	{
 		modificationPlan = new ModificationPlan(builder);
 		this.device = device;
@@ -116,9 +116,6 @@ public class Renderer implements AutoCloseable {
 		}
 		
 		while (VK10.vkWaitForFences(device.getVk(), swapchain.getActiveCommandBufferData().getFence(), true, Integer.MAX_VALUE) != VK10.VK_SUCCESS);
-		swapchain.swapBuffer();
-		// while (VK10.vkWaitForFences(device.getVk(), swapchain.getActiveCommandBufferData().getFence(), true, Integer.MAX_VALUE) != VK10.VK_SUCCESS);
-		swapchain.swapBuffer();
 		
 		Deque<Consumer<UniformBuffer>> queue = uniformBuffersUpdates.get(swapchain.getActiveCommandIndex());
 		boolean update = queue.size() > 0;
@@ -133,7 +130,7 @@ public class Renderer implements AutoCloseable {
 		commandBuffer.bindPipeline(graphicsPipeline);
 		commandBuffer.bindVertexBuffers(0, vertexBuffer);
 		commandBuffer.bindIndexBuffer(indexBuffer, 0);
-		commandBuffer.bindDescriptorSets(graphicsPipeline, descriptorSets, new int[0]);
+		commandBuffer.bindDescriptorSets(graphicsPipeline, descriptorSets[swapchain.getActiveCommandIndex()], new int[0]);
 		commandBuffer.drawIndexed((int) indexBuffer.getSize() / 4, 1, 0, 0, 0);
 		swapchain.endRegisteringCommands();
 		
@@ -399,7 +396,7 @@ public class Renderer implements AutoCloseable {
 	private static class RendererDataAccumulator<RDA extends RendererDataAccumulator<RDA>> extends DataAccumulator<RDA> {
 		
 		protected List<Long> descriptorSetLayouts;
-		protected long[] descriptorSets;
+		protected long[][] descriptorSets;
 		protected long descriptorPool;
 		protected List<UniformBuffer> uniformBuffers;
 		
@@ -413,7 +410,7 @@ public class Renderer implements AutoCloseable {
 		
 		protected void createUniformBuffers()
 		{
-			System.out.println("Creating uniform buffers");
+			Debug.println("Creating uniform buffers");
 			device.require();
 			
 			VkDescriptorPoolCreateInfo poolInfo = VulkanUtils.descriptorPoolCreateInfo(stack, VulkanUtils.descriptorPoolSize(stack, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2));// static
@@ -456,9 +453,11 @@ public class Renderer implements AutoCloseable {
 			}
 			p.rewind();
 			
-			descriptorSets = new long[2];
+			long[] p1 = new long[2];
 			
-			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.get().getVk(), VulkanUtils.descriptorSetAllocateInfo(stack, descriptorPool, p), descriptorSets), "failed to allocate descriptor sets!");
+			descriptorSets = new long[2][1];
+			
+			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.get().getVk(), VulkanUtils.descriptorSetAllocateInfo(stack, descriptorPool, p), p1), "failed to allocate descriptor sets!");
 			
 			uniformBuffers = new ArrayList<>(2);
 			
@@ -468,12 +467,13 @@ public class Renderer implements AutoCloseable {
 				
 				UniformBuffer buffer = new UniformBuffer(writeDescriptorSets, Math.max(4, uniformBufferSize));
 				uniformBuffers.add(buffer);
+				descriptorSets[i] = new long[] {p1[i]};
 				
 				int offset = 0;
 				for (Entry<Integer, Pair<Integer, Set<ShaderUniform>>> e : bindingFlags.entrySet())
 				{
 					VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
-					writeDescriptorSet.dstSet(descriptorSets[i]);
+					writeDescriptorSet.dstSet(p1[i]);
 					writeDescriptorSet.dstBinding(e.getKey());
 					writeDescriptorSet.dstArrayElement(0);
 					

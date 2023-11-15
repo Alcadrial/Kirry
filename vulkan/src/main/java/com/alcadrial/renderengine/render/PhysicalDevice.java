@@ -12,7 +12,7 @@ import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
 
-import com.alcadrial.renderengine.render.util.VulkanResource;
+import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
 
 /**
  * A physically connected device usable by vulkan that is necessary
@@ -25,7 +25,7 @@ import com.alcadrial.renderengine.render.util.VulkanResource;
  * @author Alcadrial
  *
  */
-public class PhysicalDevice extends VulkanResource<VkPhysicalDevice> {
+public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	
 	static
 	{

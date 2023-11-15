@@ -1,26 +1,8 @@
 package com.alcadrial.renderengine.render.util;
 
-import com.alcadrial.renderengine.render.RenderEngine;
-
-public abstract class VulkanResource<VK> implements AutoCloseable {
+public interface VulkanResource<VK> extends AutoCloseable {
 	
-	static
-	{
-		RenderEngine.assertLoaded();
-	}
+	// void recreate(Object... objects);
 	
-	protected VK vk;
-	
-	public VulkanResource()
-	{}
-	
-	//public abstract void recreate(Object... objects);
-	
-	public VK getVk()
-	{
-		return vk;
-	}
-	
-	@Override
-	public abstract void close();
+	VK getVk();
 }

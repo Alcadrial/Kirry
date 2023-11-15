@@ -277,7 +277,6 @@ public class Test2dPanel {
 			if (isModifiedMatrix)
 			{
 				isModifiedMatrix = false;
-				System.out.println(window.getWidth() + "x" + window.getHeight());
 				renderer.updateUniformBuffers(b -> {
 					Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
 					Matrix4f model = new Matrix4f().translateYTo(-panelPos.y()).translateXTo(-panelPos.x());

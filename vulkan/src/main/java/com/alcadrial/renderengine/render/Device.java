@@ -22,9 +22,9 @@ import org.lwjgl.vulkan.VkDevice;
 import com.alcadrial.renderengine.render.buffer.VulkanBufferData;
 import com.alcadrial.renderengine.render.util.DeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
-import com.alcadrial.renderengine.render.util.VulkanResource;
+import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
 
-public class Device extends VulkanResource<VkDevice> {
+public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	static
 	{
