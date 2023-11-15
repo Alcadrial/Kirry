@@ -15,6 +15,11 @@ import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
  */
 public class RenderPass extends LongDeviceResource {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	public RenderPass(Device device, VkRenderPassCreateInfo renderPassInfo)
 	{
 		super(device);

@@ -3,13 +3,16 @@ package com.alcadrial.renderengine.render;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.lwjgl.system.MemoryStack;
@@ -26,8 +29,8 @@ import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
-import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.renderengine.core.util.Nullable;
+import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.UniformBuffer;
@@ -38,22 +41,32 @@ import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderUniform;
 import com.alcadrial.renderengine.render.shader.ShaderUniformBlock;
 import com.alcadrial.renderengine.render.util.DataAccumulator;
-import com.alcadrial.renderengine.render.util.Pair;
 import com.alcadrial.renderengine.render.util.UnsafeVulkanUtils;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
-import com.alcadrial.renderengine.render.window.Window;
+import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class Renderer implements AutoCloseable {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	public static Builder create()
 	{
 		return new Builder();
 	}
 	
+	public enum DrawResult {
+		SUCCESS,
+		FAILED,
+		SKIPPED;
+	}
+	
 	private ModificationPlan modificationPlan;
 	private Device device;
-	private Window targetWindow;
+	private VulkanWindow targetWindow;
 	private Swapchain swapchain;
 	private GraphicsPipeline graphicsPipeline;
 	private Color clearColor;
@@ -63,8 +76,9 @@ public class Renderer implements AutoCloseable {
 	private long[] descriptorSets;
 	private long descriptorPool;
 	private List<UniformBuffer> uniformBuffers;
+	private List<Deque<Consumer<UniformBuffer>>> uniformBuffersUpdates;
 	
-	private Renderer(Builder builder, Window targetWindow, Device device, Swapchain swapchain, GraphicsPipeline graphicsPipeline, List<Long> descriptorSetLayouts, long[] descriptorSets, long descriptorPool, List<UniformBuffer> uniformBuffers)
+	private Renderer(Builder builder, VulkanWindow targetWindow, Device device, Swapchain swapchain, GraphicsPipeline graphicsPipeline, List<Long> descriptorSetLayouts, long[] descriptorSets, long descriptorPool, List<UniformBuffer> uniformBuffers)
 	{
 		modificationPlan = new ModificationPlan(builder);
 		this.device = device;
@@ -76,6 +90,12 @@ public class Renderer implements AutoCloseable {
 		this.descriptorPool = descriptorPool;
 		this.uniformBuffers = uniformBuffers;
 		clearColor = Color.BLACK;
+		uniformBuffersUpdates = new LinkedList<>();
+		for (UniformBuffer buffer : uniformBuffers)
+		{
+			buffer.updateDescriptorSets();
+			uniformBuffersUpdates.add(new LinkedList<>());
+		}
 	}
 	
 	public VertexAccumulator accumulate()
@@ -83,19 +103,33 @@ public class Renderer implements AutoCloseable {
 		return new VertexAccumulator(graphicsPipeline, vertexBuffer);
 	}
 	
-	public List<UniformBuffer> getUniformBuffers()
+	public void updateUniformBuffers(Consumer<UniformBuffer> action)
 	{
-		return uniformBuffers;
+		for (Deque<Consumer<UniformBuffer>> queue : uniformBuffersUpdates) queue.add(action);
 	}
 	
-	public synchronized void draw(Matrix4f matrix)
+	public synchronized DrawResult draw()
 	{
 		if (targetWindow.getWidth() == 0 || targetWindow.getHeight() == 0)
 		{
-			return;
+			return DrawResult.SKIPPED;
 		}
 		
+		while (VK10.vkWaitForFences(device.getVk(), swapchain.getActiveCommandBufferData().getFence(), true, Integer.MAX_VALUE) != VK10.VK_SUCCESS);
+		swapchain.swapBuffer();
+		// while (VK10.vkWaitForFences(device.getVk(), swapchain.getActiveCommandBufferData().getFence(), true, Integer.MAX_VALUE) != VK10.VK_SUCCESS);
+		swapchain.swapBuffer();
+		
+		Deque<Consumer<UniformBuffer>> queue = uniformBuffersUpdates.get(swapchain.getActiveCommandIndex());
+		boolean update = queue.size() > 0;
+		
+		Consumer<UniformBuffer> action;
+		while ((action = queue.poll()) != null) for (UniformBuffer buffer : uniformBuffers) action.accept(buffer);
+		
+		if (update) uniformBuffers.get(swapchain.getActiveCommandIndex()).updateDescriptorSets();
+		
 		CommandBufferData commandBuffer = swapchain.startRegisteringCommands(null, null, clearColor);
+		
 		commandBuffer.bindPipeline(graphicsPipeline);
 		commandBuffer.bindVertexBuffers(0, vertexBuffer);
 		commandBuffer.bindIndexBuffer(indexBuffer, 0);
@@ -110,6 +144,7 @@ public class Renderer implements AutoCloseable {
 			int result = KHRSwapchain.vkAcquireNextImageKHR(device.getVk(), swapchain.getVk(), Integer.MAX_VALUE, commandBuffer.getImageAvailableSemaphore(), 0, p);
 			if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR)
 			{
+				Debug.println("Swapchain out of date");
 				VkSwapchainCreateInfoKHR createInfo = VkSwapchainCreateInfoKHR.calloc(stack);
 				createInfo.sType(KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR);
 				createInfo.minImageCount(2);
@@ -125,7 +160,7 @@ public class Renderer implements AutoCloseable {
 				createInfo.compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
 				createInfo.clipped(true);
 				swapchain.recreate(device, targetWindow.getSurface(), createInfo);
-				return;
+				return DrawResult.FAILED;
 			}
 			VulkanErrorUtils.assertNoError(result, "Error acquiring next image");
 			
@@ -154,6 +189,7 @@ public class Renderer implements AutoCloseable {
 			result = KHRSwapchain.vkQueuePresentKHR(device.getPresentQueue().getVk(), presentInfo);
 			if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR)
 			{
+				Debug.println("Swapchain out of date");
 				VkSwapchainCreateInfoKHR createInfo = VkSwapchainCreateInfoKHR.calloc(stack);
 				createInfo.sType(KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR);
 				createInfo.minImageCount(2);
@@ -169,11 +205,13 @@ public class Renderer implements AutoCloseable {
 				createInfo.compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
 				createInfo.clipped(true);
 				swapchain.recreate(device, targetWindow.getSurface(), createInfo);
-				return;
+				return DrawResult.FAILED;
 			}
 			VulkanErrorUtils.assertNoError(result, "Error presenting queue");
 			
 			swapchain.swapBuffer();
+			
+			return DrawResult.SUCCESS;
 		}
 	}
 	
@@ -230,7 +268,7 @@ public class Renderer implements AutoCloseable {
 		}
 		
 		@Override
-		public ModificationPlan targetWindow(@Nullable Window targetWindow)
+		public ModificationPlan targetWindow(@Nullable VulkanWindow targetWindow)
 		{
 			return super.targetWindow(targetWindow);
 		}
@@ -323,7 +361,7 @@ public class Renderer implements AutoCloseable {
 		private Builder()
 		{}
 		
-		public Renderer build(Window targetWindow, Device device)
+		public Renderer build(VulkanWindow targetWindow, Device device)
 		{
 			try
 			{
@@ -378,7 +416,7 @@ public class Renderer implements AutoCloseable {
 			System.out.println("Creating uniform buffers");
 			device.require();
 			
-			VkDescriptorPoolCreateInfo poolInfo = VulkanUtils.descriptorPoolCreateInfo(stack, VulkanUtils.descriptorPoolSize(stack, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2));//static
+			VkDescriptorPoolCreateInfo poolInfo = VulkanUtils.descriptorPoolCreateInfo(stack, VulkanUtils.descriptorPoolSize(stack, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2));// static
 			poolInfo.maxSets(2);
 			
 			long[] p0 = new long[1];
@@ -396,14 +434,14 @@ public class Renderer implements AutoCloseable {
 			extractData(computeShader.get(), bindingFlags);
 			
 			int uniformBufferSize = 0;
-			VkDescriptorSetLayoutBinding.Buffer uniformLayoutBindings = UnsafeVulkanUtils.descriptorSetLayoutBinding(stack, bindingFlags.size(), VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);//static
+			VkDescriptorSetLayoutBinding.Buffer uniformLayoutBindings = UnsafeVulkanUtils.descriptorSetLayoutBinding(stack, bindingFlags.size(), VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);// static
 			for (Entry<Integer, Pair<Integer, Set<ShaderUniform>>> e : bindingFlags.entrySet())
 			{
 				VkDescriptorSetLayoutBinding uniformLayoutBinding = uniformLayoutBindings.get();
 				uniformLayoutBinding.binding(e.getKey());
 				uniformLayoutBinding.descriptorCount(1);
-				uniformLayoutBinding.stageFlags(e.getValue().getLeft());
-				uniformBufferSize += e.getValue().getRigth().stream().collect(Collectors.summingInt(u -> u.getType().getLength()));
+				uniformLayoutBinding.stageFlags(e.getValue().l());
+				uniformBufferSize += e.getValue().r().stream().collect(Collectors.summingInt(u -> u.getType().getLength()));
 			}
 			uniformLayoutBindings.rewind();
 			
@@ -426,7 +464,7 @@ public class Renderer implements AutoCloseable {
 			
 			for (int i = 0; i < 2; i++)
 			{
-				VkWriteDescriptorSet.Buffer writeDescriptorSets = VulkanUtils.writeDescriptorSet(bindingFlags.size(), VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1);//dynamic
+				VkWriteDescriptorSet.Buffer writeDescriptorSets = VulkanUtils.writeDescriptorSet(bindingFlags.size(), VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1);// dynamic
 				
 				UniformBuffer buffer = new UniformBuffer(writeDescriptorSets, Math.max(4, uniformBufferSize));
 				uniformBuffers.add(buffer);
@@ -439,7 +477,7 @@ public class Renderer implements AutoCloseable {
 					writeDescriptorSet.dstBinding(e.getKey());
 					writeDescriptorSet.dstArrayElement(0);
 					
-					Set<ShaderUniform> uniforms = e.getValue().getRigth();
+					Set<ShaderUniform> uniforms = e.getValue().r();
 					VkDescriptorBufferInfo.Buffer descriptorBufferInfos = VkDescriptorBufferInfo.calloc(uniforms.size());
 					for (ShaderUniform uniform : uniforms)
 					{
@@ -463,10 +501,10 @@ public class Renderer implements AutoCloseable {
 				Pair<Integer, Set<ShaderUniform>> p = new Pair<>(shader.getType().getStageBit(), null);
 				for (ShaderUniformBlock uniformBlock : shader.getUniformsBlocks())
 				{
-					p.setRigth(new HashSet<>(uniformBlock.getUniforms()));
+					p.setRight(new HashSet<>(uniformBlock.getUniforms()));
 					bindingFlags.merge(uniformBlock.getBinding(), p, (v, w) -> {
-						v.getRigth().addAll(w.getRigth());
-						v.setLeft(v.getLeft() | w.getLeft());
+						v.r().addAll(w.r());
+						v.setLeft(v.l() | w.l());
 						return v;
 					});
 				}

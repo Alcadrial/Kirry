@@ -13,13 +13,18 @@ import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
+import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderUniform;
-import com.alcadrial.renderengine.render.util.Pair;
 
 public class UniformBuffer extends VulkanBuffer {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	private Map<String, Pair<ShaderUniform, Integer>> marks;
 	private VkWriteDescriptorSet.Buffer writeDescriptorSets;
@@ -48,7 +53,7 @@ public class UniformBuffer extends VulkanBuffer {
 	
 	public void updateDescriptorSets()
 	{
-		VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets, null);//dynamic
+		VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets, null);// dynamic
 	}
 	
 	public void set(String uniform, Matrix4f value)
@@ -56,8 +61,8 @@ public class UniformBuffer extends VulkanBuffer {
 		Pair<ShaderUniform, Integer> p = marks.get(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.MATRIX_FLOAT_4X4, p.getLeft().getType());
-			asFloatBuffer().put(p.getRigth(), value.toArray());
+			checkUniformValue(ShaderInputType.MATRIX_FLOAT_4X4, p.l().getType());
+			asFloatBuffer().put(p.r(), value.toArray());
 		}
 	}
 	
@@ -66,8 +71,8 @@ public class UniformBuffer extends VulkanBuffer {
 		Pair<ShaderUniform, Integer> p = marks.get(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.VECTOR_FLOAT_2, p.getLeft().getType());
-			asFloatBuffer().put(p.getRigth(), value.getValuesArray());
+			checkUniformValue(ShaderInputType.VECTOR_FLOAT_2, p.l().getType());
+			asFloatBuffer().put(p.r(), value.getValuesArray());
 		}
 	}
 	
@@ -76,8 +81,8 @@ public class UniformBuffer extends VulkanBuffer {
 		Pair<ShaderUniform, Integer> p = marks.get(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.VECTOR_FLOAT_3, p.getLeft().getType());
-			asFloatBuffer().put(p.getRigth(), value.getValuesArray());
+			checkUniformValue(ShaderInputType.VECTOR_FLOAT_3, p.l().getType());
+			asFloatBuffer().put(p.r(), value.getValuesArray());
 		}
 	}
 	
@@ -86,8 +91,8 @@ public class UniformBuffer extends VulkanBuffer {
 		Pair<ShaderUniform, Integer> p = marks.get(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.VECTOR_FLOAT_4, p.getLeft().getType());
-			asFloatBuffer().put(p.getRigth(), value.getValuesArray());
+			checkUniformValue(ShaderInputType.VECTOR_FLOAT_4, p.l().getType());
+			asFloatBuffer().put(p.r(), value.getValuesArray());
 		}
 	}
 	
@@ -96,8 +101,8 @@ public class UniformBuffer extends VulkanBuffer {
 		Pair<ShaderUniform, Integer> p = marks.get(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.VECTOR_INT_2, p.getLeft().getType());
-			asIntBuffer().put(p.getRigth(), value.getValuesArray());
+			checkUniformValue(ShaderInputType.VECTOR_INT_2, p.l().getType());
+			asIntBuffer().put(p.r(), value.getValuesArray());
 		}
 	}
 	
@@ -106,8 +111,8 @@ public class UniformBuffer extends VulkanBuffer {
 		Pair<ShaderUniform, Integer> p = marks.get(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.VECTOR_INT_3, p.getLeft().getType());
-			asIntBuffer().put(p.getRigth(), value.getValuesArray());
+			checkUniformValue(ShaderInputType.VECTOR_INT_3, p.l().getType());
+			asIntBuffer().put(p.r(), value.getValuesArray());
 		}
 	}
 	
@@ -116,8 +121,8 @@ public class UniformBuffer extends VulkanBuffer {
 		Pair<ShaderUniform, Integer> p = marks.get(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.VECTOR_INT_4, p.getLeft().getType());
-			asIntBuffer().put(p.getRigth(), value.getValuesArray());
+			checkUniformValue(ShaderInputType.VECTOR_INT_4, p.l().getType());
+			asIntBuffer().put(p.r(), value.getValuesArray());
 		}
 	}
 	

@@ -27,6 +27,11 @@ import com.alcadrial.renderengine.render.util.VulkanResource;
  */
 public class PhysicalDevice extends VulkanResource<VkPhysicalDevice> {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	private static final int[] BEST_MATCHER_MAP = new int[] {4, 2, 0, 1, 3};
 	
 	/**

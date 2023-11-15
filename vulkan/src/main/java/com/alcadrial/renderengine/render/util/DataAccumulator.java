@@ -40,6 +40,7 @@ import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
+import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.Surface;
 import com.alcadrial.renderengine.render.Swapchain;
@@ -49,12 +50,28 @@ import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.shader.Shader;
-import com.alcadrial.renderengine.render.window.Window;
+import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
+	protected static final Field[] ELEMENTS;
+	
+	static
+	{
+		Field[] allFields = DataAccumulator.class.getDeclaredFields();
+		Field[] fs = new Field[allFields.length];
+		int i = 0;
+		for (Field field : DataAccumulator.class.getDeclaredFields()) if (field.getType().equals(DataElement.class)) fs[i++] = field;
+		ELEMENTS = new Field[i];
+		for (int j = 0; j < i; j++) ELEMENTS[j] = fs[j];
+	}
+	
 	protected final MemoryStack stack;
-	protected final Field[] elements;
 	protected DataElement<Boolean> autoCloseLayout;
 	protected DataElement<Boolean> autoCloseRenderPass;
 	protected DataElement<Shader> shader;
@@ -64,7 +81,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected DataElement<Shader> geometryShader;
 	protected DataElement<Shader> fragmentShader;
 	protected DataElement<Shader> computeShader;
-	protected DataElement<Window> targetWindow;
+	protected DataElement<VulkanWindow> targetWindow;
 	protected DataElement<Device> device;
 	protected DataElement<PhysicalDevice> physicalDevice;
 	protected DataElement<GraphicsPipeline> graphicsPipeline;
@@ -127,30 +144,24 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	{
 		stack = MemoryStack.stackPush();
 		blendConstants = new Float[4];
-		Field[] allFields = DataAccumulator.class.getDeclaredFields();
-		Field[] fs = new Field[allFields.length];
-		int i = 0;
-		for (Field field : DataAccumulator.class.getDeclaredFields()) if (field.getType().equals(DataElement.class))
+		for (Field field : ELEMENTS)
 		{
 			try
 			{
 				field.set(this, new DataElement<>());
-				fs[i++] = field;
 			}
 			catch (IllegalArgumentException | IllegalAccessException e)
 			{
 				throw new RuntimeException("The field \"" + field.getName() + "\" cannot be initialized, this cannot happen!");
 			}
 		}
-		elements = new Field[i];
-		for (int j = 0; j < i; j++) elements[j] = fs[j];
 	}
 	
 	@SuppressWarnings("unchecked")
 	protected DataAccumulator(DataAccumulator<?> defaultSource)
 	{
 		this();
-		for (Field field : elements)
+		for (Field field : ELEMENTS)
 		{
 			try
 			{
@@ -359,7 +370,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		return myself();
 	}
 	
-	protected SDA targetWindow(@Nullable Window value)
+	protected SDA targetWindow(@Nullable VulkanWindow value)
 	{
 		targetWindow.set(value);
 		return myself();
@@ -839,7 +850,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		stack.close();
 	}
 	
-	protected class DataElement<T> {
+	protected static class DataElement<T> {
 		
 		private T data;
 		private boolean isModified;

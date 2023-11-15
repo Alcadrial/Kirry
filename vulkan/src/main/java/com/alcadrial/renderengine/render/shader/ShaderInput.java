@@ -2,7 +2,14 @@ package com.alcadrial.renderengine.render.shader;
 
 import java.util.Objects;
 
+import com.alcadrial.renderengine.render.RenderEngine;
+
 public class ShaderInput {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	public static final ShaderInput VERTEX_POSITION = of(ShaderInputType.VECTOR_FLOAT_3, "vertexPosition");
 	public static final ShaderInput COLOR_RGB = of(ShaderInputType.VECTOR_FLOAT_3, "colorRGB");

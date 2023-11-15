@@ -15,13 +15,19 @@ import org.lwjgl.vulkan.VkBufferCreateInfo;
 import org.lwjgl.vulkan.VkMemoryRequirements;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 
+import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.LongDeviceResource;
-import com.alcadrial.renderengine.render.util.Pair;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 
 public class VulkanBuffer extends LongDeviceResource {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	protected long memory;
 	protected long size;
@@ -36,8 +42,21 @@ public class VulkanBuffer extends LongDeviceResource {
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			Pair<Long, Long> data = build(stack, size, usage, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-			vk = data.getLeft();
-			memory = data.getRigth();
+			vk = data.l();
+			memory = data.r();
+		}
+	}
+	
+	protected VulkanBuffer(Device device, long size, int usage, int flags)
+	{
+		super(device);
+		this.size = size;
+		closingMonitor = new Object();
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			Pair<Long, Long> data = build(stack, size, usage, flags);
+			vk = data.l();
+			memory = data.r();
 		}
 	}
 	
@@ -53,7 +72,7 @@ public class VulkanBuffer extends LongDeviceResource {
 		data.setLeft(p[0]);
 		
 		VkMemoryRequirements memRequirements = VkMemoryRequirements.malloc(stack);
-		VK10.vkGetBufferMemoryRequirements(device.getVk(), data.getLeft(), memRequirements);
+		VK10.vkGetBufferMemoryRequirements(device.getVk(), data.l(), memRequirements);
 		
 		int index;
 		VkPhysicalDeviceMemoryProperties memProperties = VkPhysicalDeviceMemoryProperties.malloc(stack);
@@ -71,9 +90,9 @@ public class VulkanBuffer extends LongDeviceResource {
 		
 		LongBuffer pVertexBufferMemory = stack.mallocLong(1);
 		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(device.getVk(), VulkanUtils.memoryAllocateInfo(stack, memRequirements.size(), index), null, pVertexBufferMemory), "Failed to allocate buffer memory");
-		data.setRigth(pVertexBufferMemory.get(0));
+		data.setRight(pVertexBufferMemory.get(0));
 		
-		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), data.getLeft(), data.getRigth(), 0), "Failed to bind buffer memory");
+		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), data.l(), data.r(), 0), "Failed to bind buffer memory");
 		return data;
 	}
 	

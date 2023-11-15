@@ -4,10 +4,16 @@ import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 
 import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.LongDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
 public class PipelineLayout extends LongDeviceResource {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	public PipelineLayout(Device device, VkPipelineLayoutCreateInfo createInfo)
 	{

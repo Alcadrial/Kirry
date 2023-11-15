@@ -2,6 +2,11 @@ package com.alcadrial.renderengine.render;
 
 public class InvalidSurfaceException extends Exception {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	public InvalidSurfaceException()
 	{
 		

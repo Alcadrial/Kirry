@@ -12,7 +12,14 @@ import org.lwjgl.vulkan.KHRVideoQueue;
 import org.lwjgl.vulkan.NVGLSLShader;
 import org.lwjgl.vulkan.VK13;
 
+import com.alcadrial.renderengine.render.RenderEngine;
+
 public class VulkanErrorUtils {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	public static <O> void match(O obj, O other)
 	{

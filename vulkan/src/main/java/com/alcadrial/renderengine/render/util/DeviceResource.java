@@ -3,8 +3,14 @@ package com.alcadrial.renderengine.render.util;
 import java.util.Objects;
 
 import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.RenderEngine;
 
 public abstract class DeviceResource<VK> extends VulkanResource<VK> {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	protected Device device;
 	

@@ -31,12 +31,11 @@ import com.alcadrial.renderengine.render.VertexAccumulator;
 import com.alcadrial.renderengine.render.VertexAccumulator.VertexResult;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
-import com.alcadrial.renderengine.render.buffer.UniformBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.Version;
-import com.alcadrial.renderengine.render.window.Window;
+import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
 public class Tests {
@@ -55,7 +54,7 @@ public class Tests {
 		
 		GLFW.glfwWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API);
 		GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_TRUE);
-		//GLFW.glfwWindowHint(GLFW.GLFW_DECORATED, GLFW.GLFW_FALSE);
+		// GLFW.glfwWindowHint(GLFW.GLFW_DECORATED, GLFW.GLFW_FALSE);
 		GLFW.glfwWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, GLFW.GLFW_TRUE);
 		
 		Thread t = new Thread(() -> {
@@ -63,7 +62,7 @@ public class Tests {
 			loop();
 			end();
 		});
-		//t.start();
+		// t.start();
 		
 		System.out.println("Start time = " + recordTime(Tests::start, TimeUnit.MICROSECONDS) / 1000D + "ms");
 		if (!RenderEngine.isInitializated()) return;
@@ -92,7 +91,7 @@ public class Tests {
 			}
 			
 			RenderEngine.terminate();
-		});//.start();
+		});// .start();
 	}
 	
 	private static Renderer renderer;
@@ -107,13 +106,13 @@ public class Tests {
 	{
 		Vulkan vulkan = RenderEngine.getVulkan();
 		
-		System.out.println("Window creation time = " + recordTime(() -> vulkan.setWindow(new Window(1080, 720, "Test")), TimeUnit.MICROSECONDS) / 1000D + "ms");
+		System.out.println("Window creation time = " + recordTime(() -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TimeUnit.MICROSECONDS) / 1000D + "ms");
 		
 		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueGraphicsFamilyProperties() != null);
 		vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
 		vulkan.createDevice();
 		
-		Window window = vulkan.getWindow();
+		VulkanWindow window = vulkan.getWindow();
 		window.assignDevice(vulkan.getDevice());
 		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
@@ -121,11 +120,7 @@ public class Tests {
 		});
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			System.out.println("Resized " + width + "x" + height);
-			for (UniformBuffer uniformBuffer : renderer.getUniformBuffers())
-			{
-				uniformBuffer.set("TRANSFORMATION", new Matrix4f().orthographic(window.getWidth(), window.getHeight()));
-				uniformBuffer.updateDescriptorSets();
-			}
+			renderer.updateUniformBuffers(b -> b.set("TRANSFORMATION", new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
 		});
 		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
 			System.out.println("Refresh");
@@ -180,11 +175,7 @@ public class Tests {
 		indexBuffer = new IndexBuffer(24);
 		renderer.setVertexBuffer(vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
-		for (UniformBuffer uniformBuffer : renderer.getUniformBuffers())
-		{
-			uniformBuffer.set("TRANSFORMATION", new Matrix4f().orthographic(window.getWidth(), window.getHeight()));
-			uniformBuffer.updateDescriptorSets();
-		}
+		renderer.updateUniformBuffers(b -> b.set("TRANSFORMATION", new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
 		
 		VertexAccumulator vertexAccumulator = renderer.accumulate();
 		VertexResult result0 = vertexAccumulator.vertex(-200, 0, 0).color(0, 255, 0, 255).end();
@@ -197,7 +188,7 @@ public class Tests {
 		VertexResult result7 = vertexAccumulator.vertex(200, 200, 0).color(255, 0, 0, 255).end();
 		VertexResult result8 = vertexAccumulator.vertex(200, 0, 0).color(0, 255, 0, 255).end();
 		VertexResult result9 = vertexAccumulator.vertex(100, 100, 0).color(127, 127, 127, 255).end();
-		vertexBuffer.sendToPhysicalDevice();
+		vertexAccumulator.end();
 		
 		indices = new int[] {
 			result0.getIndex(), result1.getIndex(), result4.getIndex(),
@@ -223,7 +214,7 @@ public class Tests {
 	
 	public static void loop()
 	{
-		Window window = RenderEngine.getVulkan().getWindow();
+		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		
 		renderer.setClearColor(Color.of(0, 0, 0, 0));
 		
@@ -293,7 +284,7 @@ public class Tests {
 				renderer.startModificationPlan().submit();
 			}
 			window.pollEvents();
-			renderer.draw(null);
+			renderer.draw();
 			window.update();
 			frame++;
 		}

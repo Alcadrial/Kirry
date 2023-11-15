@@ -11,6 +11,11 @@ import com.alcadrial.renderengine.render.util.Tracker;
 
 public class VertexAccumulator {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	private GraphicsPipeline graphicsPipeline;
 	private VertexBuffer vertexBuffer;
 	private int bufferIndex;
@@ -25,6 +30,11 @@ public class VertexAccumulator {
 	public VertexBuilder vertex(float x, float y, float z)
 	{
 		return new VertexBuilder(graphicsPipeline, x, y, z, index++);
+	}
+	
+	public void end()
+	{
+		vertexBuffer.sendToPhysicalDevice();
 	}
 	
 	public class VertexBuilder extends AbstractVertexBuilder<VertexBuilder, VertexResult> {
@@ -52,6 +62,18 @@ public class VertexAccumulator {
 				vertexIndex += input.getType().getSize();
 			}
 			return new VertexResult(vertexBuffer, inputs, index);
+		}
+		
+		public VertexBuilder nextVertex(float x, float y, float z)
+		{
+			end();
+			return vertex(x, y, z);
+		}
+		
+		public VertexAccumulator next()
+		{
+			end();
+			return VertexAccumulator.this;
 		}
 	}
 	
@@ -96,7 +118,7 @@ public class VertexAccumulator {
 		
 		public InputTracker(int index, VertexBuffer vertexBuffer, int size)
 		{
-			this.bufferIndex = index;
+			bufferIndex = index;
 			this.vertexBuffer = vertexBuffer;
 			this.size = size;
 			valid = true;

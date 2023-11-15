@@ -12,6 +12,11 @@ import com.alcadrial.renderengine.render.util.DeviceResource;
 
 public class Queue extends DeviceResource<VkQueue> {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	public Queue(Device device, int familyIndex)
 	{
 		super(device);

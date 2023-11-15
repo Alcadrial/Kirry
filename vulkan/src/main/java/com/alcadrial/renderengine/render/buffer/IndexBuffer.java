@@ -7,6 +7,11 @@ import com.alcadrial.renderengine.render.RenderEngine;
 
 public class IndexBuffer extends VulkanDoubleBuffer {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	public IndexBuffer(int[] data)
 	{
 		this(RenderEngine.getVulkan().getDevice(), data.length);

@@ -72,7 +72,7 @@ public class RenderEngine extends RenderEngineCore {
 	
 	private static boolean initialize(Builder builder)
 	{
-		if (!initializated) return initializated = !(!GLFW.glfwInit() || !initVulkan(builder));
+		if (!initializated) return GLFW.glfwInit() && initVulkan(builder);
 		return true;
 	}
 	
@@ -127,14 +127,15 @@ public class RenderEngine extends RenderEngineCore {
 					createInfo.pNext(info.address());
 				}
 			}
+			initializated = true;
 			vulkan = new Vulkan(createInfo);
-			
 			executor = Executors.newCachedThreadPool();
 			return true;
 		}
 		catch (Exception e)
 		{
 			initException = e;
+			initializated = false;
 			return false;
 		}
 	}
@@ -166,12 +167,12 @@ public class RenderEngine extends RenderEngineCore {
 	{
 		if (initializated)
 		{
+			if (executor != null) executor.shutdown();
 			vulkan.close();
 			vulkan = null;
 			GLFW.glfwTerminate();
 			if (executor != null)
 			{
-				executor.shutdown();
 				try
 				{
 					executor.awaitTermination(1, TimeUnit.MILLISECONDS);
@@ -188,6 +189,21 @@ public class RenderEngine extends RenderEngineCore {
 	public static boolean isInitializated()
 	{
 		return initializated;
+	}
+	
+	public static void assertLoaded()
+	{
+		if (!initializated) throw new RuntimeException("Use of RenderEngine Vulkan without initialization, use RenderEngine#initialize before anything");
+	}
+	
+	public static void setWindowHint(int hint, boolean value)
+	{
+		GLFW.glfwWindowHint(hint, value ? GLFW.GLFW_TRUE : GLFW.GLFW_FALSE);
+	}
+	
+	public static void setWindowHint(int hint, int value)
+	{
+		GLFW.glfwWindowHint(hint, value);
 	}
 	
 	public static boolean isDebug()

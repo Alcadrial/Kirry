@@ -13,14 +13,19 @@ import org.lwjgl.vulkan.VkSurfaceFormatKHR;
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 
 import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.renderengine.render.util.Pair;
+import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
-import com.alcadrial.renderengine.render.window.Window;
+import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class Surface implements AutoCloseable {
 	
-	private final Window window;
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
+	private final VulkanWindow window;
 	private long surface;
 	private Pair<VkSurfaceFormatKHR, ByteBuffer> format;
 	private int mode;
@@ -31,7 +36,7 @@ public class Surface implements AutoCloseable {
 	private Device device;
 	private Swapchain swapchain;
 	
-	public Surface(Window window)
+	public Surface(VulkanWindow window)
 	{
 		this.window = window;
 		long[] p = new long[1];
@@ -85,7 +90,7 @@ public class Surface implements AutoCloseable {
 		else
 		{
 			extent = VulkanUtils.allocate(VkExtent2D.SIZEOF, VkExtent2D::create);
-			VkExtent2D e = extent.getLeft();
+			VkExtent2D e = extent.l();
 			
 			VkExtent2D minExtent = capabilities.minImageExtent();
 			VkExtent2D maxExtent = capabilities.maxImageExtent();
@@ -101,7 +106,7 @@ public class Surface implements AutoCloseable {
 			
 			extent = new Pair<>(e, null);
 		}
-		size = Vector2i.ofImmutable(extent.getLeft().width(), extent.getLeft().height());
+		size = Vector2i.ofImmutable(extent.l().width(), extent.l().height());
 	}
 	
 	public void init(Device device, MemoryStack stack)
@@ -129,20 +134,20 @@ public class Surface implements AutoCloseable {
 		return surface;
 	}
 	
-	public Window getWindow()
+	public VulkanWindow getWindow()
 	{
 		return window;
 	}
 	
 	public VkSurfaceFormatKHR getFormat()
 	{
-		return format.getLeft();
+		return format.l();
 	}
 	
 	public void setFormat(VkSurfaceFormatKHR format)
 	{
 		VulkanErrorUtils.nonNull(format);
-		MemoryUtil.memFree(this.format.getRigth());
+		MemoryUtil.memFree(this.format.r());
 		this.format = VulkanUtils.copy(format, VkSurfaceFormatKHR::create);
 	}
 	
@@ -153,7 +158,7 @@ public class Surface implements AutoCloseable {
 	
 	public VkExtent2D getExtent()
 	{
-		return extent.getLeft();
+		return extent.l();
 	}
 	
 	public Vector2i getMaxSize()
@@ -179,8 +184,8 @@ public class Surface implements AutoCloseable {
 	@Override
 	public void close()
 	{
-		MemoryUtil.memFree(format.getRigth());
-		MemoryUtil.memFree(extent.getRigth());
+		MemoryUtil.memFree(format.r());
+		MemoryUtil.memFree(extent.r());
 		KHRSurface.vkDestroySurfaceKHR(RenderEngine.getVulkan().getInstance(), surface, null);
 		surface = 0;
 	}

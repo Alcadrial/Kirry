@@ -3,8 +3,14 @@ package com.alcadrial.renderengine.render.shader;
 import java.util.Set;
 
 import com.alcadrial.renderengine.core.util.Nullable;
+import com.alcadrial.renderengine.render.RenderEngine;
 
 public class ShaderUniformBlock {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	private int binding;
 	private String name;

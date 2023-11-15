@@ -10,7 +10,9 @@ import com.alcadrial.kroperties.StringProperty;
 public class Properties {
 	
 	private Properties()
-	{}
+	{
+		
+	}
 	
 	public static final List<Property<?>> PROPERTIES = new LinkedList<>();
 	

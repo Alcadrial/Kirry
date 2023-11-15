@@ -2,6 +2,8 @@ package com.alcadrial.renderengine.render.shader;
 
 import org.lwjgl.vulkan.VK10;
 
+import com.alcadrial.renderengine.render.RenderEngine;
+
 public enum ShaderInputType {
 	
 	BOOL(VK10.VK_FORMAT_R8_SINT, 1, 4, 1, "bool"),
@@ -44,6 +46,11 @@ public enum ShaderInputType {
 	MATRIX_DOUBLE_4X2(VK10.VK_FORMAT_R64G64B64A64_SFLOAT, 8, 64, 4, "dmat4x2"),
 	MATRIX_DOUBLE_4X3(VK10.VK_FORMAT_R64G64B64A64_SFLOAT, 12, 96, 6, "dmat4x3"),
 	MATRIX_DOUBLE_4X4(VK10.VK_FORMAT_R64G64B64A64_SFLOAT, 16, 128, 8, "dmat4x4");
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	public static ShaderInputType of(String typeName)
 	{

@@ -15,6 +15,7 @@ import org.lwjgl.vulkan.VkVertexInputBindingDescription;
 import com.alcadrial.renderengine.core.util.NotYetImplementedException;
 import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInput;
@@ -29,6 +30,11 @@ import com.alcadrial.renderengine.render.util.VulkanUtils;
  * @author Alcadrial
  */
 public class GraphicsPipeline extends Pipeline {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	public static final class Builder extends DataAccumulator<Builder> {
 		

@@ -11,12 +11,18 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.FileUtils;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.google.gson.stream.JsonReader;
 
 public class Shader {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	public static final File GLSLC = new File(new File(Properties.SHADER_COMPILER_PATH.getValue()), "glslc");
 	

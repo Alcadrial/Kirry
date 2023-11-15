@@ -4,6 +4,11 @@ import org.lwjgl.vulkan.VkQueueFamilyProperties;
 
 public class QueueFamily {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	private VkQueueFamilyProperties properties;
 	private int index;
 	

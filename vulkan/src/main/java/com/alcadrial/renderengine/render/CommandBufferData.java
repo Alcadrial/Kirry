@@ -19,6 +19,11 @@ import com.alcadrial.renderengine.render.util.VulkanUtils;
 
 public class CommandBufferData extends DeviceResource<VkCommandBuffer> {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	private final long imageAvailable;
 	private final long renderFinished;
 	private final long fence;
@@ -241,6 +246,11 @@ public class CommandBufferData extends DeviceResource<VkCommandBuffer> {
 	public void resetFence()
 	{
 		VK10.vkResetFences(device.getVk(), fence);
+	}
+	
+	public void reset()
+	{
+		VK10.vkResetCommandBuffer(vk, 0);
 	}
 	
 	public long getImageAvailableSemaphore()

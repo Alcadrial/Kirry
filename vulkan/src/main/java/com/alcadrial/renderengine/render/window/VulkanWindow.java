@@ -25,18 +25,18 @@ import org.lwjgl.system.MemoryStack;
 
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Surface;
-import com.alcadrial.renderengine.render.util.Pair;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanResource;
 
-public class Window extends VulkanResource<Long> {
+public class VulkanWindow extends VulkanResource<Long> {
 	
 	static
 	{
-		if (!RenderEngine.isInitializated()) throw new RuntimeException("Use of RenderEngine Vulkan without initialization, use RenderEngine#initialize before anything");
+		RenderEngine.assertLoaded();
 	}
 	
 	private Surface surface;
@@ -45,8 +45,17 @@ public class Window extends VulkanResource<Long> {
 	private String title;
 	private List<WindowResizeAction> resizeActions;
 	
-	public Window(int width, int height, String title)
+	/**
+	 * <b>WARNING:</b> the window hint {@link GLFW#GLFW_CLIENT_API CLIENT_API} is set to {@link GLFW#GLFW_NO_API NO_API}
+	 * before creating the window and is never restored to the previous value if different.
+	 * 
+	 * @param width the width in pixels of the window
+	 * @param height the height int pixels of the window
+	 * @param title the string in the upper left corner of the window if not {@link GLFW#GLFW_DECORATED decorated}
+	 */
+	public VulkanWindow(int width, int height, String title)
 	{
+		RenderEngine.setWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API);
 		vk = VulkanErrorUtils.nonNull(GLFW.glfwCreateWindow(width, height, title, 0, 0), "Cannot create window");
 		this.width = width;
 		this.height = height;
@@ -59,11 +68,6 @@ public class Window extends VulkanResource<Long> {
 		
 	}
 	
-	public void addResizeAction(WindowResizeAction action)
-	{
-		resizeActions.add(action);
-	}
-	
 	public void assignDevice(Device device)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
@@ -72,18 +76,23 @@ public class Window extends VulkanResource<Long> {
 		}
 	}
 	
+	public void addResizeAction(WindowResizeAction action)
+	{
+		resizeActions.add(action);
+	}
+	
 	public final void resetCallbacks()
 	{
-		//	 GLFW.glfwSetCharCallback(id, i);
-		//	GLFW.glfwSetCharModsCallback(id, i);
-		//	 GLFW.glfwSetCursorEnterCallback(id, i);
-		//	 GLFW.glfwSetCursorPosCallback(id, i);
-		//	 GLFW.glfwSetDropCallback(id, i);
-		//	GLFW.glfwSetKeyCallback(id, i); 
-		//	 GLFW.glfwSetMouseButtonCallback(id, i);
-		//	 GLFW.glfwSetScrollCallback(id, i);
+		GLFW.glfwSetCharCallback(vk, null);
+		GLFW.glfwSetCharModsCallback(vk, null);
+		GLFW.glfwSetCursorEnterCallback(vk, null);
+		GLFW.glfwSetCursorPosCallback(vk, null);
+		GLFW.glfwSetDropCallback(vk, null);
+		GLFW.glfwSetKeyCallback(vk, null);
+		GLFW.glfwSetMouseButtonCallback(vk, null);
+		GLFW.glfwSetScrollCallback(vk, null);
 		GLFW.glfwSetWindowCloseCallback(vk, w -> onHide());
-		//	GLFW.glfwSetWindowContentScaleCallback(id, i);
+		GLFW.glfwSetWindowContentScaleCallback(vk, null);
 		GLFW.glfwSetWindowFocusCallback(vk, (w, f) -> onFocus());
 		GLFW.glfwSetWindowIconifyCallback(vk, (w, c) -> {
 			if (c) onIconify();
@@ -93,8 +102,8 @@ public class Window extends VulkanResource<Long> {
 			if (m) onMaximize();
 			else onRestore();
 		});
-		//	GLFW.glfwSetWindowPosCallback(id, i);
-		//	GLFW.glfwSetWindowRefreshCallback(id, i);
+		GLFW.glfwSetWindowPosCallback(vk, null);
+		GLFW.glfwSetWindowRefreshCallback(vk, null);
 		GLFW.glfwSetWindowSizeCallback(vk, (p, w, h) -> {
 			width = w;
 			height = h;
@@ -165,7 +174,7 @@ public class Window extends VulkanResource<Long> {
 		double[][] p = new double[2][1];
 		GLFW.glfwGetCursorPos(vk, p[0], p[1]);
 		holder.setLeft(p[0][0]);
-		holder.setRigth(p[1][0]);
+		holder.setRight(p[1][0]);
 		return holder;
 	}
 	
@@ -179,6 +188,11 @@ public class Window extends VulkanResource<Long> {
 	public final void setMousePos(Vector2f pos)
 	{
 		GLFW.glfwSetCursorPos(vk, pos.x(), pos.y());
+	}
+	
+	public final void setMousePos(Pair<Double, Double> pos)
+	{
+		GLFW.glfwSetCursorPos(vk, pos.l(), pos.r());
 	}
 	
 	public final Vector2i getPos(Vector2i holder)

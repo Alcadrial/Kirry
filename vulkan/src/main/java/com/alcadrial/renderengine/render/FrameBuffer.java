@@ -8,6 +8,11 @@ import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
 public class FrameBuffer extends LongDeviceResource {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	private final int type;
 	private final long renderPass;
 	private final int width;

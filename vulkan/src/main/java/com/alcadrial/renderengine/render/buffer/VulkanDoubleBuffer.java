@@ -5,12 +5,18 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkCommandBuffer;
 
+import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.util.Pair;
+import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 
 public class VulkanDoubleBuffer extends VulkanBuffer {
+
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	protected long gpuVk;
 	protected long gpuMemory;
@@ -18,12 +24,12 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 	
 	public VulkanDoubleBuffer(Device device, long size, int usage)
 	{
-		super(device, size, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+		super(device, size, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			Pair<Long, Long> data = build(stack, size, VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT | usage, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			gpuVk = data.getLeft();
-			gpuMemory = data.getRigth();
+			gpuVk = data.l();
+			gpuMemory = data.r();
 		}
 	}
 	

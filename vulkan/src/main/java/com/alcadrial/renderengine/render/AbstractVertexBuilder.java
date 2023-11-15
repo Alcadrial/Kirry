@@ -11,6 +11,11 @@ import com.alcadrial.renderengine.render.shader.ShaderInputType;
 
 public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB, VR>, VR extends IVertexResult> {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	protected final Map<ShaderInput, float[]> map;
 	protected final GraphicsPipeline pipeline;
 	

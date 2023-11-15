@@ -21,13 +21,18 @@ import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
-import com.alcadrial.renderengine.render.window.Window;
+import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class Vulkan implements AutoCloseable {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	private class ThreadData {
 		
-		private Window window;
+		private VulkanWindow window;
 		private Predicate<PhysicalDevice> physicalDeviceFilter;
 		private List<PhysicalDevice> validPhysicalDevices;
 		private PhysicalDevice physicalDevice;
@@ -48,7 +53,7 @@ public class Vulkan implements AutoCloseable {
 	private Object physicalDevicesMonitor;
 	private List<PhysicalDevice> physicalDevices;
 	
-	private Window defaultWindow;
+	private VulkanWindow defaultWindow;
 	private Predicate<PhysicalDevice> defaultPhysicalDeviceFilter;
 	
 	private ConcurrentHashMap<Thread, ThreadData> data;
@@ -70,12 +75,12 @@ public class Vulkan implements AutoCloseable {
 		physicalDevicesMonitor = new Object();
 	}
 	
-	public void setDefaultWindow(Window defaultWindow)
+	public void setDefaultWindow(VulkanWindow defaultWindow)
 	{
 		this.defaultWindow = defaultWindow;
 	}
 	
-	public void setWindow(Window window)
+	public void setWindow(VulkanWindow window)
 	{
 		getData().window = window;
 	}
@@ -194,15 +199,7 @@ public class Vulkan implements AutoCloseable {
 				createInfo.ppEnabledExtensionNames(RenderEngine.getDeviceExtensions(stack));
 				
 				PointerBuffer devicePointer = stack.pointers(VK10.VK_NULL_HANDLE);
-				try
-				{
-					VulkanErrorUtils.assertNoError(VK10.vkCreateDevice(threadData.physicalDevice.getVk(), createInfo, null, devicePointer), "Failed to create logical device");
-				}
-				catch (Exception e)
-				{
-					System.out.println(createInfo.pQueueCreateInfos().capacity());
-					throw e;
-				}
+				VulkanErrorUtils.assertNoError(VK10.vkCreateDevice(threadData.physicalDevice.getVk(), createInfo, null, devicePointer), "Failed to create logical device");
 				threadData.device = new Device(new VkDevice(devicePointer.get(0), threadData.physicalDevice.getVk(), createInfo), threadData.physicalDevice);
 				threadData.device.setGraphicsQueue(new Queue(threadData.device, threadData.physicalDevice.getQueueGraphicsFamilyIndex()));
 				threadData.device.setPresentQueue(new Queue(threadData.device, threadData.physicalDevice.getQueueSurfaceFamilyIndex()));
@@ -231,7 +228,7 @@ public class Vulkan implements AutoCloseable {
 		return getData().physicalDevice;
 	}
 	
-	public Window getWindow()
+	public VulkanWindow getWindow()
 	{
 		return getData().window;
 	}

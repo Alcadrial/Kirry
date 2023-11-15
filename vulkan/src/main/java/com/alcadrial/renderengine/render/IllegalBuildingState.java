@@ -2,8 +2,15 @@ package com.alcadrial.renderengine.render;
 
 public class IllegalBuildingState extends RuntimeException {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	public IllegalBuildingState()
-	{}
+	{
+		
+	}
 	
 	public IllegalBuildingState(String message)
 	{
@@ -18,10 +25,5 @@ public class IllegalBuildingState extends RuntimeException {
 	public IllegalBuildingState(String message, Throwable cause)
 	{
 		super(message, cause);
-	}
-	
-	public IllegalBuildingState(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace)
-	{
-		super(message, cause, enableSuppression, writableStackTrace);
 	}
 }

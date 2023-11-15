@@ -36,6 +36,11 @@ import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
  */
 public class Swapchain extends LongDeviceResource {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	private RenderPass renderPass;
 	private List<Long> images;
 	private List<Long> imageViews;
@@ -178,7 +183,7 @@ public class Swapchain extends LongDeviceResource {
 		if (!commandBuffer.isRecording())
 		{
 			while (VK10.vkWaitForFences(device.getVk(), commandBuffer.getFence(), true, Integer.MAX_VALUE) != VK10.VK_SUCCESS);
-			
+			commandBuffer.reset();
 			commandBuffer.startRecording();
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{

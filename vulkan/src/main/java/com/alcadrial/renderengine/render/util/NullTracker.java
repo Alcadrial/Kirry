@@ -1,6 +1,13 @@
 package com.alcadrial.renderengine.render.util;
 
+import com.alcadrial.renderengine.render.RenderEngine;
+
 class NullTracker implements Tracker<Object> {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	public static final Tracker<Object> INSTANCE = new NullTracker();
 	

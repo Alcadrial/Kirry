@@ -1,6 +1,13 @@
 package com.alcadrial.renderengine.render.util;
 
+import com.alcadrial.renderengine.render.RenderEngine;
+
 public abstract class VulkanResource<VK> implements AutoCloseable {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	protected VK vk;
 	

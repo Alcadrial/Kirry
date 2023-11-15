@@ -1,6 +1,13 @@
 package com.alcadrial.renderengine.render.shader;
 
+import com.alcadrial.renderengine.render.RenderEngine;
+
 public class CompiledShader {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	private static final CompiledShader FAIL = new CompiledShader();
 	

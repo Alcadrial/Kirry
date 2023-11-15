@@ -2,7 +2,14 @@ package com.alcadrial.renderengine.render.shader;
 
 import java.util.Objects;
 
+import com.alcadrial.renderengine.render.RenderEngine;
+
 public class ShaderUniform {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	private String name;
 	private ShaderInputType type;

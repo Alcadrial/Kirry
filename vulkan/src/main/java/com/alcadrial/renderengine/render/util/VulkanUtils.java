@@ -37,7 +37,15 @@ import org.lwjgl.vulkan.VkSubmitInfo;
 import org.lwjgl.vulkan.VkViewport;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
+import com.alcadrial.renderengine.core.util.Pair;
+import com.alcadrial.renderengine.render.RenderEngine;
+
 public class VulkanUtils {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	public static <S extends Struct<S>> Pair<S, ByteBuffer> copy(S struct, Function<Long, S> builder)
 	{

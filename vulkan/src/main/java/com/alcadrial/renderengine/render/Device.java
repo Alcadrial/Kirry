@@ -26,6 +26,11 @@ import com.alcadrial.renderengine.render.util.VulkanResource;
 
 public class Device extends VulkanResource<VkDevice> {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	private Deque<DeviceResource<?>> destructionList;
 	private PhysicalDevice physicalDevice;
 	private Queue graphicsQueue;

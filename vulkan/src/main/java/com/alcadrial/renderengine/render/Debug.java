@@ -4,6 +4,11 @@ import java.io.PrintStream;
 
 public class Debug {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	private static volatile PrintStream debugOutput = System.out;
 	
 	public static void println()

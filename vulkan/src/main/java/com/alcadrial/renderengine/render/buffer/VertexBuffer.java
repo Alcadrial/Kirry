@@ -7,6 +7,11 @@ import com.alcadrial.renderengine.render.RenderEngine;
 
 public class VertexBuffer extends VulkanDoubleBuffer {
 	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
+	
 	private long offset;
 	
 	public VertexBuffer(int size)

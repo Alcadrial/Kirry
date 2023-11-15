@@ -2,7 +2,14 @@ package com.alcadrial.renderengine.render.buffer;
 
 import org.lwjgl.util.vma.VmaAllocationInfo;
 
+import com.alcadrial.renderengine.render.RenderEngine;
+
 public class VulkanBufferData implements AutoCloseable {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	private long id;
 	private long allocation;

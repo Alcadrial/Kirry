@@ -2,7 +2,14 @@ package com.alcadrial.renderengine.render.util;
 
 import java.io.File;
 
+import com.alcadrial.renderengine.render.RenderEngine;
+
 public class FileUtils {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	public static String getExtension(File file)
 	{
