@@ -68,7 +68,7 @@ public class RendererUtils {
 	
 	public static void loadRectangle(VertexAccumulator accumulator, Vector2f start, Vector2f end, float z, Color color)
 	{
-		loadRectangle(accumulator, start.x(), start.y(), end.x(), end.y(), z, color.r(), color.g(), color.b(), color.a());
+		loadRectangleXYZRGBA(accumulator, start.x(), start.y(), end.x(), end.y(), z, color.r(), color.g(), color.b(), color.a());
 	}
 	
 	/**
@@ -127,24 +127,7 @@ public class RendererUtils {
 		}
 	}
 	
-	/**
-	 * vertices: 72 bytes/28 floats
-	 * <br>
-	 * quads: 1
-	 * 
-	 * @param accumulator
-	 * @param sX
-	 * @param sY
-	 * @param eX
-	 * @param eY
-	 * @param z
-	 * @param r
-	 * @param g
-	 * @param b
-	 * @param a
-	 * @return the result
-	 */
-	public static RectangleVertexResult loadRectangle(VertexAccumulator accumulator, float sX, float sY, float eX, float eY, float z, float r, float g, float b, float a)
+	public static RectangleVertexResult loadRectangleXYZRGBA(VertexAccumulator accumulator, float sX, float sY, float eX, float eY, float z, float r, float g, float b, float a)
 	{
 		VertexResult r0 = accumulator.vertex(sX, eY, z).color(r, g, b, a).end();
 		VertexResult r1 = accumulator.vertex(eX, eY, z).color(r, g, b, a).end();
@@ -153,7 +136,7 @@ public class RendererUtils {
 		return new RectangleVertexResult(r0, r1, r2, r3);
 	}
 	
-	public static RectangleVertexResult sendRectangle(Renderer renderer, float sX, float sY, float eX, float eY, float z, float r, float g, float b, float a)
+	public static RectangleVertexResult sendRectangleXYZRGBA(Renderer renderer, float sX, float sY, float eX, float eY, float z, float r, float g, float b, float a)
 	{
 		VertexAccumulator accumulator = renderer.accumulate();
 		VertexResult r0 = accumulator.vertex(sX, eY, z).color(r, g, b, a).end();
@@ -164,13 +147,23 @@ public class RendererUtils {
 		return new RectangleVertexResult(r0, r1, r2, r3);
 	}
 	
-	public static void loadTexturedRectangle(Renderer renderer, float sX, float sY, float eX, float eY, float z, float u0, float v0, float u1, float v1)
+	public static RectangleVertexResult loadRectangleXYZUV(VertexAccumulator accumulator, float sX, float sY, float eX, float eY, float z, float u0, float v0, float u1, float v1)
+	{
+		VertexResult r0 = accumulator.vertex(sX, eY, z).uv(u1, v0).end();
+		VertexResult r1 = accumulator.vertex(eX, eY, z).uv(u0, v0).end();
+		VertexResult r2 = accumulator.vertex(eX, sY, z).uv(u0, v1).end();
+		VertexResult r3 = accumulator.vertex(sX, sY, z).uv(u1, v1).end();
+		return new RectangleVertexResult(r0, r1, r2, r3);
+	}
+	
+	public static RectangleVertexResult sendRectangleXYZUV(Renderer renderer, float sX, float sY, float eX, float eY, float z, float u0, float v0, float u1, float v1)
 	{
 		VertexAccumulator accumulator = renderer.accumulate();
-		accumulator.vertex(sX, eY, z).uv(u0, v1).end();
-		accumulator.vertex(eX, eY, z).uv(u1, v1).end();
-		accumulator.vertex(eX, sY, z).uv(u1, v0).end();
-		accumulator.vertex(sX, sY, z).uv(u0, v0).end();
+		VertexResult r0 = accumulator.vertex(sX, eY, z).uv(u1, v0).end();
+		VertexResult r1 = accumulator.vertex(eX, eY, z).uv(u0, v0).end();
+		VertexResult r2 = accumulator.vertex(eX, sY, z).uv(u0, v1).end();
+		VertexResult r3 = accumulator.vertex(sX, sY, z).uv(u1, v1).end();
 		accumulator.end();
+		return new RectangleVertexResult(r0, r1, r2, r3);
 	}
 }

@@ -132,4 +132,9 @@ public class VulkanErrorUtils {
 		if (value) return;
 		throw new AssertionError(error);
 	}
+	
+	public static void error(String error)
+	{
+		throw new AssertionError(error);
+	}
 }

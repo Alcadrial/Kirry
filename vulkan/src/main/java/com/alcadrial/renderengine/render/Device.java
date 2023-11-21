@@ -16,13 +16,18 @@ import org.lwjgl.util.vma.VmaVulkanFunctions;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VK12;
 import org.lwjgl.vulkan.VkBufferCreateInfo;
+import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandPoolCreateInfo;
 import org.lwjgl.vulkan.VkDevice;
+import org.lwjgl.vulkan.VkMemoryRequirements;
+import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 
+import com.alcadrial.renderengine.core.util.WorkInProgress;
 import com.alcadrial.renderengine.render.buffer.VulkanBufferData;
+import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
 import com.alcadrial.renderengine.render.util.DeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
-import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
+import com.alcadrial.renderengine.render.util.VulkanUtils;
 
 public class Device extends AbstractVulkanResource<VkDevice> {
 	
@@ -66,6 +71,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	/**
 	 * Vma
 	 */
+	@WorkInProgress
 	public void initializeVma()
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
@@ -106,6 +112,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		}
 	}
 	
+	@WorkInProgress
 	public VulkanBufferData createBuffer(MemoryStack stack, VkBufferCreateInfo bufferCreateInfo, VmaAllocationCreateInfo allocationCreateInfo)
 	{
 		LongBuffer p = stack.callocLong(1);
@@ -115,6 +122,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		return new VulkanBufferData(p.get(), p0.get(), allocationInfo);
 	}
 	
+	@WorkInProgress
 	public VulkanBufferData createBuffer(VkBufferCreateInfo bufferCreateInfo, VmaAllocationCreateInfo allocationCreateInfo)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
@@ -227,6 +235,87 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	public long getShortLivedCommandPool()
 	{
 		return shortLivedCommandPool;
+	}
+	
+	public VkCommandBuffer createSingleUseCommandBuffer(MemoryStack stack)
+	{
+		PointerBuffer p = stack.callocPointer(1);
+		VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, shortLivedCommandPool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to create single use command buffer");
+		VkCommandBuffer commandBuffer = new VkCommandBuffer(p.get(), vk);
+		VulkanErrorUtils.assertNoError(VK10.vkBeginCommandBuffer(commandBuffer, VulkanUtils.commandBufferBeginInfo(stack, VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)), "Failed to create single use command buffer");
+		return commandBuffer;
+	}
+	
+	public void submitSingleUseCommandBuffer(MemoryStack stack, VkCommandBuffer commandBuffer)
+	{
+		VulkanErrorUtils.assertStatement(commandBuffer.getDevice() == vk, "Cannot submit a command buffer of another device");
+		VulkanErrorUtils.assertNoError(VK10.vkEndCommandBuffer(commandBuffer), "Failed to submit command buffer");
+		VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(graphicsQueue.getVk(), VulkanUtils.submitInfo(stack, commandBuffer), 0), "Failed to submit command buffer");
+		VulkanErrorUtils.assertNoError(VK10.vkQueueWaitIdle(graphicsQueue.getVk()), "Failed to submit command buffer");
+		
+		VK10.vkFreeCommandBuffers(vk, shortLivedCommandPool, commandBuffer);
+	}
+	
+	public long createBuffer(MemoryStack stack, long size, int usage)
+	{
+		VkBufferCreateInfo bufferInfo = VulkanUtils.bufferInfo(stack, size, usage);
+		bufferInfo.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE);
+		
+		long[] p = new long[1];
+		VulkanErrorUtils.assertNoError(VK10.vkCreateBuffer(vk, bufferInfo, null, p), "Failed to create buffer");
+		return p[0];
+	}
+	
+	public long allocateBufferMemory(MemoryStack stack, long vkBuffer, int properties)
+	{
+		VkMemoryRequirements memRequirements = VkMemoryRequirements.malloc(stack);
+		VK10.vkGetBufferMemoryRequirements(vk, vkBuffer, memRequirements);
+		
+		int index;
+		VkPhysicalDeviceMemoryProperties memProperties = VkPhysicalDeviceMemoryProperties.malloc(stack);
+		VK10.vkGetPhysicalDeviceMemoryProperties(physicalDevice.getVk(), memProperties);
+		
+		for (index = 0; index < memProperties.memoryTypeCount(); index++)
+		{
+			if ((memRequirements.memoryTypeBits() & (1 << index)) != 0 && (memProperties.memoryTypes(index).propertyFlags() & properties) == properties)
+			{
+				break;
+			}
+		}
+		
+		VulkanErrorUtils.assertStatement(index < memProperties.memoryTypeCount(), "Failed to find suitable memory type");
+		
+		LongBuffer p = stack.mallocLong(1);
+		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(vk, VulkanUtils.memoryAllocateInfo(stack, memRequirements.size(), index), null, p), "Failed to allocate buffer memory");
+		
+		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(vk, vkBuffer, p.get(0), 0), "Failed to bind buffer memory");
+		return p.get(0);
+	}
+	
+	public long allocateImageMemory(MemoryStack stack, long vkBuffer, int properties)
+	{
+		VkMemoryRequirements memRequirements = VkMemoryRequirements.malloc(stack);
+		VK10.vkGetImageMemoryRequirements(vk, vkBuffer, memRequirements);
+		
+		int index;
+		VkPhysicalDeviceMemoryProperties memProperties = VkPhysicalDeviceMemoryProperties.malloc(stack);
+		VK10.vkGetPhysicalDeviceMemoryProperties(physicalDevice.getVk(), memProperties);
+		
+		for (index = 0; index < memProperties.memoryTypeCount(); index++)
+		{
+			if ((memRequirements.memoryTypeBits() & (1 << index)) != 0 && (memProperties.memoryTypes(index).propertyFlags() & properties) == properties)
+			{
+				break;
+			}
+		}
+		
+		VulkanErrorUtils.assertStatement(index < memProperties.memoryTypeCount(), "Failed to find suitable memory type");
+		
+		LongBuffer p = stack.mallocLong(1);
+		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(vk, VulkanUtils.memoryAllocateInfo(stack, memRequirements.size(), index), null, p), "Failed to allocate image memory");
+		
+		VulkanErrorUtils.assertNoError(VK10.vkBindImageMemory(vk, vkBuffer, p.get(0), 0), "Failed to bind image memory");
+		return p.get(0);
 	}
 	
 	@Override

@@ -11,6 +11,11 @@ public class Debug {
 	
 	private static volatile PrintStream debugOutput = System.out;
 	
+	public static void printStackTrace(Throwable t)
+	{
+		t.printStackTrace(debugOutput);
+	}
+	
 	public static void println()
 	{
 		debugOutput.println();

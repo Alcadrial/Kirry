@@ -45,7 +45,8 @@ public enum ShaderInputType {
 	MATRIX_DOUBLE_3X4(VK10.VK_FORMAT_R64G64B64_SFLOAT, 12, 96, 8, "dmat3x4"),
 	MATRIX_DOUBLE_4X2(VK10.VK_FORMAT_R64G64B64A64_SFLOAT, 8, 64, 4, "dmat4x2"),
 	MATRIX_DOUBLE_4X3(VK10.VK_FORMAT_R64G64B64A64_SFLOAT, 12, 96, 6, "dmat4x3"),
-	MATRIX_DOUBLE_4X4(VK10.VK_FORMAT_R64G64B64A64_SFLOAT, 16, 128, 8, "dmat4x4");
+	MATRIX_DOUBLE_4X4(VK10.VK_FORMAT_R64G64B64A64_SFLOAT, 16, 128, 8, "dmat4x4"),
+	SAMPLER_2D(VK10.VK_FORMAT_R32_UINT, 1, 4, 1, "sampler2D");
 	
 	static
 	{
@@ -98,6 +99,8 @@ public enum ShaderInputType {
 			case "dmat4x2" -> MATRIX_DOUBLE_4X2;
 			case "dmat4x3" -> MATRIX_DOUBLE_4X3;
 			case "dmat4x4", "dmat4" -> MATRIX_DOUBLE_4X4;
+		
+			case "sampler2D" -> SAMPLER_2D;
 		
 			default -> null;
 		};

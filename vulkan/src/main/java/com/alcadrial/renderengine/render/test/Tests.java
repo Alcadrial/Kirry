@@ -14,7 +14,6 @@ import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.vulkan.VK10;
-import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
@@ -38,9 +37,7 @@ import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
-public class Tests {
-	
-	private static final Object MONITOR = new Object();
+public class Tests extends RenderTest {
 	
 	public static void main(String[] args)
 	{
@@ -52,7 +49,6 @@ public class Tests {
 			if (!RenderEngine.create("Test", new Version(0, 0, 1, 0)).messenger(Tests::debugCallback).initialize()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
 		}, TimeUnit.MICROSECONDS) / 1000D + "ms");
 		
-		GLFW.glfwWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API);
 		GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_TRUE);
 		// GLFW.glfwWindowHint(GLFW.GLFW_DECORATED, GLFW.GLFW_FALSE);
 		GLFW.glfwWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, GLFW.GLFW_TRUE);
@@ -301,60 +297,8 @@ public class Tests {
 		RenderEngine.terminate();
 	}
 	
-	private static final String[] SEVERITIES = new String[] {"UNKNOWN", "VERBOSE", "INFO", "WARNING", "ERROR"};
-	private static final String[] TYPES = new String[] {"UNKNOWN", "GENERAL", "VALIDATION", "PERFORMANCE"};
-	
-	public static int debugCallback(int messageSeverity, int messageType, long callbackDataId, long userDataId)
-	{
-		VkDebugUtilsMessengerCallbackDataEXT callbackData = VkDebugUtilsMessengerCallbackDataEXT.create(callbackDataId);
-		
-		int i = switch (messageSeverity)
-		{
-			case 0x0001 -> 1;
-			case 0x0010 -> 2;
-			case 0x0100 -> 3;
-			case 0x1000 -> 4;
-			default -> 0;
-		};
-		int j = switch (messageType)
-		{
-			case 0b001 -> 1;
-			case 0b010 -> 2;
-			case 0b100 -> 3;
-			default -> 0;
-		};
-		
-		System.out.println("[Vulkan debug/" + SEVERITIES[i] + " " + TYPES[j] + "] " + callbackData.pMessageString());
-		
-		return VK10.VK_FALSE;
-	}
-	
 	public static File getFile(String path)
 	{
 		return new File(Properties.RESOURCE_PATH.getValue(), "assets/renderengine/" + path);
-	}
-	
-	public static long recordTime(Runnable runnable, TimeUnit unit)
-	{
-		long startTime;
-		TimeUnit localUnit;
-		if (unit == TimeUnit.MICROSECONDS || unit == TimeUnit.NANOSECONDS)
-		{
-			startTime = System.nanoTime();
-			localUnit = TimeUnit.NANOSECONDS;
-		}
-		else
-		{
-			startTime = System.currentTimeMillis();
-			localUnit = TimeUnit.MILLISECONDS;
-		}
-		
-		runnable.run();
-		
-		long endTime;
-		if (localUnit == TimeUnit.NANOSECONDS) endTime = System.nanoTime();
-		else endTime = System.currentTimeMillis();
-		
-		return unit.convert(endTime - startTime, localUnit);
 	}
 }

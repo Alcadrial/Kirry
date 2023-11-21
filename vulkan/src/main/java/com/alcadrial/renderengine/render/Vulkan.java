@@ -189,6 +189,7 @@ public class Vulkan implements AutoCloseable {
 				
 				VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc(stack);
 				deviceFeatures.wideLines(true);
+				deviceFeatures.samplerAnisotropy(true);
 				
 				VkDeviceCreateInfo createInfo = VkDeviceCreateInfo.calloc(stack);
 				

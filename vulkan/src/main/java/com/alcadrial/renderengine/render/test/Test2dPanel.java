@@ -1,6 +1,5 @@
 package com.alcadrial.renderengine.render.test;
 
-import java.io.File;
 import java.io.IOException;
 import java.math.RoundingMode;
 import java.nio.IntBuffer;
@@ -17,7 +16,6 @@ import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.vulkan.VK10;
-import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
@@ -41,9 +39,8 @@ import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
-public class Test2dPanel {
+public class Test2dPanel extends RenderTest {
 	
-	private static final Object MONITOR = new Object();
 	private static final String TRANSFORMATION_UNIFORM = "TRANSFORMATION";
 	
 	public static void main(String[] args)
@@ -58,7 +55,7 @@ public class Test2dPanel {
 		
 		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
 		
-		// RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, false);
+		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
 		Thread t = new Thread(() -> {
@@ -210,7 +207,7 @@ public class Test2dPanel {
 		{
 			for (int j = -256; j < 256; j++)
 			{
-				RectangleVertexResult result = RendererUtils.loadRectangle(vertexAccumulator, j, i, j + 1, i + 1, 0, random.nextFloat(255), random.nextFloat(255), random.nextFloat(255), random.nextFloat(255));
+				RectangleVertexResult result = RendererUtils.loadRectangleXYZRGBA(vertexAccumulator, j, i, j + 1, i + 1, 0, random.nextFloat(255), random.nextFloat(255), random.nextFloat(255), random.nextFloat(255));
 				buffer.put(result.getR0().getIndex());
 				buffer.put(result.getR1().getIndex());
 				buffer.put(result.getR3().getIndex());
@@ -303,62 +300,5 @@ public class Test2dPanel {
 			MONITOR.notify();
 		}
 		RenderEngine.terminate();
-	}
-	
-	private static final String[] SEVERITIES = new String[] {"UNKNOWN", "VERBOSE", "INFO", "WARNING", "ERROR"};
-	private static final String[] TYPES = new String[] {"UNKNOWN", "GENERAL", "VALIDATION", "PERFORMANCE"};
-	
-	public static int debugCallback(int messageSeverity, int messageType, long callbackDataId, long userDataId)
-	{
-		VkDebugUtilsMessengerCallbackDataEXT callbackData = VkDebugUtilsMessengerCallbackDataEXT.create(callbackDataId);
-		
-		int i = switch (messageSeverity)
-		{
-			case 0x0001 -> 1;
-			case 0x0010 -> 2;
-			case 0x0100 -> 3;
-			case 0x1000 -> 4;
-			default -> 0;
-		};
-		int j = switch (messageType)
-		{
-			case 0b001 -> 1;
-			case 0b010 -> 2;
-			case 0b100 -> 3;
-			default -> 0;
-		};
-		
-		System.out.println("[Vulkan debug/" + SEVERITIES[i] + " " + TYPES[j] + "] " + callbackData.pMessageString());
-		
-		return VK10.VK_FALSE;
-	}
-	
-	public static File getFile(String path)
-	{
-		return new File(Properties.RESOURCE_PATH.getValue(), "assets/renderengine/" + path);
-	}
-	
-	public static long recordTime(Runnable runnable, TimeUnit unit)
-	{
-		long startTime;
-		TimeUnit localUnit;
-		if (unit == TimeUnit.MICROSECONDS || unit == TimeUnit.NANOSECONDS)
-		{
-			startTime = System.nanoTime();
-			localUnit = TimeUnit.NANOSECONDS;
-		}
-		else
-		{
-			startTime = System.currentTimeMillis();
-			localUnit = TimeUnit.MILLISECONDS;
-		}
-		
-		runnable.run();
-		
-		long endTime;
-		if (localUnit == TimeUnit.NANOSECONDS) endTime = System.nanoTime();
-		else endTime = System.currentTimeMillis();
-		
-		return unit.convert(endTime - startTime, localUnit);
 	}
 }

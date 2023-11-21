@@ -1,0 +1,26 @@
+{
+	"entryPoint": "main",
+	"type": "frag",
+	"inputs": [
+		{
+			"location": 0,
+			"type": "vec2",
+			"name": "uv"
+		}
+	],
+	"uniformBlocks": [
+		{
+			"binding": 1,
+			"variables": [
+				{
+					"type": "sampler2D",
+					"name": "TEXTURE_SAMPLER"
+				}
+			]
+		}
+	],
+	"bindingsDescriptorTypes": {
+		"0": "uniformBuffer",
+		"1": "combinedImageSampler"
+	}
+}

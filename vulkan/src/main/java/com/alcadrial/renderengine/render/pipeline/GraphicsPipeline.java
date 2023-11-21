@@ -193,10 +193,7 @@ public class GraphicsPipeline extends Pipeline {
 			VulkanErrorUtils.assertNoError(VK10.vkCreateGraphicsPipelines(device.getVk(), 0, createInfo, null, p), "Failed to create graphics pipeline");
 			vk = p[0];
 			
-			for (VkPipelineShaderStageCreateInfo shaderStageCreateInfo : shaderStages)
-			{
-				VK10.vkDestroyShaderModule(device.getVk(), shaderStageCreateInfo.module(), null);
-			}
+			for (VkPipelineShaderStageCreateInfo stage : shaderStages) VK10.vkDestroyShaderModule(device.getVk(), stage.module(), null);
 		}
 	}
 	

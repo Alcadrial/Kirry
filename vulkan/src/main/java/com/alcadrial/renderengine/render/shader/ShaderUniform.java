@@ -50,6 +50,6 @@ public class ShaderUniform {
 	@Override
 	public String toString()
 	{
-		return "ShaderUniform{" + type + " " + name + "}";
+		return "ShaderUniform{" + type.getName() + " " + name + "}";
 	}
 }

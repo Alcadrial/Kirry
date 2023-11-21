@@ -4,11 +4,11 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
-import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkPhysicalDevice;
+import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
 
@@ -21,6 +21,8 @@ import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
  * A {@link List} of all the available Physical Devices can be queried by
  * {@link Vulkan#getAvailablePhysicalDevices()} or {@link Vulkan#getValidPhysicalDevices()}
  * to filter the returned Physical Devices.
+ * <p>
+ * It derives from a {@link Vulkan} instance.
  * 
  * @author Alcadrial
  *
@@ -60,6 +62,7 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	}
 	
 	private VkPhysicalDeviceProperties properties;
+	private VkPhysicalDeviceFeatures features;
 	private QueueFamilies queueFamilies;
 	
 	public PhysicalDevice(VkPhysicalDevice vk)
@@ -67,8 +70,10 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 		this.vk = vk;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			properties = new VkPhysicalDeviceProperties(BufferUtils.createByteBuffer(VkPhysicalDeviceProperties.SIZEOF));
+			properties = VkPhysicalDeviceProperties.create();
 			VK10.vkGetPhysicalDeviceProperties(vk, properties);
+			features = VkPhysicalDeviceFeatures.create();
+			VK10.vkGetPhysicalDeviceFeatures(vk, features);
 		}
 		queueFamilies = new QueueFamilies();
 	}
@@ -76,6 +81,11 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	public VkPhysicalDeviceProperties getProperties()
 	{
 		return properties;
+	}
+	
+	public VkPhysicalDeviceFeatures getFeatures()
+	{
+		return features;
 	}
 	
 	public void searchQueueGraphicsFamilyProperties()
@@ -207,8 +217,7 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 		{
 			indicesHead = null;
 			queueFamilies.indices = 0;
-			family:
-			for (QueueFamily family : iterateFamilies()) if (family.getProperties() != null)
+			family: for (QueueFamily family : iterateFamilies()) if (family.getProperties() != null)
 			{
 				for (Integer index : iterateIndices()) if (family.getIndex() == index) continue family;
 				

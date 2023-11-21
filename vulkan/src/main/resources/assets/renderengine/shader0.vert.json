@@ -1,0 +1,32 @@
+{
+	"entryPoint": "main",
+	"type": "vert",
+	"inputs": [
+		{
+			"location": 0,
+			"type": "vec3",
+			"name": "vertexPosition"
+		},
+		{
+			"location": 1,
+			"type": "vec2",
+			"name": "uv"
+		}
+	],
+	"uniformBlocks": [
+		{
+			"binding": 0,
+			"name": "U",
+			"variables": [
+				{
+					"type": "mat4",
+					"name": "TRANSFORMATION"
+				}
+			]
+		}
+	],
+	"bindingsDescriptorTypes": {
+		"0": "uniformBuffer",
+		"1": "combinedImageSampler"
+	}
+}

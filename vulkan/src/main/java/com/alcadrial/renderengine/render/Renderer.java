@@ -20,6 +20,7 @@ import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDescriptorBufferInfo;
+import org.lwjgl.vulkan.VkDescriptorImageInfo;
 import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
@@ -30,7 +31,6 @@ import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
 import com.alcadrial.renderengine.core.util.Nullable;
-import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.UniformBuffer;
@@ -39,9 +39,9 @@ import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderUniform;
+import com.alcadrial.renderengine.render.shader.ShaderUniformBinding;
 import com.alcadrial.renderengine.render.shader.ShaderUniformBlock;
 import com.alcadrial.renderengine.render.util.DataAccumulator;
-import com.alcadrial.renderengine.render.util.UnsafeVulkanUtils;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
@@ -61,7 +61,7 @@ public class Renderer implements AutoCloseable {
 	public enum DrawResult {
 		SUCCESS,
 		FAILED,
-		SKIPPED;
+		NO_DRAWING_AREA;
 	}
 	
 	private ModificationPlan modificationPlan;
@@ -91,10 +91,11 @@ public class Renderer implements AutoCloseable {
 		this.uniformBuffers = uniformBuffers;
 		clearColor = Color.BLACK;
 		uniformBuffersUpdates = new LinkedList<>();
-		for (UniformBuffer buffer : uniformBuffers)
+		for (int i = 0; i < uniformBuffers.size(); i++)
 		{
-			buffer.updateDescriptorSets();
-			uniformBuffersUpdates.add(new LinkedList<>());
+			LinkedList<Consumer<UniformBuffer>> l = new LinkedList<>();
+			l.add(b -> {});
+			uniformBuffersUpdates.add(l);
 		}
 	}
 	
@@ -112,7 +113,7 @@ public class Renderer implements AutoCloseable {
 	{
 		if (targetWindow.getWidth() == 0 || targetWindow.getHeight() == 0)
 		{
-			return DrawResult.SKIPPED;
+			return DrawResult.NO_DRAWING_AREA;
 		}
 		
 		while (VK10.vkWaitForFences(device.getVk(), swapchain.getActiveCommandBufferData().getFence(), true, Integer.MAX_VALUE) != VK10.VK_SUCCESS);
@@ -422,7 +423,7 @@ public class Renderer implements AutoCloseable {
 			
 			descriptorPool = p0[0];
 			
-			Map<Integer, Pair<Integer, Set<ShaderUniform>>> bindingFlags = new HashMap<>();
+			Map<Integer, ShaderUniformBinding> bindingFlags = new HashMap<>();
 			extractData(vertexShader.require(), bindingFlags);
 			extractData(tessellationControlShader.get(), bindingFlags);
 			extractData(tessellationEvaluationShader.get(), bindingFlags);
@@ -431,14 +432,16 @@ public class Renderer implements AutoCloseable {
 			extractData(computeShader.get(), bindingFlags);
 			
 			int uniformBufferSize = 0;
-			VkDescriptorSetLayoutBinding.Buffer uniformLayoutBindings = UnsafeVulkanUtils.descriptorSetLayoutBinding(stack, bindingFlags.size(), VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);// static
-			for (Entry<Integer, Pair<Integer, Set<ShaderUniform>>> e : bindingFlags.entrySet())
+			VkDescriptorSetLayoutBinding.Buffer uniformLayoutBindings = VkDescriptorSetLayoutBinding.malloc(bindingFlags.size(), stack);// static
+			for (Entry<Integer, ShaderUniformBinding> e : bindingFlags.entrySet())
 			{
 				VkDescriptorSetLayoutBinding uniformLayoutBinding = uniformLayoutBindings.get();
 				uniformLayoutBinding.binding(e.getKey());
 				uniformLayoutBinding.descriptorCount(1);
-				uniformLayoutBinding.stageFlags(e.getValue().l());
-				uniformBufferSize += e.getValue().r().stream().collect(Collectors.summingInt(u -> u.getType().getLength()));
+				uniformLayoutBinding.descriptorType(e.getValue().getDescriptorType().getType());
+				uniformLayoutBinding.pImmutableSamplers(null);
+				uniformLayoutBinding.stageFlags(e.getValue().getStages());
+				uniformBufferSize += e.getValue().getUniforms().stream().collect(Collectors.summingInt(u -> u.getType().getLength()));
 			}
 			uniformLayoutBindings.rewind();
 			
@@ -470,44 +473,66 @@ public class Renderer implements AutoCloseable {
 				descriptorSets[i] = new long[] {p1[i]};
 				
 				int offset = 0;
-				for (Entry<Integer, Pair<Integer, Set<ShaderUniform>>> e : bindingFlags.entrySet())
+				for (Entry<Integer, ShaderUniformBinding> e : bindingFlags.entrySet())
 				{
 					VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
 					writeDescriptorSet.dstSet(p1[i]);
 					writeDescriptorSet.dstBinding(e.getKey());
 					writeDescriptorSet.dstArrayElement(0);
+					writeDescriptorSet.descriptorType(e.getValue().getDescriptorType().getType());
 					
-					Set<ShaderUniform> uniforms = e.getValue().r();
-					VkDescriptorBufferInfo.Buffer descriptorBufferInfos = VkDescriptorBufferInfo.calloc(uniforms.size());
-					for (ShaderUniform uniform : uniforms)
+					Set<ShaderUniform> uniforms = e.getValue().getUniforms();
+					switch (e.getValue().getDescriptorType())
 					{
-						buffer.mark(uniform, offset);
-						VkDescriptorBufferInfo descriptorBufferInfo = descriptorBufferInfos.get();
-						descriptorBufferInfo.buffer(buffer.getVk());
-						descriptorBufferInfo.offset(offset);
-						descriptorBufferInfo.range(offset += uniform.getType().getLength());
+						case UNIFORM_BUFFER ->
+						{
+							VkDescriptorBufferInfo.Buffer descriptorBufferInfos = VkDescriptorBufferInfo.calloc(uniforms.size());
+							for (ShaderUniform uniform : uniforms)
+							{
+								buffer.mark(uniform, offset / 4);
+								VkDescriptorBufferInfo descriptorBufferInfo = descriptorBufferInfos.get();
+								descriptorBufferInfo.buffer(buffer.getVk());
+								descriptorBufferInfo.offset(offset);
+								descriptorBufferInfo.range(offset += uniform.getType().getLength());
+							}
+							descriptorBufferInfos.rewind();
+							writeDescriptorSet.pBufferInfo(descriptorBufferInfos);
+						}
+						case COMBINED_IMAGE_SAMPLER ->
+						{
+							VkDescriptorImageInfo.Buffer descriptorImageInfos = VkDescriptorImageInfo.calloc(uniforms.size());
+							for (ShaderUniform uniform : uniforms)
+							{
+								buffer.mark(uniform, writeDescriptorSets.position() - 1);
+								VkDescriptorImageInfo descriptorImageInfo = descriptorImageInfos.get();
+								descriptorImageInfo.imageLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+								descriptorImageInfo.imageView(0);
+								descriptorImageInfo.sampler(0);
+							}
+							descriptorImageInfos.rewind();
+							writeDescriptorSet.pImageInfo(descriptorImageInfos);
+						}
 					}
-					descriptorBufferInfos.rewind();
-					writeDescriptorSet.pBufferInfo(descriptorBufferInfos);
 				}
 				writeDescriptorSets.rewind();
 			}
 		}
 		
-		private void extractData(Shader shader, Map<Integer, Pair<Integer, Set<ShaderUniform>>> bindingFlags)
+		private void extractData(Shader shader, Map<Integer, ShaderUniformBinding> bindingFlags)
 		{
 			if (shader != null)
 			{
-				Pair<Integer, Set<ShaderUniform>> p = new Pair<>(shader.getType().getStageBit(), null);
+				ShaderUniformBinding p = new ShaderUniformBinding(shader.getType().getStageBit(), null, null);
 				for (ShaderUniformBlock uniformBlock : shader.getUniformsBlocks())
 				{
-					p.setRight(new HashSet<>(uniformBlock.getUniforms()));
+					p.setUniforms(new HashSet<>(uniformBlock.getUniforms()));
 					bindingFlags.merge(uniformBlock.getBinding(), p, (v, w) -> {
-						v.r().addAll(w.r());
-						v.setLeft(v.l() | w.l());
+						v.getUniforms().addAll(w.getUniforms());
+						v.setStages(v.getStages() | w.getStages());
 						return v;
 					});
 				}
+				for (Entry<Integer, ShaderUniformBinding> e : bindingFlags.entrySet()) e.getValue().setDescriptorType(shader.getBindingDescriptorTypeMap().get(e.getKey()));
 			}
 		}
 		

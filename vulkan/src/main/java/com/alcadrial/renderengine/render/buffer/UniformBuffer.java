@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkDescriptorImageInfo;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
 import com.alcadrial.kector.matrix.Matrix4f;
@@ -18,6 +19,8 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderUniform;
+import com.alcadrial.renderengine.render.texture.TextureSampler;
+import com.alcadrial.renderengine.render.texture.TextureView;
 
 public class UniformBuffer extends VulkanBuffer {
 	
@@ -43,7 +46,7 @@ public class UniformBuffer extends VulkanBuffer {
 	
 	public void mark(ShaderUniform uniform, int offset)
 	{
-		marks.put(uniform.getName(), new Pair<>(uniform, offset / 4));
+		marks.put(uniform.getName(), new Pair<>(uniform, offset));
 	}
 	
 	public boolean isPresent(String uniform)
@@ -123,6 +126,19 @@ public class UniformBuffer extends VulkanBuffer {
 		{
 			checkUniformValue(ShaderInputType.VECTOR_INT_4, p.l().getType());
 			asIntBuffer().put(p.r(), value.getValuesArray());
+		}
+	}
+	
+	@SuppressWarnings({"null"})
+	public void set(String uniform, TextureView value, TextureSampler sampler)
+	{
+		Pair<ShaderUniform, Integer> p = marks.get(uniform);
+		if (p != null)
+		{
+			checkUniformValue(ShaderInputType.SAMPLER_2D, p.l().getType());
+			VkDescriptorImageInfo.Buffer descriptorImageInfo = writeDescriptorSets.get(p.r()).pImageInfo();
+			descriptorImageInfo.imageView(value.getVk());
+			descriptorImageInfo.sampler(sampler.getVk());
 		}
 	}
 	

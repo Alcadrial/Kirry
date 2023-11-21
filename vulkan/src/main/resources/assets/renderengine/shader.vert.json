@@ -24,5 +24,8 @@
 				}
 			]
 		}
-	]
+	],
+	"bindingsDescriptorTypes": {
+		"0": "uniformBuffer"
+	}
 }
