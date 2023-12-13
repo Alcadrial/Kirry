@@ -36,7 +36,7 @@ public class TextureView extends LongDeviceResource {
 			components.a(VK10.VK_COMPONENT_SWIZZLE_IDENTITY);
 			
 			VkImageSubresourceRange subresourceRange = createInfo.subresourceRange();
-			subresourceRange.aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+			subresourceRange.aspectMask(texture.getAspectMask());
 			subresourceRange.baseMipLevel(0);
 			subresourceRange.levelCount(1);
 			subresourceRange.baseArrayLayer(0);

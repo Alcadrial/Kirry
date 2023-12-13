@@ -9,6 +9,7 @@ import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
+import org.lwjgl.vulkan.VkPhysicalDeviceLimits;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
 
@@ -86,6 +87,11 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	public VkPhysicalDeviceFeatures getFeatures()
 	{
 		return features;
+	}
+	
+	public VkPhysicalDeviceLimits getLimits()
+	{
+		return properties.limits();
 	}
 	
 	public void searchQueueGraphicsFamilyProperties()
@@ -217,7 +223,8 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 		{
 			indicesHead = null;
 			queueFamilies.indices = 0;
-			family: for (QueueFamily family : iterateFamilies()) if (family.getProperties() != null)
+			family:
+			for (QueueFamily family : iterateFamilies()) if (family.getProperties() != null)
 			{
 				for (Integer index : iterateIndices()) if (family.getIndex() == index) continue family;
 				

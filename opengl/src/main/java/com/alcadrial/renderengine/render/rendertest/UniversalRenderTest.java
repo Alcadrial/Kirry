@@ -416,9 +416,9 @@ public class UniversalRenderTest implements RenderTest {
 		frameBuffer.unbind();
 		Util.printError("frameBuffer init");
 		
-		Matrix4f projection = new Matrix4f().project(10, 100, 8, window.getAspectRatio());
+		Matrix4f perspective = new Matrix4f().perspective(10, 100, 8, window.getAspectRatio());
 		Matrix4f view = new Matrix4f().view(position, rotationX, rotationY);
-		Matrix4f viewer = new Matrix4f(projection).multiply(view);
+		Matrix4f viewer = new Matrix4f(perspective).multiply(view);
 		Vector3f end = Vector3f.of(10, 10, 0);
 		
 		buffer0 = new FloatArrayBuffer();
@@ -478,7 +478,7 @@ public class UniversalRenderTest implements RenderTest {
 		Matrix4f identity = new Matrix4f();
 		Matrix4f compact = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
 		Matrix4f positive = new Matrix4f().orthographicPositive(window.getWidth(), window.getHeight());
-		Matrix4f projection = new Matrix4f().project(70, 100, 1, window.getAspectRatio());
+		Matrix4f perspective = new Matrix4f().perspective(70, 100, 1, window.getAspectRatio());
 		Matrix4f view = new Matrix4f().view(position, rotationX, rotationY);
 		Matrix4f camera = new Matrix4f().view(Vector3f.origin(), (float) o, (float) (o / 2));
 		// Matrix4f projectional = new Matrix4f(compact).multiply(projection);
@@ -486,9 +486,9 @@ public class UniversalRenderTest implements RenderTest {
 		Matrix4f cameral = new Matrix4f(compact).multiply(camera);
 		// Matrix4f composite = new Matrix4f(projectional).multiply(view);
 		// Matrix4f compositeC = new Matrix4f(projectional).multiply(camera);
-		Matrix4f viewer = new Matrix4f(projection).multiply(view);
-		Matrix4f projected = new Matrix4f(projection).multiply(camera);
-		Matrix4f modeller = new Matrix4f(projected).multiply(compact);
+		Matrix4f viewer = new Matrix4f(perspective).multiply(view);
+		Matrix4f perspected = new Matrix4f(perspective).multiply(camera);
+		Matrix4f modeller = new Matrix4f(perspected).multiply(compact);
 		Matrix4f viewed = new Matrix4f(viewer).multiply(compact);
 		Vector3f end = Vector3f.of(10, 10, 10);
 		Util.printError("compact");
@@ -531,7 +531,7 @@ public class UniversalRenderTest implements RenderTest {
 		Util.printError("FrameBuffer draw");
 		universalRenderer.setIndicesUse(true);
 		universalRenderer.pushBuffer(buffer0, element0);
-		universalRenderer.draw(RenderingMode.QUADS, projected);
+		universalRenderer.draw(RenderingMode.QUADS, perspected);
 		universalRenderer.pullBuffer();
 		universalRenderer.pushBuffer(buffer1, element1);
 		universalRenderer.draw(RenderingMode.QUADS, compact);

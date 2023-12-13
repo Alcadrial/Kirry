@@ -4,7 +4,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.math.RoundingMode;
 import java.nio.IntBuffer;
-import java.util.concurrent.TimeUnit;
 
 import javax.imageio.ImageIO;
 
@@ -24,7 +23,7 @@ import org.lwjgl.vulkan.VkCommandBuffer;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.kroperties.Property;
+import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.PhysicalDevice;
@@ -43,6 +42,7 @@ import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
+@Test
 public class TextureTest extends RenderTest {
 	
 	private static final String TRANSFORMATION_UNIFORM = "TRANSFORMATION";
@@ -50,19 +50,19 @@ public class TextureTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		Property.parseProperties(args, Properties.PROPERTIES);
+		TestProperties.init(args);
 		
 		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
 		
-		System.out.println("Render Engine initialization time = " + recordTime(() -> {
+		println("Render Engine initialization", () -> {
 			if (!RenderEngine.create("Test", new Version(0, 0, 1, 0)).messenger(TextureTest::debugCallback).initialize()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		}, TimeUnit.MICROSECONDS) / 1000D + "ms");
+		}, TestProperties.PRINT_LOADING_TIMES);
 		
-		System.out.println("Start time = " + recordTime(TextureTest::start, TimeUnit.MICROSECONDS) / 1000D + "ms");
+		println("Start", TextureTest::start, TestProperties.PRINT_LOADING_TIMES);
 		if (!RenderEngine.isInitializated()) return;
-		System.out.println("Loop time = " + recordTime(TextureTest::loop, TimeUnit.MICROSECONDS) / 1000D + "ms");
+		println("Loop", TextureTest::loop, TestProperties.PRINT_LOADING_TIMES);
 		if (!RenderEngine.isInitializated()) return;
-		System.out.println("End time = " + recordTime(TextureTest::end, TimeUnit.MICROSECONDS) / 1000D + "ms");
+		println("End", TextureTest::end, TestProperties.PRINT_LOADING_TIMES);
 	}
 	
 	private static Renderer renderer;
@@ -78,7 +78,7 @@ public class TextureTest extends RenderTest {
 		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
-		System.out.println("Window creation time = " + recordTime(() -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TimeUnit.MICROSECONDS) / 1000D + "ms");
+		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
 		
 		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueGraphicsFamilyProperties() != null);
 		vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
@@ -159,7 +159,7 @@ public class TextureTest extends RenderTest {
 			
 			BufferedImage image = ImageIO.read(getFile("icon.png"));
 			
-			texture = Texture.create2dTexture(device, image.getWidth(), image.getHeight(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT);
+			texture = Texture.create2dTexture(device, image.getWidth(), image.getHeight(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 			
 			VkCommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
 			
@@ -252,25 +252,30 @@ public class TextureTest extends RenderTest {
 				frame = 0;
 				highMilestone += (enlapsed - highMilestone + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
 			}
-			
-			if (isModifiedMatrix)
-			{
-				isModifiedMatrix = false;
-				renderer.updateUniformBuffers(b -> {
-					Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
-					Matrix4f model = new Matrix4f().translateYTo(-10 * panelPos.y()).translateXTo(-10 * panelPos.x());
-					b.set(TRANSFORMATION_UNIFORM, orthographic.multiply(model).transpose());
-				});
-			}
-			if (isModified)
-			{
-				isModified = false;
-				while (renderer.draw() == DrawResult.FAILED);
-				window.update();
-			}
-			window.pollEvents();
+			println("Frame " + frame, TextureTest::frame, TestProperties.PRINT_FRAME_TIMES);
 			frame++;
 		}
+	}
+	
+	public static void frame()
+	{
+		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		if (isModifiedMatrix)
+		{
+			isModifiedMatrix = false;
+			renderer.updateUniformBuffers(b -> {
+				Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
+				Matrix4f model = new Matrix4f().translateYTo(-10 * panelPos.y()).translateXTo(-10 * panelPos.x());
+				b.set(TRANSFORMATION_UNIFORM, orthographic.multiply(model).transpose());
+			});
+		}
+		if (isModified)
+		{
+			isModified = false;
+			while (renderer.draw() == DrawResult.FAILED);
+			window.update();
+		}
+		window.pollEvents();
 	}
 	
 	public static void end()

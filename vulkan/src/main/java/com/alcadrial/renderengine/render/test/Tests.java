@@ -25,7 +25,6 @@ import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
-import com.alcadrial.renderengine.render.Renderer.ModificationPlan;
 import com.alcadrial.renderengine.render.VertexAccumulator;
 import com.alcadrial.renderengine.render.VertexAccumulator.VertexResult;
 import com.alcadrial.renderengine.render.Vulkan;
@@ -39,6 +38,8 @@ import com.alcadrial.renderengine.render.window.VulkanWindow;
 @Test
 public class Tests extends RenderTest {
 	
+	public static final String TRANSFORMATION = "TRANSFORMATION";
+
 	public static void main(String[] args)
 	{
 		Property.parseProperties(args, Properties.PROPERTIES);
@@ -49,53 +50,16 @@ public class Tests extends RenderTest {
 			if (!RenderEngine.create("Test", new Version(0, 0, 1, 0)).messenger(Tests::debugCallback).initialize()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
 		}, TimeUnit.MICROSECONDS) / 1000D + "ms");
 		
-		GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_TRUE);
-		// GLFW.glfwWindowHint(GLFW.GLFW_DECORATED, GLFW.GLFW_FALSE);
-		GLFW.glfwWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, GLFW.GLFW_TRUE);
-		
-		Thread t = new Thread(() -> {
-			start();
-			loop();
-			end();
-		});
-		// t.start();
-		
 		System.out.println("Start time = " + recordTime(Tests::start, TimeUnit.MICROSECONDS) / 1000D + "ms");
 		if (!RenderEngine.isInitializated()) return;
 		System.out.println("Loop time = " + recordTime(Tests::loop, TimeUnit.MICROSECONDS) / 1000D + "ms");
 		if (!RenderEngine.isInitializated()) return;
 		System.out.println("End time = " + recordTime(Tests::end, TimeUnit.MICROSECONDS) / 1000D + "ms");
-		
-		Thread main = Thread.currentThread();
-		new Thread(() -> {
-			
-			while (t.isAlive() || main.isAlive())
-			{
-				synchronized (MONITOR)
-				{
-					try
-					{
-						MONITOR.wait();
-						synchronized (args)
-						{
-							args.wait(100);
-						}
-					}
-					catch (InterruptedException e)
-					{}
-				}
-			}
-			
-			RenderEngine.terminate();
-		});// .start();
 	}
 	
 	private static Renderer renderer;
 	private static VertexBuffer vertexBuffer;
 	private static IndexBuffer indexBuffer;
-	private static float f;
-	@SuppressWarnings("unused")
-	private static int i, j, k, l, m;
 	private static int[] indices;
 	
 	public static void start()
@@ -103,6 +67,10 @@ public class Tests extends RenderTest {
 		Vulkan vulkan = RenderEngine.getVulkan();
 		
 		System.out.println("Window creation time = " + recordTime(() -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TimeUnit.MICROSECONDS) / 1000D + "ms");
+		
+		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
+		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
+		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
 		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueGraphicsFamilyProperties() != null);
 		vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
@@ -116,7 +84,7 @@ public class Tests extends RenderTest {
 		});
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			System.out.println("Resized " + width + "x" + height);
-			renderer.updateUniformBuffers(b -> b.set("TRANSFORMATION", new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
+			renderer.updateUniformBuffers(b -> b.set(TRANSFORMATION, new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
 		});
 		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
 			System.out.println("Refresh");
@@ -171,7 +139,7 @@ public class Tests extends RenderTest {
 		indexBuffer = new IndexBuffer(24);
 		renderer.setVertexBuffer(vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
-		renderer.updateUniformBuffers(b -> b.set("TRANSFORMATION", new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
+		renderer.updateUniformBuffers(b -> b.set(TRANSFORMATION, new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
 		
 		VertexAccumulator vertexAccumulator = renderer.accumulate();
 		VertexResult result0 = vertexAccumulator.vertex(-200, 0, 0).color(0, 255, 0, 255).end();
@@ -200,10 +168,6 @@ public class Tests extends RenderTest {
 		
 		indexBuffer.asIntBuffer().put(0, indices);
 		indexBuffer.sendToPhysicalDevice();
-		
-		f = 1;
-		i = j = k = l = m = 0;
-		
 	}
 	
 	private static long time;
@@ -223,9 +187,6 @@ public class Tests extends RenderTest {
 		long frame = 0;
 		long milestone = firstMilestone;
 		long highMilestone = firstHighMilestone;
-		
-		ModificationPlan modificationPlan = renderer.getCurrentModificationPlan();
-		boolean modified = false;
 		
 		while (!window.shouldClose())
 		{
@@ -255,30 +216,6 @@ public class Tests extends RenderTest {
 				highMilestone += (enlapsed - highMilestone + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
 			}
 			
-			if (i++ == 5)
-			{
-				f += 0.25F;
-				if (f > 50) f = 1;
-				modificationPlan.lineWidth(f);
-				modified = true;
-				i = 0;
-			}
-			if (j++ % 10 == 0)
-			{
-				if (k % 16 >= 8) indexBuffer.asIntBuffer().put(k % 8 * 3, indices, k % 8 * 3, 3);
-				else indexBuffer.asIntBuffer().put(k % 8 * 3, new int[] {0, 0, 0}, 0, 3);
-				indexBuffer.sendToPhysicalDevice(k % 8 * 3, 3);
-				k++;
-			}
-			if (++l % 25 == 0)
-			{
-				modificationPlan.topology(l % 50 == 0 ? VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST : VK10.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
-				modified = true;
-			}
-			if (modified)
-			{
-				renderer.startModificationPlan().submit();
-			}
 			window.pollEvents();
 			renderer.draw();
 			window.update();

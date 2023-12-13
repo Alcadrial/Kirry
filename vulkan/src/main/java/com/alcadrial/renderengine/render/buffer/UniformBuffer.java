@@ -56,7 +56,7 @@ public class UniformBuffer extends VulkanBuffer {
 	
 	public void updateDescriptorSets()
 	{
-		VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets, null);// dynamic
+		VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets, null);
 	}
 	
 	public void set(String uniform, Matrix4f value)
@@ -139,6 +139,26 @@ public class UniformBuffer extends VulkanBuffer {
 			VkDescriptorImageInfo.Buffer descriptorImageInfo = writeDescriptorSets.get(p.r()).pImageInfo();
 			descriptorImageInfo.imageView(value.getVk());
 			descriptorImageInfo.sampler(sampler.getVk());
+		}
+	}
+	
+	public void set(String uniform, int value)
+	{
+		Pair<ShaderUniform, Integer> p = marks.get(uniform);
+		if (p != null)
+		{
+			checkUniformValue(ShaderInputType.INT, p.l().getType());
+			asIntBuffer().put(p.r(), value);
+		}
+	}
+	
+	public void set(String uniform, float value)
+	{
+		Pair<ShaderUniform, Integer> p = marks.get(uniform);
+		if (p != null)
+		{
+			checkUniformValue(ShaderInputType.FLOAT, p.l().getType());
+			asFloatBuffer().put(p.r(), value);
 		}
 	}
 	

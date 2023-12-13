@@ -4,8 +4,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -176,7 +178,7 @@ public class Shader {
 							if (uniforms == null) throw new IOException(missing(reader, "uniforms"));
 							reader.endObject();
 							
-							uniformBlocks.add(new ShaderUniformBlock(binding, name, Set.copyOf(uniforms)));
+							uniformBlocks.add(new ShaderUniformBlock(binding, name, Collections.unmodifiableSet(new LinkedHashSet<>(uniforms))));
 						}
 						reader.endArray();
 					}

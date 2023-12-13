@@ -5,8 +5,8 @@ import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -38,9 +38,11 @@ import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.shader.Shader;
+import com.alcadrial.renderengine.render.shader.ShaderDescriptorType;
 import com.alcadrial.renderengine.render.shader.ShaderUniform;
 import com.alcadrial.renderengine.render.shader.ShaderUniformBinding;
 import com.alcadrial.renderengine.render.shader.ShaderUniformBlock;
+import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.DataAccumulator;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
@@ -70,6 +72,8 @@ public class Renderer implements AutoCloseable {
 	private Swapchain swapchain;
 	private GraphicsPipeline graphicsPipeline;
 	private Color clearColor;
+	private float clearDepth;
+	private int clearStencil;
 	private VertexBuffer vertexBuffer;
 	private IndexBuffer indexBuffer;
 	private List<Long> descriptorSetLayouts;
@@ -90,6 +94,8 @@ public class Renderer implements AutoCloseable {
 		this.descriptorPool = descriptorPool;
 		this.uniformBuffers = uniformBuffers;
 		clearColor = Color.BLACK;
+		clearDepth = 1;
+		clearStencil = 0;
 		uniformBuffersUpdates = new LinkedList<>();
 		for (int i = 0; i < uniformBuffers.size(); i++)
 		{
@@ -126,7 +132,7 @@ public class Renderer implements AutoCloseable {
 		
 		if (update) uniformBuffers.get(swapchain.getActiveCommandIndex()).updateDescriptorSets();
 		
-		CommandBufferData commandBuffer = swapchain.startRegisteringCommands(null, null, clearColor);
+		CommandBufferData commandBuffer = swapchain.startRegisteringCommands(null, null, clearColor, clearDepth, clearStencil);
 		
 		commandBuffer.bindPipeline(graphicsPipeline);
 		commandBuffer.bindVertexBuffers(0, vertexBuffer);
@@ -157,7 +163,7 @@ public class Renderer implements AutoCloseable {
 				}
 				createInfo.compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
 				createInfo.clipped(true);
-				swapchain.recreate(device, targetWindow.getSurface(), createInfo);
+				Debug.printlnIf(!swapchain.recreate(device, targetWindow.getSurface(), null, createInfo), "Failed to recreate swapchain");
 				return DrawResult.FAILED;
 			}
 			VulkanErrorUtils.assertNoError(result, "Error acquiring next image");
@@ -202,7 +208,7 @@ public class Renderer implements AutoCloseable {
 				}
 				createInfo.compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
 				createInfo.clipped(true);
-				swapchain.recreate(device, targetWindow.getSurface(), createInfo);
+				Debug.printlnIf(!swapchain.recreate(device, targetWindow.getSurface(), null, createInfo), "Failed to recreate swapchain");
 				return DrawResult.FAILED;
 			}
 			VulkanErrorUtils.assertNoError(result, "Error presenting queue");
@@ -227,6 +233,16 @@ public class Renderer implements AutoCloseable {
 	public void setClearColor(Color clearColor)
 	{
 		this.clearColor = clearColor;
+	}
+	
+	public void setClearDepth(float clearDepth)
+	{
+		this.clearDepth = clearDepth;
+	}
+	
+	public void setClearStencil(int clearStencil)
+	{
+		this.clearStencil = clearStencil;
 	}
 	
 	public void setVertexBuffer(VertexBuffer vertexBuffer)
@@ -349,8 +365,8 @@ public class Renderer implements AutoCloseable {
 			Renderer.this.swapchain = swapchain.get();
 			Renderer.this.graphicsPipeline = graphicsPipeline.get();
 			
-			stack.pop();
 			isActive = false;
+			stack.pop();
 		}
 	}
 	
@@ -431,10 +447,15 @@ public class Renderer implements AutoCloseable {
 			extractData(fragmentShader.get(), bindingFlags);
 			extractData(computeShader.get(), bindingFlags);
 			
+			int minOffsetAlignment = (int) physicalDevice.get().getLimits().minUniformBufferOffsetAlignment();
 			int uniformBufferSize = 0;
 			VkDescriptorSetLayoutBinding.Buffer uniformLayoutBindings = VkDescriptorSetLayoutBinding.malloc(bindingFlags.size(), stack);// static
 			for (Entry<Integer, ShaderUniformBinding> e : bindingFlags.entrySet())
 			{
+				if (uniformBufferSize % minOffsetAlignment != 0)
+				{
+					uniformBufferSize += minOffsetAlignment - uniformBufferSize % minOffsetAlignment;
+				}
 				VkDescriptorSetLayoutBinding uniformLayoutBinding = uniformLayoutBindings.get();
 				uniformLayoutBinding.binding(e.getKey());
 				uniformLayoutBinding.descriptorCount(1);
@@ -475,6 +496,11 @@ public class Renderer implements AutoCloseable {
 				int offset = 0;
 				for (Entry<Integer, ShaderUniformBinding> e : bindingFlags.entrySet())
 				{
+					if (offset % minOffsetAlignment != 0)
+					{
+						offset += minOffsetAlignment - offset % minOffsetAlignment;
+					}
+					
 					VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
 					writeDescriptorSet.dstSet(p1[i]);
 					writeDescriptorSet.dstBinding(e.getKey());
@@ -486,17 +512,16 @@ public class Renderer implements AutoCloseable {
 					{
 						case UNIFORM_BUFFER ->
 						{
-							VkDescriptorBufferInfo.Buffer descriptorBufferInfos = VkDescriptorBufferInfo.calloc(uniforms.size());
+							VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
+							descriptorBufferInfo.buffer(buffer.getVk());
+							descriptorBufferInfo.offset(offset);
 							for (ShaderUniform uniform : uniforms)
 							{
 								buffer.mark(uniform, offset / 4);
-								VkDescriptorBufferInfo descriptorBufferInfo = descriptorBufferInfos.get();
-								descriptorBufferInfo.buffer(buffer.getVk());
-								descriptorBufferInfo.offset(offset);
-								descriptorBufferInfo.range(offset += uniform.getType().getLength());
+								offset += uniform.getType().getLength();
 							}
-							descriptorBufferInfos.rewind();
-							writeDescriptorSet.pBufferInfo(descriptorBufferInfos);
+							descriptorBufferInfo.range(offset - descriptorBufferInfo.offset());
+							writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
 						}
 						case COMBINED_IMAGE_SAMPLER ->
 						{
@@ -525,14 +550,18 @@ public class Renderer implements AutoCloseable {
 				ShaderUniformBinding p = new ShaderUniformBinding(shader.getType().getStageBit(), null, null);
 				for (ShaderUniformBlock uniformBlock : shader.getUniformsBlocks())
 				{
-					p.setUniforms(new HashSet<>(uniformBlock.getUniforms()));
+					p.setUniforms(new LinkedHashSet<>(uniformBlock.getUniforms()));
 					bindingFlags.merge(uniformBlock.getBinding(), p, (v, w) -> {
 						v.getUniforms().addAll(w.getUniforms());
 						v.setStages(v.getStages() | w.getStages());
 						return v;
 					});
 				}
-				for (Entry<Integer, ShaderUniformBinding> e : bindingFlags.entrySet()) e.getValue().setDescriptorType(shader.getBindingDescriptorTypeMap().get(e.getKey()));
+				for (Entry<Integer, ShaderUniformBinding> e : bindingFlags.entrySet())
+				{
+					ShaderDescriptorType descriptorType = shader.getBindingDescriptorTypeMap().get(e.getKey());
+					if (descriptorType != null) e.getValue().setDescriptorType(descriptorType);
+				}
 			}
 		}
 		
@@ -692,6 +721,12 @@ public class Renderer implements AutoCloseable {
 		}
 		
 		@Override
+		public RDA depthTexture(@Nullable Texture value)
+		{
+			return super.depthTexture(value);
+		}
+		
+		@Override
 		public RDA topology(@Nullable Integer value)
 		{
 			return super.topology(value);
@@ -701,6 +736,36 @@ public class Renderer implements AutoCloseable {
 		public <SSDA extends DataAccumulator<RDA>.PipelineColorBlendAttachmentStateAccumulator<SSDA>> SSDA startPipelineColorBlendAttachmentState()
 		{
 			return super.startPipelineColorBlendAttachmentState();
+		}
+		
+		@Override
+		public RDA depthTestEnable(@Nullable Boolean value)
+		{
+			return super.depthTestEnable(value);
+		}
+		
+		@Override
+		public RDA depthWriteEnable(@Nullable Boolean value)
+		{
+			return super.depthWriteEnable(value);
+		}
+		
+		@Override
+		public RDA depthCompareOp(@Nullable Integer value)
+		{
+			return super.depthCompareOp(value);
+		}
+		
+		@Override
+		public RDA minDepth(@Nullable Float value)
+		{
+			return super.minDepth(value);
+		}
+		
+		@Override
+		public RDA maxDepth(@Nullable Float value)
+		{
+			return super.maxDepth(value);
 		}
 	}
 }

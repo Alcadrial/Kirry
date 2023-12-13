@@ -21,34 +21,34 @@ public class Texture extends LongDeviceResource {
 		RenderEngine.assertLoaded();
 	}
 	
-	public static Texture create1dTexture(Device device, int width, int format, int usage)
+	public static Texture create1dTexture(Device device, int width, int format, int usage, int aspectMask)
 	{
-		return new Texture(device, width, 1, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, 1, VK10.VK_IMAGE_TYPE_1D);
+		return new Texture(device, width, 1, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, 1, VK10.VK_IMAGE_TYPE_1D);
 	}
 	
-	public static Texture create1dTexture(Device device, int width, int format, int usage, int mipLevels)
+	public static Texture create1dTexture(Device device, int width, int format, int usage, int aspectMask, int mipLevels)
 	{
-		return new Texture(device, width, 1, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, mipLevels, VK10.VK_IMAGE_TYPE_1D);
+		return new Texture(device, width, 1, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_1D);
 	}
 	
-	public static Texture create2dTexture(Device device, int width, int height, int format, int usage)
+	public static Texture create2dTexture(Device device, int width, int height, int format, int usage, int aspectMask)
 	{
-		return new Texture(device, width, height, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, 1, VK10.VK_IMAGE_TYPE_2D);
+		return new Texture(device, width, height, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, 1, VK10.VK_IMAGE_TYPE_2D);
 	}
 	
-	public static Texture create2dTexture(Device device, int width, int height, int format, int usage, int mipLevels)
+	public static Texture create2dTexture(Device device, int width, int height, int format, int usage, int aspectMask, int mipLevels)
 	{
-		return new Texture(device, width, height, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, mipLevels, VK10.VK_IMAGE_TYPE_2D);
+		return new Texture(device, width, height, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_2D);
 	}
 	
-	public static Texture create3dTexture(Device device, int width, int height, int depth, int format, int usage)
+	public static Texture create3dTexture(Device device, int width, int height, int depth, int format, int usage, int aspectMask)
 	{
-		return new Texture(device, width, height, depth, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, 1, VK10.VK_IMAGE_TYPE_3D);
+		return new Texture(device, width, height, depth, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, 1, VK10.VK_IMAGE_TYPE_3D);
 	}
 	
-	public static Texture create3dTexture(Device device, int width, int height, int depth, int format, int usage, int mipLevels)
+	public static Texture create3dTexture(Device device, int width, int height, int depth, int format, int usage, int aspectMask, int mipLevels)
 	{
-		return new Texture(device, width, height, depth, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, mipLevels, VK10.VK_IMAGE_TYPE_3D);
+		return new Texture(device, width, height, depth, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_3D);
 	}
 	
 	private VulkanBuffer buffer;
@@ -61,9 +61,10 @@ public class Texture extends LongDeviceResource {
 	private int mipLevels;
 	private int format;
 	private int imageType;
+	private int aspectMask;
 	private int layout;
 	
-	private Texture(Device device, int width, int height, int depth, int format, int tiling, int usage, int mipLevels, int imageType)
+	private Texture(Device device, int width, int height, int depth, int format, int tiling, int usage, int aspectMask, int mipLevels, int imageType)
 	{
 		super(device);
 		length = width * height * depth;
@@ -73,6 +74,7 @@ public class Texture extends LongDeviceResource {
 		this.mipLevels = mipLevels;
 		this.format = format;
 		this.imageType = imageType;
+		this.aspectMask = aspectMask;
 		layout = VK10.VK_IMAGE_LAYOUT_UNDEFINED;
 		
 		buffer = new VulkanBuffer(device, length * 4, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
@@ -124,7 +126,7 @@ public class Texture extends LongDeviceResource {
 			region.bufferOffset(0);
 			region.bufferRowLength(0);
 			region.bufferImageHeight(0);
-			region.imageSubresource().aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+			region.imageSubresource().aspectMask(aspectMask);
 			region.imageSubresource().mipLevel(0);
 			region.imageSubresource().baseArrayLayer(0);
 			region.imageSubresource().layerCount(1);
@@ -164,7 +166,7 @@ public class Texture extends LongDeviceResource {
 				barrier.srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED);
 				barrier.dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED);
 				barrier.image(vk);
-				barrier.subresourceRange().aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+				barrier.subresourceRange().aspectMask(aspectMask);
 				barrier.subresourceRange().baseMipLevel(0);
 				barrier.subresourceRange().levelCount(1);
 				barrier.subresourceRange().baseArrayLayer(0);
@@ -173,13 +175,25 @@ public class Texture extends LongDeviceResource {
 				int sourceStage = 0;
 				int destinationStage = 0;
 				
-				if (this.layout == VK10.VK_IMAGE_LAYOUT_UNDEFINED && layout == VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+				if (this.layout == VK10.VK_IMAGE_LAYOUT_UNDEFINED)
 				{
 					barrier.srcAccessMask(VK13.VK_ACCESS_NONE);
-					barrier.dstAccessMask(VK10.VK_ACCESS_TRANSFER_WRITE_BIT);
-					
 					sourceStage = VK10.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-					destinationStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
+					
+					switch (layout)
+					{
+						case VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ->
+						{
+							barrier.dstAccessMask(VK10.VK_ACCESS_TRANSFER_WRITE_BIT);
+							destinationStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
+						}
+						case VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ->
+						{
+							barrier.dstAccessMask(VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+							destinationStage = VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+						}
+						default -> throw new UnsupportedOperationException("Transition not supported: " + this.layout + " -> " + layout);
+					}
 				}
 				else if (this.layout == VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && layout == VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 				{
@@ -197,7 +211,7 @@ public class Texture extends LongDeviceResource {
 					sourceStage = VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 					destinationStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
 				}
-				else VulkanErrorUtils.error("Unsupported layout change (" + this.layout + " -> " + layout + ")");
+				else throw new UnsupportedOperationException("Transition not supported: " + this.layout + " -> " + layout);
 				
 				VK10.vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, null, null, barrier);
 				
@@ -249,6 +263,11 @@ public class Texture extends LongDeviceResource {
 	public int getImageType()
 	{
 		return imageType;
+	}
+	
+	public int getAspectMask()
+	{
+		return aspectMask;
 	}
 	
 	public int getLayout()

@@ -13,6 +13,7 @@ public class ShaderUniformBlock {
 	}
 	
 	private int binding;
+	@Nullable
 	private String name;
 	private Set<ShaderUniform> uniforms;
 	
@@ -41,6 +42,7 @@ public class ShaderUniformBlock {
 	 * 
 	 * @return the name of this block, if any
 	 */
+	@Nullable
 	public String getName()
 	{
 		return name;
@@ -53,5 +55,11 @@ public class ShaderUniformBlock {
 	public Set<ShaderUniform> getUniforms()
 	{
 		return uniforms;
+	}
+	
+	@Override
+	public String toString()
+	{
+		return "ShaderUniformBlock{(binding=" + binding + ") " + name + " " + uniforms + "}";
 	}
 }

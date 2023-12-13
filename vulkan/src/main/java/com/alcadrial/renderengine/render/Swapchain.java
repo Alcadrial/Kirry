@@ -3,6 +3,7 @@ package com.alcadrial.renderengine.render;
 import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
@@ -25,6 +26,7 @@ import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.LongDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
@@ -44,6 +46,7 @@ public class Swapchain extends LongDeviceResource {
 	private RenderPass renderPass;
 	private List<Long> images;
 	private List<Long> imageViews;
+	private Texture depthTexture;
 	private List<FrameBuffer> frameBuffers;
 	private VkRenderPassBeginInfo renderPassBeginInfo;
 	private PointerBuffer commandBuffers;
@@ -77,11 +80,12 @@ public class Swapchain extends LongDeviceResource {
 		renderPassBeginInfo = VkRenderPassBeginInfo.calloc();
 		renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
 		renderPassBeginInfo.renderPass(renderPass.getVk());
-		initialize(surface);
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			int size = imageViews.size();
+			int[] p = new int[1];
+			VulkanErrorUtils.assertNoError(KHRSwapchain.vkGetSwapchainImagesKHR(device.getVk(), vk, p, null));
+			int size = p[0];
 			commandBuffers = MemoryStack.stackMallocPointer(size);
 			commands = new ArrayList<>(size);
 			
@@ -112,8 +116,9 @@ public class Swapchain extends LongDeviceResource {
 		}
 	}
 	
-	private void initialize(Surface surface)
+	public void initialize(Surface surface, @Nullable Texture depthTexture)
 	{
+		this.depthTexture = depthTexture;
 		int[] p = new int[1];
 		VulkanErrorUtils.assertNoError(KHRSwapchain.vkGetSwapchainImagesKHR(device.getVk(), vk, p, null));
 		long[] p0 = new long[p[0]];
@@ -130,7 +135,8 @@ public class Swapchain extends LongDeviceResource {
 		{
 			p0 = new long[1];
 			
-			LongBuffer attachments = stack.mallocLong(1);
+			LongBuffer attachments = stack.mallocLong(depthTexture != null ? 2 : 1);
+			if (depthTexture != null) attachments.put(1, depthTexture.getView().getVk());
 			
 			VkFramebufferCreateInfo framebufferInfo = VkFramebufferCreateInfo.calloc(stack);
 			framebufferInfo.sType(VK10.VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO);
@@ -173,11 +179,8 @@ public class Swapchain extends LongDeviceResource {
 	
 	/**
 	 * Not Thread-safe
-	 * 
-	 * @param size 
-	 * @param clearColor 
 	 */
-	public CommandBufferData startRegisteringCommands(@Nullable Vector2i offset, @Nullable Vector2i size, Color clearColor)
+	public CommandBufferData startRegisteringCommands(@Nullable Vector2i offset, @Nullable Vector2i size, Color clearColor, float clearDepth, int clearStencil)
 	{
 		CommandBufferData commandBuffer = getActiveCommandBufferData();
 		if (!commandBuffer.isRecording())
@@ -197,9 +200,10 @@ public class Swapchain extends LongDeviceResource {
 				else renderArea.extent(VkExtent2D.calloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
 				renderPassBeginInfo.renderArea(renderArea);
 				
-				VkClearValue.Buffer clearValues = VkClearValue.calloc(1, stack);
-				clearValues.color().float32(stack.floats(clearColor.r(), clearColor.g(), clearColor.b(), clearColor.a()));
-				renderPassBeginInfo.pClearValues(clearValues);
+				VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
+				clearValues.get().color().float32(stack.floats(clearColor.r(), clearColor.g(), clearColor.b(), clearColor.a()));
+				clearValues.get().depthStencil().depth(clearDepth).stencil(clearStencil);
+				renderPassBeginInfo.pClearValues(clearValues.rewind());
 				
 				VK10.vkCmdBeginRenderPass(commandBuffer.getVk(), renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 			}
@@ -220,7 +224,7 @@ public class Swapchain extends LongDeviceResource {
 		}
 	}
 	
-	public boolean recreate(Device device, Surface surface, VkSwapchainCreateInfoKHR createInfo)
+	public boolean recreate(Device device, Surface surface, @Nullable Optional<Texture> newDepthTexture, VkSwapchainCreateInfoKHR createInfo)
 	{
 		Device oldDevice = this.device;
 		List<FrameBuffer> oldFrameBuffers = frameBuffers;
@@ -254,7 +258,7 @@ public class Swapchain extends LongDeviceResource {
 				KHRSwapchain.vkDestroySwapchainKHR(oldDevice.getVk(), oldVk, null);
 			});
 			
-			initialize(surface);
+			initialize(surface, newDepthTexture != null ? newDepthTexture.get() : depthTexture);
 		}
 		return true;
 	}
@@ -267,16 +271,6 @@ public class Swapchain extends LongDeviceResource {
 	public RenderPass getRenderPass()
 	{
 		return renderPass;
-	}
-	
-	public List<Long> getImages()
-	{
-		return images;
-	}
-	
-	public List<Long> getImageViews()
-	{
-		return imageViews;
 	}
 	
 	public List<FrameBuffer> getFrameBuffers()

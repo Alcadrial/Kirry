@@ -6,8 +6,11 @@ import java.util.concurrent.TimeUnit;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
 
+import com.alcadrial.kroperties.Property;
+import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.render.util.Properties;
 
+@Test
 public class RenderTest {
 	
 	protected static final Object MONITOR = new Object();
@@ -44,6 +47,12 @@ public class RenderTest {
 		return new File(Properties.RESOURCE_PATH.getValue(), "assets/renderengine/" + path);
 	}
 	
+	public static void println(String s, Runnable action, Property<Boolean> printProperty)
+	{
+		if (printProperty.getValue()) System.out.println(s + " time = " + recordTime(action, TimeUnit.MICROSECONDS) / 1000D + "ms");
+		else action.run();
+	}
+	
 	public static long recordTime(Runnable runnable, TimeUnit unit)
 	{
 		long startTime;
@@ -66,5 +75,29 @@ public class RenderTest {
 		else endTime = System.currentTimeMillis();
 		
 		return unit.convert(endTime - startTime, localUnit);
+	}
+	
+	public static double recordTime(Runnable runnable, TimeUnit unit, TimeUnit resolution)
+	{
+		long startTime;
+		TimeUnit localUnit;
+		if (resolution == TimeUnit.MICROSECONDS || resolution == TimeUnit.NANOSECONDS)
+		{
+			startTime = System.nanoTime();
+			localUnit = TimeUnit.NANOSECONDS;
+		}
+		else
+		{
+			startTime = System.currentTimeMillis();
+			localUnit = TimeUnit.MILLISECONDS;
+		}
+		
+		runnable.run();
+		
+		long endTime;
+		if (localUnit == TimeUnit.NANOSECONDS) endTime = System.nanoTime();
+		else endTime = System.currentTimeMillis();
+		
+		return (double) resolution.convert(endTime - startTime, localUnit) / resolution.convert(1, unit);
 	}
 }

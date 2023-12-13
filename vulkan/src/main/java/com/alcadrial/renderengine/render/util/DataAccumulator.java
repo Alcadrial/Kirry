@@ -21,6 +21,7 @@ import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
 import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState;
 import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineDepthStencilStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineInputAssemblyStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineMultisampleStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo;
@@ -50,6 +51,7 @@ import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.shader.Shader;
+import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
@@ -94,18 +96,19 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected DataElement<IndexBuffer> indexBuffer;
 	protected DataElement<UniformBuffer> uniformBuffer;
 	protected DataElement<VkDescriptorSetLayoutBinding> descriptorSetLayoutBinding;
+	protected DataElement<Texture> depthTexture;
 	// VkPipelineColorBlendAttachmentState {
-	protected Integer colorWriteMask;
-	protected Boolean blendEnable;
+	protected DataElement<Integer> colorWriteMask;
+	protected DataElement<Boolean> blendEnable;
 	// ...
 	// }
 	// VkPipelineColorBlendStateCreateInfo (n*VkPipelineColorBlendAttachmentState) {
-	protected Boolean logicOpEnable;
-	protected Integer logicOp;
+	protected DataElement<Boolean> logicOpEnable;
+	protected DataElement<Integer> logicOp;
 	protected Float[] blendConstants;
 	// }
 	// VkPipelineMultisampleStateCreateInfo {
-	protected DataElement<Integer> rasterizationSamples;//extra pixel in rasterization
+	protected DataElement<Integer> rasterizationSamples;// extra pixel in rasterization
 	protected DataElement<Boolean> sampleShadingEnable;
 	protected DataElement<Float> minSampleShading;
 	protected DataElement<Boolean> alphaToOneEnable;
@@ -139,6 +142,11 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected DataElement<Boolean> primitiveRestartEnable;
 	// }
 	protected List<VkPipelineColorBlendAttachmentState> pipelineColorBlendAttachmentStates;
+	protected DataElement<Boolean> depthTestEnable;
+	protected DataElement<Boolean> depthWriteEnable;
+	protected DataElement<Integer> depthCompareOp;
+	protected DataElement<Float> minDepth;
+	protected DataElement<Float> maxDepth;
 	
 	protected DataAccumulator()
 	{
@@ -442,6 +450,12 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		return myself();
 	}
 	
+	protected SDA depthTexture(@Nullable Texture value)
+	{
+		depthTexture.set(value);
+		return myself();
+	}
+	
 	protected SDA topology(@Nullable Integer value)
 	{
 		topology.set(value);
@@ -570,13 +584,43 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	
 	protected SDA logicOpEnable(@Nullable Boolean value)
 	{
-		logicOpEnable = value;
+		logicOpEnable.set(value);
 		return myself();
 	}
 	
 	protected SDA logicOp(@Nullable Integer value)
 	{
-		logicOp = value;
+		logicOp.set(value);
+		return myself();
+	}
+	
+	protected SDA depthTestEnable(@Nullable Boolean value)
+	{
+		depthTestEnable.set(value);
+		return myself();
+	}
+	
+	protected SDA depthWriteEnable(@Nullable Boolean value)
+	{
+		depthWriteEnable.set(value);
+		return myself();
+	}
+	
+	protected SDA depthCompareOp(@Nullable Integer value)
+	{
+		depthCompareOp.set(value);
+		return myself();
+	}
+	
+	protected SDA minDepth(@Nullable Float value)
+	{
+		minDepth.set(value);
+		return myself();
+	}
+	
+	protected SDA maxDepth(@Nullable Float value)
+	{
+		maxDepth.set(value);
 		return myself();
 	}
 	
@@ -587,6 +631,8 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	 * @renderengine.Requires
 	 * 		{@link #device(Device) device}<br>
 	 * 		{@link #surface(Surface) surface}
+	 * @renderengine.Optional
+	 * 		{@link #depthTexture(Texture) depthTexture}
 	 */
 	protected RenderPass createRenderPass()
 	{
@@ -594,7 +640,9 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		Surface surface = this.surface.require();
 		VulkanErrorUtils.assertStatement(surface.isInitialized(), "Surface not initialized");
 		
-		VkAttachmentDescription.Buffer colorAttachment = VkAttachmentDescription.calloc(1, stack);//static
+		VkAttachmentDescription.Buffer attachments = VkAttachmentDescription.calloc(depthTexture.get() != null ? 2 : 1, stack);// static
+		
+		VkAttachmentDescription colorAttachment = attachments.get();
 		colorAttachment.format(surface.getFormat().format());
 		colorAttachment.samples(VK10.VK_SAMPLE_COUNT_1_BIT);
 		colorAttachment.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR);
@@ -604,26 +652,54 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		colorAttachment.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED);
 		colorAttachment.finalLayout(KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 		
-		VkAttachmentReference.Buffer colorAttachmentRef = VkAttachmentReference.calloc(1, stack);//static
-		colorAttachmentRef.attachment(0);//Color image attachment 
+		VkAttachmentReference.Buffer colorAttachmentRef = VkAttachmentReference.calloc(1, stack);// static
+		colorAttachmentRef.attachment(0);// Color image attachment
 		colorAttachmentRef.layout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 		
-		VkSubpassDescription.Buffer subpass = VkSubpassDescription.calloc(1, stack);//static
+		VkSubpassDescription.Buffer subpass = VkSubpassDescription.calloc(1, stack);// static
 		subpass.pipelineBindPoint(VK10.VK_PIPELINE_BIND_POINT_GRAPHICS);
 		subpass.colorAttachmentCount(1);
 		subpass.pColorAttachments(colorAttachmentRef);// using color image[0]
 		
+		int srcStageMask = VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		int srcAccessMask = 0;
+		int dstStageMask = VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		int dstAccessMask = VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		
+		if (depthTexture.get() != null)
+		{
+			VkAttachmentDescription depthAttachment = attachments.get();
+			depthAttachment.format(depthTexture.get().getFormat());
+			depthAttachment.samples(VK10.VK_SAMPLE_COUNT_1_BIT);
+			depthAttachment.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR);
+			depthAttachment.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE);
+			depthAttachment.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE);
+			depthAttachment.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE);
+			depthAttachment.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED);
+			depthAttachment.finalLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+			
+			VkAttachmentReference depthAttachmentRef = VkAttachmentReference.calloc(stack);
+			depthAttachmentRef.attachment(1);
+			depthAttachmentRef.layout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+			
+			subpass.pDepthStencilAttachment(depthAttachmentRef);
+			
+			srcStageMask |= VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			dstStageMask |= VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			dstAccessMask |= VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		}
+		
 		VkSubpassDependency.Buffer dependency = VkSubpassDependency.calloc(1, stack);
 		dependency.srcSubpass(VK10.VK_SUBPASS_EXTERNAL);
 		dependency.dstSubpass(0);
-		dependency.srcStageMask(VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-		dependency.srcAccessMask(0);
-		dependency.dstStageMask(VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-		dependency.dstAccessMask(VK10.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+		dependency.srcStageMask(srcStageMask);
+		dependency.srcAccessMask(srcAccessMask);
+		dependency.dstStageMask(dstStageMask);
+		dependency.dstAccessMask(dstAccessMask);
 		
 		VkRenderPassCreateInfo renderPassInfo = VkRenderPassCreateInfo.calloc(stack);
 		renderPassInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO);
-		renderPassInfo.pAttachments(colorAttachment);
+		renderPassInfo.pAttachments(attachments.rewind());
 		renderPassInfo.pSubpasses(subpass);
 		renderPassInfo.pDependencies(dependency);
 		
@@ -638,6 +714,8 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	 * 		{@link #physicalDevice}<br>
 	 * 		{@link #surface}<br>
 	 * 		{@link #renderPass}
+	 * @renderengine.Optional
+	 * 		{@link #depthTexture(Texture) depthTexture}
 	 */
 	protected Swapchain createSwapchain()
 	{
@@ -662,7 +740,9 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		
 		surface.createSwapchain(renderPass, createInfo);
 		
-		return surface.getSwapchain();
+		Swapchain swapchain = surface.getSwapchain();
+		swapchain.initialize(surface, depthTexture.get());
+		return swapchain;
 	}
 	
 	/**
@@ -680,8 +760,8 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly = VulkanUtils.pipelineInputAssemblyStateInfo(stack, topology.orElse(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST), primitiveRestartEnable.orElse(false));
 		
 		VkExtent2D extent = surface.require().getExtent();
-		VkViewport.Buffer viewport = load(c -> VkViewport.malloc(c, stack), orElse(viewports, VkViewport.malloc(stack).set(0, extent.height(), extent.width(), -extent.height(), 0, 1)));//static
-		VkRect2D.Buffer scissor = load(c -> VkRect2D.malloc(c, stack), orElse(scissors, VkRect2D.malloc(stack).set(VulkanUtils.offset(stack, 0, 0), extent)));//static
+		VkViewport.Buffer viewport = load(c -> VkViewport.malloc(c, stack), orElse(viewports, VkViewport.malloc(stack).set(0, extent.height(), extent.width(), -extent.height(), 0, 1)));// static
+		VkRect2D.Buffer scissor = load(c -> VkRect2D.malloc(c, stack), orElse(scissors, VkRect2D.malloc(stack).set(VulkanUtils.offset(stack, 0, 0), extent)));// static
 		
 		VkPipelineViewportStateCreateInfo viewportState = VulkanUtils.pipelineViewportStateInfo(stack, viewport, scissor);
 		
@@ -705,10 +785,22 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		
 		VkPipelineColorBlendStateCreateInfo pipelineColorBlendStateCreateInfo = VkPipelineColorBlendStateCreateInfo.calloc(stack);
 		pipelineColorBlendStateCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO);
-		pipelineColorBlendStateCreateInfo.logicOpEnable(orElse(logicOpEnable, false));
-		pipelineColorBlendStateCreateInfo.logicOp(orElse(logicOp, VK10.VK_LOGIC_OP_COPY));
+		pipelineColorBlendStateCreateInfo.logicOpEnable(logicOpEnable.orElse(false));
+		pipelineColorBlendStateCreateInfo.logicOp(logicOp.orElse(VK10.VK_LOGIC_OP_COPY));
 		pipelineColorBlendStateCreateInfo.pAttachments(load(c -> VkPipelineColorBlendAttachmentState.calloc(c, stack), orElse(pipelineColorBlendAttachmentStates, VkPipelineColorBlendAttachmentState.calloc(stack).colorWriteMask(VK10.VK_COLOR_COMPONENT_R_BIT | VK10.VK_COLOR_COMPONENT_G_BIT | VK10.VK_COLOR_COMPONENT_B_BIT | VK10.VK_COLOR_COMPONENT_A_BIT).blendEnable(false))));
 		pipelineColorBlendStateCreateInfo.blendConstants(load(blendConstants, new float[] {0, 0, 0, 0}));
+		
+		VkPipelineDepthStencilStateCreateInfo pipelineDepthStencilStateCreateInfo = VkPipelineDepthStencilStateCreateInfo.calloc(stack);
+		pipelineDepthStencilStateCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO);
+		pipelineDepthStencilStateCreateInfo.depthTestEnable(depthTestEnable.orElse(false));
+		pipelineDepthStencilStateCreateInfo.depthWriteEnable(depthWriteEnable.orElse(true));
+		pipelineDepthStencilStateCreateInfo.depthCompareOp(depthCompareOp.orElse(VK10.VK_COMPARE_OP_LESS));
+		pipelineDepthStencilStateCreateInfo.depthBoundsTestEnable(false);
+		pipelineDepthStencilStateCreateInfo.minDepthBounds(minDepth.orElse(0F));
+		pipelineDepthStencilStateCreateInfo.maxDepthBounds(maxDepth.orElse(1F));
+		pipelineDepthStencilStateCreateInfo.stencilTestEnable(false);
+		// pipelineDepthStencilStateCreateInfo.front();
+		// pipelineDepthStencilStateCreateInfo.back();
 		
 		VkGraphicsPipelineCreateInfo.Buffer pipelineInfo = VkGraphicsPipelineCreateInfo.calloc(1, stack);
 		pipelineInfo.sType(VK10.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
@@ -717,6 +809,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		pipelineInfo.pRasterizationState(pipelineRasterizationStateCreateInfo);
 		pipelineInfo.pMultisampleState(pipelineMultisampleStateCreateInfo);
 		pipelineInfo.pColorBlendState(pipelineColorBlendStateCreateInfo);
+		pipelineInfo.pDepthStencilState(pipelineDepthStencilStateCreateInfo);
 		pipelineInfo.renderPass(renderPass.require().getVk());
 		pipelineInfo.subpass(0);
 		pipelineInfo.basePipelineHandle(VK10.VK_NULL_HANDLE);

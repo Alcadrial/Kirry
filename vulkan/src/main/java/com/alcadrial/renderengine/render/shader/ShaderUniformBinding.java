@@ -51,4 +51,10 @@ public class ShaderUniformBinding {
 	{
 		this.uniformBlocks = uniformBlocks;
 	}
+	
+	@Override
+	public String toString()
+	{
+		return "ShaderUniformBinding{stages=" + stages + ", descriptorType=" + descriptorType + ", uniformBlocks=" + uniformBlocks + "}";
+	}
 }

@@ -224,7 +224,7 @@ public class RenderingManagerTest implements RenderTest {
 		}
 		{
 			Matrix4f matrix = new Matrix4f();
-			matrix.project(Angle.of(60, AngleUnit.DEGREES), 1000, 1, window.getAspectRatio());
+			matrix.perspective(Angle.of(60, AngleUnit.DEGREES), 1000, 1, window.getAspectRatio());
 			matrix.multiply(new Matrix4f().view(position, rotationX, rotationY));
 			
 			UniversalRenderer renderer = renderingManager.start(RenderingMode.QUADS, colorProgram);
@@ -259,7 +259,7 @@ public class RenderingManagerTest implements RenderTest {
 			matrix.orthographicPositive(window.getWidth(), window.getHeight());
 			
 			Matrix4f projection = new Matrix4f();
-			projection.project(Angle.of(60, AngleUnit.DEGREES), 1000, 1, window.getAspectRatio());
+			projection.perspective(Angle.of(60, AngleUnit.DEGREES), 1000, 1, window.getAspectRatio());
 			projection.multiply(new Matrix4f().view(position, rotationX, rotationY));
 			float[] m = projection.toArray();
 			

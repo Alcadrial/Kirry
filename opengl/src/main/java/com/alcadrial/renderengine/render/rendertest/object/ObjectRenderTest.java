@@ -231,7 +231,7 @@ public class ObjectRenderTest implements RenderTest {
 	{
 		Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
 		Matrix4f orthographicPositive = new Matrix4f().orthographicPositive(window.getWidth(), window.getHeight());
-		Matrix4f projection = new Matrix4f().project(10, 100, 8, window.getAspectRatio());
+		Matrix4f perspective = new Matrix4f().perspective(10, 100, 8, window.getAspectRatio());
 		
 		Text text = new Text();
 		text.addLine(new TextLine("partialticks " + partialSecond));
@@ -253,7 +253,7 @@ public class ObjectRenderTest implements RenderTest {
 		else if (i == 11) trackers[5].modify(cubes[2]);
 		else if (i == 12) trackers[5].modify(cubes[3]);
 		else if (i == 13) trackers[5].modify(cubes[0]);
-		cubeRenderer.draw(RenderingMode.QUADS, new Matrix4f(projection).multiply(new Matrix4f().view(Vector3f.of(10, 0, 10), 0, 0).multiply(new Matrix4f().rotate(Axis.Y, o * 8 / 13F % 360))));
+		cubeRenderer.draw(RenderingMode.QUADS, new Matrix4f(perspective).multiply(new Matrix4f().view(Vector3f.of(10, 0, 10), 0, 0).multiply(new Matrix4f().rotate(Axis.Y, o * 8 / 13F % 360))));
 		
 		window.drawWidgets(orthographic, partialSecond);
 		window.update();

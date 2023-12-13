@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.math.RoundingMode;
 import java.nio.IntBuffer;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
@@ -20,7 +19,6 @@ import org.lwjgl.vulkan.VK10;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.kroperties.Property;
 import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.PhysicalDevice;
@@ -45,54 +43,19 @@ public class Test2dPanel extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		Property.parseProperties(args, Properties.PROPERTIES);
+		TestProperties.init(args);
 		
 		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
 		
-		System.out.println("Render Engine initialization time = " + recordTime(() -> {
+		println("Render Engine initialization", () -> {
 			if (!RenderEngine.create("Test", new Version(0, 0, 1, 0)).messenger(Test2dPanel::debugCallback).initialize()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		}, TimeUnit.MICROSECONDS) / 1000D + "ms");
+		}, TestProperties.PRINT_LOADING_TIMES);
 		
-		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
-		
-		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
-		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
-		
-		Thread t = new Thread(() -> {
-			start();
-			loop();
-			end();
-		});
-		// t.start();
-		
-		System.out.println("Start time = " + recordTime(Test2dPanel::start, TimeUnit.MICROSECONDS) / 1000D + "ms");
+		println("Start", Test2dPanel::start, TestProperties.PRINT_LOADING_TIMES);
 		if (!RenderEngine.isInitializated()) return;
-		System.out.println("Loop time = " + recordTime(Test2dPanel::loop, TimeUnit.MICROSECONDS) / 1000D + "ms");
+		println("Loop", Test2dPanel::loop, TestProperties.PRINT_LOADING_TIMES);
 		if (!RenderEngine.isInitializated()) return;
-		System.out.println("End time = " + recordTime(Test2dPanel::end, TimeUnit.MICROSECONDS) / 1000D + "ms");
-		
-		Thread main = Thread.currentThread();
-		new Thread(() -> {
-			
-			while (t.isAlive() || main.isAlive())
-			{
-				synchronized (MONITOR)
-				{
-					try
-					{
-						MONITOR.wait();
-						synchronized (args)
-						{
-							args.wait(100);
-						}
-					}
-					catch (InterruptedException e)
-					{}
-				}
-			}
-			
-			RenderEngine.terminate();
-		});// .start();
+		println("End", Test2dPanel::end, TestProperties.PRINT_LOADING_TIMES);
 	}
 	
 	private static Renderer renderer;
@@ -104,7 +67,11 @@ public class Test2dPanel extends RenderTest {
 	{
 		Vulkan vulkan = RenderEngine.getVulkan();
 		
-		System.out.println("Window creation time = " + recordTime(() -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TimeUnit.MICROSECONDS) / 1000D + "ms");
+		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
+		
+		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
+		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
+		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
 		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueGraphicsFamilyProperties() != null);
 		vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
@@ -271,24 +238,30 @@ public class Test2dPanel extends RenderTest {
 				highMilestone += (enlapsed - highMilestone + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
 			}
 			
-			if (isModifiedMatrix)
-			{
-				isModifiedMatrix = false;
-				renderer.updateUniformBuffers(b -> {
-					Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
-					Matrix4f model = new Matrix4f().translateYTo(-panelPos.y()).translateXTo(-panelPos.x());
-					b.set(TRANSFORMATION_UNIFORM, orthographic.multiply(model));
-				});
-			}
-			if (isModified)
-			{
-				isModified = false;
-				while (renderer.draw() == DrawResult.FAILED);
-				window.update();
-			}
-			window.pollEvents();
+			println("Frame " + frame, TextureTest::frame, TestProperties.PRINT_FRAME_TIMES);
 			frame++;
 		}
+	}
+	
+	public static void frame()
+	{
+		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		if (isModifiedMatrix)
+		{
+			isModifiedMatrix = false;
+			renderer.updateUniformBuffers(b -> {
+				Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
+				Matrix4f model = new Matrix4f().translateYTo(-panelPos.y()).translateXTo(-panelPos.x());
+				b.set(TRANSFORMATION_UNIFORM, orthographic.multiply(model));
+			});
+		}
+		if (isModified)
+		{
+			isModified = false;
+			while (renderer.draw() == DrawResult.FAILED);
+			window.update();
+		}
+		window.pollEvents();
 	}
 	
 	public static void end()

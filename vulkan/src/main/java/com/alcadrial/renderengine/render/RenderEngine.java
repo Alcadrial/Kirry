@@ -12,6 +12,7 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWVulkan;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.EXTDebugUtils;
+import org.lwjgl.vulkan.EXTDepthRangeUnrestricted;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VK13;
@@ -26,7 +27,8 @@ import com.alcadrial.renderengine.render.util.Version;
 public class RenderEngine extends RenderEngineCore {
 	
 	private static final List<String> VALIDATION_LAYERS = List.of("VK_LAYER_KHRONOS_validation");
-	private static final List<String> DEVICE_EXTENSIONS = List.of(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+	private static final List<String> INSTANCE_EXTENSIONS = List.of(/* EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME */);
+	private static final List<String> DEVICE_EXTENSIONS = List.of(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME, EXTDepthRangeUnrestricted.VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME);
 	
 	private static volatile boolean debug = false;
 	private static volatile boolean initializated = false;
@@ -99,17 +101,16 @@ public class RenderEngine extends RenderEngineCore {
 				
 				PointerBuffer enlargedBuffer;
 				
-				if (requiredInstances == null) enlargedBuffer = stack.mallocPointer(1);
+				if (requiredInstances == null) enlargedBuffer = stack.mallocPointer(INSTANCE_EXTENSIONS.size());
 				else
 				{
-					enlargedBuffer = stack.mallocPointer(requiredInstances.capacity() + 1);
-					enlargedBuffer.put(requiredInstances);
+					enlargedBuffer = stack.mallocPointer(INSTANCE_EXTENSIONS.size() + requiredInstances.remaining());
+					while (requiredInstances.remaining() > 0) enlargedBuffer.put(requiredInstances.get());
 				}
-				
-				enlargedBuffer.put(stack.UTF8(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME));
+				for (String name : INSTANCE_EXTENSIONS) enlargedBuffer.put(stack.UTF8(name));
 				enlargedBuffer.rewind();
 				
-				createInfo.ppEnabledExtensionNames(requiredInstances);
+				createInfo.ppEnabledExtensionNames(enlargedBuffer);
 				createInfo.ppEnabledLayerNames(getValidationLayers(stack));
 				
 				if (builder.messenger != null)

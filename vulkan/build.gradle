@@ -8,7 +8,7 @@ plugins {
 eclipse.project.name = "RenderEngine Vulkan"
 
 javadoc {
-	options.tags("renderengine.vulkan:Vulkan API", "renderengine.Requires:Requires")
+	options.tags("renderengine.vulkan:a:Vulkan API:", "renderengine.Requires:a:Requires:", "renderengine.Optional:a:Optional:")
 }
 
 dependencies {

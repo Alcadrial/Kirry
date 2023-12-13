@@ -1,5 +1,6 @@
 package com.alcadrial.renderengine.render.test;
 
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 import com.alcadrial.kector.matrix.Matrix4f;
@@ -59,6 +60,86 @@ public class RendererUtils {
 		accumulator.vertex(eX, sY, eZ).color(r, g, b, a).normal(0, -1, 0).end();
 		accumulator.vertex(sX, sY, eZ).color(r, g, b, a).normal(0, -1, 0).end();
 		accumulator.end();
+	}
+	
+	public static OrthoCubeVertexResult loadOrthoCube(Renderer renderer, Vector3f start, Vector3f end, BiFunction<Integer, Integer, Color> color)
+	{
+		float sX = start.x();
+		float sY = start.y();
+		float sZ = start.z();
+		float eX = end.x();
+		float eY = end.y();
+		float eZ = end.z();
+		
+		VertexAccumulator accumulator = renderer.accumulate();
+		VertexResult r0 = loadVertex(accumulator, sX, eY, sZ, color.apply(0, 0), 0, 0, -1);
+		VertexResult r1 = loadVertex(accumulator, eX, eY, sZ, color.apply(0, 1), 0, 0, -1);
+		VertexResult r2 = loadVertex(accumulator, eX, sY, sZ, color.apply(0, 2), 0, 0, -1);
+		VertexResult r3 = loadVertex(accumulator, sX, sY, sZ, color.apply(0, 3), 0, 0, -1);
+		RectangleVertexResult rr0 = new RectangleVertexResult(r0, r1, r2, r3);
+		
+		r0 = loadVertex(accumulator, sX, eY, eZ, color.apply(1, 0), -1, 0, 0);
+		r1 = loadVertex(accumulator, sX, eY, sZ, color.apply(1, 1), -1, 0, 0);
+		r2 = loadVertex(accumulator, sX, sY, sZ, color.apply(1, 2), -1, 0, 0);
+		r3 = loadVertex(accumulator, sX, sY, eZ, color.apply(1, 3), -1, 0, 0);
+		RectangleVertexResult rr1 = new RectangleVertexResult(r0, r1, r2, r3);
+		
+		r0 = loadVertex(accumulator, eX, eY, eZ, color.apply(2, 0), 0, 0, 1);
+		r1 = loadVertex(accumulator, sX, eY, eZ, color.apply(2, 1), 0, 0, 1);
+		r2 = loadVertex(accumulator, sX, sY, eZ, color.apply(2, 2), 0, 0, 1);
+		r3 = loadVertex(accumulator, eX, sY, eZ, color.apply(2, 3), 0, 0, 1);
+		RectangleVertexResult rr2 = new RectangleVertexResult(r0, r1, r2, r3);
+		
+		r0 = loadVertex(accumulator, eX, eY, sZ, color.apply(3, 0), 1, 0, 0);
+		r1 = loadVertex(accumulator, eX, eY, eZ, color.apply(3, 1), 1, 0, 0);
+		r2 = loadVertex(accumulator, eX, sY, eZ, color.apply(3, 2), 1, 0, 0);
+		r3 = loadVertex(accumulator, eX, sY, sZ, color.apply(3, 3), 1, 0, 0);
+		RectangleVertexResult rr3 = new RectangleVertexResult(r0, r1, r2, r3);
+		
+		r0 = loadVertex(accumulator, sX, eY, eZ, color.apply(4, 0), 0, 1, 0);
+		r1 = loadVertex(accumulator, eX, eY, eZ, color.apply(4, 1), 0, 1, 0);
+		r2 = loadVertex(accumulator, eX, eY, sZ, color.apply(4, 2), 0, 1, 0);
+		r3 = loadVertex(accumulator, sX, eY, sZ, color.apply(4, 3), 0, 1, 0);
+		RectangleVertexResult rr4 = new RectangleVertexResult(r0, r1, r2, r3);
+		
+		r0 = loadVertex(accumulator, sX, sY, sZ, color.apply(5, 0), 0, -1, 0);
+		r1 = loadVertex(accumulator, eX, sY, sZ, color.apply(5, 1), 0, -1, 0);
+		r2 = loadVertex(accumulator, eX, sY, eZ, color.apply(5, 2), 0, -1, 0);
+		r3 = loadVertex(accumulator, sX, sY, eZ, color.apply(5, 3), 0, -1, 0);
+		RectangleVertexResult rr5 = new RectangleVertexResult(r0, r1, r2, r3);
+		accumulator.end();
+		return new OrthoCubeVertexResult(rr0, rr1, rr2, rr3, rr4, rr5);
+	}
+	
+	public static class OrthoCubeVertexResult {
+		
+		private RectangleVertexResult[] result;
+		
+		public OrthoCubeVertexResult(RectangleVertexResult r0, RectangleVertexResult r1, RectangleVertexResult r2, RectangleVertexResult r3, RectangleVertexResult r4, RectangleVertexResult r5)
+		{
+			result = new RectangleVertexResult[6];
+			result[0] = r0;
+			result[1] = r1;
+			result[2] = r2;
+			result[3] = r3;
+			result[4] = r4;
+			result[5] = r5;
+		}
+		
+		public void foreach(Consumer<RectangleVertexResult> action)
+		{
+			for (RectangleVertexResult r : result) action.accept(r);
+		}
+		
+		public void track(ShaderInput input, Consumer<Tracker<int[]>> action)
+		{
+			for (RectangleVertexResult r : result) r.track(input, action);
+		}
+	}
+	
+	public static VertexResult loadVertex(VertexAccumulator accumulator, float x, float y, float z, Color color, float nX, float nY, float nZ)
+	{
+		return accumulator.vertex(x, y, z).color(color.r(), color.g(), color.b(), color.a()).normal(nX, nY, nZ).end();
 	}
 	
 	public static void loadRectangle(VertexAccumulator accumulator, Matrix4f matrix, Vector3f start, Vector3f end, float z, Color color)
