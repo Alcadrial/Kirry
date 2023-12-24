@@ -33,13 +33,13 @@ public class QueueFamily {
 		return index;
 	}
 	
-	public void setProperties(VkQueueFamilyProperties properties)
+	void setProperties(VkQueueFamilyProperties properties)
 	{
 		if (properties == null) index = -1;
 		this.properties = properties;
 	}
 	
-	public void setIndex(int index)
+	void setIndex(int index)
 	{
 		this.index = index;
 	}

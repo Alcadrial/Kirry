@@ -121,17 +121,24 @@ public class Vulkan implements AutoCloseable {
 		}
 	}
 	
+	public void pickPhysicalDevices(int index)
+	{
+		ThreadData threadData = getData();
+		if (threadData.physicalDevice == null)
+		{
+			List<PhysicalDevice> validPhysicalDevices = getValidPhysicalDevices();
+			VulkanErrorUtils.assertStatement(index >= 0 && index < validPhysicalDevices.size(), "Unknown physical device");
+			threadData.physicalDevice = validPhysicalDevices.get(index);
+		}
+	}
+	
 	public List<PhysicalDevice> getValidPhysicalDevices()
 	{
 		ThreadData threadData = getData();
 		if (threadData.validPhysicalDevices == null)
 		{
 			threadData.validPhysicalDevices = new LinkedList<>();
-			for (PhysicalDevice device : getAvailablePhysicalDevices())
-			{
-				device.searchQueueSurfaceFamilyProperties(threadData.window.getSurface().getSurface());
-				if (threadData.physicalDeviceFilter.test(device)) threadData.validPhysicalDevices.add(device);
-			}
+			for (PhysicalDevice device : getAvailablePhysicalDevices()) if (threadData.physicalDeviceFilter.test(device)) threadData.validPhysicalDevices.add(device);
 			threadData.validPhysicalDevices = List.copyOf(threadData.validPhysicalDevices);
 		}
 		return threadData.validPhysicalDevices;
@@ -168,28 +175,37 @@ public class Vulkan implements AutoCloseable {
 	
 	public void createDevice()
 	{
+		createDevice(VkPhysicalDeviceFeatures.calloc());
+	}
+	
+	/**
+	 * The deviceFeatures param is automatically freed at the end of the method
+	 * after the creation of the device. 
+	 * 
+	 * 
+	 * @param deviceFeatures
+	 */
+	public void createDevice(VkPhysicalDeviceFeatures deviceFeatures)
+	{
 		ThreadData threadData = getData();
 		if (threadData.device == null)
 		{
 			VulkanErrorUtils.nonNull(threadData.physicalDevice, "Physical device must be picked before calling getDevice using #pickPhysicalDevices");
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
-				VulkanErrorUtils.nonNull(threadData.physicalDevice.getQueueGraphicsFamilyProperties(), "Missing valid queue graphics family properties");
+				QueueFamily graphicsQueue = VulkanErrorUtils.nonNull(threadData.physicalDevice.getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT), "Missing valid graphics queue family");
+				QueueFamily presentationQueue = VulkanErrorUtils.nonNull(threadData.physicalDevice.getQueueFamily(0, threadData.window.getSurface()), "Missing valid presentation queue family");
 				
 				VkDeviceQueueCreateInfo.Buffer queueCreateInfos = VkDeviceQueueCreateInfo.calloc(threadData.physicalDevice.indices(), stack);
 				
-				for (Integer index : threadData.physicalDevice.iterateIndices())
+				for (int i = 0; i < queueCreateInfos.capacity(); i++)
 				{
 					VkDeviceQueueCreateInfo queueCreateInfo = queueCreateInfos.get();
 					queueCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO);
-					queueCreateInfo.queueFamilyIndex(index);
+					queueCreateInfo.queueFamilyIndex(i);
 					queueCreateInfo.pQueuePriorities(stack.floats(1));
 				}
 				queueCreateInfos.rewind();
-				
-				VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc(stack);
-				deviceFeatures.wideLines(true);
-				deviceFeatures.samplerAnisotropy(true);
 				
 				VkDeviceCreateInfo createInfo = VkDeviceCreateInfo.calloc(stack);
 				
@@ -202,8 +218,12 @@ public class Vulkan implements AutoCloseable {
 				PointerBuffer devicePointer = stack.pointers(VK10.VK_NULL_HANDLE);
 				VulkanErrorUtils.assertNoError(VK10.vkCreateDevice(threadData.physicalDevice.getVk(), createInfo, null, devicePointer), "Failed to create logical device");
 				threadData.device = new Device(new VkDevice(devicePointer.get(0), threadData.physicalDevice.getVk(), createInfo), threadData.physicalDevice);
-				threadData.device.setGraphicsQueue(new Queue(threadData.device, threadData.physicalDevice.getQueueGraphicsFamilyIndex()));
-				threadData.device.setPresentQueue(new Queue(threadData.device, threadData.physicalDevice.getQueueSurfaceFamilyIndex()));
+				threadData.device.setGraphicsQueue(new Queue(threadData.device, graphicsQueue.getIndex()));
+				threadData.device.setPresentQueue(new Queue(threadData.device, presentationQueue.getIndex()));
+			}
+			finally
+			{
+				deviceFeatures.free();
 			}
 		}
 	}

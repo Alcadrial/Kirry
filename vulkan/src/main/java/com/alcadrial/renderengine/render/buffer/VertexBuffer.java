@@ -14,22 +14,31 @@ public class VertexBuffer extends VulkanDoubleBuffer {
 	
 	private long offset;
 	
-	public VertexBuffer(int size)
-	{
-		this(RenderEngine.getVulkan().getDevice(), size * 4);
-		offset = 0;
-	}
-	
-	public VertexBuffer(Device device, int size)
-	{
-		super(device, size * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		offset = 0;
-	}
-	
 	public VertexBuffer(float[] data)
 	{
 		this(data.length);
 		asFloatBuffer().put(data);
+	}
+	
+	public VertexBuffer(int size)
+	{
+		this(size, 0);
+	}
+	
+	public VertexBuffer(int size, int extraUsage)
+	{
+		this(RenderEngine.getVulkan().getDevice(), size, extraUsage);
+	}
+	
+	public VertexBuffer(Device device, int size)
+	{
+		this(device, size, 0);
+	}
+	
+	public VertexBuffer(Device device, int size, int extraUsage)
+	{
+		super(device, size * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | extraUsage);
+		offset = 0;
 	}
 	
 	public long getOffset()

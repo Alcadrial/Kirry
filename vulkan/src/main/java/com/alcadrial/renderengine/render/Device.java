@@ -56,7 +56,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			
 			VkCommandPoolCreateInfo poolInfo = VkCommandPoolCreateInfo.calloc(stack);
 			poolInfo.sType(VK10.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO);
-			poolInfo.queueFamilyIndex(physicalDevice.getQueueGraphicsFamilyIndex());
+			poolInfo.queueFamilyIndex(physicalDevice.getGraphicsQueueFamily().getIndex());
 			poolInfo.flags(VK10.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 			
 			VulkanErrorUtils.assertNoError(VK10.vkCreateCommandPool(device, poolInfo, null, p), "Failed to create reset command pool");
@@ -248,10 +248,15 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	public void submitSingleUseCommandBuffer(MemoryStack stack, VkCommandBuffer commandBuffer)
 	{
+		submitSingleUseCommandBuffer(stack, commandBuffer, graphicsQueue);
+	}
+	
+	public void submitSingleUseCommandBuffer(MemoryStack stack, VkCommandBuffer commandBuffer, Queue queue)
+	{
 		VulkanErrorUtils.assertStatement(commandBuffer.getDevice() == vk, "Cannot submit a command buffer of another device");
 		VulkanErrorUtils.assertNoError(VK10.vkEndCommandBuffer(commandBuffer), "Failed to submit command buffer");
-		VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(graphicsQueue.getVk(), VulkanUtils.submitInfo(stack, commandBuffer), 0), "Failed to submit command buffer");
-		VulkanErrorUtils.assertNoError(VK10.vkQueueWaitIdle(graphicsQueue.getVk()), "Failed to submit command buffer");
+		VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(queue.getVk(), VulkanUtils.submitInfo(stack, commandBuffer), 0), "Failed to submit command buffer");
+		VulkanErrorUtils.assertNoError(VK10.vkQueueWaitIdle(queue.getVk()), "Failed to submit command buffer");
 		
 		VK10.vkFreeCommandBuffers(vk, shortLivedCommandPool, commandBuffer);
 	}

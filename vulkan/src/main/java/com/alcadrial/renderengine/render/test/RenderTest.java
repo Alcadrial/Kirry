@@ -7,10 +7,8 @@ import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
 
 import com.alcadrial.kroperties.Property;
-import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.render.util.Properties;
 
-@Test
 public class RenderTest {
 	
 	protected static final Object MONITOR = new Object();

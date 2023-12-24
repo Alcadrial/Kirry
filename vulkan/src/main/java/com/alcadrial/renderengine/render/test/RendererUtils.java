@@ -6,7 +6,6 @@ import java.util.function.Consumer;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector3f;
-import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.VertexAccumulator;
@@ -14,7 +13,6 @@ import com.alcadrial.renderengine.render.VertexAccumulator.VertexResult;
 import com.alcadrial.renderengine.render.shader.ShaderInput;
 import com.alcadrial.renderengine.render.util.Tracker;
 
-@Test
 public class RendererUtils {
 	
 	public static void loadOrthoCube(Renderer renderer, Matrix4f matrix, Vector3f start, Vector3f end, Color color)

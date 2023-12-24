@@ -15,6 +15,7 @@ import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
@@ -31,6 +32,7 @@ import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.shader.Shader;
+import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.test.RendererUtils.RectangleVertexResult;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.Version;
@@ -67,15 +69,16 @@ public class Test2dPanel extends RenderTest {
 	{
 		Vulkan vulkan = RenderEngine.getVulkan();
 		
-		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
-		
 		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
-		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueGraphicsFamilyProperties() != null);
+		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
+		
 		vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
-		vulkan.createDevice();
+		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
+		deviceFeatures.wideLines(true);
+		vulkan.createDevice(deviceFeatures);
 		
 		VulkanWindow window = vulkan.getWindow();
 		window.assignDevice(vulkan.getDevice());
@@ -141,12 +144,19 @@ public class Test2dPanel extends RenderTest {
 		});
 		
 		Shader vertexShader;
+		ShaderInfo vertexShaderInfo;
 		Shader fragmentShader;
+		ShaderInfo fragmentShaderInfo;
 		try
 		{
-			vertexShader = new Shader(getFile("shader.vert"), getFile("shader.vert.json"));
+			vertexShader = new Shader(getFile("shader.vert"));
+			vertexShaderInfo = ShaderInfo.fromJson(getFile("shader.vert.json"));
+			vertexShader.compile(vertexShaderInfo);
 			if (!vertexShader.isCompilationSuccessfull()) throw new IOException("Shader " + vertexShader.getFile() + " has errors");
-			fragmentShader = new Shader(getFile("shader.frag"), getFile("shader.frag.json"));
+			
+			fragmentShader = new Shader(getFile("shader.frag"));
+			fragmentShaderInfo = ShaderInfo.fromJson(getFile("shader.frag.json"));
+			fragmentShader.compile(fragmentShaderInfo);
 			if (!fragmentShader.isCompilationSuccessfull()) throw new IOException("Shader " + fragmentShader.getFile() + " has errors");
 		}
 		catch (IOException e)
@@ -156,13 +166,13 @@ public class Test2dPanel extends RenderTest {
 			return;
 		}
 		Builder builder = Renderer.create();
-		builder.vertexShader(vertexShader).fragmentShader(fragmentShader);
-		builder.cullMode(VK10.VK_CULL_MODE_NONE);
+		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
+		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.lineWidth(2F);
 		renderer = builder.build(window, vulkan.getDevice());
 		
-		vertexBuffer = new VertexBuffer(28 * 512 * 512);
+		vertexBuffer = new VertexBuffer(7 * 4 * 512 * 512);
 		indexBuffer = new IndexBuffer(6 * 512 * 512);
 		renderer.setVertexBuffer(vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
@@ -238,7 +248,7 @@ public class Test2dPanel extends RenderTest {
 				highMilestone += (enlapsed - highMilestone + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
 			}
 			
-			println("Frame " + frame, TextureTest::frame, TestProperties.PRINT_FRAME_TIMES);
+			println("Frame " + frame, Test2dPanel::frame, TestProperties.PRINT_FRAME_TIMES);
 			frame++;
 		}
 	}

@@ -50,7 +50,10 @@ import com.alcadrial.renderengine.render.buffer.UniformBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
+import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.Shader;
+import com.alcadrial.renderengine.render.shader.ShaderInfo;
+import com.alcadrial.renderengine.render.shader.ShaderType;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
@@ -76,13 +79,13 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected final MemoryStack stack;
 	protected DataElement<Boolean> autoCloseLayout;
 	protected DataElement<Boolean> autoCloseRenderPass;
-	protected DataElement<Shader> shader;
-	protected DataElement<Shader> vertexShader;
-	protected DataElement<Shader> tessellationControlShader;
-	protected DataElement<Shader> tessellationEvaluationShader;
-	protected DataElement<Shader> geometryShader;
-	protected DataElement<Shader> fragmentShader;
-	protected DataElement<Shader> computeShader;
+	protected DataElement<PreparedShader> shader;
+	protected DataElement<PreparedShader> vertexShader;
+	protected DataElement<PreparedShader> tessellationControlShader;
+	protected DataElement<PreparedShader> tessellationEvaluationShader;
+	protected DataElement<PreparedShader> geometryShader;
+	protected DataElement<PreparedShader> fragmentShader;
+	protected DataElement<PreparedShader> computeShader;
 	protected DataElement<VulkanWindow> targetWindow;
 	protected DataElement<Device> device;
 	protected DataElement<PhysicalDevice> physicalDevice;
@@ -277,105 +280,151 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		return myself();
 	}
 	
-	protected SDA shader(@Nullable Shader value)
+	private SDA shader(DataElement<PreparedShader> element, @Nullable Shader value, @Nullable ShaderInfo info)
 	{
-		if (value == null) shader.set(null);
+		if (value == null) element.set(null);
 		else
 		{
 			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			shader.set(value.isCompilationSuccessfull() ? value : null);
+			element.set(value.isCompilationSuccessfull() ? new PreparedShader(value, info) : null);
+		}
+		return myself();
+	}
+	
+	protected SDA shader(DataElement<PreparedShader> element, @Nullable PreparedShader value)
+	{
+		if (value == null) element.set(null);
+		else
+		{
+			Shader shader = value.shader();
+			Debug.printlnIf(!shader.isCompilationSuccessfull(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
+			element.set(shader.isCompilationSuccessfull() ? value : null);
+		}
+		return myself();
+	}
+	
+	protected SDA shader(@Nullable PreparedShader value)
+	{
+		return shader(shader, value);
+	}
+	
+	protected SDA shader(@Nullable Shader value, @Nullable ShaderInfo info)
+	{
+		return shader(shader, value, info);
+	}
+	
+	protected SDA genericShader(@Nullable PreparedShader value, ShaderType type)
+	{
+		if (value != null)
+		{
+			Shader shader = value.shader();
+			Debug.printlnIf(!shader.isCompilationSuccessfull(), "Shader " + shader + " cannot be used becouse of errors");
+			DataElement<PreparedShader> element;
+			element = switch (type)
+			{
+				case VERTEX -> vertexShader;
+				case TESS_CONTROL -> tessellationControlShader;
+				case TESS_EVALUATION -> tessellationEvaluationShader;
+				case GEOMETRY -> geometryShader;
+				case FRAGMENT -> fragmentShader;
+				case COMPUTE -> computeShader;
+				default -> null;
+			};
+			if (element != null) element.set(shader.isCompilationSuccessfull() ? value : null);
+			else Debug.println("Shader " + shader.getFile() + " cannot be used becouse the type is unknown");
 		}
 		return myself();
 	}
 	
 	/**
 	 * Uses {@link Shader#getType()} to distinguish the type
+	 * 
 	 * @param value
+	 * @param info
+	 * @param type
+	 * 
 	 * @return this for chaining
 	 */
-	protected SDA genericShader(@Nullable Shader value)
+	protected SDA genericShader(@Nullable Shader value, @Nullable ShaderInfo info, ShaderType type)
 	{
 		if (value != null)
 		{
-			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			switch (value.getType())
+			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value + " cannot be used becouse of errors");
+			DataElement<PreparedShader> element;
+			element = switch (type)
 			{
-				case VERTEX -> vertexShader.set(value.isCompilationSuccessfull() ? value : null);
-				case TESS_CONTROL -> tessellationControlShader.set(value.isCompilationSuccessfull() ? value : null);
-				case TESS_EVALUATION -> tessellationEvaluationShader.set(value.isCompilationSuccessfull() ? value : null);
-				case GEOMETRY -> geometryShader.set(value.isCompilationSuccessfull() ? value : null);
-				case FRAGMENT -> fragmentShader.set(value.isCompilationSuccessfull() ? value : null);
-				case COMPUTE -> computeShader.set(value.isCompilationSuccessfull() ? value : null);
-				default -> Debug.println("Shader " + value.getFile() + " cannot be used becouse the type is unknown");
-			}
+				case VERTEX -> vertexShader;
+				case TESS_CONTROL -> tessellationControlShader;
+				case TESS_EVALUATION -> tessellationEvaluationShader;
+				case GEOMETRY -> geometryShader;
+				case FRAGMENT -> fragmentShader;
+				case COMPUTE -> computeShader;
+				default -> null;
+			};
+			if (element != null) element.set(value.isCompilationSuccessfull() ? new PreparedShader(value, null) : null);
+			else Debug.println("Shader " + value.getFile() + " cannot be used becouse the type is unknown");
 		}
 		return myself();
 	}
 	
-	protected SDA vertexShader(@Nullable Shader value)
+	protected SDA vertexShader(@Nullable PreparedShader value)
 	{
-		if (value == null) vertexShader.set(null);
-		else
-		{
-			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			vertexShader.set(value.isCompilationSuccessfull() ? value : null);
-		}
-		return myself();
+		return shader(vertexShader, value);
 	}
 	
-	protected SDA tessellationControlShader(@Nullable Shader value)
+	protected SDA vertexShader(@Nullable Shader value, @Nullable ShaderInfo info)
 	{
-		if (value == null) tessellationControlShader.set(null);
-		else
-		{
-			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			tessellationControlShader.set(value.isCompilationSuccessfull() ? value : null);
-		}
-		return myself();
+		return shader(vertexShader, value, info);
 	}
 	
-	protected SDA tessellationEvaluationShader(@Nullable Shader value)
+	protected SDA tessellationControlShader(@Nullable PreparedShader value)
 	{
-		if (value == null) tessellationEvaluationShader.set(null);
-		else
-		{
-			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			tessellationEvaluationShader.set(value.isCompilationSuccessfull() ? value : null);
-		}
-		return myself();
+		return shader(tessellationControlShader, value);
 	}
 	
-	protected SDA geometryShader(@Nullable Shader value)
+	protected SDA tessellationControlShader(@Nullable Shader value, @Nullable ShaderInfo info)
 	{
-		if (value == null) geometryShader.set(null);
-		else
-		{
-			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			geometryShader.set(value.isCompilationSuccessfull() ? value : null);
-		}
-		return myself();
+		return shader(tessellationControlShader, value, info);
 	}
 	
-	protected SDA fragmentShader(@Nullable Shader value)
+	protected SDA tessellationEvaluationShader(@Nullable PreparedShader value)
 	{
-		if (value == null) fragmentShader.set(null);
-		else
-		{
-			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			fragmentShader.set(value.isCompilationSuccessfull() ? value : null);
-		}
-		return myself();
+		return shader(tessellationEvaluationShader, value);
 	}
 	
-	protected SDA computeShader(@Nullable Shader value)
+	protected SDA tessellationEvaluationShader(@Nullable Shader value, @Nullable ShaderInfo info)
 	{
-		if (value == null) computeShader.set(null);
-		else
-		{
-			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			computeShader.set(value.isCompilationSuccessfull() ? value : null);
-		}
-		return myself();
+		return shader(tessellationEvaluationShader, value, info);
+	}
+	
+	protected SDA geometryShader(@Nullable PreparedShader value)
+	{
+		return shader(geometryShader, value);
+	}
+	
+	protected SDA geometryShader(@Nullable Shader value, @Nullable ShaderInfo info)
+	{
+		return shader(geometryShader, value, info);
+	}
+	
+	protected SDA fragmentShader(@Nullable PreparedShader value)
+	{
+		return shader(fragmentShader, value);
+	}
+	
+	protected SDA fragmentShader(@Nullable Shader value, @Nullable ShaderInfo info)
+	{
+		return shader(fragmentShader, value, info);
+	}
+	
+	protected SDA computeShader(@Nullable PreparedShader value)
+	{
+		return shader(computeShader, value);
+	}
+	
+	protected SDA computeShader(@Nullable Shader value, @Nullable ShaderInfo info)
+	{
+		return shader(computeShader, value, info);
 	}
 	
 	protected SDA targetWindow(@Nullable VulkanWindow value)
@@ -711,7 +760,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	 * 
 	 * @return a new render pass
 	 * @renderengine.Requires
-	 * 		{@link #physicalDevice}<br>
+	 * 		{@link #device}<br>
 	 * 		{@link #surface}<br>
 	 * 		{@link #renderPass}
 	 * @renderengine.Optional
@@ -719,7 +768,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	 */
 	protected Swapchain createSwapchain()
 	{
-		PhysicalDevice physicalDevice = this.physicalDevice.require();
+		Device device = this.device.require();
 		Surface surface = this.surface.require();
 		VulkanErrorUtils.assertStatement(surface.isInitialized(), "Surface not initialized");
 		RenderPass renderPass = this.renderPass.require();
@@ -729,11 +778,11 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		createInfo.minImageCount(2);
 		createInfo.imageArrayLayers(1);
 		createInfo.imageUsage(VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-		if (physicalDevice.getQueueGraphicsFamilyIndex() == physicalDevice.getQueueSurfaceFamilyIndex()) createInfo.imageSharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE);
+		if (device.getGraphicsQueue().getFamilyIndex() == device.getPresentQueue().getFamilyIndex()) createInfo.imageSharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE);
 		else
 		{
 			createInfo.imageSharingMode(VK10.VK_SHARING_MODE_CONCURRENT);
-			createInfo.pQueueFamilyIndices(stack.ints(physicalDevice.getQueueGraphicsFamilyIndex(), physicalDevice.getQueueSurfaceFamilyIndex()));
+			createInfo.pQueueFamilyIndices(stack.ints(device.getGraphicsQueue().getFamilyIndex(), device.getPresentQueue().getFamilyIndex()));
 		}
 		createInfo.compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
 		createInfo.clipped(true);

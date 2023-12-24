@@ -15,6 +15,7 @@ import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 
 import com.alcadrial.kector.angle.Angle;
 import com.alcadrial.kector.angle.AngleUnit;
@@ -23,7 +24,6 @@ import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.axis.Axis;
-import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -35,13 +35,13 @@ import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.shader.Shader;
+import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.test.RendererUtils.OrthoCubeVertexResult;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
-@Test
 public class DepthBufferTest extends RenderTest {
 	
 	public static final String PROJECTION = "PROJECTION";
@@ -72,7 +72,7 @@ public class DepthBufferTest extends RenderTest {
 	private static IndexBuffer indexBuffer;
 	private static Texture depthTexture;
 	private static Vector3f lightPos;
-	private static float f;
+	private static double f;
 	
 	private static Matrix4f buildProjectionMatrix(VulkanWindow window)
 	{
@@ -96,15 +96,20 @@ public class DepthBufferTest extends RenderTest {
 	{
 		Vulkan vulkan = RenderEngine.getVulkan();
 		
-		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
-		
 		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
-		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueGraphicsFamilyProperties() != null);
-		vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
-		vulkan.createDevice();
+		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
+		
+		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getGraphicsQueueFamily() != null);
+		if (TestProperties.DEVICE.isDefault()) vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
+		else vulkan.pickPhysicalDevices(TestProperties.DEVICE.getValue());
+		
+		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
+		deviceFeatures.wideLines(true);
+		deviceFeatures.samplerAnisotropy(true);
+		vulkan.createDevice(deviceFeatures);
 		
 		VulkanWindow window = vulkan.getWindow();
 		window.assignDevice(vulkan.getDevice());
@@ -157,12 +162,19 @@ public class DepthBufferTest extends RenderTest {
 		});
 		
 		Shader vertexShader;
+		ShaderInfo vertexShaderInfo;
 		Shader fragmentShader;
+		ShaderInfo fragmentShaderInfo;
 		try
 		{
-			vertexShader = new Shader(getFile("shader1.vert"), getFile("shader1.vert.json"));
+			vertexShader = new Shader(getFile("shader1.vert"));
+			vertexShaderInfo = ShaderInfo.fromJson(getFile("shader1.vert.json"));
+			vertexShader.compile(vertexShaderInfo);
 			if (!vertexShader.isCompilationSuccessfull()) throw new IOException("Shader " + vertexShader.getFile() + " has errors");
-			fragmentShader = new Shader(getFile("shader1.frag"), getFile("shader1.frag.json"));
+			
+			fragmentShader = new Shader(getFile("shader1.frag"));
+			fragmentShaderInfo = ShaderInfo.fromJson(getFile("shader1.frag.json"));
+			fragmentShader.compile(fragmentShaderInfo);
 			if (!fragmentShader.isCompilationSuccessfull()) throw new IOException("Shader " + fragmentShader.getFile() + " has errors");
 		}
 		catch (IOException e)
@@ -176,7 +188,7 @@ public class DepthBufferTest extends RenderTest {
 		depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 		
 		Builder builder = Renderer.create();
-		builder.vertexShader(vertexShader).fragmentShader(fragmentShader);
+		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
 		builder.depthTexture(depthTexture);
 		builder.depthTestEnable(true);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
@@ -186,7 +198,7 @@ public class DepthBufferTest extends RenderTest {
 		lightPos = Vector3f.of(0.3F, 1, 0);
 		f = 0;
 		
-		vertexBuffer = new VertexBuffer(70);
+		vertexBuffer = new VertexBuffer(240);
 		indexBuffer = new IndexBuffer(24);
 		renderer.setVertexBuffer(vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
@@ -278,7 +290,7 @@ public class DepthBufferTest extends RenderTest {
 					window.update();
 				} while (result == DrawResult.FAILED);
 				renderer.updateUniformBuffers(b -> b.set(MODEL, buildModelMatrix()));
-				f += (firstMilestone - pauseTime) / 1000000;
+				f += (firstMilestone - pauseTime) / 1000000D;
 			}, TestProperties.PRINT_FRAME_TIMES);
 			frame++;
 		}

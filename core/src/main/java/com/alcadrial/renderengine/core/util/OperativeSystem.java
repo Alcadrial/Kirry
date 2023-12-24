@@ -1,0 +1,40 @@
+package com.alcadrial.renderengine.core.util;
+
+import java.io.File;
+
+public enum OperativeSystem {
+	
+	WINDOWS("exe"),
+	LINUX(null),
+	MACOSX(null),
+	SOLARIS(null);
+	
+	public static final OperativeSystem OS;
+	
+	static
+	{
+		String os = System.getenv("OS");
+		if (os.matches("(?i).*windows.*")) OS = WINDOWS;
+		else if (os.matches("(?i).*(linux|unix).*")) OS = LINUX;
+		else if (os.matches("(?i).*mac.*")) OS = MACOSX;
+		else if (os.matches("(?i).*(sunos|solaris).*")) OS = SOLARIS;
+		else throw new IllegalStateException("Unknown os");
+	}
+	
+	private String executableExtension;
+	
+	OperativeSystem(String executableExtension)
+	{
+		this.executableExtension = executableExtension;
+	}
+	
+	public String getExecutableExtension()
+	{
+		return executableExtension;
+	}
+	
+	public File withExecutableExtension(File file)
+	{
+		return new File(executableExtension != null ? file.getPath() + "." + executableExtension : file.getPath());
+	}
+}

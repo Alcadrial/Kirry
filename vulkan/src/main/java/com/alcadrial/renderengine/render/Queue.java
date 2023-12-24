@@ -17,6 +17,8 @@ public class Queue extends DeviceResource<VkQueue> {
 		RenderEngine.assertLoaded();
 	}
 	
+	private int familyIndex;
+	
 	public Queue(Device device, int familyIndex)
 	{
 		super(device);
@@ -25,7 +27,13 @@ public class Queue extends DeviceResource<VkQueue> {
 			PointerBuffer pGraphicsQueue = stack.pointers(VK10.VK_NULL_HANDLE);
 			VK10.vkGetDeviceQueue(device.getVk(), familyIndex, 0, pGraphicsQueue);
 			vk = new VkQueue(pGraphicsQueue.get(0), device.getVk());
+			this.familyIndex = familyIndex;
 		}
+	}
+	
+	public int getFamilyIndex()
+	{
+		return familyIndex;
 	}
 	
 	public synchronized void waitIdle()

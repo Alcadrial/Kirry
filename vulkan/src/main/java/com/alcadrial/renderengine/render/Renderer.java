@@ -37,8 +37,11 @@ import com.alcadrial.renderengine.render.buffer.UniformBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
+import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderDescriptorType;
+import com.alcadrial.renderengine.render.shader.ShaderInfo;
+import com.alcadrial.renderengine.render.shader.ShaderType;
 import com.alcadrial.renderengine.render.shader.ShaderUniform;
 import com.alcadrial.renderengine.render.shader.ShaderUniformBinding;
 import com.alcadrial.renderengine.render.shader.ShaderUniformBlock;
@@ -154,12 +157,12 @@ public class Renderer implements AutoCloseable {
 				createInfo.minImageCount(2);
 				createInfo.imageArrayLayers(1);
 				createInfo.imageUsage(VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-				PhysicalDevice physicalDevice = device.getPhysicalDevice();
-				if (physicalDevice.getQueueGraphicsFamilyIndex() == physicalDevice.getQueueSurfaceFamilyIndex()) createInfo.imageSharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE);
+				
+				if (device.getGraphicsQueue().getFamilyIndex() == device.getPresentQueue().getFamilyIndex()) createInfo.imageSharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE);
 				else
 				{
 					createInfo.imageSharingMode(VK10.VK_SHARING_MODE_CONCURRENT);
-					createInfo.pQueueFamilyIndices(stack.ints(physicalDevice.getQueueGraphicsFamilyIndex(), physicalDevice.getQueueSurfaceFamilyIndex()));
+					createInfo.pQueueFamilyIndices(stack.ints(device.getGraphicsQueue().getFamilyIndex(), device.getPresentQueue().getFamilyIndex()));
 				}
 				createInfo.compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
 				createInfo.clipped(true);
@@ -199,12 +202,11 @@ public class Renderer implements AutoCloseable {
 				createInfo.minImageCount(2);
 				createInfo.imageArrayLayers(1);
 				createInfo.imageUsage(VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-				PhysicalDevice physicalDevice = device.getPhysicalDevice();
-				if (physicalDevice.getQueueGraphicsFamilyIndex() == physicalDevice.getQueueSurfaceFamilyIndex()) createInfo.imageSharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE);
+				if (device.getGraphicsQueue().getFamilyIndex() == device.getPresentQueue().getFamilyIndex()) createInfo.imageSharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE);
 				else
 				{
 					createInfo.imageSharingMode(VK10.VK_SHARING_MODE_CONCURRENT);
-					createInfo.pQueueFamilyIndices(stack.ints(physicalDevice.getQueueGraphicsFamilyIndex(), physicalDevice.getQueueSurfaceFamilyIndex()));
+					createInfo.pQueueFamilyIndices(stack.ints(device.getGraphicsQueue().getFamilyIndex(), device.getPresentQueue().getFamilyIndex()));
 				}
 				createInfo.compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
 				createInfo.clipped(true);
@@ -430,12 +432,12 @@ public class Renderer implements AutoCloseable {
 			Debug.println("Creating uniform buffers");
 			device.require();
 			
-			VkDescriptorPoolCreateInfo poolInfo = VulkanUtils.descriptorPoolCreateInfo(stack, VulkanUtils.descriptorPoolSize(stack, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2));// static
+			VkDescriptorPoolCreateInfo poolInfo = VulkanUtils.descriptorPoolCreateInfo(stack, VulkanUtils.descriptorPoolSize(stack, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4));// static
 			poolInfo.maxSets(2);
 			
 			long[] p0 = new long[1];
 			
-			VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorPool(device.get().getVk(), poolInfo, null, p0), "failed to create descriptor pool!");
+			VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorPool(device.get().getVk(), poolInfo, null, p0), "Failed to create descriptor pool!");
 			
 			descriptorPool = p0[0];
 			
@@ -471,7 +473,7 @@ public class Renderer implements AutoCloseable {
 			descriptorSetLayouts = new ArrayList<>(2);
 			for (int i = 0; i < 2; i++)
 			{
-				VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorSetLayout(device.get().getVk(), VulkanUtils.descriptorSetLayoutInfo(stack, 0, uniformLayoutBindings), null, p), "failed to create descriptor set layout!");
+				VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorSetLayout(device.get().getVk(), VulkanUtils.descriptorSetLayoutInfo(stack, 0, uniformLayoutBindings), null, p), "Failed to create descriptor set layout!");
 				
 				descriptorSetLayouts.add(p.get());
 			}
@@ -480,8 +482,7 @@ public class Renderer implements AutoCloseable {
 			long[] p1 = new long[2];
 			
 			descriptorSets = new long[2][1];
-			
-			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.get().getVk(), VulkanUtils.descriptorSetAllocateInfo(stack, descriptorPool, p), p1), "failed to allocate descriptor sets!");
+			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.get().getVk(), VulkanUtils.descriptorSetAllocateInfo(stack, descriptorPool, p), p1), "Failed to allocate descriptor sets!");
 			
 			uniformBuffers = new ArrayList<>(2);
 			
@@ -492,6 +493,7 @@ public class Renderer implements AutoCloseable {
 				UniformBuffer buffer = new UniformBuffer(writeDescriptorSets, Math.max(4, uniformBufferSize));
 				uniformBuffers.add(buffer);
 				descriptorSets[i] = new long[] {p1[i]};
+				VertexBuffer storageBuffer = new VertexBuffer(uniformBufferSize, VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 				
 				int offset = 0;
 				for (Entry<Integer, ShaderUniformBinding> e : bindingFlags.entrySet())
@@ -500,7 +502,7 @@ public class Renderer implements AutoCloseable {
 					{
 						offset += minOffsetAlignment - offset % minOffsetAlignment;
 					}
-					
+					System.out.println("Binding " + e.getKey() + " " + e.getValue().getDescriptorType());
 					VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
 					writeDescriptorSet.dstSet(p1[i]);
 					writeDescriptorSet.dstBinding(e.getKey());
@@ -518,6 +520,20 @@ public class Renderer implements AutoCloseable {
 							for (ShaderUniform uniform : uniforms)
 							{
 								buffer.mark(uniform, offset / 4);
+								offset += uniform.getType().getLength();
+							}
+							descriptorBufferInfo.range(offset - descriptorBufferInfo.offset());
+							writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
+						}
+						case STORAGE_BUFFER ->
+						{
+							System.out.println("Storage");
+							VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
+							// descriptorBufferInfo.buffer(storageBuffer.getVk());
+							descriptorBufferInfo.offset(offset);
+							for (ShaderUniform uniform : uniforms)
+							{
+								// storageBuffer.mark(uniform, offset / 4);
 								offset += uniform.getType().getLength();
 							}
 							descriptorBufferInfo.range(offset - descriptorBufferInfo.offset());
@@ -543,12 +559,13 @@ public class Renderer implements AutoCloseable {
 			}
 		}
 		
-		private void extractData(Shader shader, Map<Integer, ShaderUniformBinding> bindingFlags)
+		private void extractData(PreparedShader shader, Map<Integer, ShaderUniformBinding> bindingFlags)
 		{
 			if (shader != null)
 			{
-				ShaderUniformBinding p = new ShaderUniformBinding(shader.getType().getStageBit(), null, null);
-				for (ShaderUniformBlock uniformBlock : shader.getUniformsBlocks())
+				ShaderInfo info = shader.info();
+				ShaderUniformBinding p = new ShaderUniformBinding(info.getType().getStageBit(), null, null);
+				for (ShaderUniformBlock uniformBlock : info.getUniformsBlocks())
 				{
 					p.setUniforms(new LinkedHashSet<>(uniformBlock.getUniforms()));
 					bindingFlags.merge(uniformBlock.getBinding(), p, (v, w) -> {
@@ -559,57 +576,55 @@ public class Renderer implements AutoCloseable {
 				}
 				for (Entry<Integer, ShaderUniformBinding> e : bindingFlags.entrySet())
 				{
-					ShaderDescriptorType descriptorType = shader.getBindingDescriptorTypeMap().get(e.getKey());
-					if (descriptorType != null) e.getValue().setDescriptorType(descriptorType);
+					ShaderDescriptorType descriptorType = info.getBindingDescriptorTypeMap().get(e.getKey());
+					if (descriptorType != null)
+					{
+						if (e.getValue().getDescriptorType() == null) e.getValue().setDescriptorType(descriptorType);
+						else if (e.getValue().getDescriptorType() != e.getValue().getDescriptorType()) throw new IllegalStateException("Binding " + e.getKey() + " is required to use with more than one descriptor type");
+					}
 				}
 			}
 		}
 		
-		/**
-		 * Uses {@link Shader#getType()} to distinguish the type
-		 * @param shader
-		 * @return this for chaining
-		 */
-		@Override
-		public RDA shader(@Nullable Shader shader)
+		public RDA shader(@Nullable Shader shader, @Nullable ShaderInfo info, ShaderType type)
 		{
-			return super.genericShader(shader);
+			return super.genericShader(shader, info, type);
 		}
 		
 		@Override
-		public RDA vertexShader(@Nullable Shader shader)
+		public RDA vertexShader(@Nullable Shader shader, @Nullable ShaderInfo info)
 		{
-			return super.vertexShader(shader);
+			return super.vertexShader(shader, info);
 		}
 		
 		@Override
-		public RDA tessellationControlShader(@Nullable Shader shader)
+		public RDA tessellationControlShader(@Nullable Shader shader, @Nullable ShaderInfo info)
 		{
-			return super.tessellationControlShader(shader);
+			return super.tessellationControlShader(shader, info);
 		}
 		
 		@Override
-		public RDA tessellationEvaluationShader(@Nullable Shader shader)
+		public RDA tessellationEvaluationShader(@Nullable Shader shader, @Nullable ShaderInfo info)
 		{
-			return super.tessellationEvaluationShader(shader);
+			return super.tessellationEvaluationShader(shader, info);
 		}
 		
 		@Override
-		public RDA geometryShader(@Nullable Shader shader)
+		public RDA geometryShader(@Nullable Shader shader, @Nullable ShaderInfo info)
 		{
-			return super.geometryShader(shader);
+			return super.geometryShader(shader, info);
 		}
 		
 		@Override
-		public RDA fragmentShader(@Nullable Shader shader)
+		public RDA fragmentShader(@Nullable Shader shader, @Nullable ShaderInfo info)
 		{
-			return super.fragmentShader(shader);
+			return super.fragmentShader(shader, info);
 		}
 		
 		@Override
-		public RDA computeShader(@Nullable Shader shader)
+		public RDA computeShader(@Nullable Shader shader, @Nullable ShaderInfo info)
 		{
-			return super.computeShader(shader);
+			return super.computeShader(shader, info);
 		}
 		
 		@Override

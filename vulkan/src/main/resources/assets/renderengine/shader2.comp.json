@@ -1,0 +1,31 @@
+{
+	"entryPoint": "main",
+	"type": "comp",
+	"inputs": [
+		{
+			"type": "vec3",
+			"name": "position"
+		},
+		{
+			"type": "vec3",
+			"name": "velocity"
+		},
+		{
+			"type": "vec4",
+			"name": "color"
+		}
+	],
+	"uniformBlocks": [
+		{
+			"binding": 0,
+			"variables": [
+				{
+					"type": "float",
+					"name": "ENLAPSED_TIME"
+				}
+			]
+		}
+	],
+	"inputBinding": 1,
+	"outputBinding": 2
+}

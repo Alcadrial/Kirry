@@ -19,6 +19,7 @@ import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkCommandBuffer;
+import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
@@ -35,6 +36,7 @@ import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.shader.Shader;
+import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.test.RendererUtils.RectangleVertexResult;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
@@ -78,11 +80,13 @@ public class TextureTest extends RenderTest {
 		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
+		
 		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
 		
-		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueGraphicsFamilyProperties() != null);
 		vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
-		vulkan.createDevice();
+		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
+		deviceFeatures.samplerAnisotropy(true);
+		vulkan.createDevice(deviceFeatures);
 		Device device = vulkan.getDevice();
 		
 		VulkanWindow window = vulkan.getWindow();
@@ -149,12 +153,19 @@ public class TextureTest extends RenderTest {
 		});
 		
 		Shader vertexShader;
+		ShaderInfo vertexShaderInfo;
 		Shader fragmentShader;
+		ShaderInfo fragmentShaderInfo;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			vertexShader = new Shader(getFile("shader0.vert"), getFile("shader0.vert.json"));
+			vertexShader = new Shader(getFile("shader0.vert"));
+			vertexShaderInfo = ShaderInfo.fromJson(getFile("shader0.vert.json"));
+			vertexShader.compile(vertexShaderInfo);
 			if (!vertexShader.isCompilationSuccessfull()) throw new IOException("Shader " + vertexShader.getFile() + " has errors");
-			fragmentShader = new Shader(getFile("shader0.frag"), getFile("shader0.frag.json"));
+			
+			fragmentShader = new Shader(getFile("shader0.frag"));
+			fragmentShaderInfo = ShaderInfo.fromJson(getFile("shader0.frag.json"));
+			fragmentShader.compile(fragmentShaderInfo);
 			if (!fragmentShader.isCompilationSuccessfull()) throw new IOException("Shader " + fragmentShader.getFile() + " has errors");
 			
 			BufferedImage image = ImageIO.read(getFile("icon.png"));
@@ -178,10 +189,9 @@ public class TextureTest extends RenderTest {
 			return;
 		}
 		Builder builder = Renderer.create();
-		builder.vertexShader(vertexShader).fragmentShader(fragmentShader);
-		builder.cullMode(VK10.VK_CULL_MODE_NONE);
+		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
+		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-		builder.lineWidth(2F);
 		renderer = builder.build(window, device);
 		
 		vertexBuffer = new VertexBuffer(28 * 4);
