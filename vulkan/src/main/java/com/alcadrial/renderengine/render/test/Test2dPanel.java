@@ -22,6 +22,7 @@ import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
@@ -31,6 +32,7 @@ import com.alcadrial.renderengine.render.VertexAccumulator;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.test.RendererUtils.RectangleVertexResult;
@@ -81,7 +83,8 @@ public class Test2dPanel extends RenderTest {
 		vulkan.createDevice(deviceFeatures);
 		
 		VulkanWindow window = vulkan.getWindow();
-		window.assignDevice(vulkan.getDevice());
+		Device device = vulkan.getDevice();
+		window.assignDevice(device);
 		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
 			System.out.println(iconified ? "Iconified" : "Restored");
@@ -170,15 +173,16 @@ public class Test2dPanel extends RenderTest {
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.lineWidth(2F);
-		renderer = builder.build(window, vulkan.getDevice());
+		builder.uniformBuffer(new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
+		renderer = builder.build(window, device);
 		
 		vertexBuffer = new VertexBuffer(7 * 4 * 512 * 512);
 		indexBuffer = new IndexBuffer(6 * 512 * 512);
-		renderer.setVertexBuffer(vertexBuffer);
+		renderer.addVertexBuffer(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
 		
 		Random random = new Random();
-		VertexAccumulator vertexAccumulator = renderer.accumulate();
+		VertexAccumulator vertexAccumulator = renderer.accumulate(vertexBuffer);
 		IntBuffer buffer = indexBuffer.asIntBuffer();
 		for (int i = -256; i < 256; i++)
 		{
@@ -259,10 +263,10 @@ public class Test2dPanel extends RenderTest {
 		if (isModifiedMatrix)
 		{
 			isModifiedMatrix = false;
-			renderer.updateUniformBuffers(b -> {
+			renderer.updateUniformBuffers((b, l) -> {
 				Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
 				Matrix4f model = new Matrix4f().translateYTo(-panelPos.y()).translateXTo(-panelPos.x());
-				b.set(TRANSFORMATION_UNIFORM, orthographic.multiply(model));
+				l.set(TRANSFORMATION_UNIFORM, b, orthographic.multiply(model));
 			});
 		}
 		if (isModified)

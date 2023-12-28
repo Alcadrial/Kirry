@@ -11,6 +11,10 @@ public class ShaderInput {
 		RenderEngine.assertLoaded();
 	}
 	
+	public static final ShaderInput PADDING_1 = of(ShaderInputType.INT, "");
+	public static final ShaderInput PADDING_2 = of(ShaderInputType.VECTOR_INT_2, "");
+	public static final ShaderInput PADDING_3 = of(ShaderInputType.VECTOR_INT_3, "");
+	public static final ShaderInput PADDING_4 = of(ShaderInputType.VECTOR_INT_4, "");
 	public static final ShaderInput VERTEX_POSITION = of(ShaderInputType.VECTOR_FLOAT_3, "vertexPosition");
 	public static final ShaderInput COLOR_RGB = of(ShaderInputType.VECTOR_FLOAT_3, "colorRGB");
 	public static final ShaderInput COLOR_RGBA = of(ShaderInputType.VECTOR_FLOAT_4, "color");
@@ -19,21 +23,21 @@ public class ShaderInput {
 	public static final ShaderInput UV_EXTRA_1 = of(ShaderInputType.VECTOR_FLOAT_2, "uv1");
 	public static final ShaderInput UV_EXTRA_2 = of(ShaderInputType.VECTOR_FLOAT_2, "uv2");
 	public static final ShaderInput NORMAL_POSITION = of(ShaderInputType.VECTOR_FLOAT_3, "normalPosition");
+	public static final ShaderInput NORMAL_POSITION_EXTRA_1 = of(ShaderInputType.VECTOR_FLOAT_3, "normalPosition1");
 	public static final ShaderInput POSITION = of(ShaderInputType.VECTOR_FLOAT_3, "position");
 	public static final ShaderInput POSITION_EXTRA_1 = of(ShaderInputType.VECTOR_FLOAT_3, "position1");
 	public static final ShaderInput POSITION_EXTRA_2 = of(ShaderInputType.VECTOR_FLOAT_3, "position2");
 	
 	public static ShaderInput of(ShaderInputType type, String name)
 	{
-		Objects.requireNonNull(name, "ShaderInput name must not be null");
-		if (name.isBlank()) throw new IllegalArgumentException("ShaderInput name must not be blank");
+		if (name == null || name.isBlank()) name = "";
 		return new ShaderInput(Objects.requireNonNull(type, "ShaderInput type must not be null"), name);
 	}
 	
 	private ShaderInputType type;
 	private String name;
 	
-	ShaderInput(ShaderInputType type, String name)
+	private ShaderInput(ShaderInputType type, String name)
 	{
 		this.type = type;
 		this.name = name;
@@ -53,8 +57,8 @@ public class ShaderInput {
 	public int hashCode()
 	{
 		int result = 1;
-		result = 31 * result + (type == null ? 0 : type.hashCode());
-		return 31 * result + (name == null ? 0 : name.hashCode());
+		result = 31 * result + type.hashCode();
+		return 31 * result + name.hashCode();
 	}
 	
 	@Override
@@ -71,6 +75,7 @@ public class ShaderInput {
 	@Override
 	public String toString()
 	{
+		if (name.isBlank()) return "padding" + type.getSize();
 		return type + " " + name;
 	}
 }

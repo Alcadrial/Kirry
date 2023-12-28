@@ -2,7 +2,6 @@ package com.alcadrial.renderengine.render.pipeline;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -20,12 +19,11 @@ import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
-import com.alcadrial.renderengine.render.shader.ShaderInput;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderType;
+import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.util.DataAccumulator;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
-import com.alcadrial.renderengine.render.util.VulkanUtils;
 
 /**
  * A {@link Pipeline} used for rendering.
@@ -99,6 +97,17 @@ public class GraphicsPipeline extends Pipeline {
 				close();
 			}
 		}
+		
+		public <GP extends GraphicsPipeline> GP build(GraphicsPipelineBuildFunction<GP> buildFunction, Device device, PipelineLayout layout, RenderPass renderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo)
+		{
+			return buildFunction.build(device, layout, autoCloseLayout.orElse(true), renderPass, autoCloseRenderPass.orElse(true), createInfo, vertexShader.require("The vertex shader is required"), tessellationControlShader.asOptional(), tessellationEvaluationShader.asOptional(), geometryShader.asOptional(), fragmentShader.asOptional());
+		}
+	}
+	
+	@FunctionalInterface
+	public interface GraphicsPipelineBuildFunction<GP extends GraphicsPipeline> {
+		
+		GP build(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo, PreparedShader vertexShader, Optional<PreparedShader> tessellationControlShader, Optional<PreparedShader> tessellationEvaluationShader, Optional<PreparedShader> geometryShader, Optional<PreparedShader> fragmentShader);
 	}
 	
 	public static Builder create()
@@ -106,19 +115,19 @@ public class GraphicsPipeline extends Pipeline {
 		return new Builder();
 	}
 	
-	private boolean autoCloseLayout;
-	private RenderPass renderPass;
-	private boolean autoCloseRenderPass;
+	protected boolean autoCloseLayout;
+	protected RenderPass renderPass;
+	protected boolean autoCloseRenderPass;
 	
-	private PreparedShader vertexShader;
-	private Optional<PreparedShader> tessellationControlShader;
-	private Optional<PreparedShader> tessellationEvaluationShader;
-	private Optional<PreparedShader> geometryShader;
-	private Optional<PreparedShader> fragmentShader;
+	protected PreparedShader vertexShader;
+	protected Optional<PreparedShader> tessellationControlShader;
+	protected Optional<PreparedShader> tessellationEvaluationShader;
+	protected Optional<PreparedShader> geometryShader;
+	protected Optional<PreparedShader> fragmentShader;
 	
-	private List<ShaderInput> inputs;
+	protected List<ShaderVariable> inputs;
 	
-	private GraphicsPipeline(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo, PreparedShader vertexShader, Optional<PreparedShader> tessellationControlShader, Optional<PreparedShader> tessellationEvaluationShader, Optional<PreparedShader> geometryShader, Optional<PreparedShader> fragmentShader)
+	public GraphicsPipeline(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo, PreparedShader vertexShader, Optional<PreparedShader> tessellationControlShader, Optional<PreparedShader> tessellationEvaluationShader, Optional<PreparedShader> geometryShader, Optional<PreparedShader> fragmentShader)
 	{
 		super(device, layout);
 		this.autoCloseLayout = autoCloseLayout;
@@ -131,16 +140,23 @@ public class GraphicsPipeline extends Pipeline {
 		this.fragmentShader = fragmentShader;
 		inputs = List.of();
 		
+		createVk(createInfo);
+	}
+	
+	protected void createVk(VkGraphicsPipelineCreateInfo.Buffer createInfo)
+	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo = VkPipelineVertexInputStateCreateInfo.calloc(stack);
 			vertexInputInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
 			
+			inputs = extractInputs(vertexShader);
+			
 			int size = 0;
 			int locationSize = 0;
-			Set<ShaderInput> inputs = vertexShader.info().getInputs();
+			
 			VkVertexInputAttributeDescription.Buffer attributeDescriptions = VkVertexInputAttributeDescription.calloc(inputs.size());
-			for (ShaderInput input : inputs)
+			for (ShaderVariable input : inputs)
 			{
 				ShaderInputType type = input.getType();
 				attributeDescriptions.get().set(locationSize, 0, type.getType(), size);
@@ -154,8 +170,6 @@ public class GraphicsPipeline extends Pipeline {
 			bindingDescription.inputRate(VK10.VK_VERTEX_INPUT_RATE_VERTEX);
 			vertexInputInfo.pVertexBindingDescriptions(bindingDescription);
 			vertexInputInfo.pVertexAttributeDescriptions(attributeDescriptions.rewind());
-			
-			this.inputs = List.copyOf(inputs);
 			
 			int stages = 1;
 			if (tessellationControlShader.isPresent()) stages++;
@@ -184,17 +198,6 @@ public class GraphicsPipeline extends Pipeline {
 		}
 	}
 	
-	private void fillShaderStageCreateInfo(MemoryStack stack, VkPipelineShaderStageCreateInfo shaderStageInfo, PreparedShader shader)
-	{
-		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(VK10.vkCreateShaderModule(device.getVk(), VulkanUtils.shaderModuleInfo(stack, shader.shader().getLastCompilation().orElseThrow().getBinary()), null, p), "Failed to create shader module");
-		
-		shaderStageInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
-		shaderStageInfo.stage(shader.info().getType().getStageBit());
-		shaderStageInfo.module(p[0]);
-		shaderStageInfo.pName(stack.UTF8(shader.info().getEntryPoint()));
-	}
-	
 	public void recreate()
 	{
 		throw new NotYetImplementedException();
@@ -217,7 +220,7 @@ public class GraphicsPipeline extends Pipeline {
 		return VK10.VK_PIPELINE_BIND_POINT_GRAPHICS;
 	}
 	
-	public List<ShaderInput> getInputs()
+	public List<ShaderVariable> getInputs()
 	{
 		return inputs;
 	}

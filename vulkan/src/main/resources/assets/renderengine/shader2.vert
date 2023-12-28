@@ -10,7 +10,6 @@ layout (binding = 0) uniform U {
 
 layout (location = 0) out vec3 vertexPosition0;
 layout (location = 1) out vec4 color0;
-layout (location = 2) out vec3 normalPosition0;
 
 void main()
 {
@@ -20,5 +19,4 @@ void main()
 	
 	vertexPosition0 = v.xyz;
 	color0 = color;
-	normalPosition0 = (MODEL * vec4(normalPosition, 0)).xyz;
 }

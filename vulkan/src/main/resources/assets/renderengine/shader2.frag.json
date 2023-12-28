@@ -1,38 +1,31 @@
 {
-	"entryPoint": "main",
 	"type": "frag",
-	"inputs": [
+	"entryPoint": "main",
+	"layouts": [
 		{
-			"location": 0,
-			"type": "vec3",
-			"name": "vertexPosition"
-		},
-		{
-			"location": 1,
-			"type": "vec4",
-			"name": "color"
-		},
-		{
-			"location": 2,
-			"type": "vec3",
-			"name": "normalPosition"
-		}
-	],
-	"uniformBlocks": [
-		{
+			"type": "uniformBuffer",
 			"binding": 1,
 			"variables": [
+				"vec3 LIGHT_POS",
+				"float LIGHT_INTENSITY",
+				"float SPACE_FOG_INTENSITY"
+			]
+		},
+		{
+			"type": "input",
+			"binding": 0,
+			"variables": [
 				{
-					"type": "vec3",
-					"name": "LIGHT_POS"
+					"location": "0",
+					"declaration": "vec3 vertexPosition"
 				},
 				{
-					"type": "float",
-					"name": "LIGHT_INTENSITY"
+					"location": "1",
+					"declaration": "vec4 color"
 				},
 				{
-					"type": "float",
-					"name": "SPACE_FOG_INTENSITY"
+					"location": "2",
+					"declaration": "vec3 normalPosition"
 				}
 			]
 		}

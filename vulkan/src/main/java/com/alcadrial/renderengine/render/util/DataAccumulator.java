@@ -43,12 +43,14 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.RenderPass;
+import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Surface;
 import com.alcadrial.renderengine.render.Swapchain;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
-import com.alcadrial.renderengine.render.buffer.UniformBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
+import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline.GraphicsPipelineBuildFunction;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.Shader;
@@ -97,7 +99,8 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected DataElement<Swapchain> swapchain;
 	protected DataElement<VertexBuffer> vertexBuffer;
 	protected DataElement<IndexBuffer> indexBuffer;
-	protected DataElement<UniformBuffer> uniformBuffer;
+	protected DataElement<VulkanBuffer> uniformBuffer;
+	protected DataElement<VulkanBuffer> storageBuffer;
 	protected DataElement<VkDescriptorSetLayoutBinding> descriptorSetLayoutBinding;
 	protected DataElement<Texture> depthTexture;
 	// VkPipelineColorBlendAttachmentState {
@@ -493,9 +496,15 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		return myself();
 	}
 	
-	protected SDA uniformBuffer(@Nullable UniformBuffer value)
+	protected SDA uniformBuffer(@Nullable VulkanBuffer value)
 	{
 		uniformBuffer.set(value);
+		return myself();
+	}
+	
+	protected SDA storageBuffer(@Nullable VulkanBuffer value)
+	{
+		storageBuffer.set(value);
 		return myself();
 	}
 	
@@ -775,7 +784,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		
 		VkSwapchainCreateInfoKHR createInfo = VkSwapchainCreateInfoKHR.calloc(stack);
 		createInfo.sType(KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR);
-		createInfo.minImageCount(2);
+		createInfo.minImageCount(Renderer.SWAPPING_BUFFERS);
 		createInfo.imageArrayLayers(1);
 		createInfo.imageUsage(VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 		if (device.getGraphicsQueue().getFamilyIndex() == device.getPresentQueue().getFamilyIndex()) createInfo.imageSharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE);
@@ -804,7 +813,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	 * 		{@link #renderPass}<br>
 	 * 		{@link #pipelineLayout}
 	 */
-	protected GraphicsPipeline createGraphicsPipeline()
+	protected <GP extends GraphicsPipeline> GP createGraphicsPipeline(GraphicsPipelineBuildFunction<GP> buildFunction)
 	{
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly = VulkanUtils.pipelineInputAssemblyStateInfo(stack, topology.orElse(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST), primitiveRestartEnable.orElse(false));
 		
@@ -873,7 +882,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		builder.geometryShader(geometryShader.get());
 		builder.fragmentShader(fragmentShader.get());
 		builder.computeShader(computeShader.get());
-		return builder.build(device.require(), pipelineLayout.require(), renderPass.require(), pipelineInfo);
+		return builder.build(buildFunction, device.require(), pipelineLayout.require(), renderPass.require(), pipelineInfo);
 	}
 	
 	protected <T> T orElseThrow(@Nullable T requestedValue)

@@ -265,7 +265,7 @@ public class Swapchain extends LongDeviceResource {
 	
 	public void swapBuffer()
 	{
-		activeCommandIndex = (activeCommandIndex + 1) % 2;
+		activeCommandIndex = (activeCommandIndex + 1) % Renderer.SWAPPING_BUFFERS;
 	}
 	
 	public RenderPass getRenderPass()

@@ -10,24 +10,25 @@ import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.VertexAccumulator;
 import com.alcadrial.renderengine.render.VertexAccumulator.VertexResult;
-import com.alcadrial.renderengine.render.shader.ShaderInput;
+import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.util.Tracker;
 
 public class RendererUtils {
 	
-	public static void loadOrthoCube(Renderer renderer, Matrix4f matrix, Vector3f start, Vector3f end, Color color)
+	public static void loadOrthoCube(Renderer renderer, VertexBuffer vertexBuffer, Matrix4f matrix, Vector3f start, Vector3f end, Color color)
 	{
-		loadOrthoCube(renderer, matrix.multiply(start.xyz1()).xyz(), matrix.multiply(end.xyz1()).xyz(), color);
+		loadOrthoCube(renderer, vertexBuffer, matrix.multiply(start.xyz1()).xyz(), matrix.multiply(end.xyz1()).xyz(), color);
 	}
 	
-	public static void loadOrthoCube(Renderer renderer, Vector3f start, Vector3f end, Color color)
+	public static void loadOrthoCube(Renderer renderer, VertexBuffer vertexBuffer, Vector3f start, Vector3f end, Color color)
 	{
-		loadOrthoCube(renderer, start.x(), start.y(), start.z(), end.x(), end.y(), end.z(), color.r(), color.g(), color.b(), color.a());
+		loadOrthoCube(renderer, vertexBuffer, start.x(), start.y(), start.z(), end.x(), end.y(), end.z(), color.r(), color.g(), color.b(), color.a());
 	}
 	
-	public static void loadOrthoCube(Renderer renderer, float sX, float sY, float sZ, float eX, float eY, float eZ, float r, float g, float b, float a)
+	public static void loadOrthoCube(Renderer renderer, VertexBuffer vertexBuffer, float sX, float sY, float sZ, float eX, float eY, float eZ, float r, float g, float b, float a)
 	{
-		VertexAccumulator accumulator = renderer.accumulate();
+		VertexAccumulator accumulator = renderer.accumulate(vertexBuffer);
 		accumulator.vertex(sX, eY, sZ).color(r, g, b, a).normal(0, 0, -1).end();
 		accumulator.vertex(eX, eY, sZ).color(r, g, b, a).normal(0, 0, -1).end();
 		accumulator.vertex(eX, sY, sZ).color(r, g, b, a).normal(0, 0, -1).end();
@@ -60,7 +61,7 @@ public class RendererUtils {
 		accumulator.end();
 	}
 	
-	public static OrthoCubeVertexResult loadOrthoCube(Renderer renderer, Vector3f start, Vector3f end, BiFunction<Integer, Integer, Color> color)
+	public static OrthoCubeVertexResult loadOrthoCube(Renderer renderer, VertexBuffer vertexBuffer, Vector3f start, Vector3f end, BiFunction<Integer, Integer, Color> color)
 	{
 		float sX = start.x();
 		float sY = start.y();
@@ -69,7 +70,7 @@ public class RendererUtils {
 		float eY = end.y();
 		float eZ = end.z();
 		
-		VertexAccumulator accumulator = renderer.accumulate();
+		VertexAccumulator accumulator = renderer.accumulate(vertexBuffer);
 		VertexResult r0 = loadVertex(accumulator, sX, eY, sZ, color.apply(0, 0), 0, 0, -1);
 		VertexResult r1 = loadVertex(accumulator, eX, eY, sZ, color.apply(0, 1), 0, 0, -1);
 		VertexResult r2 = loadVertex(accumulator, eX, sY, sZ, color.apply(0, 2), 0, 0, -1);
@@ -129,7 +130,7 @@ public class RendererUtils {
 			for (RectangleVertexResult r : result) action.accept(r);
 		}
 		
-		public void track(ShaderInput input, Consumer<Tracker<int[]>> action)
+		public void track(ShaderVariable input, Consumer<Tracker<int[]>> action)
 		{
 			for (RectangleVertexResult r : result) r.track(input, action);
 		}
@@ -200,7 +201,7 @@ public class RendererUtils {
 			for (VertexResult r : result) action.accept(r);
 		}
 		
-		public void track(ShaderInput input, Consumer<Tracker<int[]>> action)
+		public void track(ShaderVariable input, Consumer<Tracker<int[]>> action)
 		{
 			for (VertexResult r : result) action.accept(r.track(input));
 		}
@@ -215,9 +216,9 @@ public class RendererUtils {
 		return new RectangleVertexResult(r0, r1, r2, r3);
 	}
 	
-	public static RectangleVertexResult sendRectangleXYZRGBA(Renderer renderer, float sX, float sY, float eX, float eY, float z, float r, float g, float b, float a)
+	public static RectangleVertexResult sendRectangleXYZRGBA(Renderer renderer, VertexBuffer vertexBuffer, float sX, float sY, float eX, float eY, float z, float r, float g, float b, float a)
 	{
-		VertexAccumulator accumulator = renderer.accumulate();
+		VertexAccumulator accumulator = renderer.accumulate(vertexBuffer);
 		VertexResult r0 = accumulator.vertex(sX, eY, z).color(r, g, b, a).end();
 		VertexResult r1 = accumulator.vertex(eX, eY, z).color(r, g, b, a).end();
 		VertexResult r2 = accumulator.vertex(eX, sY, z).color(r, g, b, a).end();
@@ -235,9 +236,9 @@ public class RendererUtils {
 		return new RectangleVertexResult(r0, r1, r2, r3);
 	}
 	
-	public static RectangleVertexResult sendRectangleXYZUV(Renderer renderer, float sX, float sY, float eX, float eY, float z, float u0, float v0, float u1, float v1)
+	public static RectangleVertexResult sendRectangleXYZUV(Renderer renderer, VertexBuffer vertexBuffer, float sX, float sY, float eX, float eY, float z, float u0, float v0, float u1, float v1)
 	{
-		VertexAccumulator accumulator = renderer.accumulate();
+		VertexAccumulator accumulator = renderer.accumulate(vertexBuffer);
 		VertexResult r0 = accumulator.vertex(sX, eY, z).uv(u1, v0).end();
 		VertexResult r1 = accumulator.vertex(eX, eY, z).uv(u0, v0).end();
 		VertexResult r2 = accumulator.vertex(eX, sY, z).uv(u0, v1).end();

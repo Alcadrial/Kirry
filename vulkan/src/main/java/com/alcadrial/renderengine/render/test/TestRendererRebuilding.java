@@ -22,6 +22,7 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kroperties.Property;
 import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
@@ -32,6 +33,7 @@ import com.alcadrial.renderengine.render.VertexAccumulator.VertexResult;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.util.Properties;
@@ -111,14 +113,15 @@ public class TestRendererRebuilding extends RenderTest {
 		deviceFeatures.wideLines(true);
 		vulkan.createDevice(deviceFeatures);
 		
-		window.assignDevice(vulkan.getDevice());
+		Device device = vulkan.getDevice();
+		window.assignDevice(device);
 		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
 			System.out.println(iconified ? "Iconified" : "Restored");
 		});
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			System.out.println("Resized " + width + "x" + height);
-			renderer.updateUniformBuffers(b -> b.set("TRANSFORMATION", new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
+			renderer.updateUniformBuffers((b, l) -> l.set("TRANSFORMATION", b, new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
 		});
 		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
 			System.out.println("Refresh");
@@ -174,15 +177,16 @@ public class TestRendererRebuilding extends RenderTest {
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
 		builder.lineWidth(2F);
-		renderer = builder.build(window, vulkan.getDevice());
+		builder.uniformBuffer(new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
+		renderer = builder.build(window, device);
 		
-		vertexBuffer = new VertexBuffer(70);
-		indexBuffer = new IndexBuffer(24);
-		renderer.setVertexBuffer(vertexBuffer);
+		vertexBuffer = new VertexBuffer(device, 70);
+		indexBuffer = new IndexBuffer(device, 24);
+		renderer.addVertexBuffer(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
-		renderer.updateUniformBuffers(b -> b.set("TRANSFORMATION", new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
+		renderer.updateUniformBuffers((b, l) -> l.set("TRANSFORMATION", b, new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
 		
-		VertexAccumulator vertexAccumulator = renderer.accumulate();
+		VertexAccumulator vertexAccumulator = renderer.accumulate(vertexBuffer);
 		VertexResult result0 = vertexAccumulator.vertex(-200, 0, 0).color(0, 255, 0, 255).end();
 		VertexResult result1 = vertexAccumulator.vertex(0, 0, 0).color(255, 0, 0, 255).end();
 		VertexResult result2 = vertexAccumulator.vertex(0, -200, 0).color(0, 255, 0, 255).end();

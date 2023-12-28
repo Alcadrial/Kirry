@@ -6,14 +6,14 @@ struct Particle {
   vec4 color;
 };
 
-layout (std140, binding = 1) readonly buffer Input {
-   Particle particlesIn[];
-};
-
 layout (binding = 0) uniform U {
 	vec3 MIN_BOUND;
 	vec3 MAX_BOUND;
 	float ENLAPSED_TIME;
+};
+
+layout (std140, binding = 1) readonly buffer Input {
+   Particle particlesIn[];
 };
 
 layout (std140, binding = 2) buffer Output {
@@ -28,7 +28,7 @@ void main()
 
     Particle particle = particlesIn[i];
 
-	vec3 movement = particle.velocity.xy * ENLAPSED_TIME;
+	vec3 movement = particle.velocity * ENLAPSED_TIME;
     vec3 newPosition = particle.position + movement;
     vec3 newVelocity = particle.velocity;
     
@@ -50,12 +50,12 @@ void main()
     		particle.position.y += dy;
     		particle.velocity.x = -particle.velocity.x;
     		
-			movement = particle.velocity.xy * remainingTime;
+			movement = particle.velocity * remainingTime;
     		newPosition = particle.position + movement;
     		newVelocity = particle.velocity;
     	}
     }
     
-    particlesOut[i] = newPosition;
-    particlesOut[i] = newVelocity;
+    particlesOut[i].position = newPosition;
+    particlesOut[i].velocity = newVelocity;
 }

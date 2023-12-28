@@ -25,6 +25,7 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.axis.Axis;
 import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
@@ -34,6 +35,7 @@ import com.alcadrial.renderengine.render.VertexAccumulator.VertexResult;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.test.RendererUtils.OrthoCubeVertexResult;
@@ -112,14 +114,15 @@ public class DepthBufferTest extends RenderTest {
 		vulkan.createDevice(deviceFeatures);
 		
 		VulkanWindow window = vulkan.getWindow();
-		window.assignDevice(vulkan.getDevice());
+		Device device = vulkan.getDevice();
+		window.assignDevice(device);
 		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
 			System.out.println(iconified ? "Iconified" : "Restored");
 		});
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			System.out.println("Resized " + width + "x" + height);
-			renderer.updateUniformBuffers(b -> b.set(PROJECTION, buildProjectionMatrix(window)));
+			renderer.updateUniformBuffers((b, l) -> l.set(PROJECTION, b, buildProjectionMatrix(window)));
 		});
 		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
 			System.out.println("Refresh");
@@ -151,12 +154,12 @@ public class DepthBufferTest extends RenderTest {
 		window.setCallback((GLFWKeyCallbackI) (w, k, s, a, m) -> {
 			if (k == GLFW.GLFW_KEY_R)
 			{
-				renderer.updateUniformBuffers(b -> {
-					b.set(PROJECTION, buildProjectionMatrix(window));
-					b.set(MODEL, buildModelMatrix());
-					b.set(LIGHT_POS, lightPos);
-					b.set(LIGHT_INTENSITY, 0.8F);
-					b.set(SPACE_FOG_INTENSITY, 0.4F);
+				renderer.updateUniformBuffers((b, l) -> {
+					l.set(PROJECTION, b, buildProjectionMatrix(window));
+					l.set(MODEL, b, buildModelMatrix());
+					l.set(LIGHT_POS, b, lightPos);
+					l.set(LIGHT_INTENSITY, b, 0.8F);
+					l.set(SPACE_FOG_INTENSITY, b, 0.4F);
 				});
 			}
 		});
@@ -184,7 +187,7 @@ public class DepthBufferTest extends RenderTest {
 			return;
 		}
 		
-		depthTexture = Texture.create2dTexture(vulkan.getDevice(), window.getWidth(), window.getHeight(), VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
+		depthTexture = Texture.create2dTexture(device, window.getWidth(), window.getHeight(), VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
 		depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 		
 		Builder builder = Renderer.create();
@@ -193,21 +196,22 @@ public class DepthBufferTest extends RenderTest {
 		builder.depthTestEnable(true);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-		renderer = builder.build(window, vulkan.getDevice());
+		builder.uniformBuffer(new VulkanBuffer(device, Math.max(256 * 2, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
+		renderer = builder.build(window, device);
 		
 		lightPos = Vector3f.of(0.3F, 1, 0);
 		f = 0;
 		
 		vertexBuffer = new VertexBuffer(240);
 		indexBuffer = new IndexBuffer(24);
-		renderer.setVertexBuffer(vertexBuffer);
+		renderer.addVertexBuffer(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
-		renderer.updateUniformBuffers(b -> {
-			b.set(PROJECTION, buildProjectionMatrix(window));
-			b.set(MODEL, buildModelMatrix());
-			b.set(LIGHT_POS, lightPos);
-			b.set(LIGHT_INTENSITY, 0.8F);
-			b.set(SPACE_FOG_INTENSITY, 0.4F);
+		renderer.updateUniformBuffers((b, l) -> {
+			l.set(PROJECTION, b, buildProjectionMatrix(window));
+			l.set(MODEL, b, buildModelMatrix());
+			l.set(LIGHT_POS, b, lightPos);
+			l.set(LIGHT_INTENSITY, b, 0.8F);
+			l.set(SPACE_FOG_INTENSITY, b, 0.4F);
 		});
 		
 		Color[] colors = new Color[] {
@@ -219,7 +223,7 @@ public class DepthBufferTest extends RenderTest {
 			Color.VERY_LIGHT_BLUE
 		};
 		
-		OrthoCubeVertexResult result = RendererUtils.loadOrthoCube(renderer, Vector3f.of(-1, -1, -1), Vector3f.of(1, 1, 1), (i, j) -> colors[i]);
+		OrthoCubeVertexResult result = RendererUtils.loadOrthoCube(renderer, vertexBuffer, Vector3f.of(-1, -1, -1), Vector3f.of(1, 1, 1), (i, j) -> colors[i]);
 		
 		IntBuffer buffer = indexBuffer.asIntBuffer();
 		result.foreach(rResult -> {
@@ -289,7 +293,7 @@ public class DepthBufferTest extends RenderTest {
 					result = renderer.draw();
 					window.update();
 				} while (result == DrawResult.FAILED);
-				renderer.updateUniformBuffers(b -> b.set(MODEL, buildModelMatrix()));
+				renderer.updateUniformBuffers((b, l) -> l.set(MODEL, b, buildModelMatrix()));
 				f += (firstMilestone - pauseTime) / 1000000D;
 			}, TestProperties.PRINT_FRAME_TIMES);
 			frame++;

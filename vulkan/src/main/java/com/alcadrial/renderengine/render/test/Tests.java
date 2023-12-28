@@ -87,7 +87,7 @@ public class Tests extends RenderTest {
 		});
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			System.out.println("Resized " + width + "x" + height);
-			renderer.updateUniformBuffers(b -> b.set(TRANSFORMATION, new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
+			renderer.updateUniformBuffers((b, l) -> l.set(TRANSFORMATION, b, new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
 		});
 		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
 			System.out.println("Refresh");
@@ -147,11 +147,11 @@ public class Tests extends RenderTest {
 		
 		vertexBuffer = new VertexBuffer(70);
 		indexBuffer = new IndexBuffer(24);
-		renderer.setVertexBuffer(vertexBuffer);
+		renderer.addVertexBuffer(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
-		renderer.updateUniformBuffers(b -> b.set(TRANSFORMATION, new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
+		renderer.updateUniformBuffers((b, l) -> l.set(TRANSFORMATION, b, new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
 		
-		VertexAccumulator vertexAccumulator = renderer.accumulate();
+		VertexAccumulator vertexAccumulator = renderer.accumulate(vertexBuffer);
 		VertexResult result0 = vertexAccumulator.vertex(-200, 0, 0).color(0, 255, 0, 255).end();
 		VertexResult result1 = vertexAccumulator.vertex(0, 0, 0).color(255, 0, 0, 255).end();
 		VertexResult result2 = vertexAccumulator.vertex(0, -200, 0).color(0, 255, 0, 255).end();

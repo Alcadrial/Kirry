@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
-import com.alcadrial.renderengine.render.shader.ShaderInput;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
+import com.alcadrial.renderengine.render.shader.ShaderVariable;
 
 public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB, VR>, VR extends IVertexResult> {
 	
@@ -16,7 +16,7 @@ public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB,
 		RenderEngine.assertLoaded();
 	}
 	
-	protected final Map<ShaderInput, float[]> map;
+	protected final Map<ShaderVariable, float[]> map;
 	protected final GraphicsPipeline pipeline;
 	
 	protected AbstractVertexBuilder(GraphicsPipeline pipeline)
@@ -28,10 +28,10 @@ public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB,
 	protected AbstractVertexBuilder(GraphicsPipeline pipeline, float x, float y, float z)
 	{
 		this(pipeline);
-		map.put(ShaderInput.VERTEX_POSITION, new float[] {x, y, z});
+		map.put(ShaderVariable.VERTEX_POSITION, new float[] {x, y, z});
 	}
 	
-	public VB set(ShaderInput input, int... values)
+	public VB set(ShaderVariable input, int... values)
 	{
 		float[] floatIntBitsArray = new float[input.getType().getSize()];
 		for (int i = 0; i < floatIntBitsArray.length; i++) floatIntBitsArray[i] = Float.intBitsToFloat(values[i]);
@@ -39,13 +39,13 @@ public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB,
 		return myself();
 	}
 	
-	public VB set(ShaderInput input, float... values)
+	public VB set(ShaderVariable input, float... values)
 	{
 		map.put(input, values);
 		return myself();
 	}
 	
-	public VB set(ShaderInput input, double... values)
+	public VB set(ShaderVariable input, double... values)
 	{
 		ShaderInputType type = input.getType();
 		float[] dividedValues = new float[type.getSize() * 2];
@@ -61,71 +61,101 @@ public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB,
 	
 	public VB uv(float u, float v)
 	{
-		return vec2(ShaderInput.UV, u, v);
+		return vec2(ShaderVariable.UV, u, v);
 	}
 	
 	public VB uvExtra1(float u, float v)
 	{
-		return vec2(ShaderInput.UV_EXTRA_1, u, v);
+		return vec2(ShaderVariable.UV_EXTRA_1, u, v);
 	}
 	
 	public VB uvExtra2(float u, float v)
 	{
-		return vec2(ShaderInput.UV_EXTRA_2, u, v);
+		return vec2(ShaderVariable.UV_EXTRA_2, u, v);
 	}
 	
 	public VB color(float r, float g, float b)
 	{
-		return vec3(ShaderInput.COLOR_RGB, r / 255, g / 255, b / 255);
+		return vec3(ShaderVariable.COLOR_RGB, r / 255, g / 255, b / 255);
 	}
 	
 	public VB color(float r, float g, float b, float a)
 	{
-		return vec4(ShaderInput.COLOR, r / 255, g / 255, b / 255, a / 255);
+		return vec4(ShaderVariable.COLOR, r / 255, g / 255, b / 255, a / 255);
 	}
 	
 	public VB normal(float x, float y, float z)
 	{
-		return vec3(ShaderInput.NORMAL_POSITION, x, y, z);
+		return vec3(ShaderVariable.NORMAL_POSITION, x, y, z);
 	}
 	
 	public VB position(float x, float y, float z)
 	{
-		return vec3(ShaderInput.POSITION, x, y, z);
+		return vec3(ShaderVariable.POSITION, x, y, z);
 	}
 	
 	public VB positionExtra1(float x, float y, float z)
 	{
-		return vec3(ShaderInput.POSITION_EXTRA_1, x, y, z);
+		return vec3(ShaderVariable.POSITION_EXTRA_1, x, y, z);
 	}
 	
 	public VB positionExtra2(float x, float y, float z)
 	{
-		return vec3(ShaderInput.POSITION_EXTRA_2, x, y, z);
+		return vec3(ShaderVariable.POSITION_EXTRA_2, x, y, z);
 	}
 	
-	public VB scalarFloat(ShaderInput input, float a)
+	public VB velocity(float x, float y, float z)
+	{
+		return vec3(ShaderVariable.VELOCITY, x, y, z);
+	}
+	
+	public VB velocityExtra1(float x, float y, float z)
+	{
+		return vec3(ShaderVariable.VELOCITY_EXTRA_1, x, y, z);
+	}
+	
+	public VB velocityExtra2(float x, float y, float z)
+	{
+		return vec3(ShaderVariable.VELOCITY_EXTRA_2, x, y, z);
+	}
+	
+	public VB acceleration(float x, float y, float z)
+	{
+		return vec3(ShaderVariable.ACCELERATION, x, y, z);
+	}
+	
+	public VB accelerationExtra1(float x, float y, float z)
+	{
+		return vec3(ShaderVariable.ACCELERATION_EXTRA_1, x, y, z);
+	}
+	
+	public VB accelerationExtra2(float x, float y, float z)
+	{
+		return vec3(ShaderVariable.ACCELERATION_EXTRA_2, x, y, z);
+	}
+	
+	public VB scalarFloat(ShaderVariable input, float a)
 	{
 		if (input.getType().getSize() != 1) throw new IllegalBuildingState("ShaderInput require " + input.getType().getSize() + " values, but the method inserts 1 values");
 		map.put(input, new float[] {a});
 		return myself();
 	}
 	
-	public VB vec2(ShaderInput input, float a, float b)
+	public VB vec2(ShaderVariable input, float a, float b)
 	{
 		if (input.getType().getSize() != 2) throw new IllegalBuildingState("ShaderInput require " + input.getType().getSize() + " values, but the method inserts 2 values");
 		map.put(input, new float[] {a, b});
 		return myself();
 	}
 	
-	public VB vec3(ShaderInput input, float a, float b, float c)
+	public VB vec3(ShaderVariable input, float a, float b, float c)
 	{
 		if (input.getType().getSize() != 3) throw new IllegalBuildingState("ShaderInput require " + input.getType().getSize() + " values, but the method inserts 3 values");
 		map.put(input, new float[] {a, b, c});
 		return myself();
 	}
 	
-	public VB vec4(ShaderInput input, float a, float b, float c, float d)
+	public VB vec4(ShaderVariable input, float a, float b, float c, float d)
 	{
 		if (input.getType().getSize() != 4) throw new IllegalBuildingState("ShaderInput require " + input.getType().getSize() + " values, but the method inserts 4 values");
 		map.put(input, new float[] {a, b, c, d});
@@ -134,9 +164,9 @@ public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB,
 	
 	protected List<Float> gatherProgramData()
 	{
-		List<ShaderInput> inputs = pipeline.getInputs();
+		List<ShaderVariable> inputs = pipeline.getInputs();
 		List<Float> list = new ArrayList<>(inputs.size() * 4);
-		for (ShaderInput input : inputs)
+		for (ShaderVariable input : inputs)
 		{
 			float[] data = map.get(input);
 			if (data != null) for (float f : data) list.add(f);
@@ -147,9 +177,9 @@ public abstract class AbstractVertexBuilder<VB extends AbstractVertexBuilder<VB,
 	
 	protected float[] gatherProgramDataArray()
 	{
-		List<ShaderInput> inputs = pipeline.getInputs();
+		List<ShaderVariable> inputs = pipeline.getInputs();
 		List<Float> list = new ArrayList<>(inputs.size() * 4);
-		for (ShaderInput input : inputs)
+		for (ShaderVariable input : inputs)
 		{
 			float[] data = map.get(input);
 			if (data != null) for (float f : data) list.add(f);

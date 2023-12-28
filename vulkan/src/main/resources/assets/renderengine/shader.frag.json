@@ -1,26 +1,23 @@
 {
-	"entryPoint": "main",
 	"type": "frag",
-	"inputs": [
+	"entryPoint": "main",
+	"layouts": [
 		{
-			"location": 0,
-			"type": "vec4",
-			"name": "color"
-		}
-	],
-	"uniformBlocks": [
-		{
+			"type": "uniformBuffer",
 			"binding": 0,
-			"name": "U",
+			"variables": [
+				"mat4 TRANSFORMATION"
+			]
+		},
+		{
+			"type": "input",
+			"binding": 0,
 			"variables": [
 				{
-					"type": "mat4",
-					"name": "TRANSFORMATION"
+					"location": "0",
+					"declaration": "vec4 color"
 				}
 			]
 		}
-	],
-	"bindingsDescriptorTypes": {
-		"0": "uniformBuffer"
-	}
+	]
 }

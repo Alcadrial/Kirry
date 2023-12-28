@@ -35,6 +35,7 @@ import com.alcadrial.renderengine.render.Renderer.DrawResult;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.test.RendererUtils.RectangleVertexResult;
@@ -192,14 +193,15 @@ public class TextureTest extends RenderTest {
 		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+		builder.uniformBuffer(new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
 		renderer = builder.build(window, device);
 		
 		vertexBuffer = new VertexBuffer(28 * 4);
 		indexBuffer = new IndexBuffer(6 * 4);
-		renderer.setVertexBuffer(vertexBuffer);
+		renderer.addVertexBuffer(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
 		
-		RectangleVertexResult result = RendererUtils.sendRectangleXYZUV(renderer, -256, -256, 256, 256, 0, 0, 0, 1, 1);
+		RectangleVertexResult result = RendererUtils.sendRectangleXYZUV(renderer, vertexBuffer, -256, -256, 256, 256, 0, 0, 0, 1, 1);
 		
 		IntBuffer buffer = indexBuffer.asIntBuffer();
 		buffer.put(result.getR0().getIndex());
@@ -210,7 +212,7 @@ public class TextureTest extends RenderTest {
 		buffer.put(result.getR3().getIndex());
 		indexBuffer.sendToPhysicalDevice();
 		
-		renderer.updateUniformBuffers(b -> b.set(TEXTURE_SAMPLER_UNIFORM, texture.getView(), new TextureSampler(device)));
+		renderer.updateUniformBuffers((b, l) -> l.set(TEXTURE_SAMPLER_UNIFORM, texture.getView(), new TextureSampler(device)));
 	}
 	
 	private static long time;
@@ -273,10 +275,10 @@ public class TextureTest extends RenderTest {
 		if (isModifiedMatrix)
 		{
 			isModifiedMatrix = false;
-			renderer.updateUniformBuffers(b -> {
+			renderer.updateUniformBuffers((b, l) -> {
 				Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
 				Matrix4f model = new Matrix4f().translateYTo(-10 * panelPos.y()).translateXTo(-10 * panelPos.x());
-				b.set(TRANSFORMATION_UNIFORM, orthographic.multiply(model).transpose());
+				l.set(TRANSFORMATION_UNIFORM, b, orthographic.multiply(model).transpose());
 			});
 		}
 		if (isModified)
