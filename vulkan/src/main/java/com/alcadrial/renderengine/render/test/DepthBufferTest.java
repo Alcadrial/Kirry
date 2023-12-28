@@ -46,11 +46,12 @@ import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class DepthBufferTest extends RenderTest {
 	
-	public static final String PROJECTION = "PROJECTION";
-	public static final String MODEL = "MODEL";
-	public static final String LIGHT_POS = "LIGHT_POS";
-	public static final String LIGHT_INTENSITY = "LIGHT_INTENSITY";
-	public static final String SPACE_FOG_INTENSITY = "SPACE_FOG_INTENSITY";
+	private static final String SHADER = "shader1";
+	private static final String PROJECTION = "PROJECTION";
+	private static final String MODEL = "MODEL";
+	private static final String LIGHT_POS = "LIGHT_POS";
+	private static final String LIGHT_INTENSITY = "LIGHT_INTENSITY";
+	private static final String SPACE_FOG_INTENSITY = "SPACE_FOG_INTENSITY";
 	
 	public static void main(String[] args)
 	{
@@ -170,13 +171,13 @@ public class DepthBufferTest extends RenderTest {
 		ShaderInfo fragmentShaderInfo;
 		try
 		{
-			vertexShader = new Shader(getFile("shader1.vert"));
-			vertexShaderInfo = ShaderInfo.fromJson(getFile("shader1.vert.json"));
+			vertexShader = new Shader(getFile(SHADER + ".vert"));
+			vertexShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".vert.json"));
 			vertexShader.compile(vertexShaderInfo);
 			if (!vertexShader.isCompilationSuccessfull()) throw new IOException("Shader " + vertexShader.getFile() + " has errors");
 			
-			fragmentShader = new Shader(getFile("shader1.frag"));
-			fragmentShaderInfo = ShaderInfo.fromJson(getFile("shader1.frag.json"));
+			fragmentShader = new Shader(getFile(SHADER + ".frag"));
+			fragmentShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".frag.json"));
 			fragmentShader.compile(fragmentShaderInfo);
 			if (!fragmentShader.isCompilationSuccessfull()) throw new IOException("Shader " + fragmentShader.getFile() + " has errors");
 		}

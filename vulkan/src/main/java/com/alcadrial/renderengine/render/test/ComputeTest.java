@@ -57,11 +57,12 @@ import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class ComputeTest extends RenderTest {
 	
-	public static final String PROJECTION = "PROJECTION";
-	public static final String MODEL = "MODEL";
-	public static final String LIGHT_POS = "LIGHT_POS";
-	public static final String LIGHT_INTENSITY = "LIGHT_INTENSITY";
-	public static final String SPACE_FOG_INTENSITY = "SPACE_FOG_INTENSITY";
+	private static final String SHADER = "shader3";
+	private static final String PROJECTION = "PROJECTION";
+	private static final String MODEL = "MODEL";
+	private static final String LIGHT_POS = "LIGHT_POS";
+	private static final String LIGHT_INTENSITY = "LIGHT_INTENSITY";
+	private static final String SPACE_FOG_INTENSITY = "SPACE_FOG_INTENSITY";
 	
 	public static void main(String[] args)
 	{
@@ -174,18 +175,18 @@ public class ComputeTest extends RenderTest {
 		ShaderInfo computeShaderInfo;
 		try
 		{
-			vertexShader = new Shader(getFile("shader2.vert"));
-			vertexShaderInfo = ShaderInfo.fromJson(getFile("shader2.vert.json"));
+			vertexShader = new Shader(getFile(SHADER + ".vert"));
+			vertexShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".vert.json"));
 			vertexShader.compile(vertexShaderInfo);
 			if (!vertexShader.isCompilationSuccessfull()) throw new IOException("Shader " + vertexShader.getFile() + " has errors");
 			
-			fragmentShader = new Shader(getFile("shader2.frag"));
-			fragmentShaderInfo = ShaderInfo.fromJson(getFile("shader2.frag.json"));
+			fragmentShader = new Shader(getFile(SHADER + ".frag"));
+			fragmentShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".frag.json"));
 			fragmentShader.compile(fragmentShaderInfo);
 			if (!fragmentShader.isCompilationSuccessfull()) throw new IOException("Shader " + fragmentShader.getFile() + " has errors");
 			
-			computeShader = new Shader(getFile("shader2.comp"));
-			computeShaderInfo = ShaderInfo.fromJson(getFile("shader2.comp.json"));
+			computeShader = new Shader(getFile(SHADER + ".comp"));
+			computeShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".comp.json"));
 			computeShader.compile(computeShaderInfo);
 			if (!computeShader.isCompilationSuccessfull()) throw new IOException("Shader " + computeShader.getFile() + " has errors");
 		}

@@ -2,6 +2,13 @@ package com.alcadrial.renderengine.render.buffer;
 
 import org.lwjgl.vulkan.VK10;
 
+import com.alcadrial.kector.matrix.Matrix4f;
+import com.alcadrial.kector.vector.Vector2f;
+import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3i;
+import com.alcadrial.kector.vector.Vector4f;
+import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 
@@ -13,6 +20,7 @@ public class VertexBuffer extends VulkanDoubleBuffer {
 	}
 	
 	private long offset;
+	private int cursor;
 	
 	public VertexBuffer(float[] data)
 	{
@@ -39,6 +47,7 @@ public class VertexBuffer extends VulkanDoubleBuffer {
 	{
 		super(device, size * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | extraUsage);
 		offset = 0;
+		cursor = 0;
 	}
 	
 	public long getOffset()
@@ -61,5 +70,70 @@ public class VertexBuffer extends VulkanDoubleBuffer {
 	public synchronized void sendToPhysicalDevice(long offset, long size)
 	{
 		super.sendToPhysicalDevice(offset * 4, size * 4);
+	}
+	
+	public void resetCursor()
+	{
+		cursor = 0;
+	}
+	
+	public void setCursor(int index)
+	{
+		if (index < 0 || index >= size) throw new IndexOutOfBoundsException(index);
+		cursor = index;
+	}
+	
+	public void put(int value)
+	{
+		asIntBuffer().put(cursor, value);
+		cursor += 1;
+	}
+	
+	public void put(float value)
+	{
+		asFloatBuffer().put(cursor, value);
+		cursor += 1;
+	}
+	
+	public void put(Vector2f value)
+	{
+		asFloatBuffer().put(cursor, value.getValuesArray());
+		cursor += 2;
+	}
+	
+	public void put(Vector3f value)
+	{
+		asFloatBuffer().put(cursor, value.getValuesArray());
+		cursor += 3;
+	}
+	
+	public void put(Vector4f value)
+	{
+		asFloatBuffer().put(cursor, value.getValuesArray());
+		cursor += 4;
+	}
+	
+	public void put(Vector2i value)
+	{
+		asIntBuffer().put(cursor, value.getValuesArray());
+		cursor += 2;
+	}
+	
+	public void put(Vector3i value)
+	{
+		asIntBuffer().put(cursor, value.getValuesArray());
+		cursor += 3;
+	}
+	
+	public void put(Vector4i value)
+	{
+		asIntBuffer().put(cursor, value.getValuesArray());
+		cursor += 4;
+	}
+	
+	public void put(Matrix4f value)
+	{
+		asFloatBuffer().put(cursor, value.toArray());
+		cursor += 16;
 	}
 }

@@ -40,7 +40,8 @@ import com.alcadrial.renderengine.render.window.VulkanWindow;
 @Test
 public class Tests extends RenderTest {
 	
-	public static final String TRANSFORMATION = "TRANSFORMATION";
+	private static final String SHADER = "shader";
+	private static final String TRANSFORMATION = "TRANSFORMATION";
 	
 	public static void main(String[] args)
 	{
@@ -122,13 +123,13 @@ public class Tests extends RenderTest {
 		ShaderInfo fragmentShaderInfo;
 		try
 		{
-			vertexShader = new Shader(getFile("shader.vert"));
-			vertexShaderInfo = ShaderInfo.fromJson(getFile("shader.vert.json"));
+			vertexShader = new Shader(getFile(SHADER + ".vert"));
+			vertexShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".vert.json"));
 			vertexShader.compile(vertexShaderInfo);
 			if (!vertexShader.isCompilationSuccessfull()) throw new IOException("Shader " + vertexShader.getFile() + " has errors");
 			
-			fragmentShader = new Shader(getFile("shader.frag"));
-			fragmentShaderInfo = ShaderInfo.fromJson(getFile("shader.frag.json"));
+			fragmentShader = new Shader(getFile(SHADER + ".frag"));
+			fragmentShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".frag.json"));
 			fragmentShader.compile(fragmentShaderInfo);
 			if (!fragmentShader.isCompilationSuccessfull()) throw new IOException("Shader " + fragmentShader.getFile() + " has errors");
 		}
@@ -140,7 +141,7 @@ public class Tests extends RenderTest {
 		}
 		Builder builder = Renderer.create();
 		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
-		builder.cullMode(VK10.VK_CULL_MODE_NONE);
+		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
 		builder.lineWidth(2F);
 		renderer = builder.build(window, vulkan.getDevice());

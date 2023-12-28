@@ -22,6 +22,14 @@
 				{
 					"location": "1",
 					"declaration": "vec4 color"
+				},
+				{
+					"location": "2",
+					"declaration": "vec3 normalPosition"
+				},
+				{
+					"location": "3",
+					"declaration": "vec3 cubePosition"
 				}
 			]
 		}

@@ -128,6 +128,11 @@ public class Renderer implements AutoCloseable {
 	
 	public synchronized DrawResult draw()
 	{
+		return draw(1);
+	}
+	
+	public synchronized DrawResult draw(int instanceCount)
+	{
 		if (targetWindow.getWidth() == 0 || targetWindow.getHeight() == 0)
 		{
 			return DrawResult.NO_DRAWING_AREA;
@@ -152,7 +157,7 @@ public class Renderer implements AutoCloseable {
 		for (Entry<Integer, List<VertexBuffer>> p : vertexBuffers.entrySet()) commandBuffer.bindVertexBuffers(p.getKey(), p.getValue());
 		commandBuffer.bindIndexBuffer(indexBuffer, 0);
 		commandBuffer.bindDescriptorSets(graphicsPipeline, descriptorSets[swapchain.getActiveCommandIndex()], new int[0]);
-		commandBuffer.drawIndexed((int) (indexBuffer.getSize() / 4), 1, 0, 0, 0);
+		commandBuffer.drawIndexed((int) (indexBuffer.getSize() / 4), instanceCount, 0, 0, 0);
 		swapchain.endRegisteringCommands();
 		
 		try (MemoryStack stack = MemoryStack.stackPush())

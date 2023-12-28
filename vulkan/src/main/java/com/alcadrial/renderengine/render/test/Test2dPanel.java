@@ -43,6 +43,7 @@ import com.alcadrial.renderengine.render.window.VulkanWindow;
 @Test
 public class Test2dPanel extends RenderTest {
 	
+	private static final String SHADER = "shader";
 	private static final String TRANSFORMATION_UNIFORM = "TRANSFORMATION";
 	
 	public static void main(String[] args)
@@ -152,13 +153,13 @@ public class Test2dPanel extends RenderTest {
 		ShaderInfo fragmentShaderInfo;
 		try
 		{
-			vertexShader = new Shader(getFile("shader.vert"));
-			vertexShaderInfo = ShaderInfo.fromJson(getFile("shader.vert.json"));
+			vertexShader = new Shader(getFile(SHADER + ".vert"));
+			vertexShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".vert.json"));
 			vertexShader.compile(vertexShaderInfo);
 			if (!vertexShader.isCompilationSuccessfull()) throw new IOException("Shader " + vertexShader.getFile() + " has errors");
 			
-			fragmentShader = new Shader(getFile("shader.frag"));
-			fragmentShaderInfo = ShaderInfo.fromJson(getFile("shader.frag.json"));
+			fragmentShader = new Shader(getFile(SHADER + ".frag"));
+			fragmentShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".frag.json"));
 			fragmentShader.compile(fragmentShaderInfo);
 			if (!fragmentShader.isCompilationSuccessfull()) throw new IOException("Shader " + fragmentShader.getFile() + " has errors");
 		}

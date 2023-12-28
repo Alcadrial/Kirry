@@ -48,6 +48,7 @@ import com.alcadrial.renderengine.render.window.VulkanWindow;
 @Test
 public class TextureTest extends RenderTest {
 	
+	private static final String SHADER = "shader0";
 	private static final String TRANSFORMATION_UNIFORM = "TRANSFORMATION";
 	private static final String TEXTURE_SAMPLER_UNIFORM = "TEXTURE_SAMPLER";
 	
@@ -159,13 +160,13 @@ public class TextureTest extends RenderTest {
 		ShaderInfo fragmentShaderInfo;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			vertexShader = new Shader(getFile("shader0.vert"));
-			vertexShaderInfo = ShaderInfo.fromJson(getFile("shader0.vert.json"));
+			vertexShader = new Shader(getFile(SHADER + ".vert"));
+			vertexShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".vert.json"));
 			vertexShader.compile(vertexShaderInfo);
 			if (!vertexShader.isCompilationSuccessfull()) throw new IOException("Shader " + vertexShader.getFile() + " has errors");
 			
-			fragmentShader = new Shader(getFile("shader0.frag"));
-			fragmentShaderInfo = ShaderInfo.fromJson(getFile("shader0.frag.json"));
+			fragmentShader = new Shader(getFile(SHADER + ".frag"));
+			fragmentShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".frag.json"));
 			fragmentShader.compile(fragmentShaderInfo);
 			if (!fragmentShader.isCompilationSuccessfull()) throw new IOException("Shader " + fragmentShader.getFile() + " has errors");
 			
