@@ -1,5 +1,7 @@
 package com.alcadrial.renderengine.render.buffer;
 
+import java.util.concurrent.Future;
+
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkCommandBuffer;
@@ -21,11 +23,22 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 	
 	public VulkanDoubleBuffer(Device device, long size, int usage)
 	{
-		super(device, size, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+		this(device, size, usage, false);
+	}
+	
+	public VulkanDoubleBuffer(Device device, long size, int usage, boolean bidirectional)
+	{
+		this(device, size, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | (bidirectional ? VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT : 0), usage | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT | (bidirectional ? VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT : 0));
+	}
+	
+	protected VulkanDoubleBuffer(Device device, long size, int localUsage, int gpuUsage)
+	{
+		super(device, size, localUsage, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			gpuVk = device.createBuffer(stack, size, VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT | usage);
+			gpuVk = device.createBuffer(stack, size, gpuUsage);
 			gpuMemory = device.allocateBufferMemory(stack, gpuVk, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			gpuSize = size;
 		}
 	}
 	
@@ -42,6 +55,26 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 			VK10.vkCmdCopyBuffer(commandBuffer, vk, gpuVk, VulkanUtils.bufferCopy(stack, offset, offset, size));
 			device.submitSingleUseCommandBuffer(stack, commandBuffer);
 			gpuSize = size;
+		}
+	}
+	
+	public synchronized Future<?> queryFromPhysicalDevice()
+	{
+		return queryFromPhysicalDevice(0, gpuSize);
+	}
+	
+	public synchronized Future<?> queryFromPhysicalDevice(long offset, long size)
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VkCommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
+			VK10.vkCmdCopyBuffer(commandBuffer, gpuVk, vk, VulkanUtils.bufferCopy(stack, offset, offset, size));
+			Future<?> future = device.submitSingleUseCommandBuffer(stack, commandBuffer);
+			return RenderEngine.getExecutor().submit(() -> {
+				future.get();
+				this.size = size;
+				return null;
+			});
 		}
 	}
 	

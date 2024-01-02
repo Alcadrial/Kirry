@@ -698,7 +698,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		Surface surface = this.surface.require();
 		VulkanErrorUtils.assertStatement(surface.isInitialized(), "Surface not initialized");
 		
-		VkAttachmentDescription.Buffer attachments = VkAttachmentDescription.calloc(depthTexture.get() != null ? 2 : 1, stack);// static
+		VkAttachmentDescription.Buffer attachments = VkAttachmentDescription.calloc(depthTexture.get() != null ? 2 : 1, stack);
 		
 		VkAttachmentDescription colorAttachment = attachments.get();
 		colorAttachment.format(surface.getFormat().format());
@@ -710,14 +710,14 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		colorAttachment.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED);
 		colorAttachment.finalLayout(KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 		
-		VkAttachmentReference.Buffer colorAttachmentRef = VkAttachmentReference.calloc(1, stack);// static
-		colorAttachmentRef.attachment(0);// Color image attachment
+		VkAttachmentReference.Buffer colorAttachmentRef = VkAttachmentReference.calloc(1, stack);
+		colorAttachmentRef.attachment(0);
 		colorAttachmentRef.layout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 		
-		VkSubpassDescription.Buffer subpass = VkSubpassDescription.calloc(1, stack);// static
+		VkSubpassDescription.Buffer subpass = VkSubpassDescription.calloc(1, stack);
 		subpass.pipelineBindPoint(VK10.VK_PIPELINE_BIND_POINT_GRAPHICS);
 		subpass.colorAttachmentCount(1);
-		subpass.pColorAttachments(colorAttachmentRef);// using color image[0]
+		subpass.pColorAttachments(colorAttachmentRef);
 		
 		int srcStageMask = VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		int srcAccessMask = 0;

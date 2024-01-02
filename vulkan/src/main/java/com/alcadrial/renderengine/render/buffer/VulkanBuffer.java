@@ -77,9 +77,13 @@ public class VulkanBuffer extends LongDeviceResource {
 	
 	public float[] getAllFloats()
 	{
-		FloatBuffer buffer = asFloatBuffer();
-		float[] array = new float[buffer.capacity()];
-		buffer.get(array);
+		return getAllFloats(0, asFloatBuffer().capacity());
+	}
+	
+	public float[] getAllFloats(int offset, int size)
+	{
+		float[] array = new float[size];
+		asFloatBuffer().position(offset).get(array);
 		return array;
 	}
 	
@@ -132,6 +136,10 @@ public class VulkanBuffer extends LongDeviceResource {
 		return getByteBuffer().asDoubleBuffer();
 	}
 	
+	/**
+	 * 
+	 * @return the size of this buffer in bytes
+	 */
 	public long getSize()
 	{
 		return size;

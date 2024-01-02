@@ -26,7 +26,7 @@ public class IndexBuffer extends VulkanDoubleBuffer {
 	
 	public IndexBuffer(int size)
 	{
-		this(RenderEngine.getVulkan().getDevice(), size * 4);
+		this(RenderEngine.getVulkan().getDevice(), size);
 	}
 	
 	public IndexBuffer(Device device, int size)

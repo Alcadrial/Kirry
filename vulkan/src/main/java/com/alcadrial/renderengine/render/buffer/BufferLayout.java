@@ -14,6 +14,7 @@ import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.core.util.Pair;
+import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
@@ -27,12 +28,14 @@ public class BufferLayout {
 		RenderEngine.assertLoaded();
 	}
 	
+	private Device device;
 	private HashMap<String, Pair<ShaderVariable, Integer>> marks;
 	private VkWriteDescriptorSet.Buffer writeDescriptorSets;
 	private int stride;
 	
-	public BufferLayout(VkWriteDescriptorSet.Buffer writeDescriptorSets, int stride)
+	public BufferLayout(Device device, VkWriteDescriptorSet.Buffer writeDescriptorSets, int stride)
 	{
+		this.device = device;
 		marks = new HashMap<>();
 		this.writeDescriptorSets = writeDescriptorSets;
 		this.stride = stride;
@@ -40,6 +43,7 @@ public class BufferLayout {
 	
 	public BufferLayout(BufferLayout other)
 	{
+		device = other.device;
 		marks = new HashMap<>(other.marks);
 		writeDescriptorSets = other.writeDescriptorSets;
 		stride = other.stride;
@@ -60,9 +64,9 @@ public class BufferLayout {
 		return marks.get(variableName);
 	}
 	
-	public void updateDescriptorSets(VulkanBuffer buffer)
+	public void updateDescriptorSets()
 	{
-		VK10.vkUpdateDescriptorSets(buffer.getDevice().getVk(), writeDescriptorSets, null);
+		VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets, null);
 	}
 	
 	public void set(String uniform, VulkanBuffer buffer, Matrix4f value)

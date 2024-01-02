@@ -93,8 +93,13 @@ public class InstancingTest extends RenderTest {
 		matrix.multiply(new Matrix4f().rotate(Axis.Z, Angle.of(f / 11, AngleUnit.DEGREES)));
 		matrix.multiply(new Matrix4f().rotate(Axis.Y, Angle.of(f / 17, AngleUnit.DEGREES)));
 		matrix.multiply(new Matrix4f().rotate(Axis.X, Angle.of(f / 13, AngleUnit.DEGREES)));
-		matrix.multiply(new Matrix4f().scale(Vector3f.of(1, 1, 1).divideAll(20)));
+		matrix.multiply(buildScaleMatrix());
 		return matrix;
+	}
+	
+	private static Matrix4f buildScaleMatrix()
+	{
+		return new Matrix4f().scale(Vector3f.of(1, 1, 1).divideAll(16));
 	}
 	
 	public static void start()
@@ -160,9 +165,9 @@ public class InstancingTest extends RenderTest {
 				renderer.updateUniformBuffers((b, l) -> {
 					l.set(PROJECTION, b, buildProjectionMatrix(window));
 					l.set(MODEL, b, buildModelMatrix());
-					l.set(LIGHT_POS, b, lightPos);
-					l.set(LIGHT_INTENSITY, b, 0.8F);
-					l.set(SPACE_FOG_INTENSITY, b, 0.4F);
+					l.set(LIGHT_POS, b, buildScaleMatrix().multiply(lightPos).xyz());
+					l.set(LIGHT_INTENSITY, b, 0.75F);
+					l.set(SPACE_FOG_INTENSITY, b, 0.1F);
 				});
 			}
 		});
@@ -202,7 +207,7 @@ public class InstancingTest extends RenderTest {
 		builder.uniformBuffer(new VulkanBuffer(device, Math.max(256 * 2, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
 		renderer = builder.build(window, device, InstancingCustomGraphicsPipeline::new);
 		
-		lightPos = Vector3f.of(0.3F, 1, 0);
+		lightPos = Vector3f.of(5, 20, 0);
 		f = 0;
 		int size = 20;
 		int density = 2;
@@ -218,9 +223,9 @@ public class InstancingTest extends RenderTest {
 		renderer.updateUniformBuffers((b, l) -> {
 			l.set(PROJECTION, b, buildProjectionMatrix(window));
 			l.set(MODEL, b, buildModelMatrix());
-			l.set(LIGHT_POS, b, lightPos);
-			l.set(LIGHT_INTENSITY, b, 0.8F);
-			l.set(SPACE_FOG_INTENSITY, b, 0.4F);
+			l.set(LIGHT_POS, b, buildScaleMatrix().multiply(lightPos).xyz());
+			l.set(LIGHT_INTENSITY, b, 0.75F);
+			l.set(SPACE_FOG_INTENSITY, b, 0.1F);
 		});
 		
 		Color[] colors = new Color[] {

@@ -29,11 +29,6 @@ public class TestProperties {
 	
 	public static void init(String[] values)
 	{
-		for (String string : values)
-		{
-			System.out.println(string);
-		}
-		System.out.println();
 		Property.parseProperties(values, Properties.PROPERTIES);
 		if (HELP.isPresent())
 		{

@@ -26,7 +26,13 @@
 				{
 					"location": "2",
 					"declaration": "vec3 normalPosition"
-				},
+				}
+			]
+		},
+		{
+			"type": "input",
+			"binding": 1,
+			"variables": [
 				{
 					"location": "3",
 					"declaration": "vec3 cubePosition"

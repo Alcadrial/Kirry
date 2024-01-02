@@ -7,8 +7,10 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkQueue;
+import org.lwjgl.vulkan.VkSubmitInfo;
 
 import com.alcadrial.renderengine.render.util.DeviceResource;
+import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
 public class Queue extends DeviceResource<VkQueue> {
 	
@@ -34,6 +36,11 @@ public class Queue extends DeviceResource<VkQueue> {
 	public int getFamilyIndex()
 	{
 		return familyIndex;
+	}
+	
+	public synchronized void submit(VkSubmitInfo submitInfo, long fence)
+	{
+		VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(vk, submitInfo, fence), "Failed to submit queue");
 	}
 	
 	public synchronized void waitIdle()
