@@ -4,6 +4,7 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4i;
+import com.alcadrial.renderengine.core.util.EmptyImplementation;
 import com.alcadrial.renderengine.render.renderingmanager.RenderingManager;
 import com.alcadrial.renderengine.render.window.OpenGlWindow;
 
@@ -14,15 +15,18 @@ public abstract class AbstractWidget implements ClickableWidget, DrawableWidget 
 	protected Vector2i size;
 	private boolean isDrawn;
 	private boolean isRendered;
+	private boolean isMouseHover;
 	
 	public AbstractWidget(OpenGlWindow window, Vector3i pos, Vector2i size)
 	{
 		this.window = window;
 		this.pos = Vector3i.copyOf(pos);
 		this.size = Vector2i.copyOf(size);
+		isMouseHover = isHovered(window.getMousePos());
 	}
 	
 	@Override
+	@EmptyImplementation
 	public void initializeRendering(Matrix4f matrix, RenderingManager manager, float partialFrame)
 	{
 		
@@ -65,11 +69,13 @@ public abstract class AbstractWidget implements ClickableWidget, DrawableWidget 
 		return !isRendered;
 	}
 	
+	@Override
 	public void requestRender()
 	{
 		isRendered = false;
 	}
 	
+	@Override
 	public void requestDraw()
 	{
 		isDrawn = false;
@@ -78,7 +84,7 @@ public abstract class AbstractWidget implements ClickableWidget, DrawableWidget 
 	@Override
 	public boolean isMouseHover()
 	{
-		return isHovered(window.getMousePos());
+		return isMouseHover;
 	}
 	
 	@Override
@@ -87,6 +93,19 @@ public abstract class AbstractWidget implements ClickableWidget, DrawableWidget 
 		return v.x() > pos.x() && v.x() < pos.x() + size.x() && v.y() > pos.y() && v.y() < pos.y() + size.y();
 	}
 	
+	@Override
+	public void onMouseEnter(Vector2i enterPos)
+	{
+		isMouseHover = true;
+	}
+	
+	@Override
+	public void onMouseExit(Vector2i exitPos)
+	{
+		isMouseHover = false;
+	}
+	
+	@EmptyImplementation
 	protected void move(Vector3i newPos)
 	{
 		
@@ -101,6 +120,7 @@ public abstract class AbstractWidget implements ClickableWidget, DrawableWidget 
 		onResize(oldSize, size);
 	}
 	
+	@EmptyImplementation
 	protected void resize(Vector2i newSize)
 	{
 		
@@ -157,47 +177,55 @@ public abstract class AbstractWidget implements ClickableWidget, DrawableWidget 
 		onMove(oldPos, pos);
 	}
 	
+	@EmptyImplementation
 	protected void onMove(Vector3i oldPos, Vector3i newPos)
 	{
 		
 	}
 	
+	@EmptyImplementation
 	protected void onResize(Vector2i oldSize, Vector2i newSize)
 	{
 		
 	}
 	
 	@Override
+	@EmptyImplementation
 	public void onPress(int button, Vector2i mousePos)
 	{
 		
 	}
 	
 	@Override
+	@EmptyImplementation
 	public void onRelease(int button, Vector2i mousePos)
 	{
 		
 	}
 	
 	@Override
+	@EmptyImplementation
 	public void onClick(int button, int count, Vector2i mousePos)
 	{
 		
 	}
 	
 	@Override
+	@EmptyImplementation
 	public void onDragStart(Vector2i mousePos)
 	{
 		
 	}
 	
 	@Override
+	@EmptyImplementation
 	public void onDragEnd(Vector2i mousePos)
 	{
 		
 	}
 	
 	@Override
+	@EmptyImplementation
 	public void onDrag(Vector2i startPos, Vector2i endPos)
 	{
 		

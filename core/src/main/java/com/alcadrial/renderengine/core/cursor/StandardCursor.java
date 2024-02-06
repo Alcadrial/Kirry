@@ -25,7 +25,13 @@ public enum StandardCursor implements ICursor {
 	@Override
 	public void destroy()
 	{
-		GLFW.glfwDestroyCursor(id);
+		
+	}
+	
+	@Override
+	public void close()
+	{
+		destroy();
 	}
 	
 	@Override

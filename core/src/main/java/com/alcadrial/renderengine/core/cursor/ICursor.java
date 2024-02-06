@@ -1,7 +1,7 @@
 package com.alcadrial.renderengine.core.cursor;
 
-public interface ICursor {
+public interface ICursor extends AutoCloseable {
 	
-	public void destroy();
-	public long getId();
+	void destroy();
+	long getId();
 }

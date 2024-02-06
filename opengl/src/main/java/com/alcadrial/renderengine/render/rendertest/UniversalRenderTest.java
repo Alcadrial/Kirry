@@ -408,6 +408,20 @@ public class UniversalRenderTest implements RenderTest {
 			{
 				System.out.println("drag from " + startPos + " to " + endPos);
 			}
+			
+			@Override
+			public void onMouseEnter(Vector2i enterPos)
+			{
+				super.onMouseEnter(enterPos);
+				System.out.println("mouse entered");
+			}
+			
+			@Override
+			public void onMouseExit(Vector2i exitPos)
+			{
+				super.onMouseExit(exitPos);
+				System.out.println("mouse exited");
+			}
 		}, () -> manager);
 		Util.printError("window");
 		

@@ -4,6 +4,7 @@ import java.lang.reflect.Field;
 import java.util.Optional;
 
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWErrorCallbackI;
 import org.lwjgl.opengl.GL30;
 
 import com.alcadrial.renderengine.core.util.Nonnull;
@@ -138,6 +139,11 @@ public class RenderEngine {
 	public static void setClearStencil(int s)
 	{
 		GL30.glClearStencil(s);
+	}
+	
+	public static void setGlfwErrorCallback(GLFWErrorCallbackI callback)
+	{
+		GLFW.glfwSetErrorCallback(callback);
 	}
 	
 	public static StateConfigurator configure()

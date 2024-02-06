@@ -20,6 +20,7 @@ import org.lwjgl.glfw.GLFWImage.Buffer;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWScrollCallbackI;
+import org.lwjgl.glfw.GLFWWindowCloseCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLCapabilities;
@@ -74,6 +75,7 @@ public class OpenGlWindow extends Window {
 	private List<GLFWKeyCallbackI> glfwKeyCallbackList;
 	private List<GLFWMouseButtonCallbackI> glfwMouseButtonCallbackList;
 	private List<GLFWScrollCallbackI> glfwScrollCallbackList;
+	private List<GLFWWindowCloseCallbackI> glfwWindowCloseCallbackList;
 	private List<GLFWWindowSizeCallbackI> glfwWindowSizeCallbackList;
 	private List<DropCallback> dropCallbackList;
 	private List<MouseClickCallback> mouseClickCallbackList;
@@ -115,6 +117,7 @@ public class OpenGlWindow extends Window {
 		glfwKeyCallbackList = new ArrayList<>(1);
 		glfwMouseButtonCallbackList = new ArrayList<>(1);
 		glfwScrollCallbackList = new ArrayList<>(1);
+		glfwWindowCloseCallbackList = new ArrayList<>(1);
 		glfwWindowSizeCallbackList = new ArrayList<>(1);
 		dropCallbackList = new ArrayList<>(1);
 		mouseClickCallbackList = new ArrayList<>(1);
@@ -129,6 +132,7 @@ public class OpenGlWindow extends Window {
 		callbacksList.add(cast(glfwKeyCallbackList));
 		callbacksList.add(cast(glfwMouseButtonCallbackList));
 		callbacksList.add(cast(glfwScrollCallbackList));
+		callbacksList.add(cast(glfwWindowCloseCallbackList));
 		callbacksList.add(cast(glfwWindowSizeCallbackList));
 		
 		callbacksList.add(cast(dropCallbackList));
@@ -149,6 +153,17 @@ public class OpenGlWindow extends Window {
 	{
 		mousePos = Vector2i.ofImmutable((int) x, getHeight() - (int) y);
 		for (GLFWCursorPosCallbackI callback : glfwCursorPosCallbackList) callback.invoke(id, x, y);
+		for (ClickableWidget widget : clickableWidgets)
+		{
+			if (widget.isMouseHover())
+			{
+				if (!widget.isHovered(mousePos)) widget.onMouseExit(mousePos);
+			}
+			else
+			{
+				if (widget.isHovered(mousePos)) widget.onMouseEnter(mousePos);
+			}
+		}
 		
 		for (int i = 0; i < mouseButtonStates.size(); i++)
 		{
@@ -250,6 +265,11 @@ public class OpenGlWindow extends Window {
 		}
 	}
 	
+	protected void windowCloseCallback(long id)
+	{
+		for (GLFWWindowCloseCallbackI callback : glfwWindowCloseCallbackList) callback.invoke(id);
+	}
+	
 	protected void windowScrollCallback(long id, double x, double y)
 	{
 		for (GLFWScrollCallbackI callback : glfwScrollCallbackList) callback.invoke(id, x, y);
@@ -289,6 +309,7 @@ public class OpenGlWindow extends Window {
 			GLFW.glfwSetKeyCallback(id, this::keyCallback);
 			GLFW.glfwSetMouseButtonCallback(id, this::mouseButtonCallback);
 			GLFW.glfwSetScrollCallback(id, this::windowScrollCallback);
+			GLFW.glfwSetWindowCloseCallback(id, this::windowCloseCallback);
 			GLFW.glfwSetWindowSizeCallback(id, this::windowSizeCallback);
 		}
 	}
@@ -340,6 +361,7 @@ public class OpenGlWindow extends Window {
 		if (event instanceof GLFWKeyCallbackI callback) glfwKeyCallbackList.add(callback);
 		if (event instanceof GLFWMouseButtonCallbackI callback) glfwMouseButtonCallbackList.add(callback);
 		if (event instanceof GLFWScrollCallbackI callback) glfwScrollCallbackList.add(callback);
+		if (event instanceof GLFWWindowCloseCallbackI callback) glfwWindowCloseCallbackList.add(callback);
 		if (event instanceof GLFWWindowSizeCallbackI callback) glfwWindowSizeCallbackList.add(callback);
 	}
 	

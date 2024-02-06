@@ -33,6 +33,12 @@ public class Cursor implements ICursor {
 	}
 	
 	@Override
+	public void close()
+	{
+		destroy();
+	}
+	
+	@Override
 	public long getId()
 	{
 		return id;

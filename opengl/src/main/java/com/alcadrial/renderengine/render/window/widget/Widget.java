@@ -7,6 +7,8 @@ public interface Widget {
 	
 	boolean isMouseHover();
 	boolean isHovered(Vector2i v);
+	void onMouseEnter(Vector2i enterPos);
+	void onMouseExit(Vector2i exitPos);
 	
 	Vector3i getPos();
 	Vector2i getSize();
