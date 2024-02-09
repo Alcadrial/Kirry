@@ -42,19 +42,33 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 		}
 	}
 	
-	public void sendToPhysicalDevice()
+	public Future<?> sendToPhysicalDevice()
 	{
-		sendToPhysicalDevice(0, size);
+		return sendToPhysicalDevice(0, size);
 	}
 	
-	public synchronized void sendToPhysicalDevice(long offset, long size)
+	public synchronized Future<?> sendToPhysicalDevice(long offset, long size)
+	{
+		return sendToPhysicalDevice(offset, size, gpuVk);
+	}
+	
+	public synchronized Future<?> sendToPhysicalDevice(long dstBuffer)
+	{
+		return sendToPhysicalDevice(0, size, dstBuffer);
+	}
+	
+	public synchronized Future<?> sendToPhysicalDevice(long offset, long size, long dstBuffer)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			VkCommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
-			VK10.vkCmdCopyBuffer(commandBuffer, vk, gpuVk, VulkanUtils.bufferCopy(stack, offset, offset, size));
-			device.submitSingleUseCommandBuffer(stack, commandBuffer);
-			gpuSize = size;
+			VK10.vkCmdCopyBuffer(commandBuffer, vk, dstBuffer, VulkanUtils.bufferCopy(stack, offset, offset, size));
+			Future<?> future = device.submitSingleUseCommandBuffer(stack, commandBuffer);
+			return RenderEngine.getExecutor().submit(() -> {
+				future.get();
+				gpuSize = size;
+				return null;
+			});
 		}
 	}
 	

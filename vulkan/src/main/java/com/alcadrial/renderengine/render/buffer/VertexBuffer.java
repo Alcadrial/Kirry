@@ -1,5 +1,7 @@
 package com.alcadrial.renderengine.render.buffer;
 
+import java.util.concurrent.Future;
+
 import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.kector.matrix.Matrix4f;
@@ -71,15 +73,21 @@ public class VertexBuffer extends VulkanDoubleBuffer {
 	}
 	
 	@Override
-	public void sendToPhysicalDevice()
+	public synchronized Future<?> sendToPhysicalDevice()
 	{
-		super.sendToPhysicalDevice(0, size);
+		return super.sendToPhysicalDevice(0, size);
 	}
 	
 	@Override
-	public synchronized void sendToPhysicalDevice(long offset, long size)
+	public synchronized Future<?> sendToPhysicalDevice(long dstBuffer)
 	{
-		super.sendToPhysicalDevice(offset * 4, size * 4);
+		return super.sendToPhysicalDevice(0, size, dstBuffer);
+	}
+	
+	@Override
+	public synchronized Future<?> sendToPhysicalDevice(long offset, long size)
+	{
+		return super.sendToPhysicalDevice(offset * 4, size * 4);
 	}
 	
 	public void resetCursor()

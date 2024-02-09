@@ -1,6 +1,8 @@
 package com.alcadrial.renderengine.render.buffer;
 
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.function.Consumer;
 
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDescriptorImageInfo;
@@ -28,25 +30,28 @@ public class BufferLayout {
 		RenderEngine.assertLoaded();
 	}
 	
+	private Lock lock;
 	private Device device;
-	private HashMap<String, Pair<ShaderVariable, Integer>> marks;
+	private ConcurrentHashMap<String, Pair<ShaderVariable, Integer>> marks;
 	private VkWriteDescriptorSet.Buffer writeDescriptorSets;
 	private int stride;
 	
-	public BufferLayout(Device device, VkWriteDescriptorSet.Buffer writeDescriptorSets, int stride)
+	public BufferLayout(Device device, VkWriteDescriptorSet.Buffer writeDescriptorSets, int stride, Lock lock)
 	{
 		this.device = device;
-		marks = new HashMap<>();
+		marks = new ConcurrentHashMap<>();
 		this.writeDescriptorSets = writeDescriptorSets;
 		this.stride = stride;
+		this.lock = lock;
 	}
 	
 	public BufferLayout(BufferLayout other)
 	{
 		device = other.device;
-		marks = new HashMap<>(other.marks);
+		marks = new ConcurrentHashMap<>(other.marks);
 		writeDescriptorSets = other.writeDescriptorSets;
 		stride = other.stride;
+		lock = other.lock;
 	}
 	
 	public void mark(ShaderVariable variable, int offset)
@@ -66,7 +71,42 @@ public class BufferLayout {
 	
 	public void updateDescriptorSets()
 	{
-		VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets, null);
+		lock.lock();
+		try
+		{
+			VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets, null);
+		}
+		finally
+		{
+			lock.unlock();
+		}
+	}
+	
+	public void update(Consumer<VkWriteDescriptorSet.Buffer> action)
+	{
+		lock.lock();
+		try
+		{
+			action.accept(writeDescriptorSets);
+			VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets, null);
+		}
+		finally
+		{
+			lock.unlock();
+		}
+	}
+	
+	public void consume(Consumer<VkWriteDescriptorSet.Buffer> action)
+	{
+		lock.lock();
+		try
+		{
+			action.accept(writeDescriptorSets);
+		}
+		finally
+		{
+			lock.unlock();
+		}
 	}
 	
 	public void set(String uniform, VulkanBuffer buffer, Matrix4f value)
@@ -186,9 +226,17 @@ public class BufferLayout {
 		if (p != null)
 		{
 			checkUniformValue(ShaderInputType.SAMPLER_2D, p.left.getType());
-			VkDescriptorImageInfo.Buffer descriptorImageInfo = writeDescriptorSets.get(index * stride + p.right).pImageInfo();
-			descriptorImageInfo.imageView(value.getVk());
-			descriptorImageInfo.sampler(sampler.getVk());
+			lock.lock();
+			try
+			{
+				VkDescriptorImageInfo.Buffer descriptorImageInfo = writeDescriptorSets.get(index * stride + p.right).pImageInfo();
+				descriptorImageInfo.imageView(value.getVk());
+				descriptorImageInfo.sampler(sampler.getVk());
+			}
+			finally
+			{
+				lock.unlock();
+			}
 		}
 	}
 	

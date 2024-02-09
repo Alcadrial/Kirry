@@ -185,7 +185,7 @@ public class Vulkan implements AutoCloseable {
 	 * 
 	 * @param deviceFeatures
 	 */
-	public void createDevice(VkPhysicalDeviceFeatures deviceFeatures)
+	public Device createDevice(VkPhysicalDeviceFeatures deviceFeatures)
 	{
 		ThreadData threadData = getData();
 		if (threadData.device == null)
@@ -220,12 +220,14 @@ public class Vulkan implements AutoCloseable {
 				threadData.device = new Device(new VkDevice(devicePointer.get(0), threadData.physicalDevice.getVk(), createInfo), threadData.physicalDevice);
 				threadData.device.setGraphicsQueue(new Queue(threadData.device, graphicsQueue.getIndex()));
 				threadData.device.setPresentQueue(new Queue(threadData.device, presentationQueue.getIndex()));
+				return threadData.device;
 			}
 			finally
 			{
 				deviceFeatures.free();
 			}
 		}
+		return threadData.device;
 	}
 	
 	public Device getDevice()

@@ -21,13 +21,11 @@ import org.lwjgl.glfw.GLFWWindowPosCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.CallbackI;
-import org.lwjgl.system.MemoryStack;
 
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.Window;
 import com.alcadrial.renderengine.core.util.Pair;
-import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Surface;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
@@ -45,9 +43,11 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private int height;
 	private String title;
 	private List<WindowResizeAction> resizeActions;
+	private boolean isIconified;
 	
 	/**
 	 * <b>WARNING:</b> the window hint {@link GLFW#GLFW_CLIENT_API CLIENT_API} is set to {@link GLFW#GLFW_NO_API NO_API}
+	 * using {@link RenderEngine#setWindowHint(int, int) RenderEngine#setWindowHint}
 	 * before creating the window and is never restored to the previous value if different.
 	 * 
 	 * @param width the width in pixels of the window
@@ -69,14 +69,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		
 	}
 	
-	public void assignDevice(Device device)
-	{
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			surface.init(device, stack);
-		}
-	}
-	
 	public void addResizeAction(WindowResizeAction action)
 	{
 		resizeActions.add(action);
@@ -96,6 +88,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		GLFW.glfwSetWindowContentScaleCallback(id, null);
 		GLFW.glfwSetWindowFocusCallback(id, (w, f) -> onFocus());
 		GLFW.glfwSetWindowIconifyCallback(id, (w, c) -> {
+			isIconified = c;
 			if (c) onIconify();
 			else onRestore();
 		});
@@ -134,6 +127,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			i.invoke(w, f);
 		});
 		if (callback instanceof GLFWWindowIconifyCallbackI i) GLFW.glfwSetWindowIconifyCallback(id, (w, c) -> {
+			isIconified = c;
 			if (c) onIconify();
 			else onRestore();
 			i.invoke(w, c);
@@ -219,6 +213,11 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	public Long getVk()
 	{
 		return id;
+	}
+	
+	public boolean isIconified()
+	{
+		return isIconified;
 	}
 	
 	public Surface getSurface()

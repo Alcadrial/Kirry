@@ -1,0 +1,24 @@
+{
+	"type": "frag",
+	"entryPoint": "main",
+	"layouts": [
+		{
+			"type": "input",
+			"binding": 0,
+			"variables": [
+				{
+					"location": "0",
+					"declaration": "vec3 vertexPosition"
+				},
+				{
+					"location": "1",
+					"declaration": "vec4 color"
+				},
+				{
+					"location": "2",
+					"declaration": "vec3 originPosition"
+				}
+			]
+		}
+	]
+}

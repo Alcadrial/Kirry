@@ -36,6 +36,12 @@ public class ShaderVariable {
 	public static final ShaderVariable ACCELERATION_EXTRA_1 = of(ShaderInputType.VECTOR_FLOAT_3, "acceleration1");
 	public static final ShaderVariable ACCELERATION_EXTRA_2 = of(ShaderInputType.VECTOR_FLOAT_3, "acceleration2");
 	
+	public static final ShaderVariable MATRIX = of(ShaderInputType.MATRIX_FLOAT_4X4, "MATRIX");
+	public static final ShaderVariable PROJECTION = of(ShaderInputType.MATRIX_FLOAT_4X4, "PROJECTION");
+	public static final ShaderVariable VIEW = of(ShaderInputType.MATRIX_FLOAT_4X4, "VIEW");
+	public static final ShaderVariable MODEL = of(ShaderInputType.MATRIX_FLOAT_4X4, "MODEL");
+	public static final ShaderVariable TRANSFORMATION = of(ShaderInputType.MATRIX_FLOAT_4X4, "TRANSFORMATION");
+	
 	public static ShaderVariable of(ShaderInputType type, String name)
 	{
 		return new ShaderVariable(type, name);

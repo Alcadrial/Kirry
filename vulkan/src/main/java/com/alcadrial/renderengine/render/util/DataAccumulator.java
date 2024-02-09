@@ -11,11 +11,7 @@ import java.util.function.Function;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.Struct;
 import org.lwjgl.system.StructBuffer;
-import org.lwjgl.vulkan.KHRSurface;
-import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
-import org.lwjgl.vulkan.VkAttachmentDescription;
-import org.lwjgl.vulkan.VkAttachmentReference;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
 import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
@@ -27,13 +23,10 @@ import org.lwjgl.vulkan.VkPipelineMultisampleStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
-import org.lwjgl.vulkan.VkRenderPassCreateInfo;
-import org.lwjgl.vulkan.VkSubpassDependency;
-import org.lwjgl.vulkan.VkSubpassDescription;
-import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 import org.lwjgl.vulkan.VkViewport;
 
 import com.alcadrial.kector.vector.Vector2f;
+import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.core.util.NotUsed;
 import com.alcadrial.renderengine.core.util.Nullable;
@@ -43,7 +36,6 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.RenderPass;
-import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Surface;
 import com.alcadrial.renderengine.render.Swapchain;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
@@ -340,7 +332,6 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	}
 	
 	/**
-	 * Uses {@link Shader#getType()} to distinguish the type
 	 * 
 	 * @param value
 	 * @param info
@@ -683,143 +674,21 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	}
 	
 	/**
-	 * Creates a new render pass using the required fields.
+	 * Creates a new graphics pipeline.
 	 * 
-	 * @return a new render pass
-	 * @renderengine.Requires
-	 * 		{@link #device(Device) device}<br>
-	 * 		{@link #surface(Surface) surface}
-	 * @renderengine.Optional
-	 * 		{@link #depthTexture(Texture) depthTexture}
-	 */
-	protected RenderPass createRenderPass()
-	{
-		Device device = this.device.require();
-		Surface surface = this.surface.require();
-		VulkanErrorUtils.assertStatement(surface.isInitialized(), "Surface not initialized");
-		
-		VkAttachmentDescription.Buffer attachments = VkAttachmentDescription.calloc(depthTexture.get() != null ? 2 : 1, stack);
-		
-		VkAttachmentDescription colorAttachment = attachments.get();
-		colorAttachment.format(surface.getFormat().format());
-		colorAttachment.samples(VK10.VK_SAMPLE_COUNT_1_BIT);
-		colorAttachment.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR);
-		colorAttachment.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE);
-		colorAttachment.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE);
-		colorAttachment.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE);
-		colorAttachment.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED);
-		colorAttachment.finalLayout(KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-		
-		VkAttachmentReference.Buffer colorAttachmentRef = VkAttachmentReference.calloc(1, stack);
-		colorAttachmentRef.attachment(0);
-		colorAttachmentRef.layout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-		
-		VkSubpassDescription.Buffer subpass = VkSubpassDescription.calloc(1, stack);
-		subpass.pipelineBindPoint(VK10.VK_PIPELINE_BIND_POINT_GRAPHICS);
-		subpass.colorAttachmentCount(1);
-		subpass.pColorAttachments(colorAttachmentRef);
-		
-		int srcStageMask = VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		int srcAccessMask = 0;
-		int dstStageMask = VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		int dstAccessMask = VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		
-		if (depthTexture.get() != null)
-		{
-			VkAttachmentDescription depthAttachment = attachments.get();
-			depthAttachment.format(depthTexture.get().getFormat());
-			depthAttachment.samples(VK10.VK_SAMPLE_COUNT_1_BIT);
-			depthAttachment.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR);
-			depthAttachment.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE);
-			depthAttachment.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE);
-			depthAttachment.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE);
-			depthAttachment.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED);
-			depthAttachment.finalLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-			
-			VkAttachmentReference depthAttachmentRef = VkAttachmentReference.calloc(stack);
-			depthAttachmentRef.attachment(1);
-			depthAttachmentRef.layout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-			
-			subpass.pDepthStencilAttachment(depthAttachmentRef);
-			
-			srcStageMask |= VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-			dstStageMask |= VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-			dstAccessMask |= VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		}
-		
-		VkSubpassDependency.Buffer dependency = VkSubpassDependency.calloc(1, stack);
-		dependency.srcSubpass(VK10.VK_SUBPASS_EXTERNAL);
-		dependency.dstSubpass(0);
-		dependency.srcStageMask(srcStageMask);
-		dependency.srcAccessMask(srcAccessMask);
-		dependency.dstStageMask(dstStageMask);
-		dependency.dstAccessMask(dstAccessMask);
-		
-		VkRenderPassCreateInfo renderPassInfo = VkRenderPassCreateInfo.calloc(stack);
-		renderPassInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO);
-		renderPassInfo.pAttachments(attachments.rewind());
-		renderPassInfo.pSubpasses(subpass);
-		renderPassInfo.pDependencies(dependency);
-		
-		return new RenderPass(device, renderPassInfo);
-	}
-	
-	/**
-	 * Creates a new swapchain.
-	 * 
-	 * @return a new render pass
-	 * @renderengine.Requires
-	 * 		{@link #device}<br>
-	 * 		{@link #surface}<br>
-	 * 		{@link #renderPass}
-	 * @renderengine.Optional
-	 * 		{@link #depthTexture(Texture) depthTexture}
-	 */
-	protected Swapchain createSwapchain()
-	{
-		Device device = this.device.require();
-		Surface surface = this.surface.require();
-		VulkanErrorUtils.assertStatement(surface.isInitialized(), "Surface not initialized");
-		RenderPass renderPass = this.renderPass.require();
-		
-		VkSwapchainCreateInfoKHR createInfo = VkSwapchainCreateInfoKHR.calloc(stack);
-		createInfo.sType(KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR);
-		createInfo.minImageCount(Renderer.SWAPPING_BUFFERS);
-		createInfo.imageArrayLayers(1);
-		createInfo.imageUsage(VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-		if (device.getGraphicsQueue().getFamilyIndex() == device.getPresentQueue().getFamilyIndex()) createInfo.imageSharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE);
-		else
-		{
-			createInfo.imageSharingMode(VK10.VK_SHARING_MODE_CONCURRENT);
-			createInfo.pQueueFamilyIndices(stack.ints(device.getGraphicsQueue().getFamilyIndex(), device.getPresentQueue().getFamilyIndex()));
-		}
-		createInfo.compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
-		createInfo.clipped(true);
-		
-		surface.createSwapchain(renderPass, createInfo);
-		
-		Swapchain swapchain = surface.getSwapchain();
-		swapchain.initialize(surface, depthTexture.get());
-		return swapchain;
-	}
-	
-	/**
-	 * Creates a new swapchain.
-	 * 
-	 * @return a new render pass
+	 * @return a new graphics pipeline
 	 * @renderengine.Requires
 	 * 		{@link #device}<br>
 	 * 		{@link #surface}<br>
 	 * 		{@link #renderPass}<br>
 	 * 		{@link #pipelineLayout}
 	 */
-	protected <GP extends GraphicsPipeline> GP createGraphicsPipeline(GraphicsPipelineBuildFunction<GP> buildFunction)
+	protected <GP extends GraphicsPipeline> GP createGraphicsPipeline(Vector2i outputSize, GraphicsPipelineBuildFunction<GP> buildFunction)
 	{
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly = VulkanUtils.pipelineInputAssemblyStateInfo(stack, topology.orElse(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST), primitiveRestartEnable.orElse(false));
 		
-		VkExtent2D extent = surface.require().getExtent();
-		VkViewport.Buffer viewport = load(c -> VkViewport.malloc(c, stack), orElse(viewports, VkViewport.malloc(stack).set(0, extent.height(), extent.width(), -extent.height(), 0, 1)));// static
-		VkRect2D.Buffer scissor = load(c -> VkRect2D.malloc(c, stack), orElse(scissors, VkRect2D.malloc(stack).set(VulkanUtils.offset(stack, 0, 0), extent)));// static
+		VkViewport.Buffer viewport = load(c -> VkViewport.malloc(c, stack), orElse(viewports, VkViewport.malloc(stack).set(0, outputSize.y(), outputSize.x(), -outputSize.y(), 0, 1)));// static
+		VkRect2D.Buffer scissor = load(c -> VkRect2D.malloc(c, stack), orElse(scissors, VkRect2D.malloc(stack).set(VulkanUtils.offset(stack, 0, 0), VkExtent2D.malloc(stack).set(outputSize.x(), outputSize.y()))));// static
 		
 		VkPipelineViewportStateCreateInfo viewportState = VulkanUtils.pipelineViewportStateInfo(stack, viewport, scissor);
 		

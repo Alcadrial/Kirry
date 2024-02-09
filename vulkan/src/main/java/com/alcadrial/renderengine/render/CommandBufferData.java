@@ -34,10 +34,10 @@ public class CommandBufferData extends DeviceResource<VkCommandBuffer> {
 	private final long fence;
 	private boolean isRecording;
 	
-	public CommandBufferData(Device device, long commandBuffer, long imageAvailable, long renderFinished, long fence)
+	public CommandBufferData(Device device, VkCommandBuffer commandBuffer, long imageAvailable, long renderFinished, long fence)
 	{
 		super(device);
-		vk = new VkCommandBuffer(commandBuffer, device.getVk());
+		vk = commandBuffer;
 		this.imageAvailable = imageAvailable;
 		this.renderFinished = renderFinished;
 		this.fence = fence;
@@ -252,11 +252,6 @@ public class CommandBufferData extends DeviceResource<VkCommandBuffer> {
 		VK10.vkEndCommandBuffer(vk);
 		isRecording = false;
 		return true;
-	}
-	
-	public synchronized void resetFence()
-	{
-		VK10.vkResetFences(device.getVk(), fence);
 	}
 	
 	public synchronized void reset()

@@ -7,9 +7,9 @@ struct Particle {
 };
 
 layout (binding = 0) uniform U {
+	float ENLAPSED_TIME;
 	vec3 MIN_BOUND;
 	vec3 MAX_BOUND;
-	float ENLAPSED_TIME;
 };
 
 layout (std140, binding = 1) readonly buffer Input {
@@ -32,7 +32,7 @@ void main()
     vec3 newPosition = particle.position + movement;
     vec3 newVelocity = particle.velocity;
     
-    bool bounce = true;
+    bool bounce = false;
     float remainingTime = ENLAPSED_TIME;
     
     while (bounce)

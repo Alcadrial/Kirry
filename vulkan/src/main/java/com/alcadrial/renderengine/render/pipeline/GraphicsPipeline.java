@@ -154,7 +154,6 @@ public class GraphicsPipeline extends Pipeline {
 			
 			int size = 0;
 			int locationSize = 0;
-			
 			VkVertexInputAttributeDescription.Buffer attributeDescriptions = VkVertexInputAttributeDescription.calloc(inputs.size());
 			for (ShaderVariable input : inputs)
 			{

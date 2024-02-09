@@ -11,6 +11,7 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWVulkan;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.windows.Kernel32;
 import org.lwjgl.vulkan.EXTDebugUtils;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
@@ -26,7 +27,7 @@ import com.alcadrial.renderengine.render.util.Version;
 public class RenderEngine extends RenderEngineCore {
 	
 	private static final List<String> VALIDATION_LAYERS = List.of("VK_LAYER_KHRONOS_validation");
-	private static final List<String> INSTANCE_EXTENSIONS = List.of(/* EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME */);
+	private static final List<String> INSTANCE_EXTENSIONS = List.of(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	private static final List<String> DEVICE_EXTENSIONS = List.of(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 	
 	private static volatile boolean debug = false;
@@ -129,7 +130,10 @@ public class RenderEngine extends RenderEngineCore {
 			}
 			initializated = true;
 			vulkan = new Vulkan(createInfo);
-			executor = Executors.newCachedThreadPool();
+			executor = Executors.newCachedThreadPool(r -> new Thread(() -> {
+				Debug.println(Thread.currentThread().getName() + " -> " + Kernel32.GetCurrentThreadId());
+				r.run();
+			}));
 			return true;
 		}
 		catch (Exception e)

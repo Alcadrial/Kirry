@@ -10,7 +10,6 @@ import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSurfaceFormatKHR;
-import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Pair;
@@ -33,8 +32,6 @@ public class Surface implements AutoCloseable {
 	private Vector2i maxSize;
 	private Vector2i minSize;
 	private Vector2i size;
-	private Device device;
-	private Swapchain swapchain;
 	
 	public Surface(VulkanWindow window)
 	{
@@ -44,9 +41,8 @@ public class Surface implements AutoCloseable {
 		surface = p[0];
 	}
 	
-	private void init(Device device, MemoryStack stack, boolean recreate)
+	private void init(PhysicalDevice physicalDevice, MemoryStack stack, boolean recreate)
 	{
-		this.device = device;
 		if (recreate)
 		{
 			close();
@@ -55,7 +51,6 @@ public class Surface implements AutoCloseable {
 			VulkanErrorUtils.assertNoError(GLFWVulkan.glfwCreateWindowSurface(RenderEngine.getVulkan().getInstance(), window.getVk(), null, p), "Failed to create surface");
 			surface = p[0];
 		}
-		PhysicalDevice physicalDevice = device.getPhysicalDevice();
 		
 		int[] p = new int[1];
 		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.getVk(), surface, p, null), "Failed to initialize surface");
@@ -109,19 +104,14 @@ public class Surface implements AutoCloseable {
 		size = Vector2i.ofImmutable(extent.l().width(), extent.l().height());
 	}
 	
-	public void init(Device device, MemoryStack stack)
+	public void init(PhysicalDevice physicalDevice, MemoryStack stack)
 	{
-		init(device, stack, false);
+		init(physicalDevice, stack, false);
 	}
 	
-	public void recreate(Device device, MemoryStack stack)
+	public void recreate(PhysicalDevice physicalDevice, MemoryStack stack)
 	{
-		init(device, stack, true);
-	}
-	
-	public void createSwapchain(RenderPass renderPass, VkSwapchainCreateInfoKHR createInfo)
-	{
-		swapchain = new Swapchain(device, this, renderPass, createInfo);
+		init(physicalDevice, stack, true);
 	}
 	
 	public boolean isInitialized()
@@ -176,16 +166,14 @@ public class Surface implements AutoCloseable {
 		return size;
 	}
 	
-	public Swapchain getSwapchain()
-	{
-		return swapchain;
-	}
-	
 	@Override
 	public void close()
 	{
-		MemoryUtil.memFree(format.r());
-		MemoryUtil.memFree(extent.r());
+		if (isInitialized())
+		{
+			MemoryUtil.memFree(format.r());
+			MemoryUtil.memFree(extent.r());
+		}
 		KHRSurface.vkDestroySurfaceKHR(RenderEngine.getVulkan().getInstance(), surface, null);
 		surface = 0;
 	}
