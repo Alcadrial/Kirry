@@ -15,13 +15,12 @@ import com.alcadrial.renderengine.render.buffer.FloatArrayBuffer;
 import com.alcadrial.renderengine.render.buffer.FloatArrayBufferStack;
 import com.alcadrial.renderengine.render.renderer.AbstractIndicesRenderer;
 import com.alcadrial.renderengine.render.renderer.AbstractVertexBuilder;
-import com.alcadrial.renderengine.render.renderer.IVertexResult;
 import com.alcadrial.renderengine.render.renderer.RenderingMode;
+import com.alcadrial.renderengine.render.renderer.VertexResult;
 import com.alcadrial.renderengine.render.shader.ShaderInput;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.uniform.ShaderUniform;
 import com.alcadrial.renderengine.render.shader.uniform.extra.ColorUniform;
-import com.alcadrial.renderengine.render.util.Tracker;
 
 @Nonnull
 public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferStack> {
@@ -66,7 +65,7 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 	
 	public VertexBuilder vertex(float x, float y, float z)
 	{
-		return new VertexBuilder(x, y, z);
+		return new VertexBuilder(program, x, y, z);
 	}
 	
 	public UniversalRenderer vertex(int index)
@@ -196,9 +195,9 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 	
 	public class VertexBuilder extends AbstractVertexBuilder<VertexBuilder, VertexResult> {
 		
-		public VertexBuilder(float x, float y, float z)
+		public VertexBuilder(ShaderProgram program, float x, float y, float z)
 		{
-			super(UniversalRenderer.this.program, x, y, z);
+			super(program, x, y, z);
 		}
 		
 		@Override
@@ -215,64 +214,6 @@ public class UniversalRenderer extends AbstractIndicesRenderer<FloatArrayBufferS
 				index += input.getType().getSize();
 			}
 			return new VertexResult(arrayBuffer.current(), inputs);
-		}
-	}
-	
-	public class VertexResult implements IVertexResult {
-		
-		private FloatArrayBuffer buffer;
-		private Map<ShaderInput, Integer> inputs;
-		
-		public VertexResult(FloatArrayBuffer buffer, Map<ShaderInput, Integer> inputs)
-		{
-			this.buffer = buffer;
-			this.inputs = inputs;
-		}
-		
-		@Override
-		public Tracker<int[]> track(ShaderInput input)
-		{
-			if (inputs.containsKey(input)) return new InputTracker(inputs.get(input), buffer, input.getType().getSize());
-			return Tracker.nullTracker();
-		}
-	}
-	
-	private class InputTracker implements Tracker<int[]> {
-		
-		private int index;
-		private FloatArrayBuffer buffer;
-		private int size;
-		private boolean valid;
-		
-		public InputTracker(int index, FloatArrayBuffer buffer, int size)
-		{
-			this.index = index;
-			this.buffer = buffer;
-			this.size = size;
-			valid = true;
-		}
-		
-		@Override
-		public void modify(int[] data)
-		{
-			if (valid)
-			{
-				int i = 0;
-				for (; i < data.length && i < size; i++) buffer.setFloat(i + index, Float.intBitsToFloat(data[i]));
-				for (; i < size; i++) buffer.setFloat(i + index, 0);
-			}
-		}
-		
-		@Override
-		public void remove()
-		{
-			if (valid) for (int i = index; i < size + index; i++) buffer.setFloat(i, 0);
-		}
-		
-		@Override
-		public boolean isValid()
-		{
-			return valid;
 		}
 	}
 	

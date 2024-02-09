@@ -10,45 +10,55 @@ import com.alcadrial.renderengine.render.window.OpenGlWindow;
 
 public abstract class AbstractWidget implements ClickableWidget, DrawableWidget {
 	
+	private static final byte EMPTY_STATE = 0x00;
+	private static final byte INITIALIZED_BIT = 0x01;
+	private static final byte RENDERED_BIT = 0x02;
+	private static final byte DRAWN_BIT = 0x04;
+	private static final byte HOVERED_BIT = 0x08;
+	private static final byte DRAGGING_BIT = 0x10;
+	
 	protected OpenGlWindow window;
 	protected Vector3i pos;
 	protected Vector2i size;
-	private boolean isDrawn;
-	private boolean isRendered;
-	private boolean isMouseHover;
+	private byte internalStates;
 	
 	public AbstractWidget(OpenGlWindow window, Vector3i pos, Vector2i size)
 	{
 		this.window = window;
 		this.pos = Vector3i.copyOf(pos);
 		this.size = Vector2i.copyOf(size);
-		isMouseHover = isHovered(window.getMousePos());
+		internalStates = EMPTY_STATE;
+		
+		setInternalStateBit(HOVERED_BIT, isHovered(window.getMousePos()));
+	}
+	
+	private void setInternalStateBit(byte bit, boolean value)
+	{
+		if (value) internalStates |= bit;
+		else internalStates &= ~bit;
+	}
+	
+	private boolean getInternalStateBit(byte bit)
+	{
+		return (internalStates & bit) != 0;
 	}
 	
 	@Override
-	@EmptyImplementation
 	public void initializeRendering(Matrix4f matrix, RenderingManager manager, float partialFrame)
 	{
-		
+		setInternalStateBit(INITIALIZED_BIT, true);
 	}
 	
 	@Override
 	public void render(Matrix4f matrix, RenderingManager manager, float partialFrame)
 	{
-		isRendered = true;
+		setInternalStateBit(RENDERED_BIT, true);
 	}
 	
 	@Override
 	public void draw(Matrix4f matrix, RenderingManager manager, float partialFrame)
 	{
-		isDrawn = true;
-	}
-	
-	@Override
-	public void clearRenderingData()
-	{
-		isDrawn = false;
-		isRendered = false;
+		setInternalStateBit(DRAWN_BIT, true);
 	}
 	
 	@Override
@@ -60,31 +70,49 @@ public abstract class AbstractWidget implements ClickableWidget, DrawableWidget 
 	@Override
 	public boolean isOnScreen()
 	{
-		return isDrawn;
+		return getInternalStateBit(DRAWN_BIT);
 	}
 	
 	@Override
-	public boolean isChanged()
+	public boolean isRendered()
 	{
-		return !isRendered;
+		return getInternalStateBit(RENDERED_BIT);
 	}
 	
 	@Override
-	public void requestRender()
+	public boolean isInitialized()
 	{
-		isRendered = false;
-	}
-	
-	@Override
-	public void requestDraw()
-	{
-		isDrawn = false;
+		return getInternalStateBit(INITIALIZED_BIT);
 	}
 	
 	@Override
 	public boolean isMouseHover()
 	{
-		return isMouseHover;
+		return getInternalStateBit(HOVERED_BIT);
+	}
+	
+	@Override
+	public boolean isDragging()
+	{
+		return getInternalStateBit(DRAGGING_BIT);
+	}
+	
+	@Override
+	public void requestRender()
+	{
+		setInternalStateBit(RENDERED_BIT, false);
+	}
+	
+	@Override
+	public void requestDraw()
+	{
+		setInternalStateBit(DRAWN_BIT, false);
+	}
+	
+	@Override
+	public void clearRenderingData()
+	{
+		setInternalStateBit(INITIALIZED_BIT, false);
 	}
 	
 	@Override
@@ -93,16 +121,23 @@ public abstract class AbstractWidget implements ClickableWidget, DrawableWidget 
 		return v.x() > pos.x() && v.x() < pos.x() + size.x() && v.y() > pos.y() && v.y() < pos.y() + size.y();
 	}
 	
-	@Override
-	public void onMouseEnter(Vector2i enterPos)
+	protected void onMouseEnter(Vector2i enterPos)
 	{
-		isMouseHover = true;
+		setInternalStateBit(HOVERED_BIT, true);
+	}
+	
+	protected void onMouseExit(Vector2i exitPos)
+	{
+		setInternalStateBit(HOVERED_BIT, false);
 	}
 	
 	@Override
-	public void onMouseExit(Vector2i exitPos)
+	public void onMouseMove(Vector2i oldPos, Vector2i newPos)
 	{
-		isMouseHover = false;
+		boolean wasOvered = isMouseHover();
+		boolean isPassedThrough = wasOvered ^ isHovered(newPos);
+		if (isPassedThrough && wasOvered) onMouseExit(newPos);
+		else if (isPassedThrough) onMouseEnter(newPos);
 	}
 	
 	@EmptyImplementation
@@ -211,17 +246,15 @@ public abstract class AbstractWidget implements ClickableWidget, DrawableWidget 
 	}
 	
 	@Override
-	@EmptyImplementation
 	public void onDragStart(Vector2i mousePos)
 	{
-		
+		setInternalStateBit(DRAGGING_BIT, true);
 	}
 	
 	@Override
-	@EmptyImplementation
 	public void onDragEnd(Vector2i mousePos)
 	{
-		
+		setInternalStateBit(DRAGGING_BIT, false);
 	}
 	
 	@Override

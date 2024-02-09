@@ -47,15 +47,42 @@ public class OpenGlWindow extends Window {
 	
 	public static final int MULTI_CLICK_INTERVAL = (Integer) Toolkit.getDefaultToolkit().getDesktopProperty("awt.multiClickInterval");
 	
-	private class MouseButtonState {
+	public class MouseButtonState {
 		
 		private long lastPressTimestamp;
-		private long lastReleaseTimestamp = 1;
+		private long lastReleaseTimestamp;
 		private boolean canClick;
 		private boolean canDrag;
-		private Vector2i lastMousePos = mousePos;
+		private Vector2i lastMousePos;
 		private boolean isDragging;
 		private int clickCount;
+		
+		public MouseButtonState()
+		{
+			lastPressTimestamp = 0;
+			lastReleaseTimestamp = 1;
+			lastMousePos = mousePos;
+		}
+		
+		public boolean isDragging()
+		{
+			return isDragging;
+		}
+		
+		public int getClickCount()
+		{
+			return clickCount;
+		}
+		
+		public long getLastPressTimestamp()
+		{
+			return lastPressTimestamp;
+		}
+		
+		public long getLastReleaseTimestamp()
+		{
+			return lastReleaseTimestamp;
+		}
 	}
 	
 	private boolean isCreated;
@@ -124,7 +151,7 @@ public class OpenGlWindow extends Window {
 		mouseDragEndCallbackList = new ArrayList<>(1);
 		mouseDragStartCallbackList = new ArrayList<>(1);
 		
-		callbacksList = new ArrayList<>(7);
+		callbacksList = new ArrayList<>(13);
 		callbacksList.add(cast(glfwCharCallbackList));
 		callbacksList.add(cast(glfwCursorPosCallbackList));
 		callbacksList.add(cast(glfwCursorEnterCallbackList));
@@ -142,6 +169,7 @@ public class OpenGlWindow extends Window {
 		
 		mouseButtonStates = new ArrayList<>(GLFW.GLFW_MOUSE_BUTTON_LAST + 1);
 		for (int i = 0; i <= GLFW.GLFW_MOUSE_BUTTON_LAST; i++) mouseButtonStates.add(new MouseButtonState());
+		mouseButtonStates = List.copyOf(mouseButtonStates);
 	}
 	
 	protected void charCallback(long id, int codepoint)
@@ -151,19 +179,10 @@ public class OpenGlWindow extends Window {
 	
 	protected void cursorPosCallback(long id, double x, double y)
 	{
+		Vector2i oldPos = mousePos;
 		mousePos = Vector2i.ofImmutable((int) x, getHeight() - (int) y);
 		for (GLFWCursorPosCallbackI callback : glfwCursorPosCallbackList) callback.invoke(id, x, y);
-		for (ClickableWidget widget : clickableWidgets)
-		{
-			if (widget.isMouseHover())
-			{
-				if (!widget.isHovered(mousePos)) widget.onMouseExit(mousePos);
-			}
-			else
-			{
-				if (widget.isHovered(mousePos)) widget.onMouseEnter(mousePos);
-			}
-		}
+		for (ClickableWidget widget : clickableWidgets) widget.onMouseMove(oldPos, mousePos);
 		
 		for (int i = 0; i < mouseButtonStates.size(); i++)
 		{
@@ -438,6 +457,12 @@ public class OpenGlWindow extends Window {
 	public final float getAspectRatio()
 	{
 		return aspectRatio;
+	}
+	
+	public MouseButtonState getMouseButtonState(int button)
+	{
+		if (button < 0 || button > GLFW.GLFW_MOUSE_BUTTON_LAST) throw new IllegalArgumentException("Unknown button " + button);
+		return mouseButtonStates.get(button);
 	}
 	
 	public final CursorInputMode getCursorInputMode()

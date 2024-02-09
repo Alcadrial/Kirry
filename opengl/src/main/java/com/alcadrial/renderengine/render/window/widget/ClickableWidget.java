@@ -4,6 +4,8 @@ import com.alcadrial.kector.vector.Vector2i;
 
 public interface ClickableWidget extends Widget {
 	
+	boolean isDragging();
+	
 	void onClick(int button, int count, Vector2i mousePos);
 	void onPress(int button, Vector2i mousePos);
 	void onRelease(int button, Vector2i mousePos);

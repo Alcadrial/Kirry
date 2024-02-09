@@ -9,7 +9,7 @@ import com.alcadrial.renderengine.render.renderingmanager.RenderingManager;
 public interface DrawableWidget extends Widget {
 	
 	/**
-	 * Use to create objects like {@link FrameBuffer}s and {@link VertexArray}s to use in the {@link #render(Matrix4f, RenderingManager, float)} method.
+	 * Use to create objects like {@link FrameBuffer}s and {@link VertexArray}s to use in the {@link #render(Matrix4f, RenderingManager, float) render} method.
 	 * 
 	 * @param matrix a custom matrix
 	 * @param manager
@@ -17,9 +17,9 @@ public interface DrawableWidget extends Widget {
 	 */
 	void initializeRendering(Matrix4f matrix, RenderingManager manager, float partialFrame);
 	/**
-	 * Draws textures and collects vertices to use in the {@link #draw(Matrix4f, RenderingManager, float)} method.
+	 * Draws textures and collects vertices to use in the {@link #draw(Matrix4f, RenderingManager, float) draw} method.
 	 * <p>
-	 * This method is called after the first call to {@link #initializeRendering(Matrix4f, RenderingManager, float)}.
+	 * This method is called after {@link #initializeRendering(Matrix4f, RenderingManager, float) initializeRendering}.
 	 * 
 	 * @param matrix a custom matrix
 	 * @param manager
@@ -30,9 +30,9 @@ public interface DrawableWidget extends Widget {
 	 * Draws the widget on the screen. If the widget is already drawn on the screen, the implementation may not draw anything or may draw only
 	 * the missing portion of the widget if any.
 	 * <p>
-	 * If the method {@link #requestDraw()} is called, is guaranteed to that this call will draw all the widget.
+	 * If the method {@link #requestDraw() requestDraw} is called, is guaranteed to that this call will draw the entire widget.
 	 * <p>
-	 * This method is called after the first call to {@link #render(Matrix4f, RenderingManager, float)}.
+	 * This method is called after {@link #render(Matrix4f, RenderingManager, float) render}.
 	 * 
 	 * @param matrix the tranformation matrix
 	 * @param manager
@@ -40,20 +40,20 @@ public interface DrawableWidget extends Widget {
 	 */
 	void draw(Matrix4f matrix, RenderingManager manager, float partialFrame);
 	/**
-	 * Closes any resource previously allocated in {@link #initializeRendering(Matrix4f, RenderingManager, float)}.
+	 * Closes any resource previously allocated in {@link #initializeRendering(Matrix4f, RenderingManager, float) initializeRendering}.
 	 * <p>
-	 * The invokation this method will allow another invokation of {@link #initializeRendering(Matrix4f, RenderingManager, float)}.
+	 * The invokation this method will allow another invokation of initializeRendering.
 	 */
 	void clearRenderingData();
 	
 	/**
-	 * Computes the rectangle of the screen that will be affected by a call to {@link #draw(Matrix4f, RenderingManager, float)} using the given matrix.
+	 * Computes the rectangle of the screen that will be affected by a call to {@link #draw(Matrix4f, RenderingManager, float) draw} using the given matrix.
 	 * <p>
 	 * The x and y components of the returned {@link Vector4i} are the position of the rectangle, the z and w components are the width and height of the rectangle.
 	 * 
 	 * @param matrix the tranformation matrix
 	 * @param partialFrame
-	 * @return the area affected by {@link #draw(Matrix4f, RenderingManager, float)} or null if not known
+	 * @return the area affected by {@link #draw(Matrix4f, RenderingManager, float) draw} or null if not known
 	 */
 	Vector4i drawingArea(Matrix4f matrix, float partialFrame);
 	/**
@@ -63,17 +63,24 @@ public interface DrawableWidget extends Widget {
 	 */
 	boolean isOnScreen();
 	/**
-	 * Returns true if this widget had his vertices modified and needs a new call to {@link #render(Matrix4f, RenderingManager, float)}.
+	 * Returns true if this widget has collected all the vertices after a 
+	 * {@link #render(Matrix4f, RenderingManager, float) render} and is ready to {@link #draw(Matrix4f, RenderingManager, float) draw}.
 	 * 
-	 * @return true if this widget needs to be re-rendered
+	 * @return true if this widget has been rendered
 	 */
-	boolean isChanged();
+	boolean isRendered();
 	/**
-	 * Marks this widget to not skip the next {@link #render(Matrix4f, RenderingManager, float)} call.
+	 * Returns true if this widget had created all the rendering objects necessary for {@link #render(Matrix4f, RenderingManager, float) render}.
+	 * 
+	 * @return true if this widget has been initialized for rendering
+	 */
+	boolean isInitialized();
+	/**
+	 * Marks this widget to not skip the next {@link #render(Matrix4f, RenderingManager, float) render}.
 	 */
 	void requestRender();
 	/**
-	 * Marks this widget to not skip the next {@link #draw(Matrix4f, RenderingManager, float)} call.
+	 * Marks this widget to not skip the next {@link #draw(Matrix4f, RenderingManager, float) draw}.
 	 */
 	void requestDraw();
 }

@@ -7,8 +7,8 @@ import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.render.renderer.VertexResult;
 import com.alcadrial.renderengine.render.renderer.universal.UniversalRenderer;
-import com.alcadrial.renderengine.render.renderer.universal.UniversalRenderer.VertexResult;
 import com.alcadrial.renderengine.render.shader.ShaderInput;
 
 @Test
