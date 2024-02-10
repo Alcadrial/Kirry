@@ -1,5 +1,7 @@
 package com.alcadrial.renderengine.render.buffer;
 
+import java.util.concurrent.Future;
+
 import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.renderengine.render.Device;
@@ -26,7 +28,7 @@ public class IndexBuffer extends VulkanDoubleBuffer {
 	
 	public IndexBuffer(int size)
 	{
-		this(RenderEngine.getVulkan().getDevice(), size * 4);
+		this(RenderEngine.getVulkan().getDevice(), size);
 	}
 	
 	public IndexBuffer(Device device, int size)
@@ -40,14 +42,14 @@ public class IndexBuffer extends VulkanDoubleBuffer {
 	}
 	
 	@Override
-	public void sendToPhysicalDevice()
+	public synchronized Future<?> sendToPhysicalDevice()
 	{
-		super.sendToPhysicalDevice(0, size);
+		return super.sendToPhysicalDevice(0, size);
 	}
 	
 	@Override
-	public synchronized void sendToPhysicalDevice(long offset, long size)
+	public synchronized Future<?> sendToPhysicalDevice(long offset, long size)
 	{
-		super.sendToPhysicalDevice(offset * 4, size * 4);
+		return super.sendToPhysicalDevice(offset * 4, size * 4);
 	}
 }

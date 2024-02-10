@@ -1,8 +1,12 @@
 package com.alcadrial.renderengine.render;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSurface;
@@ -13,7 +17,9 @@ import org.lwjgl.vulkan.VkPhysicalDeviceLimits;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
 
+import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
+import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
 /**
  * A physically connected device usable by vulkan that is necessary
@@ -36,6 +42,24 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	}
 	
 	private static final int[] BEST_MATCHER_MAP = new int[] {4, 2, 0, 1, 3};
+	private static final String[] PREFIXS;
+	private static final String[] PADDED_PREFIXS;
+	
+	static
+	{
+		PREFIXS = new String[16];
+		PADDED_PREFIXS = new String[16];
+		for (int i = 0; i < 16; i++)
+		{
+			String s = "";
+			if ((i & VK10.VK_QUEUE_SPARSE_BINDING_BIT) != 0) s += "S";
+			if ((i & VK10.VK_QUEUE_TRANSFER_BIT) != 0) s += "T";
+			if ((i & VK10.VK_QUEUE_COMPUTE_BIT) != 0) s += "C";
+			if ((i & VK10.VK_QUEUE_GRAPHICS_BIT) != 0) s += "G";
+			PREFIXS[i] = s;
+			PADDED_PREFIXS[i] = s + " ".repeat(4 - s.length());
+		}
+	}
 	
 	/**
 	 * BestMatcher for {@link Vulkan#pickPhysicalDevices(Comparator)} that use the device type
@@ -51,7 +75,7 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	 *     </tbody>
 	 * </table>
 	 * 
-	 * @return a Compara 
+	 * @return a Comparator
 	 */
 	public static Comparator<PhysicalDevice> typeBestMatcher()
 	{
@@ -62,9 +86,19 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 		});
 	}
 	
+	public static String queueFlagsToString(int flag)
+	{
+		return PREFIXS[Objects.checkIndex(flag, PREFIXS.length)];
+	}
+	
+	public static String queueFlagsToPaddedString(int flag)
+	{
+		return PADDED_PREFIXS[Objects.checkIndex(flag, PREFIXS.length)];
+	}
+	
 	private VkPhysicalDeviceProperties properties;
 	private VkPhysicalDeviceFeatures features;
-	private QueueFamilies queueFamilies;
+	private List<LinkedList<QueueFamily>> queues;
 	
 	public PhysicalDevice(VkPhysicalDevice vk)
 	{
@@ -76,7 +110,24 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 			features = VkPhysicalDeviceFeatures.create();
 			VK10.vkGetPhysicalDeviceFeatures(vk, features);
 		}
-		queueFamilies = new QueueFamilies();
+		queues = new ArrayList<>(16);
+		for (int i = 0; i < 16; i++) queues.add(new LinkedList<>());
+		searchFamilies();
+	}
+	
+	private void searchFamilies()
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			for (LinkedList<QueueFamily> l : queues) l.clear();
+			
+			int[] p0 = new int[1];
+			VK10.vkGetPhysicalDeviceQueueFamilyProperties(vk, p0, null);
+			VkQueueFamilyProperties.Buffer buffer = VkQueueFamilyProperties.malloc(p0[0], stack);
+			VK10.vkGetPhysicalDeviceQueueFamilyProperties(vk, p0, buffer);
+			
+			for (int i = 0; i < buffer.capacity(); i++) queues.get(buffer.get(i).queueFlags()).add(new QueueFamily(buffer.get(i), i));
+		}
 	}
 	
 	public VkPhysicalDeviceProperties getProperties()
@@ -94,219 +145,125 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 		return properties.limits();
 	}
 	
-	public void searchQueueGraphicsFamilyProperties()
+	public QueueFamily getGraphicsQueueFamily()
 	{
-		try (MemoryStack stack = MemoryStack.stackPush())
+		return getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT, null, null);
+	}
+	
+	@Nullable
+	public QueueFamily getGraphicsQueueFamily(@Nullable Surface surface)
+	{
+		return getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT, surface, null);
+	}
+	
+	@Nullable
+	public QueueFamily getQueueFamily(int flags)
+	{
+		return getQueueFamily(flags, null, null);
+	}
+	
+	@Nullable
+	public QueueFamily getQueueFamily(int flags, @Nullable Surface surface)
+	{
+		return getQueueFamily(flags, surface, null);
+	}
+	
+	@Nullable
+	public QueueFamily getQueueFamily(int flags, @Nullable Comparator<QueueFamily> preference)
+	{
+		return getQueueFamily(flags, null, preference);
+	}
+	
+	@Nullable
+	public QueueFamily getQueueFamily(int flags, @Nullable Surface surface, @Nullable Comparator<QueueFamily> preference)
+	{
+		VulkanErrorUtils.assertStatement(flags < 16, "Unsupported flag: " + flags);
+		
+		int minimalIndex = (~flags) & 0xF;
+		Integer[] steps = new Integer[minimalIndex + 1];
+		extractValidFlags(minimalIndex, 8, steps);
+		List<List<QueueFamily>> families = new ArrayList<>(steps.length);
+		for (Integer i : steps) if (i != null) families.add(queues.get(i + flags));
+		if (families.size() == 0) return null;
+		
+		QueueFamily bestFamily = null;
+		Iterator<List<QueueFamily>> i = families.iterator();
+		List<QueueFamily> l = null;
+		if (surface != null)
 		{
-			QueueFamily family = queueFamilies.graphics.family;
-			if (family.getProperties() != null)
-			{
-				family.setProperties(null);
-				queueFamilies.families--;
-			}
-			
-			int[] p0 = new int[1];
-			VK10.vkGetPhysicalDeviceQueueFamilyProperties(vk, p0, null);
-			VkQueueFamilyProperties.Buffer queueFamiliesArray = VkQueueFamilyProperties.malloc(p0[0], stack);
-			VK10.vkGetPhysicalDeviceQueueFamilyProperties(vk, p0, queueFamiliesArray);
-			
-			for (int i = 0; i < queueFamiliesArray.capacity(); i++)
-			{
-				if ((queueFamiliesArray.queueFlags() & VK10.VK_QUEUE_GRAPHICS_BIT) != 0)
-				{
-					family.setProperties(queueFamiliesArray.get(i));
-					family.setIndex(i);
-					queueFamilies.families++;
-					break;
-				}
-			}
-			queueFamilies.buildSet();
-		}
-	}
-	
-	public VkQueueFamilyProperties getQueueGraphicsFamilyProperties()
-	{
-		if (queueFamilies.graphics.family.getProperties() == null) searchQueueGraphicsFamilyProperties();
-		return queueFamilies.graphics.family.getProperties();
-	}
-	
-	public int getQueueGraphicsFamilyIndex()
-	{
-		if (queueFamilies.graphics.family.getProperties() == null) searchQueueGraphicsFamilyProperties();
-		return queueFamilies.graphics.family.getIndex();
-	}
-	
-	public void searchQueueSurfaceFamilyProperties(long surface)
-	{
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			QueueFamily family = queueFamilies.surface.family;
-			if (family.getProperties() != null)
-			{
-				family.setProperties(null);
-				queueFamilies.families--;
-			}
-			
 			int[] p = new int[1];
-			VK10.vkGetPhysicalDeviceQueueFamilyProperties(vk, p, null);
-			VkQueueFamilyProperties.Buffer queueFamiliesArray = VkQueueFamilyProperties.malloc(p[0], stack);
-			VK10.vkGetPhysicalDeviceQueueFamilyProperties(vk, p, queueFamiliesArray);
-			
-			for (int i = 0; i < queueFamiliesArray.capacity(); i++)
+			out:
+			while (i.hasNext())
 			{
-				KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(vk, i, surface, p);
-				
-				if (p[0] == VK10.VK_TRUE)
+				l = i.next();
+				for (QueueFamily family : l)
 				{
-					family.setProperties(queueFamiliesArray.get(i));
-					family.setIndex(i);
-					queueFamilies.families++;
-					break;
+					KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(vk, family.getIndex(), surface.getSurface(), p);
+					if (p[0] == VK10.VK_TRUE)
+					{
+						bestFamily = l.get(0);
+						break out;
+					}
 				}
 			}
-			queueFamilies.buildSet();
 		}
+		else
+		{
+			out:
+			while (i.hasNext())
+			{
+				l = i.next();
+				if (l.size() > 0)
+				{
+					bestFamily = l.get(0);
+					break out;
+				}
+			}
+		}
+		if (preference == null) return bestFamily;
+		
+		if (surface != null)
+		{
+			int[] p = new int[1];
+			while (i.hasNext())
+			{
+				l = i.next();
+				for (QueueFamily family : l)
+				{
+					KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(vk, family.getIndex(), surface.getSurface(), p);
+					if (p[0] == VK10.VK_TRUE && preference.compare(family, bestFamily) > 0) bestFamily = family;
+				}
+			}
+		}
+		else
+		{
+			while (i.hasNext())
+			{
+				l = i.next();
+				for (QueueFamily family : l) if (preference.compare(family, bestFamily) > 0) bestFamily = family;
+			}
+		}
+		return bestFamily;
 	}
 	
-	public VkQueueFamilyProperties getQueueSurfaceFamilyProperties()
+	private void extractValidFlags(int flags, int index, Integer[] destination)
 	{
-		return queueFamilies.surface.family.getProperties();
-	}
-	
-	public int getQueueSurfaceFamilyIndex()
-	{
-		return queueFamilies.surface.family.getIndex();
-	}
-	
-	public Iterable<QueueFamily> iterateFamilies()
-	{
-		return queueFamilies.iterateFamilies();
-	}
-	
-	public int families()
-	{
-		return queueFamilies.families;
-	}
-	
-	public Iterable<Integer> iterateIndices()
-	{
-		return queueFamilies.iterateIndices();
+		destination[flags] = flags;
+		while (index > 0)
+		{
+			if ((flags & index) != 0) extractValidFlags(flags ^ index, index >>= 1, destination);
+			else index >>= 1;
+		}
 	}
 	
 	public int indices()
 	{
-		return queueFamilies.indices;
+		return queues.stream().collect(Collectors.summingInt(List::size));
 	}
 	
 	@Override
 	public void close()
 	{
 		properties.close();
-	}
-	
-	private class QueueFamilies {
-		
-		private FamilyNode graphics;
-		private FamilyNode surface;
-		public int families;
-		
-		private IndexNode indicesHead;
-		public int indices;
-		
-		public QueueFamilies()
-		{
-			surface = new FamilyNode(new QueueFamily(), null);
-			graphics = new FamilyNode(new QueueFamily(), surface);
-		}
-		
-		private void buildSet()
-		{
-			indicesHead = null;
-			queueFamilies.indices = 0;
-			family:
-			for (QueueFamily family : iterateFamilies()) if (family.getProperties() != null)
-			{
-				for (Integer index : iterateIndices()) if (family.getIndex() == index) continue family;
-				
-				if (indicesHead == null)
-				{
-					indicesHead = new IndexNode(family.getIndex());
-					queueFamilies.indices++;
-					continue;
-				}
-				IndexNode node = indicesHead;
-				while (node.next != null) node = node.next;
-				node.next = new IndexNode(family.getIndex());
-				queueFamilies.indices++;
-			}
-		}
-		
-		public Iterable<QueueFamily> iterateFamilies()
-		{
-			return () -> new Iterator<>() {
-				
-				private FamilyNode current = graphics;
-				
-				@Override
-				public boolean hasNext()
-				{
-					return current != null;
-				}
-				
-				@Override
-				public QueueFamily next()
-				{
-					QueueFamily family = current.family;
-					current = current.next;
-					return family;
-				}
-			};
-		}
-		
-		public Iterable<Integer> iterateIndices()
-		{
-			return () -> new Iterator<>() {
-				
-				private IndexNode current = indicesHead;
-				
-				@Override
-				public boolean hasNext()
-				{
-					return current != null;
-				}
-				
-				@Override
-				public Integer next()
-				{
-					Integer family = current.index;
-					current = current.next;
-					return family;
-				}
-			};
-		}
-		
-		public class FamilyNode {
-			
-			private QueueFamily family;
-			private FamilyNode next;
-			
-			public FamilyNode(QueueFamily family, FamilyNode next)
-			{
-				this.family = family;
-				this.next = next;
-			}
-		}
-		
-		public class IndexNode {
-			
-			private Integer index;
-			private IndexNode next;
-			
-			public IndexNode(Integer index)
-			{
-				this.index = index;
-				next = null;
-			}
-		}
 	}
 }

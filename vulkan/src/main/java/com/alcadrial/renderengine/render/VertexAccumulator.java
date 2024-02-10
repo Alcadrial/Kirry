@@ -6,7 +6,7 @@ import java.util.Map;
 
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
-import com.alcadrial.renderengine.render.shader.ShaderInput;
+import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.util.Tracker;
 
 public class VertexAccumulator {
@@ -55,8 +55,8 @@ public class VertexAccumulator {
 			vertexBuffer.asFloatBuffer().put(vertexIndex, data);
 			bufferIndex += data.length;
 			map.clear();
-			Map<ShaderInput, Integer> inputs = new HashMap<>();
-			for (ShaderInput input : graphicsPipeline.getInputs())
+			Map<ShaderVariable, Integer> inputs = new HashMap<>();
+			for (ShaderVariable input : graphicsPipeline.getInputs())
 			{
 				inputs.put(input, vertexIndex);
 				vertexIndex += input.getType().getSize();
@@ -80,10 +80,10 @@ public class VertexAccumulator {
 	public class VertexResult implements IVertexResult {
 		
 		private VertexBuffer vertexBuffer;
-		private Map<ShaderInput, Integer> inputs;
+		private Map<ShaderVariable, Integer> inputs;
 		private int index;
 		
-		public VertexResult(VertexBuffer vertexBuffer, Map<ShaderInput, Integer> inputs, int index)
+		public VertexResult(VertexBuffer vertexBuffer, Map<ShaderVariable, Integer> inputs, int index)
 		{
 			this.vertexBuffer = vertexBuffer;
 			this.inputs = inputs;
@@ -91,7 +91,7 @@ public class VertexAccumulator {
 		}
 		
 		@Override
-		public Tracker<int[]> track(ShaderInput input)
+		public Tracker<int[]> track(ShaderVariable input)
 		{
 			return new InputTracker(inputs.get(input), vertexBuffer, input.getType().getSize());
 		}

@@ -1,6 +1,7 @@
 plugins {
     id("java")
     id("java-library")
+    id("application")
     id("maven-publish")
     id("eclipse")
 }
@@ -32,10 +33,58 @@ dependencies {
 	if (lwjglNatives == "natives-macos" || lwjglNatives == "natives-macos-arm64") runtimeOnly("org.lwjgl:lwjgl-vulkan::${lwjglNatives}")
 }
 
+task applicationZip(type: Zip) {
+	archiveClassifier = "application"
+    duplicatesStrategy = "include"
+    
+	from(jar)
+	mkdir("${buildDir}/resources/zip/lib")
+	mkdir("${buildDir}/resources/zip/resources")
+	copy {
+		from(configurations.runtimeClasspath)
+		into("${buildDir}/resources/zip/lib")
+	}
+	copy {
+		from("src/main/resources")
+		into("${buildDir}/resources/zip/resources")
+	}
+	from("${buildDir}/resources/zip")
+	
+	doLast {
+		delete("${buildDir}/resources/zip")
+	}
+}
+
+ext.applicationAttributes = { distributionName, mainClass, libsDirectory ->
+	return [
+			"Specification-Title"		: "${name} ${distributionName}",
+			"Specification-Version"		: version,
+			"Specification-Vendor"		: author,
+			"Implementation-Title"		: "${name} ${distributionName}",
+			"Implementation-Version"	: version,
+			"Implementation-Vendor"		: author,
+			"Implementation-Timestamp"	: new Date().format("dd/MM/yyyy HH:mm:ss"),
+			"Main-Class"				: "${mainClass}",
+			"Class-Path"				: "${fileTree(libsDirectory).filter{ it.isFile() }.files.name.toString().replace('[', 'lib/').replace(', ', ' lib/').replace(']', '')}"
+	]
+}
+	
+tasks.jar {
+	def libBuildDir = mkdir("${buildDir}/resources/jar/lib")
+	copy {
+		from(configurations.runtimeClasspath)
+		into(libBuildDir)
+	}
+	manifest.attributes(applicationAttributes("app", "com.alcadrial.renderengine.render.test.DepthBufferTest", libBuildDir))
+	delete(libBuildDir)
+	dependsOn(":core:jar")
+}
+
 publishing {
     publications {
         mavenJava(MavenPublication) {
             artifact jar
+            artifact applicationZip
             artifact sourcesJar
             artifact javadocJar
         }

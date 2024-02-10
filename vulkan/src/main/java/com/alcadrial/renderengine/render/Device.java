@@ -1,8 +1,10 @@
 package com.alcadrial.renderengine.render;
 
 import java.nio.LongBuffer;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
@@ -19,6 +21,7 @@ import org.lwjgl.vulkan.VkBufferCreateInfo;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandPoolCreateInfo;
 import org.lwjgl.vulkan.VkDevice;
+import org.lwjgl.vulkan.VkFenceCreateInfo;
 import org.lwjgl.vulkan.VkMemoryRequirements;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 
@@ -40,8 +43,8 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	private PhysicalDevice physicalDevice;
 	private Queue graphicsQueue;
 	private Queue presentQueue;
-	private long resetCommandPool;
-	private long shortLivedCommandPool;
+	private CommandPool resetCommandPool;
+	private CommandPool shortLivedCommandPool;
 	private long vmaAllocator;
 	
 	public Device(VkDevice device, PhysicalDevice physicalDevice)
@@ -56,15 +59,15 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			
 			VkCommandPoolCreateInfo poolInfo = VkCommandPoolCreateInfo.calloc(stack);
 			poolInfo.sType(VK10.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO);
-			poolInfo.queueFamilyIndex(physicalDevice.getQueueGraphicsFamilyIndex());
+			poolInfo.queueFamilyIndex(physicalDevice.getGraphicsQueueFamily().getIndex());
 			poolInfo.flags(VK10.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 			
 			VulkanErrorUtils.assertNoError(VK10.vkCreateCommandPool(device, poolInfo, null, p), "Failed to create reset command pool");
-			resetCommandPool = p[0];
+			resetCommandPool = new CommandPool(this, p[0]);
 			
 			poolInfo.flags(VK10.VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
 			VulkanErrorUtils.assertNoError(VK10.vkCreateCommandPool(device, poolInfo, null, p), "Failed to create short lived command pool");
-			shortLivedCommandPool = p[0];
+			shortLivedCommandPool = new CommandPool(this, p[0]);
 		}
 	}
 	
@@ -165,18 +168,16 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	/**
 	 * 
 	 * @param fences
-	 * @renderengine.vulkan 1.2
 	 */
 	public synchronized void waitForFences(long... fences)
 	{
-		while (VK12.vkWaitForFences(vk, fences, true, 0xFFFFFFFF) == VK10.VK_TIMEOUT);
+		while (VK10.vkWaitForFences(vk, fences, true, 0xFFFFFFFF) == VK10.VK_TIMEOUT);
 	}
 	
 	/**
 	 * 
 	 * @param action
 	 * @param fences
-	 * @renderengine.vulkan 1.2
 	 */
 	public synchronized Future<?> waitAsyncForFences(Runnable action, long... fences)
 	{
@@ -190,7 +191,6 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	 * 
 	 * @param action
 	 * @param fences
-	 * @renderengine.vulkan 1.2
 	 */
 	public synchronized Future<?> waitAsyncForFences(Consumer<Device> action, long... fences)
 	{
@@ -227,33 +227,83 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		presentQueue = queue;
 	}
 	
-	public long getResetCommandPool()
+	public void useResetCommandPool(Consumer<Long> action)
 	{
-		return resetCommandPool;
+		synchronized (resetCommandPool)
+		{
+			action.accept(resetCommandPool.getVk());
+		}
 	}
 	
-	public long getShortLivedCommandPool()
+	public void useShortLivedCommandPool(Consumer<Long> action)
 	{
-		return shortLivedCommandPool;
+		synchronized (shortLivedCommandPool)
+		{
+			action.accept(shortLivedCommandPool.getVk());
+		}
+	}
+	
+	public VkCommandBuffer createMultiUseCommandBuffer(MemoryStack stack)
+	{
+		return createMultiUseCommandBuffer(stack, 1).get(0);
+	}
+	
+	public List<VkCommandBuffer> createMultiUseCommandBuffer(MemoryStack stack, int count)
+	{
+		PointerBuffer p = stack.callocPointer(count);
+		useResetCommandPool(pool -> VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, pool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, count), p), "Failed to create multi use command buffer"));
+		List<VkCommandBuffer> commandBuffers = new ArrayList<>(count);
+		
+		for (int i = 0; i < count; i++)
+		{
+			commandBuffers.add(new VkCommandBuffer(p.get(), vk));
+			VulkanErrorUtils.assertNoError(VK10.vkBeginCommandBuffer(commandBuffers.get(i), VulkanUtils.commandBufferBeginInfo(stack, 0)), "Failed to create multi use command buffer");
+		}
+		return commandBuffers;
 	}
 	
 	public VkCommandBuffer createSingleUseCommandBuffer(MemoryStack stack)
 	{
 		PointerBuffer p = stack.callocPointer(1);
-		VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, shortLivedCommandPool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to create single use command buffer");
+		useShortLivedCommandPool(pool -> VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, pool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to create single use command buffer"));
 		VkCommandBuffer commandBuffer = new VkCommandBuffer(p.get(), vk);
 		VulkanErrorUtils.assertNoError(VK10.vkBeginCommandBuffer(commandBuffer, VulkanUtils.commandBufferBeginInfo(stack, VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)), "Failed to create single use command buffer");
 		return commandBuffer;
 	}
 	
-	public void submitSingleUseCommandBuffer(MemoryStack stack, VkCommandBuffer commandBuffer)
+	public Future<?> submitSingleUseCommandBuffer(MemoryStack stack, VkCommandBuffer commandBuffer)
+	{
+		return submitSingleUseCommandBuffer(stack, commandBuffer, graphicsQueue);
+	}
+	
+	public Future<?> submitSingleUseCommandBuffer(MemoryStack stack, VkCommandBuffer commandBuffer, Queue queue)
 	{
 		VulkanErrorUtils.assertStatement(commandBuffer.getDevice() == vk, "Cannot submit a command buffer of another device");
 		VulkanErrorUtils.assertNoError(VK10.vkEndCommandBuffer(commandBuffer), "Failed to submit command buffer");
-		VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(graphicsQueue.getVk(), VulkanUtils.submitInfo(stack, commandBuffer), 0), "Failed to submit command buffer");
-		VulkanErrorUtils.assertNoError(VK10.vkQueueWaitIdle(graphicsQueue.getVk()), "Failed to submit command buffer");
-		
-		VK10.vkFreeCommandBuffers(vk, shortLivedCommandPool, commandBuffer);
+		long fence = createFence(stack, false);
+		queue.submit(VulkanUtils.submitInfo(stack, commandBuffer), fence);
+		return RenderEngine.getExecutor().submit(() -> {
+			waitForFences(fence);
+			useShortLivedCommandPool(pool -> VK10.vkFreeCommandBuffers(vk, pool, commandBuffer));
+			destroyFence(fence);
+		});
+	}
+	
+	public long createFence(MemoryStack stack, boolean signaled)
+	{
+		long[] p = new long[1];
+		VulkanErrorUtils.assertNoError(VK10.vkCreateFence(vk, VkFenceCreateInfo.calloc(stack).set(VK10.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, 0, signaled ? VK10.VK_FENCE_CREATE_SIGNALED_BIT : 0), null, p), "Failed to create fence");
+		return p[0];
+	}
+	
+	public void resetFence(long... fence)
+	{
+		VulkanErrorUtils.assertNoError(VK10.vkResetFences(vk, fence), "Failed to reset fences");
+	}
+	
+	public void destroyFence(long fence)
+	{
+		VK10.vkDestroyFence(vk, fence, null);
 	}
 	
 	public long createBuffer(MemoryStack stack, long size, int usage)
@@ -323,8 +373,6 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	{
 		waitIdle();
 		while (destructionList.peek() != null) destructionList.poll().close();
-		VK10.vkDestroyCommandPool(vk, resetCommandPool, null);
-		VK10.vkDestroyCommandPool(vk, shortLivedCommandPool, null);
 		VK10.vkDestroyDevice(vk, null);
 	}
 }
