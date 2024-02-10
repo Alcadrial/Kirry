@@ -31,7 +31,6 @@ import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
-import com.alcadrial.renderengine.render.Renderer.DrawResult;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
@@ -43,6 +42,8 @@ import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.Version;
+import com.alcadrial.renderengine.render.window.Presenter;
+import com.alcadrial.renderengine.render.window.Presenter.Result;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
@@ -69,6 +70,7 @@ public class TextureTest extends RenderTest {
 		println("End", TextureTest::end, TestProperties.PRINT_LOADING_TIMES);
 	}
 	
+	private static Presenter presenter;
 	private static Renderer renderer;
 	private static Texture texture;
 	private static VertexBuffer vertexBuffer;
@@ -92,7 +94,6 @@ public class TextureTest extends RenderTest {
 		Device device = vulkan.getDevice();
 		
 		VulkanWindow window = vulkan.getWindow();
-		window.assignDevice(device);
 		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
 			System.out.println(iconified ? "Iconified" : "Restored");
@@ -190,12 +191,15 @@ public class TextureTest extends RenderTest {
 			RenderEngine.terminate();
 			return;
 		}
+		
+		presenter = new Presenter(device, window.getSurface(), null, 3);
+		
 		Builder builder = Renderer.create();
 		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.uniformBuffer(new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
-		renderer = builder.build(window, device);
+		renderer = builder.build(window, device, presenter.getRenderPass(), 3);
 		
 		vertexBuffer = new VertexBuffer(28 * 4);
 		indexBuffer = new IndexBuffer(6 * 4);
@@ -224,7 +228,7 @@ public class TextureTest extends RenderTest {
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		
-		renderer.setClearColor(Color.of(0, 0, 0, 0));
+		presenter.setClearColor(Color.of(0, 0, 0, 0));
 		isModified = true;
 		isModifiedMatrix = true;
 		
@@ -285,7 +289,12 @@ public class TextureTest extends RenderTest {
 		if (isModified)
 		{
 			isModified = false;
-			while (renderer.draw() == DrawResult.FAILED);
+			while (presenter.present((commandBuffer, frameIndex) -> {
+				presenter.beginRenderPass(commandBuffer);
+				renderer.setUniformBufferIndex(frameIndex);
+				renderer.draw(commandBuffer);
+				commandBuffer.endRenderPass();
+			}, () -> {}) == Result.RECREATED_SWAPCHAIN);
 			window.update();
 		}
 		window.pollEvents();
@@ -294,6 +303,7 @@ public class TextureTest extends RenderTest {
 	public static void end()
 	{
 		renderer.close();
+		presenter.close();
 		RenderEngine.getVulkan().getWindow().hide();
 		synchronized (MONITOR)
 		{

@@ -30,7 +30,6 @@ import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
-import com.alcadrial.renderengine.render.Renderer.DrawResult;
 import com.alcadrial.renderengine.render.VertexAccumulator.VertexResult;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
@@ -42,6 +41,8 @@ import com.alcadrial.renderengine.render.test.RendererUtils.OrthoCubeVertexResul
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.Version;
+import com.alcadrial.renderengine.render.window.Presenter;
+import com.alcadrial.renderengine.render.window.Presenter.Result;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class InstancingTest extends RenderTest {
@@ -70,6 +71,7 @@ public class InstancingTest extends RenderTest {
 		println("End", InstancingTest::end, TestProperties.PRINT_LOADING_TIMES);
 	}
 	
+	private static Presenter presenter;
 	private static Renderer renderer;
 	private static VertexBuffer vertexBuffer;
 	private static VertexBuffer vertexBuffer0;
@@ -123,7 +125,6 @@ public class InstancingTest extends RenderTest {
 		
 		VulkanWindow window = vulkan.getWindow();
 		Device device = vulkan.getDevice();
-		window.assignDevice(device);
 		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
 			System.out.println(iconified ? "Iconified" : "Restored");
@@ -198,6 +199,8 @@ public class InstancingTest extends RenderTest {
 		depthTexture = Texture.create2dTexture(device, window.getWidth(), window.getHeight(), VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
 		depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 		
+		presenter = new Presenter(device, window.getSurface(), depthTexture, 3);
+		
 		Builder builder = Renderer.create();
 		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
 		builder.depthTexture(depthTexture);
@@ -205,7 +208,7 @@ public class InstancingTest extends RenderTest {
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.uniformBuffer(new VulkanBuffer(device, Math.max(256 * 2, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
-		renderer = builder.build(window, device, InstancingCustomGraphicsPipeline::new);
+		renderer = builder.build(window, device, presenter.getRenderPass(), 3, InstancingCustomGraphicsPipeline::new);
 		
 		lightPos = Vector3f.of(5, 20, 0);
 		f = 0;
@@ -216,7 +219,7 @@ public class InstancingTest extends RenderTest {
 		
 		vertexBuffer = new VertexBuffer(240);
 		vertexBuffer0 = new VertexBuffer(instanceCount * 3);
-		indexBuffer = new IndexBuffer(24);
+		indexBuffer = new IndexBuffer(36);
 		renderer.addVertexBuffer(0, vertexBuffer);
 		renderer.addVertexBuffer(1, vertexBuffer0);
 		renderer.setIndexBuffer(indexBuffer);
@@ -262,7 +265,7 @@ public class InstancingTest extends RenderTest {
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		
-		renderer.setClearColor(Color.of(0, 0, 0, 0));
+		presenter.setClearColor(Color.of(0, 0, 0, 0));
 		
 		int maxfps = TestProperties.MAX_FRAME_RATE.getValue();
 		long firstHighMilestone = 1000000000;
@@ -302,13 +305,14 @@ public class InstancingTest extends RenderTest {
 				highMilestone += (enlapsed - highMilestone + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
 			}
 			println("Frame " + frame, () -> {
-				DrawResult result;
-				do
-				{
-					window.pollEvents();
-					result = renderer.draw(instanceCount);
-					window.update();
-				} while (result == DrawResult.FAILED);
+				window.pollEvents();
+				while (presenter.present((commandBuffer, frameIndex) -> {
+					presenter.beginRenderPass(commandBuffer);
+					renderer.setUniformBufferIndex(frameIndex);
+					renderer.draw(commandBuffer, instanceCount);
+					commandBuffer.endRenderPass();
+				}, () -> {}) == Result.RECREATED_SWAPCHAIN);
+				window.update();
 				renderer.updateUniformBuffers((b, l) -> l.set(MODEL, b, buildModelMatrix()));
 				f += (firstMilestone - pauseTime) / 1000000D;
 			}, TestProperties.PRINT_FRAME_TIMES);
@@ -319,6 +323,7 @@ public class InstancingTest extends RenderTest {
 	public static void end()
 	{
 		renderer.close();
+		presenter.close();
 		RenderEngine.getVulkan().getWindow().hide();
 		synchronized (MONITOR)
 		{

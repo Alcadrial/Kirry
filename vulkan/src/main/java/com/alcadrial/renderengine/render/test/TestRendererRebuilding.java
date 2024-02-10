@@ -38,11 +38,14 @@ import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.Version;
+import com.alcadrial.renderengine.render.window.Presenter;
+import com.alcadrial.renderengine.render.window.Presenter.Result;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
 public class TestRendererRebuilding extends RenderTest {
 	
+	private static Object WARNING;
 	private static final String SHADER = "shader";
 	
 	public static void main(String[] args)
@@ -93,6 +96,7 @@ public class TestRendererRebuilding extends RenderTest {
 		}).start();
 	}
 	
+	private static Presenter presenter;
 	private static Renderer renderer;
 	private static VertexBuffer vertexBuffer;
 	private static IndexBuffer indexBuffer;
@@ -116,7 +120,6 @@ public class TestRendererRebuilding extends RenderTest {
 		vulkan.createDevice(deviceFeatures);
 		
 		Device device = vulkan.getDevice();
-		window.assignDevice(device);
 		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
 			System.out.println(iconified ? "Iconified" : "Restored");
@@ -174,13 +177,16 @@ public class TestRendererRebuilding extends RenderTest {
 			RenderEngine.terminate();
 			return;
 		}
+		
+		presenter = new Presenter(device, window.getSurface(), null, 3);
+		
 		Builder builder = Renderer.create();
 		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
 		builder.lineWidth(2F);
 		builder.uniformBuffer(new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
-		renderer = builder.build(window, device);
+		renderer = builder.build(window, device, presenter.getRenderPass(), 3);
 		
 		vertexBuffer = new VertexBuffer(device, 70);
 		indexBuffer = new IndexBuffer(device, 24);
@@ -227,7 +233,7 @@ public class TestRendererRebuilding extends RenderTest {
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		
-		renderer.setClearColor(Color.of(0, 0, 0, 0));
+		presenter.setClearColor(Color.of(0, 0, 0, 0));
 		
 		int maxfps = 120;
 		long firstHighMilestone = 1000000000;
@@ -295,7 +301,12 @@ public class TestRendererRebuilding extends RenderTest {
 				renderer.startModificationPlan().submit();
 			}
 			window.pollEvents();
-			renderer.draw();
+			while (presenter.present((commandBuffer, frameIndex) -> {
+				presenter.beginRenderPass(commandBuffer);
+				renderer.setUniformBufferIndex(frameIndex);
+				renderer.draw(commandBuffer);
+				commandBuffer.endRenderPass();
+			}, () -> {}) == Result.RECREATED_SWAPCHAIN);
 			window.update();
 			frame++;
 		}
@@ -304,6 +315,7 @@ public class TestRendererRebuilding extends RenderTest {
 	public static void end()
 	{
 		renderer.close();
+		presenter.close();
 		RenderEngine.getVulkan().getWindow().hide();
 		synchronized (MONITOR)
 		{

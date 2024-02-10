@@ -91,7 +91,7 @@ public class ComputeTest extends RenderTest {
 	}
 	
 	private static final int DIM = 8;
-	private static final int PARTICLE_COUNT = DIM * DIM * DIM;
+	private static final int PARTICLE_COUNT = 2 * DIM * DIM * DIM;
 	private static final Vector3f MIN_BOUND_VALUE = Vector3f.of(-2, -2, -2);
 	private static final Vector3f MAX_BOUND_VALUE = Vector3f.of(2, 2, 2);
 	
@@ -145,7 +145,7 @@ public class ComputeTest extends RenderTest {
 		
 		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
-		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, false);
+		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
 		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
 		VulkanWindow window = vulkan.getWindow();
@@ -198,7 +198,6 @@ public class ComputeTest extends RenderTest {
 			
 			if (isCameraUnlocked)
 			{
-				
 				Vector3f v = switch (k)
 				{
 					case GLFW.GLFW_KEY_W -> NORTH;
@@ -477,11 +476,11 @@ public class ComputeTest extends RenderTest {
 		Random random = new Random();
 		
 		FloatBuffer cursor = vertexBuffer0.asFloatBuffer();
-		for (float i = 0; i < DIM; i++)
+		for (float i = -DIM; i < DIM; i++)
 		{
-			for (float j = 0; j < DIM; j++)
+			for (float j = -DIM; j < DIM; j++)
 			{
-				for (float k = 0; k < DIM; k++)
+				for (float k = -DIM; k < DIM; k++)
 				{
 					Color c = colors[random.nextInt(colors.length)];
 					cursor.put(i / 10).put(j / 10).put(k / 10).put(0F);
@@ -616,15 +615,6 @@ public class ComputeTest extends RenderTest {
 			rebuildProjectionMatrix = true;
 		}
 		
-		computeStorageBufferLayout.update(sets -> {
-			RenderEngine.getVulkan().getDevice().getGraphicsQueue().waitAsyncIdle(() -> {
-				sets.get(I++ % 2).pBufferInfo().buffer(vertexBuffer0.getGpuVk());
-				sets.get(I % 2).pBufferInfo().buffer(vertexBuffer1.getGpuVk());
-			});
-			computeUniformBufferLayout.set(ENLAPSED_TIME, uniformBuffer, (float) enlapsedTimeSeconds);
-			computeUniformBufferLayout.updateDescriptorSets();
-		});
-		
 		if (isCameraUnlocked)
 		{
 			window.setTitle("Test fps=" + fps + ", pos=" + cameraPosition + ", vel=" + cameraMovement + ", angles={" + cameraXRotation.asFloatBounded(AngleUnit.DEGREES) + ", " + cameraYRotation.asFloatBounded(AngleUnit.DEGREES) + "}");
@@ -647,11 +637,16 @@ public class ComputeTest extends RenderTest {
 				renderer.draw(commandBuffer, PARTICLE_COUNT / 2);
 				commandBuffer.endRenderPass();
 				commandBuffer.bindPipeline(computePipeline);
-				computeDescriptorSetLock.lock();
 				commandBuffer.bindDescriptorSets(computePipeline, new long[] {computeDescriptorSet}, new int[0]);
-				commandBuffer.dispatch(1, 1, 1);
-			}, () -> computeDescriptorSetLock.unlock()) == Result.RECREATED_SWAPCHAIN);
-			
+				commandBuffer.dispatch(PARTICLE_COUNT / 256, 1, 1);
+			}, () -> {
+				computeStorageBufferLayout.update(sets -> {
+					sets.get(I++ % 2).pBufferInfo().buffer(vertexBuffer0.getGpuVk());
+					sets.get(I % 2).pBufferInfo().buffer(vertexBuffer1.getGpuVk());
+				});
+				computeUniformBufferLayout.set(ENLAPSED_TIME, uniformBuffer, (float) enlapsedTimeSeconds);
+				computeUniformBufferLayout.updateDescriptorSets();
+			}) == Result.RECREATED_SWAPCHAIN);
 		}
 		window.update();
 	}

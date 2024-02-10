@@ -168,18 +168,16 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	/**
 	 * 
 	 * @param fences
-	 * @renderengine.vulkan 1.2
 	 */
 	public synchronized void waitForFences(long... fences)
 	{
-		while (VK12.vkWaitForFences(vk, fences, true, 0xFFFFFFFF) == VK10.VK_TIMEOUT);
+		while (VK10.vkWaitForFences(vk, fences, true, 0xFFFFFFFF) == VK10.VK_TIMEOUT);
 	}
 	
 	/**
 	 * 
 	 * @param action
 	 * @param fences
-	 * @renderengine.vulkan 1.2
 	 */
 	public synchronized Future<?> waitAsyncForFences(Runnable action, long... fences)
 	{
@@ -193,7 +191,6 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	 * 
 	 * @param action
 	 * @param fences
-	 * @renderengine.vulkan 1.2
 	 */
 	public synchronized Future<?> waitAsyncForFences(Consumer<Device> action, long... fences)
 	{

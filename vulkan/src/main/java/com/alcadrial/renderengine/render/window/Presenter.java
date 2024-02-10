@@ -4,6 +4,7 @@ import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 import java.util.function.BiConsumer;
 
 import org.lwjgl.system.MemoryStack;
@@ -71,6 +72,8 @@ public class Presenter implements AutoCloseable {
 	private List<FrameBuffer> frameBuffers;
 	private List<CommandBufferData> commands;
 	
+	private Semaphore graphicsQueueSemaphor;
+	
 	private int frameIndex;
 	
 	private Color clearColor;
@@ -85,6 +88,7 @@ public class Presenter implements AutoCloseable {
 		clearColor = Color.BLACK;
 		clearDepth = 1;
 		clearStencil = 0;
+		graphicsQueueSemaphor = new Semaphore(1);
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -349,7 +353,7 @@ public class Presenter implements AutoCloseable {
 		return present((d, i) -> {}, () -> {});
 	}
 	
-	public Result present(BiConsumer<CommandBufferData, Integer> onPresentAction, Runnable afterSubmitAction)
+	public Result present(BiConsumer<CommandBufferData, Integer> onPresentAction, Runnable onCommandBufferEndAction)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -361,6 +365,7 @@ public class Presenter implements AutoCloseable {
 			VulkanErrorUtils.assertNoError(result, "Error acquiring next image");
 			
 			device.waitForFences(commandBuffer.getFence());
+			graphicsQueueSemaphor.acquireUninterruptibly();
 			device.resetFence(commandBuffer.getFence());
 			
 			commandBuffer.reset();
@@ -380,7 +385,10 @@ public class Presenter implements AutoCloseable {
 			submitInfo.pSignalSemaphores(p1);
 			
 			device.getGraphicsQueue().submit(submitInfo, commandBuffer.getFence());
-			afterSubmitAction.run();
+			device.waitAsyncForFences(() -> {
+				onCommandBufferEndAction.run();
+				graphicsQueueSemaphor.release();
+			}, commandBuffer.getFence());
 			
 			VkPresentInfoKHR presentInfo = VkPresentInfoKHR.calloc(stack);
 			presentInfo.sType(KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR);
