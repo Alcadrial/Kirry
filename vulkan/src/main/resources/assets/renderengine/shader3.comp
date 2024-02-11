@@ -7,9 +7,9 @@ struct Particle {
 };
 
 layout (binding = 0) uniform U {
-	float ENLAPSED_TIME;
 	vec3 MIN_BOUND;
 	vec3 MAX_BOUND;
+	float ENLAPSED_TIME;
 };
 
 layout (std140, binding = 1) readonly buffer Input {

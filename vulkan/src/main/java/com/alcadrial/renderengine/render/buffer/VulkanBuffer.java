@@ -25,9 +25,10 @@ public class VulkanBuffer extends LongDeviceResource {
 	}
 	
 	protected long memory;
-	protected long size;
-	protected Object closingMonitor;
+	protected int size;
+	protected Runnable closingMonitor;
 	private ByteBuffer map;
+	private int usage;
 	
 	/**
 	 * 
@@ -35,35 +36,50 @@ public class VulkanBuffer extends LongDeviceResource {
 	 * @param size in bytes
 	 * @param usage a bitmask of {@link VK10#VK_BUFFER_USAGE_TRANSFER_SRC_BIT VkBufferUsageFlagBits} specifying allowed usages of the buffer
 	 */
-	public VulkanBuffer(Device device, long size, int usage)
+	public VulkanBuffer(Device device, int size, int usage)
 	{
 		super(device);
 		this.size = size;
-		closingMonitor = new Object();
+		this.usage = usage;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			vk = device.createBuffer(stack, size, usage);
 			memory = device.allocateBufferMemory(stack, vk, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		}
+		closingMonitor = this::closeOriginal;
 	}
 	
-	protected VulkanBuffer(Device device, long size, int usage, int flags)
+	protected VulkanBuffer(Device device, int size, int usage, int flags)
 	{
 		super(device);
 		this.size = size;
-		closingMonitor = new Object();
+		this.usage = usage;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			vk = device.createBuffer(stack, size, usage);
 			memory = device.allocateBufferMemory(stack, vk, flags);
 		}
+		closingMonitor = this::closeOriginal;
+	}
+	
+	public VulkanBuffer(VulkanBuffer buffer, long offset, int size)
+	{
+		super(buffer.device);
+		this.size = size;
+		usage = buffer.usage;
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			vk = device.createBuffer(stack, size, usage);
+			memory = buffer.memory;
+			VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), vk, memory, offset), "Failed to bind buffer memory");
+		}
+		closingMonitor = this::closeCopy;
 	}
 	
 	public byte[] getAllBytes()
 	{
-		ByteBuffer buffer = asByteBuffer();
-		byte[] array = new byte[buffer.capacity()];
-		buffer.get(array);
+		byte[] array = new byte[size];
+		getByteBuffer().get(array).reset();
 		return array;
 	}
 	
@@ -139,6 +155,15 @@ public class VulkanBuffer extends LongDeviceResource {
 		return getByteBuffer().asDoubleBuffer();
 	}
 	
+	public synchronized void unmapBuffer()
+	{
+		if (map != null)
+		{
+			VK10.vkUnmapMemory(device.getVk(), memory);
+			map = null;
+		}
+	}
+	
 	/**
 	 * 
 	 * @return the size of this buffer in bytes
@@ -148,15 +173,32 @@ public class VulkanBuffer extends LongDeviceResource {
 		return size;
 	}
 	
+	public int getUsage()
+	{
+		return usage;
+	}
+	
+	protected void closeCopy()
+	{
+		VK10.vkDestroyBuffer(device.getVk(), vk, null);
+		memory = 0;
+		super.close();
+	}
+	
+	protected void closeOriginal()
+	{
+		VK10.vkDestroyBuffer(device.getVk(), vk, null);
+		VK10.vkFreeMemory(device.getVk(), memory, null);
+		memory = 0;
+		super.close();
+	}
+	
 	@Override
 	public void close()
 	{
 		synchronized (closingMonitor)
 		{
-			VK10.vkDestroyBuffer(device.getVk(), vk, null);
-			VK10.vkFreeMemory(device.getVk(), memory, null);
-			memory = 0;
-			super.close();
+			closingMonitor.run();
 		}
 	}
 }

@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.math.RoundingMode;
 import java.nio.FloatBuffer;
 import java.nio.LongBuffer;
-import java.util.HexFormat;
 import java.util.Random;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -106,8 +105,9 @@ public class ComputeTest extends RenderTest {
 	private static Presenter presenter;
 	private static Renderer renderer;
 	private static VertexBuffer vertexBuffer;
-	private static VertexBuffer vertexBuffer0;
-	private static VertexBuffer vertexBuffer1;
+	private static VertexBuffer vertexStorageBuffer;
+	private static VertexBuffer storageBuffer0;
+	private static VertexBuffer storageBuffer1;
 	private static IndexBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
 	private static Texture depthTexture;
@@ -275,11 +275,14 @@ public class ComputeTest extends RenderTest {
 		int minOffsetAlignment = (int) device.getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment();
 		System.out.println("MinOffset = " + minOffsetAlignment);
 		
-		vertexBuffer = new VertexBuffer(242 * 3);
-		vertexBuffer0 = new VertexBuffer(PARTICLE_COUNT * 12 * 4, VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true);
-		vertexBuffer1 = new VertexBuffer(PARTICLE_COUNT * 12 * 4, VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true);
-		uniformBuffer = new VulkanBuffer(device, Math.max(minOffsetAlignment * 3, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-		
+		{
+			int size = PARTICLE_COUNT * 12 * 4;
+			vertexBuffer = new VertexBuffer(242 * 3);
+			vertexStorageBuffer = new VertexBuffer(2 * size, VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true);
+			storageBuffer0 = new VertexBuffer(vertexStorageBuffer, 0, size);
+			storageBuffer1 = new VertexBuffer(vertexStorageBuffer, size, size);
+			uniformBuffer = new VulkanBuffer(device, Math.max(minOffsetAlignment * 3, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		}
 		presenter = new Presenter(device, window.getSurface(), depthTexture, 3);
 		
 		Builder builder = Renderer.create();
@@ -341,7 +344,6 @@ public class ComputeTest extends RenderTest {
 			
 			computeDescriptorSet = p1[0];
 			computeDescriptorSetLock = new ReentrantLock();
-			System.out.println("computeDescriptorSet " + HexFormat.of().toHexDigits(computeDescriptorSet, 16));
 			
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
 			pipelineLayoutInfo.pSetLayouts(p);
@@ -351,9 +353,6 @@ public class ComputeTest extends RenderTest {
 			
 			computeUniformBufferLayout = new BufferLayout(device, writeDescriptorSets.slice(0, 1), 0, computeDescriptorSetLock);
 			computeStorageBufferLayout = new BufferLayout(device, writeDescriptorSets.slice(1, 2), 0, computeDescriptorSetLock);
-			
-			System.out.println(computeUniformBufferLayout);
-			System.out.println(computeStorageBufferLayout);
 			
 			VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
 			writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
@@ -365,21 +364,26 @@ public class ComputeTest extends RenderTest {
 			writeDescriptorSet.descriptorType(ShaderLayout.Type.UNIFORM_BUFFER.getType());
 			
 			int offset = 512;
+			int partialOffset = 0;
 			
 			VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
 			descriptorBufferInfo.buffer(uniformBuffer.getVk());
 			descriptorBufferInfo.offset(offset);
 			for (ShaderVariable variable : new ShaderVariable[] {
-				ShaderVariable.of(ShaderInputType.FLOAT, ENLAPSED_TIME),
 				ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, MIN_BOUND),
 				ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, MAX_BOUND),
+				ShaderVariable.of(ShaderInputType.FLOAT, ENLAPSED_TIME),
 			})
 			{
-				System.out.println(variable + " offset " + offset / 4);
+				int size = variable.getType().getLength();
+				if (partialOffset + size > 16) offset += 16 - partialOffset;
+				System.out.println("Offset " + variable + ": " + offset);
 				computeUniformBufferLayout.mark(variable, offset / 4);
-				offset += 16;
+				offset += size;
+				partialOffset = offset % 16;
 			}
 			descriptorBufferInfo.range(offset - descriptorBufferInfo.offset());
+			
 			writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
 			writeDescriptorSet.pImageInfo(null);
 			writeDescriptorSet.pTexelBufferView(null);
@@ -393,7 +397,7 @@ public class ComputeTest extends RenderTest {
 			writeDescriptorSet.descriptorCount(1);
 			writeDescriptorSet.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
 			descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-			descriptorBufferInfo.buffer(vertexBuffer0.getGpuVk());
+			descriptorBufferInfo.buffer(storageBuffer0.getGpuVk());
 			descriptorBufferInfo.offset(0);
 			descriptorBufferInfo.range(4 * 12 * PARTICLE_COUNT);
 			writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
@@ -409,7 +413,7 @@ public class ComputeTest extends RenderTest {
 			writeDescriptorSet.descriptorCount(1);
 			writeDescriptorSet.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
 			descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-			descriptorBufferInfo.buffer(vertexBuffer1.getGpuVk());
+			descriptorBufferInfo.buffer(storageBuffer1.getGpuVk());
 			descriptorBufferInfo.offset(0);
 			descriptorBufferInfo.range(4 * 12 * PARTICLE_COUNT);
 			writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
@@ -432,7 +436,7 @@ public class ComputeTest extends RenderTest {
 		
 		indexBuffer = new IndexBuffer(2064);
 		renderer.addVertexBuffer(0, vertexBuffer);
-		renderer.addVertexBuffer(1, vertexBuffer0);
+		renderer.addVertexBuffer(1, storageBuffer0);
 		renderer.setIndexBuffer(indexBuffer);
 		renderer.updateUniformBuffers((b, l) -> {
 			l.set(PROJECTION, b, buildProjectionMatrix(window));
@@ -475,7 +479,7 @@ public class ComputeTest extends RenderTest {
 		
 		Random random = new Random();
 		
-		FloatBuffer cursor = vertexBuffer0.asFloatBuffer();
+		FloatBuffer cursor = storageBuffer0.asFloatBuffer();
 		for (float i = -DIM; i < DIM; i++)
 		{
 			for (float j = -DIM; j < DIM; j++)
@@ -494,8 +498,8 @@ public class ComputeTest extends RenderTest {
 		{
 			vertexBuffer.sendToPhysicalDevice().get();
 			indexBuffer.sendToPhysicalDevice().get();
-			vertexBuffer0.sendToPhysicalDevice().get();
-			vertexBuffer0.sendToPhysicalDevice(vertexBuffer1.getGpuVk()).get();
+			storageBuffer0.sendToPhysicalDevice().get();
+			storageBuffer0.sendToPhysicalDevice(storageBuffer1.getGpuVk()).get();
 		}
 		catch (Exception e)
 		{
@@ -634,15 +638,15 @@ public class ComputeTest extends RenderTest {
 			while (presenter.present((commandBuffer, frameIndex) -> {
 				presenter.beginRenderPass(commandBuffer);
 				renderer.setUniformBufferIndex(frameIndex);
-				renderer.draw(commandBuffer, PARTICLE_COUNT / 2);
+				renderer.draw(commandBuffer, PARTICLE_COUNT);
 				commandBuffer.endRenderPass();
 				commandBuffer.bindPipeline(computePipeline);
 				commandBuffer.bindDescriptorSets(computePipeline, new long[] {computeDescriptorSet}, new int[0]);
 				commandBuffer.dispatch(PARTICLE_COUNT / 256, 1, 1);
 			}, () -> {
 				computeStorageBufferLayout.update(sets -> {
-					sets.get(I++ % 2).pBufferInfo().buffer(vertexBuffer0.getGpuVk());
-					sets.get(I % 2).pBufferInfo().buffer(vertexBuffer1.getGpuVk());
+					sets.get(I++ % 2).pBufferInfo().buffer(storageBuffer0.getGpuVk());
+					sets.get(I % 2).pBufferInfo().buffer(storageBuffer1.getGpuVk());
 				});
 				computeUniformBufferLayout.set(ENLAPSED_TIME, uniformBuffer, (float) enlapsedTimeSeconds);
 				computeUniformBufferLayout.updateDescriptorSets();
