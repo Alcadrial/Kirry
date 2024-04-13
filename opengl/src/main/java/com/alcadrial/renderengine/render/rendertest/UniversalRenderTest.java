@@ -404,8 +404,9 @@ public class UniversalRenderTest implements RenderTest {
 			}
 			
 			@Override
-			public void onDrag(Vector2i startPos, Vector2i endPos)
+			public void onDragEnd(Vector2i startPos, Vector2i endPos)
 			{
+				super.onDragEnd(startPos, endPos);
 				System.out.println("drag from " + startPos + " to " + endPos);
 			}
 			

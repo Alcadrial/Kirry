@@ -252,15 +252,8 @@ public abstract class AbstractWidget implements ClickableWidget, DrawableWidget 
 	}
 	
 	@Override
-	public void onDragEnd(Vector2i mousePos)
+	public void onDragEnd(Vector2i startPos, Vector2i mousePos)
 	{
 		setInternalStateBit(DRAGGING_BIT, false);
-	}
-	
-	@Override
-	@EmptyImplementation
-	public void onDrag(Vector2i startPos, Vector2i endPos)
-	{
-		
 	}
 }

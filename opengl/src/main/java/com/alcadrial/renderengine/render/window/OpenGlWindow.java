@@ -227,8 +227,7 @@ public class OpenGlWindow extends Window {
 		MouseButtonState state = mouseButtonStates.get(button);
 		switch (action)
 		{
-			case GLFW.GLFW_PRESS ->
-			{
+			case GLFW.GLFW_PRESS -> {
 				for (ClickableWidget w : hovereds) w.onPress(button, mousePos);
 				if (state.lastPressTimestamp < state.lastReleaseTimestamp)//release -> press
 				{
@@ -252,19 +251,14 @@ public class OpenGlWindow extends Window {
 					state.canDrag = true;
 				}
 			}
-			case GLFW.GLFW_RELEASE ->
-			{
+			case GLFW.GLFW_RELEASE -> {
 				for (ClickableWidget w : hovereds) w.onRelease(button, mousePos);
 				if (state.lastPressTimestamp > state.lastReleaseTimestamp)//press -> release
 				{
 					if (state.isDragging)
 					{
 						for (MouseDragEndCallback callback : mouseDragEndCallbackList) callback.invoke(this, button, mousePos.x(), mousePos.y());
-						for (ClickableWidget w : draggingWidgets)
-						{
-							w.onDragEnd(mousePos);
-							w.onDrag(state.lastMousePos, mousePos);
-						}
+						for (ClickableWidget w : draggingWidgets) w.onDragEnd(state.lastMousePos, mousePos);
 						draggingWidgets.clear();
 					}
 					else if (state.clickCount == 0 && state.canClick)
