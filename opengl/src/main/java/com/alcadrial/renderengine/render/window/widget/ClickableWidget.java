@@ -6,10 +6,11 @@ public interface ClickableWidget extends Widget {
 	
 	boolean isDragging();
 	
-	void onClick(int button, int count, Vector2i mousePos);
-	void onPress(int button, Vector2i mousePos);
-	void onRelease(int button, Vector2i mousePos);
+	ActionResult onClick(int button, int count, Vector2i mousePos);
+	ActionResult onPress(int button, Vector2i mousePos);
+	ActionResult onRelease(int button, Vector2i mousePos);
 	
-	void onDragStart(Vector2i mousePos);
-	void onDragEnd(Vector2i startPos, Vector2i endPos);
+	ActionResult onDragStart(Vector2i mousePos);
+	ActionResult onDragEnd(Vector2i startPos, Vector2i endPos);
+	ActionResult onScroll(double xScroll, double yScroll, Vector2i mousePos);
 }

@@ -15,13 +15,13 @@ dependencies {
 	implementation("com.alcadrial.threads:Threads:${threadsVersion}")
 	implementation(":Tester")
 	
-    implementation ("com.google.code.gson:gson:${gsonVersion}")
-    implementation ("org.lwjgl:lwjgl:${lwjglVersion}")
-    implementation ("org.lwjgl:lwjgl-glfw:${lwjglVersion}")
-    implementation ("org.lwjgl:lwjgl-opengl:${lwjglVersion}")
-	runtimeOnly ("org.lwjgl:lwjgl::${lwjglNatives}")
-	runtimeOnly ("org.lwjgl:lwjgl-glfw::${lwjglNatives}")
-	runtimeOnly ("org.lwjgl:lwjgl-opengl::${lwjglNatives}")
+    implementation("com.google.code.gson:gson:${gsonVersion}")
+    implementation("org.lwjgl:lwjgl:${lwjglVersion}")
+    implementation("org.lwjgl:lwjgl-glfw:${lwjglVersion}")
+    implementation("org.lwjgl:lwjgl-opengl:${lwjglVersion}")
+	runtimeOnly("org.lwjgl:lwjgl::${lwjglNatives}")
+	runtimeOnly("org.lwjgl:lwjgl-glfw::${lwjglNatives}")
+	runtimeOnly("org.lwjgl:lwjgl-opengl::${lwjglNatives}")
 }
 
 publishing {

@@ -226,34 +226,43 @@ public abstract class AbstractWidget implements ClickableWidget, DrawableWidget 
 	
 	@Override
 	@EmptyImplementation
-	public void onPress(int button, Vector2i mousePos)
+	public ActionResult onPress(int button, Vector2i mousePos)
 	{
-		
+		return ActionResult.CONSUME;
 	}
 	
 	@Override
 	@EmptyImplementation
-	public void onRelease(int button, Vector2i mousePos)
+	public ActionResult onRelease(int button, Vector2i mousePos)
 	{
-		
+		return ActionResult.CONSUME;
 	}
 	
 	@Override
 	@EmptyImplementation
-	public void onClick(int button, int count, Vector2i mousePos)
+	public ActionResult onClick(int button, int count, Vector2i mousePos)
 	{
-		
+		return ActionResult.CONSUME;
 	}
 	
 	@Override
-	public void onDragStart(Vector2i mousePos)
+	@EmptyImplementation
+	public ActionResult onScroll(double xScroll, double yScroll, Vector2i mousePos)
+	{
+		return ActionResult.CONSUME;
+	}
+	
+	@Override
+	public ActionResult onDragStart(Vector2i mousePos)
 	{
 		setInternalStateBit(DRAGGING_BIT, true);
+		return ActionResult.CONSUME;
 	}
 	
 	@Override
-	public void onDragEnd(Vector2i startPos, Vector2i mousePos)
+	public ActionResult onDragEnd(Vector2i startPos, Vector2i mousePos)
 	{
 		setInternalStateBit(DRAGGING_BIT, false);
+		return ActionResult.CONSUME;
 	}
 }

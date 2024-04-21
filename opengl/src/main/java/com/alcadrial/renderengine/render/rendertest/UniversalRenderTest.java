@@ -58,6 +58,7 @@ import com.alcadrial.renderengine.render.util.RendererUtil.RectangleVertexResult
 import com.alcadrial.renderengine.render.util.Util;
 import com.alcadrial.renderengine.render.util.wrapper.CullFaceMode;
 import com.alcadrial.renderengine.render.window.OpenGlWindow;
+import com.alcadrial.renderengine.render.window.widget.ActionResult;
 import com.alcadrial.threads.TimeThread;
 
 @SuppressWarnings("unused")
@@ -386,28 +387,32 @@ public class UniversalRenderTest implements RenderTest {
 		window.addWidget(new Button(Vector3i.of(10, 10, 0), Vector2i.of(64, 64), window) {
 			
 			@Override
-			public void onClick(int button, int count, Vector2i mousePos)
+			public ActionResult onClick(int button, int count, Vector2i mousePos)
 			{
 				System.out.println("click " + button + ", " + count + " times");
+				return ActionResult.CONSUME;
 			}
 			
 			@Override
-			public void onPress(int button, Vector2i mousePos)
+			public ActionResult onPress(int button, Vector2i mousePos)
 			{
 				System.out.println("press " + button);
+				return ActionResult.CONSUME;
 			}
 			
 			@Override
-			public void onRelease(int button, Vector2i mousePos)
+			public ActionResult onRelease(int button, Vector2i mousePos)
 			{
 				System.out.println("release " + button);
+				return ActionResult.CONSUME;
 			}
 			
 			@Override
-			public void onDragEnd(Vector2i startPos, Vector2i endPos)
+			public ActionResult onDragEnd(Vector2i startPos, Vector2i endPos)
 			{
 				super.onDragEnd(startPos, endPos);
 				System.out.println("drag from " + startPos + " to " + endPos);
+				return ActionResult.CONSUME;
 			}
 			
 			@Override

@@ -286,6 +286,7 @@ public class OpenGlWindow extends Window {
 	protected void windowScrollCallback(long id, double x, double y)
 	{
 		for (GLFWScrollCallbackI callback : glfwScrollCallbackList) callback.invoke(id, x, y);
+		for (ClickableWidget e : clickableWidgets) if (e.isHovered(mousePos)) e.onScroll(x, y, mousePos);
 	}
 	
 	protected void windowSizeCallback(long id, int width, int height)
