@@ -1,2 +1,28 @@
+pluginManagement {
+	ext.localMaven = System.getProperty("LOCAL_MAVEN");
+	ext.remoteMaven = System.getProperty("REMOTE_MAVEN");
+	ext.remoteMavenUsername = System.getProperty("REMOTE_MAVEN_USERNAME");
+	ext.remoteMavenPassword = System.getProperty("REMOTE_MAVEN_PASSWORD");
+	
+	repositories {
+		if (localMaven != null) {
+			maven {
+				name = "LocalMaven"
+				url = localMaven
+			}
+		}
+		if (remoteMaven != null) {
+			maven {
+				name = "RemoveMaven"
+				url = remoteMaven
+				credentials {
+					username = remoteMavenUsername
+					password = remoteMavenPassword
+				}
+			}
+		}
+	}
+}
+
 rootProject.name="RenderEngine"
 include("core", "opengl", "vulkan", "openal")

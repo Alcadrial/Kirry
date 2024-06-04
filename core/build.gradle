@@ -1,32 +1,52 @@
 plugins {
-    id("java")
-    id("java-library")
-    id("maven-publish")
-    id("eclipse")
+	id("java")
+	id("java-library")
+	id("maven-publish")
+	id("com.alcadrial.klug") version "0.2.1"
 }
 
 eclipse.project.name = "RenderEngine Core"
 
+compileJava.options.encoding = "UTF-8"
+
+javadoc {
+	options.tags("apiNote::API Note:", "implSpec::Implementation Requirements:", "implNote::Implementation Note:")
+	options.addBooleanOption("html5", true)
+}
+	
 dependencies {
 	implementation("com.alcadrial.kector:Kector:${kectorVersion}")
 	
-    implementation ("org.lwjgl:lwjgl:${lwjglVersion}")
-    implementation ("org.lwjgl:lwjgl-glfw:${lwjglVersion}")
+	implementation ("org.lwjgl:lwjgl:${lwjglVersion}")
+	implementation ("org.lwjgl:lwjgl-glfw:${lwjglVersion}")
 	runtimeOnly ("org.lwjgl:lwjgl::${lwjglNatives}")
 	runtimeOnly ("org.lwjgl:lwjgl-glfw::${lwjglNatives}")
-}
+} 
 
 publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            artifact jar
-            artifact sourcesJar
-            artifact javadocJar
-        }
-    }
-    repositories {
-        maven {
-            url("file://D:/maven")
-        }
-    }
+	publications {
+		mavenJava(MavenPublication) {
+			artifact jar
+			artifact sourcesJar
+			artifact javadocJar
+		}
+	}
+	repositories {
+		if (localMaven != null) {
+			maven {
+				name = "LocalMaven"
+				url = localMaven
+			}
+		}
+		if (remoteMaven != null) {
+			maven {
+				name = "RemoveMaven"
+				url = remoteMaven
+				credentials {
+					username = remoteMavenUsername
+					password = remoteMavenPassword
+				}
+			}
+		}
+	}
 }

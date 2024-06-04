@@ -1,11 +1,11 @@
 plugins {
-    id("java")
-    id("java-library")
-    id("maven-publish")
-    id("eclipse")
+	id("java")
+	id("java-library")
+	id("maven-publish")
+	id("com.alcadrial.klug") version "0.2.1"
 }
 
-eclipse.project.name = "RenderEngine ${moduleName}"
+eclipse.project.name = "RenderEngine Openal"
 
 dependencies {
 	implementation(project(":core"))

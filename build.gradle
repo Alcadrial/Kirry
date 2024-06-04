@@ -1,16 +1,16 @@
 import org.gradle.internal.os.OperatingSystem
 
 plugins {
-    id("java")
-    id("java-library")
-    id("maven-publish")
-    id("eclipse")
+	id("java")
+	id("java-library")
+	id("maven-publish")
+	id("eclipse")
 }
 
 group = "com.alcadrial.renderengine"
 
-eclipse.project.name = "${name}"
-println("Configuring ${name}'s project")
+eclipse.project.name = name
+println("Configuring $name's project")
 
 switch (OperatingSystem.current()) {
 	case OperatingSystem.LINUX:
@@ -31,17 +31,11 @@ switch (OperatingSystem.current()) {
 }
 
 subprojects {
-    apply plugin: "java"
 
 	group = "com.alcadrial.renderengine"
-	archivesBaseName = "${name}-${moduleName}-${version}"
+	archivesBaseName = "$name-$moduleName-$version"
 	
-	java {
-		toolchain.languageVersion = JavaLanguageVersion.of(17)
-		withSourcesJar()
-		withJavadocJar()
-		modularity.inferModulePath = true
-	}
+	java.modularity.inferModulePath = true
 	
 	javadoc {
 		options.tags("apiNote:a:API Note:", "implSpec:a:Implementation Requirements:", "implNote:a:Implementation Note:")
@@ -105,27 +99,23 @@ subprojects {
 			}
 		}
 	}
-
-	tasks.sourcesJar {
-	    duplicatesStrategy = "exclude"
-	}
-    
-    repositories {
+	
+	repositories {
 		flatDir {
 			dirs("../libs")
 		}
-	    maven {
-	    	name = "Local Maven"
-	    	url "D:/maven"
-	    }
-        mavenCentral()
-    }
+		maven {
+			name = "Local Maven"
+			url "D:/maven"
+		}
+		mavenCentral()
+	}
 	
 	jar.manifest.attributes([
-		"Specification-Title"     : "${name} ${moduleName}",
+		"Specification-Title"     : "$name $moduleName",
 		"Specification-Version"   : version,
 		"Specification-Vendor"    : author,
-		"Implementation-Title"    : "${name} ${moduleName}",
+		"Implementation-Title"    : "$name $moduleName",
 		"Implementation-Version"  : version,
 		"Implementation-Vendor"   : author,
 		"Implementation-Timestamp": new Date().format("dd/MM/yyyy HH:mm:ss")

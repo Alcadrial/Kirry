@@ -1,11 +1,14 @@
 plugins {
-    id("java")
-    id("java-library")
-    id("maven-publish")
-    id("eclipse")
+	id("java")
+	id("java-library")
+	id("maven-publish")
+	id("com.alcadrial.klug") version "0.2.1"
 }
 
 eclipse.project.name = "RenderEngine Opengl"
+
+compileJava.options.encoding = "UTF-8"
+javadoc.options.encoding = "UTF-8"
 
 dependencies {
 	implementation(project(":core"))
@@ -22,6 +25,62 @@ dependencies {
 	runtimeOnly("org.lwjgl:lwjgl::${lwjglNatives}")
 	runtimeOnly("org.lwjgl:lwjgl-glfw::${lwjglNatives}")
 	runtimeOnly("org.lwjgl:lwjgl-opengl::${lwjglNatives}")
+}
+
+boolean printExcludedFiles = true
+boolean printExportedFiles = true
+boolean excludeTestFiles = true
+boolean printOnlyOnce = true
+
+sourceSets {
+	main {
+		resources {
+			exclude("*")
+		}
+		java {
+			
+			File start = null
+			
+			exclude(e -> {
+				if (printOnlyOnce)
+				{
+					if (start == null) start = e.getFile()
+					else if (start.equals(e.getFile()))
+					{
+						printExportedFiles = false
+						printExcludedFiles = false
+					}
+				}
+				if (!excludeTestFiles || e.getFile().isDirectory()) {
+					File packageFile = new File(e.getFile().getPath() + "/package-info.java")
+					if (packageFile.isFile())
+					{
+						String text = packageFile.text
+						boolean b0 = text.contains("@Test")
+						boolean b1 = text.contains("import com.alcadrial.renderengine.core.util.Test")
+						boolean b2 = text.contains("package com.alcadrial.renderengine.core.util;")
+						boolean b3 = text.contains("@com.alcadrial.renderengine.core.util.Test")
+						boolean r = b3 || (b0 && b2) || (b0 && b1)
+						if (!r && printExportedFiles) println("P " + e.getFile())
+						if (r && printExcludedFiles) println("excluded P " + e.getFile())
+						return r
+					}
+					if (printExportedFiles) println("D " + e.getFile())
+					return false
+				}
+				boolean b = e.getFile().name.endsWith(".java")
+				String text = e.getFile().text
+				boolean b0 = text.contains("@Test")
+				boolean b1 = text.contains("import com.alcadrial.renderengine.core.util.Test")
+				boolean b2 = text.contains("package com.alcadrial.renderengine.core.util;")
+				boolean b3 = text.contains("@com.alcadrial.renderengine.core.util.Test")
+				boolean result = b && ((b0 && (b1 || b2)) || b3)
+				if (printExportedFiles && !result) println("F " + e.getFile())
+				if (printExcludedFiles && result) println("excluded F " + e.getFile())
+				return result
+			})
+		}
+	}
 }
 
 publishing {
