@@ -23,11 +23,6 @@ public class JsonUtils {
 		return t;
 	}
 	
-	public static void assertStatement(boolean flag, String message) throws IOException
-	{
-		if (!flag) throw new IOException(message);
-	}
-	
 	public static String missing(JsonReader reader, String object)
 	{
 		String path = reader.getPath();

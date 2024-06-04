@@ -13,7 +13,7 @@ import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderInputLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
-import com.alcadrial.renderengine.render.util.LongDeviceResource;
+import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 
@@ -22,7 +22,7 @@ import com.alcadrial.renderengine.render.util.VulkanUtils;
  * 
  * @author Alcadrial
  */
-public abstract class Pipeline extends LongDeviceResource {
+public abstract class Pipeline extends RawDeviceResource {
 	
 	static
 	{

@@ -3,10 +3,10 @@ package com.alcadrial.renderengine.render;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkFramebufferCreateInfo;
 
-import com.alcadrial.renderengine.render.util.LongDeviceResource;
+import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
-public class FrameBuffer extends LongDeviceResource {
+public class FrameBuffer extends RawDeviceResource {
 	
 	static
 	{
@@ -62,5 +62,15 @@ public class FrameBuffer extends LongDeviceResource {
 	{
 		VK10.vkDestroyFramebuffer(device.getVk(), vk, null);
 		super.close();
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("Vk: " + Debug.address(vk));
+		Debug.print("Type: " + type);
+		Debug.print("Size: " + width + "x" + height);
+		Debug.print("Layers: " + layers);
+		Debug.print("RenderPass: " + Debug.address(renderPass));
 	}
 }

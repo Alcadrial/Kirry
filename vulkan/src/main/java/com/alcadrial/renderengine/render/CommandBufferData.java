@@ -11,7 +11,9 @@ import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
 import org.lwjgl.vulkan.VkImageMemoryBarrier;
 import org.lwjgl.vulkan.VkMemoryBarrier;
+import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
+import org.lwjgl.vulkan.VkViewport;
 
 import com.alcadrial.renderengine.core.util.NotYetImplementedException;
 import com.alcadrial.renderengine.core.util.Nullable;
@@ -19,10 +21,10 @@ import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.pipeline.Pipeline;
-import com.alcadrial.renderengine.render.util.DeviceResource;
+import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 
-public class CommandBufferData extends DeviceResource<VkCommandBuffer> {
+public class CommandBufferData extends AbstractDeviceResource<VkCommandBuffer> {
 	
 	static
 	{
@@ -237,13 +239,30 @@ public class CommandBufferData extends DeviceResource<VkCommandBuffer> {
 		throw new NotYetImplementedException();
 	}
 	
-	/**
-	 * NYI
-	 */
-	public void setViewport()
+	public void setScissor(int x, int y, int width, int height)
 	{
-		// VK10.vkCmdSetViewport(vk);
-		throw new NotYetImplementedException();
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VK10.vkCmdSetScissor(vk, 0, VulkanUtils.rect2d(stack, x, y, width, height));
+		}
+	}
+	
+	public void setScissor(VkRect2D.Buffer scissors)
+	{
+		VK10.vkCmdSetScissor(vk, 0, scissors);
+	}
+	
+	public void setViewport(int x, int y, int width, int height, int minZ, int maxZ)
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VK10.vkCmdSetViewport(vk, 0, VulkanUtils.viewport(stack, x, y, width, height, minZ, maxZ));
+		}
+	}
+	
+	public void setViewport(VkViewport.Buffer viewports)
+	{
+		VK10.vkCmdSetViewport(vk, 0, viewports);
 	}
 	
 	public synchronized boolean endRecording()
@@ -286,5 +305,14 @@ public class CommandBufferData extends DeviceResource<VkCommandBuffer> {
 		VK10.vkDestroySemaphore(device.getVk(), renderFinished, null);
 		VK10.vkDestroyFence(device.getVk(), fence, null);
 		super.close();
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("vk: " + Debug.address(vk));
+		Debug.print("Semaphor (ImageAvailable): " + Debug.address(imageAvailable));
+		Debug.print("Semaphor (RenderFinished): " + Debug.address(renderFinished));
+		Debug.print("Fence: " + Debug.address(fence));
 	}
 }

@@ -3,7 +3,7 @@ package com.alcadrial.renderengine.render;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkRenderPassCreateInfo;
 
-import com.alcadrial.renderengine.render.util.LongDeviceResource;
+import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
 /**
@@ -13,7 +13,7 @@ import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
  * 
  * @author Alcadrial
  */
-public class RenderPass extends LongDeviceResource {
+public class RenderPass extends RawDeviceResource {
 	
 	static
 	{
@@ -48,5 +48,11 @@ public class RenderPass extends LongDeviceResource {
 	{
 		VK10.vkDestroyRenderPass(device.getVk(), getVk(), null);
 		super.close();
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("Vk: " + Debug.address(vk));
 	}
 }

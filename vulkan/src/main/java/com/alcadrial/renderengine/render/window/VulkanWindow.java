@@ -1,6 +1,8 @@
 package com.alcadrial.renderengine.render.window;
 
+import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCharCallbackI;
@@ -21,11 +23,13 @@ import org.lwjgl.glfw.GLFWWindowPosCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.CallbackI;
+import org.lwjgl.system.MemoryStack;
 
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.Window;
 import com.alcadrial.renderengine.core.util.Pair;
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Surface;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
@@ -42,8 +46,8 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private int width;
 	private int height;
 	private String title;
-	private List<WindowResizeAction> resizeActions;
 	private boolean isIconified;
+	private List<Consumer<Surface>> surfaceUpdateActions;
 	
 	/**
 	 * <b>WARNING:</b> the window hint {@link GLFW#GLFW_CLIENT_API CLIENT_API} is set to {@link GLFW#GLFW_NO_API NO_API}
@@ -62,6 +66,8 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		this.height = height;
 		this.title = title;
 		surface = new Surface(this);
+		surfaceUpdateActions = new LinkedList<>();
+		resetCallbacks();
 	}
 	
 	public void update()
@@ -69,9 +75,14 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		
 	}
 	
-	public void addResizeAction(WindowResizeAction action)
+	public void addSurfaceUpdateActions(Consumer<Surface> action)
 	{
-		resizeActions.add(action);
+		surfaceUpdateActions.add(action);
+	}
+	
+	public void removeSurfaceUpdateActions(Consumer<Surface> action)
+	{
+		surfaceUpdateActions.remove(action);
 	}
 	
 	public final void resetCallbacks()
@@ -103,7 +114,12 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			height = h;
 		});
 		GLFW.glfwSetFramebufferSizeCallback(id, (p, w, h) -> {
-			for (WindowResizeAction action : resizeActions) action.run(w, h);
+			
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				surface.reinit(stack);
+			}
+			for (Consumer<Surface> action : surfaceUpdateActions) action.accept(surface);
 		});
 	}
 	
@@ -145,7 +161,11 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			i.invoke(p, w, h);
 		});
 		if (callback instanceof GLFWFramebufferSizeCallbackI i) GLFW.glfwSetFramebufferSizeCallback(id, (p, w, h) -> {
-			for (WindowResizeAction action : resizeActions) action.run(w, h);
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				surface.reinit(stack);
+			}
+			for (Consumer<Surface> action : surfaceUpdateActions) action.accept(surface);
 			i.invoke(p, w, h);
 		});
 	}
@@ -252,5 +272,13 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		surface.close();
 		GLFW.glfwDestroyWindow(id);
 		id = 0L;
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("Vk: " + Debug.address(id));
+		Debug.print("Size: " + width + "x" + height);
+		Debug.print("Surface: ", surface);
 	}
 }

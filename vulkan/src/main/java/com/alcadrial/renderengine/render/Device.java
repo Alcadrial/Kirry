@@ -27,8 +27,9 @@ import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 
 import com.alcadrial.renderengine.core.util.WorkInProgress;
 import com.alcadrial.renderengine.render.buffer.VulkanBufferData;
+import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
-import com.alcadrial.renderengine.render.util.DeviceResource;
+import com.alcadrial.renderengine.render.util.OutOfSpaceException;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 
@@ -39,7 +40,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		RenderEngine.assertLoaded();
 	}
 	
-	private Deque<DeviceResource<?>> destructionList;
+	private Deque<AbstractDeviceResource<?>> destructionList;
 	private PhysicalDevice physicalDevice;
 	private Queue graphicsQueue;
 	private Queue presentQueue;
@@ -134,12 +135,12 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		}
 	}
 	
-	public void addToDestructionList(DeviceResource<?> resource)
+	public void addToDestructionList(AbstractDeviceResource<?> resource)
 	{
 		if (resource.getDevice() == this) destructionList.add(resource);
 	}
 	
-	public void removeFromDestructionList(DeviceResource<?> resource)
+	public void removeFromDestructionList(AbstractDeviceResource<?> resource)
 	{
 		destructionList.remove(resource);
 	}
@@ -278,7 +279,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	public Future<?> submitSingleUseCommandBuffer(MemoryStack stack, VkCommandBuffer commandBuffer, Queue queue)
 	{
-		VulkanErrorUtils.assertStatement(commandBuffer.getDevice() == vk, "Cannot submit a command buffer of another device");
+		if (commandBuffer.getDevice() != vk) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
 		VulkanErrorUtils.assertNoError(VK10.vkEndCommandBuffer(commandBuffer), "Failed to submit command buffer");
 		long fence = createFence(stack, false);
 		queue.submit(VulkanUtils.submitInfo(stack, commandBuffer), fence);
@@ -320,33 +321,22 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	{
 		VkMemoryRequirements memRequirements = VkMemoryRequirements.malloc(stack);
 		VK10.vkGetBufferMemoryRequirements(vk, vkBuffer, memRequirements);
-		
-		int index;
-		VkPhysicalDeviceMemoryProperties memProperties = VkPhysicalDeviceMemoryProperties.malloc(stack);
-		VK10.vkGetPhysicalDeviceMemoryProperties(physicalDevice.getVk(), memProperties);
-		
-		for (index = 0; index < memProperties.memoryTypeCount(); index++)
-		{
-			if ((memRequirements.memoryTypeBits() & (1 << index)) != 0 && (memProperties.memoryTypes(index).propertyFlags() & properties) == properties)
-			{
-				break;
-			}
-		}
-		
-		VulkanErrorUtils.assertStatement(index < memProperties.memoryTypeCount(), "Failed to find suitable memory type");
-		
-		LongBuffer p = stack.mallocLong(1);
-		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(vk, VulkanUtils.memoryAllocateInfo(stack, memRequirements.size(), index), null, p), "Failed to allocate buffer memory");
-		
-		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(vk, vkBuffer, p.get(0), 0), "Failed to bind buffer memory");
-		return p.get(0);
+		long memory = allocateMemory(stack, memRequirements, properties);
+		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(vk, vkBuffer, memory, 0), "Failed to bind buffer memory");
+		return memory;
 	}
 	
 	public long allocateImageMemory(MemoryStack stack, long vkBuffer, int properties)
 	{
 		VkMemoryRequirements memRequirements = VkMemoryRequirements.malloc(stack);
 		VK10.vkGetImageMemoryRequirements(vk, vkBuffer, memRequirements);
-		
+		long memory = allocateMemory(stack, memRequirements, properties);
+		VulkanErrorUtils.assertNoError(VK10.vkBindImageMemory(vk, vkBuffer, memory, 0), "Failed to bind image memory");
+		return memory;
+	}
+	
+	private long allocateMemory(MemoryStack stack, VkMemoryRequirements memRequirements, int properties)
+	{
 		int index;
 		VkPhysicalDeviceMemoryProperties memProperties = VkPhysicalDeviceMemoryProperties.malloc(stack);
 		VK10.vkGetPhysicalDeviceMemoryProperties(physicalDevice.getVk(), memProperties);
@@ -359,13 +349,11 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			}
 		}
 		
-		VulkanErrorUtils.assertStatement(index < memProperties.memoryTypeCount(), "Failed to find suitable memory type");
+		if (index == memProperties.memoryTypeCount()) throw new OutOfSpaceException("Failed to find suitable memory type");
 		
 		LongBuffer p = stack.mallocLong(1);
 		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(vk, VulkanUtils.memoryAllocateInfo(stack, memRequirements.size(), index), null, p), "Failed to allocate image memory");
-		
-		VulkanErrorUtils.assertNoError(VK10.vkBindImageMemory(vk, vkBuffer, p.get(0), 0), "Failed to bind image memory");
-		return p.get(0);
+		return p.get();
 	}
 	
 	@Override
@@ -374,5 +362,22 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		waitIdle();
 		while (destructionList.peek() != null) destructionList.poll().close();
 		VK10.vkDestroyDevice(vk, null);
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("vk: " + Debug.address(vk));
+		if (presentQueue == graphicsQueue)
+		{
+			Debug.print("Queue (Graphics|Present)", graphicsQueue);
+		}
+		else
+		{
+			Debug.print("Queue (Graphics)", graphicsQueue);
+			Debug.print("Queue (Present)", presentQueue);
+		}
+		Debug.print("Single-use command pool: ", shortLivedCommandPool);
+		Debug.print("Multi-use command pool: ", resetCommandPool);
 	}
 }

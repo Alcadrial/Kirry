@@ -11,10 +11,10 @@ import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkQueue;
 import org.lwjgl.vulkan.VkSubmitInfo;
 
-import com.alcadrial.renderengine.render.util.DeviceResource;
+import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
-public class Queue extends DeviceResource<VkQueue> {
+public class Queue extends AbstractDeviceResource<VkQueue> {
 	
 	static
 	{
@@ -98,5 +98,12 @@ public class Queue extends DeviceResource<VkQueue> {
 				lock.unlock();
 			}
 		});
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("vk: " + Debug.address(vk));
+		Debug.print("familyIndex: " + familyIndex);
 	}
 }

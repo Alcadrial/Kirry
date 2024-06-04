@@ -1,7 +1,9 @@
 package com.alcadrial.renderengine.render.test;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.math.RoundingMode;
 import java.nio.FloatBuffer;
 import java.nio.LongBuffer;
@@ -16,6 +18,8 @@ import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.windows.Kernel32;
+import org.lwjgl.vulkan.EXTDepthRangeUnrestricted;
+import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDescriptorBufferInfo;
 import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
@@ -31,14 +35,15 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.axis.Axis;
 import com.alcadrial.renderengine.core.cursor.CursorInputMode;
 import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.render.Computer;
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.BufferLayout;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
@@ -52,10 +57,8 @@ import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
-import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.SphereDataCollector;
-import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 import com.alcadrial.renderengine.render.window.Presenter;
@@ -78,14 +81,15 @@ public class ComputeTest extends RenderTest {
 		
 		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
 		
-		println("Render Engine initialization", () -> {
-			if (!RenderEngine.create("Test", new Version(0, 0, 1, 0)).messenger(ComputeTest::debugCallback).initialize()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		}, TestProperties.PRINT_LOADING_TIMES);
+		println("Render Engine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
+		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
 		
 		println("Start", ComputeTest::start, TestProperties.PRINT_LOADING_TIMES);
 		if (!RenderEngine.isInitializated()) return;
+		
 		println("Loop", ComputeTest::loop, TestProperties.PRINT_LOADING_TIMES);
 		if (!RenderEngine.isInitializated()) return;
+		
 		println("End", ComputeTest::end, TestProperties.PRINT_LOADING_TIMES);
 	}
 	
@@ -104,13 +108,13 @@ public class ComputeTest extends RenderTest {
 	private static long fps;
 	private static Presenter presenter;
 	private static Renderer renderer;
+	private static Computer computer;
 	private static VertexBuffer vertexBuffer;
 	private static VertexBuffer vertexStorageBuffer;
 	private static VertexBuffer storageBuffer0;
 	private static VertexBuffer storageBuffer1;
 	private static IndexBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
-	private static Texture depthTexture;
 	private static int I;
 	
 	private static long computeDescriptorSetLayout;
@@ -141,6 +145,41 @@ public class ComputeTest extends RenderTest {
 	
 	public static void start()
 	{
+		Shader vertexShader;
+		ShaderInfo vertexShaderInfo;
+		Shader fragmentShader;
+		ShaderInfo fragmentShaderInfo;
+		Shader computeShader;
+		ShaderInfo computeShaderInfo;
+		try
+		{
+			PreparedShader shader = loadShader(SHADER + ".vert");
+			vertexShader = shader.shader();
+			vertexShaderInfo = shader.info();
+			
+			shader = loadShader(SHADER + ".frag");
+			fragmentShader = shader.shader();
+			fragmentShaderInfo = shader.info();
+			
+			shader = loadShader(SHADER + ".comp");
+			computeShader = shader.shader();
+			computeShaderInfo = shader.info();
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace(System.out);
+			RenderEngine.terminate();
+			return;
+		}
+		
+		Debug.onDebug(() -> {
+			
+			for (int i = 0; i < 1000000; i++)
+			{
+				System.out.println(i);
+			}
+		});
+		
 		Vulkan vulkan = RenderEngine.getVulkan();
 		
 		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
@@ -151,13 +190,12 @@ public class ComputeTest extends RenderTest {
 		VulkanWindow window = vulkan.getWindow();
 		
 		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT | VK10.VK_QUEUE_COMPUTE_BIT, window.getSurface()) != null);
-		if (TestProperties.DEVICE.isDefault()) vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
-		else vulkan.pickPhysicalDevices(TestProperties.DEVICE.getValue());
+		if (!pickPhysicalDevice()) return;
 		
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.wideLines(true);
 		deviceFeatures.samplerAnisotropy(true);
-		Device device = vulkan.createDevice(deviceFeatures);
+		Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME, EXTDepthRangeUnrestricted.VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME);
 		
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			renderer.updateUniformBuffers((b, l) -> l.set(PROJECTION, b, buildProjectionMatrix(window)));
@@ -219,58 +257,22 @@ public class ComputeTest extends RenderTest {
 			{
 				switch (k)
 				{
-					case GLFW.GLFW_KEY_R ->
-					{
+					case GLFW.GLFW_KEY_R -> {
 						renderer.updateUniformBuffers((b, l) -> {
 							l.set(PARTICLE_RADIUS, b, 0.01F);
 						});
 					}
-					case GLFW.GLFW_KEY_U ->
-					{
+					case GLFW.GLFW_KEY_U -> {
 						isCameraUnlocked = !isCameraUnlocked;
 						window.setCursorInputMode(isCameraUnlocked ? CursorInputMode.DISABLED : CursorInputMode.NORMAL);
 					}
-					case GLFW.GLFW_KEY_P ->
-					{
+					case GLFW.GLFW_KEY_P -> {
 						cameraPosition.setAll(0, 0, 0);
 						rebuildProjectionMatrix = true;
 					}
 				}
 			}
 		});
-		
-		Shader vertexShader;
-		ShaderInfo vertexShaderInfo;
-		Shader fragmentShader;
-		ShaderInfo fragmentShaderInfo;
-		Shader computeShader;
-		ShaderInfo computeShaderInfo;
-		try
-		{
-			vertexShader = new Shader(getFile(SHADER + ".vert"));
-			vertexShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".vert.json"));
-			vertexShader.compile(vertexShaderInfo);
-			if (!vertexShader.isCompilationSuccessfull()) throw new IOException("Shader " + vertexShader.getFile() + " has errors");
-			
-			fragmentShader = new Shader(getFile(SHADER + ".frag"));
-			fragmentShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".frag.json"));
-			fragmentShader.compile(fragmentShaderInfo);
-			if (!fragmentShader.isCompilationSuccessfull()) throw new IOException("Shader " + fragmentShader.getFile() + " has errors");
-			
-			computeShader = new Shader(getFile(SHADER + ".comp"));
-			computeShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".comp.json"));
-			computeShader.compile(computeShaderInfo);
-			if (!computeShader.isCompilationSuccessfull()) throw new IOException("Shader " + computeShader.getFile() + " has errors");
-		}
-		catch (IOException e)
-		{
-			e.printStackTrace(System.out);
-			RenderEngine.terminate();
-			return;
-		}
-		
-		depthTexture = Texture.create2dTexture(device, window.getWidth(), window.getHeight(), VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
-		depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 		
 		int minOffsetAlignment = (int) device.getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment();
 		System.out.println("MinOffset = " + minOffsetAlignment);
@@ -283,16 +285,14 @@ public class ComputeTest extends RenderTest {
 			storageBuffer1 = new VertexBuffer(vertexStorageBuffer, size, size);
 			uniformBuffer = new VulkanBuffer(device, Math.max(minOffsetAlignment * 3, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 		}
-		presenter = new Presenter(device, window.getSurface(), depthTexture, 3);
+		presenter = new Presenter(device, window, RenderTest::createDepthTexture, 3);
 		
-		Builder builder = Renderer.create();
+		Renderer.Builder builder = Renderer.create();
 		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo)/* .computeShader(computeShader, computeShaderInfo) */;
-		builder.depthTexture(depthTexture);
 		builder.depthTestEnable(true);
 		builder.cullMode(VK10.VK_CULL_MODE_NONE);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.uniformBuffer(uniformBuffer);
-		builder.minDepth(-1000F).maxDepth(1000F);
 		
 		renderer = builder.build(window, device, presenter.getRenderPass(), 3, ComputeCustomGraphicsPipeline::new);
 		
@@ -376,8 +376,7 @@ public class ComputeTest extends RenderTest {
 			})
 			{
 				int size = variable.getType().getLength();
-				if (partialOffset + size > 16) offset += 16 - partialOffset;
-				System.out.println("Offset " + variable + ": " + offset);
+				if (partialOffset > 0 && partialOffset + size > 16) offset += 16 - partialOffset;
 				computeUniformBufferLayout.mark(variable, offset / 4);
 				offset += size;
 				partialOffset = offset % 16;
@@ -487,8 +486,8 @@ public class ComputeTest extends RenderTest {
 				for (float k = -DIM; k < DIM; k++)
 				{
 					Color c = colors[random.nextInt(colors.length)];
-					cursor.put(i / 10).put(j / 10).put(k / 10).put(0F);
-					cursor.put(random.nextFloat(-1 / 20F, 1 / 20F)).put(random.nextFloat(-1 / 20F, 1 / 20F)).put(random.nextFloat(-1 / 20F, 1 / 20F)).put(0F);
+					cursor.put(i / 10).put(j / 10).put(k / 10).put(0);
+					cursor.put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(0);
 					cursor.put(c.r() / 255).put(c.g() / 255).put(c.b() / 255).put(c.a() / 255);
 				}
 			}
@@ -507,43 +506,40 @@ public class ComputeTest extends RenderTest {
 			RenderEngine.terminate();
 			return;
 		}
+		printState();
 	}
 	
-	private static void printVB0(VertexBuffer vertexBuffer)
+	private static int stateIndex = 1000;
+	
+	private static void printState()
 	{
-		float[] data = vertexBuffer.getAllFloats(0, 12 * PARTICLE_COUNT);
-		
-		for (int i = 0; i < data.length; i += 12)
+		System.out.println("PrintState" + stateIndex);
+		try (PrintStream stream = new PrintStream("state/state" + stateIndex++ + ".txt");)
 		{
-			System.out.print("{[");
-			System.out.print(data[i]);
-			System.out.print(", ");
-			System.out.print(data[i + 1]);
-			System.out.print(", ");
-			System.out.print(data[i + 2]);
-			System.out.print(" | ");
-			System.out.print(data[i + 3]);
-			System.out.print("]");
-			System.out.print("[");
-			System.out.print(data[i + 4]);
-			System.out.print(", ");
-			System.out.print(data[i + 5]);
-			System.out.print(", ");
-			System.out.print(data[i + 6]);
-			System.out.print(" | ");
-			System.out.print(data[i + 7]);
-			System.out.print("]");
-			System.out.print("[");
-			System.out.print(data[i + 8]);
-			System.out.print(", ");
-			System.out.print(data[i + 9]);
-			System.out.print(", ");
-			System.out.print(data[i + 10]);
-			System.out.print(", ");
-			System.out.print(data[i + 11]);
-			System.out.println("]}");
+			Debug.setDebugOutput(stream);
+			Debug.printState();
+			Debug.printState("Presenter", presenter);
+			Debug.printState("Renderer", renderer);
+			
+			Debug.print("ComputePipeline ", computePipeline);
+			Debug.print("GroupCount: " + 256 + "x" + 1 + "x" + 1);
+			
+			Debug.print("InputBuffer", storageBuffer0);
+			//Debug.printState("InputLayout", inputLayout);
+			Debug.print("OutputBuffer", storageBuffer1);
+			//Debug.printState("OutputLayout", outputLayout);
+			Debug.print("UniformBuffer", uniformBuffer);
+			Debug.print("DescriptorPool: " + Debug.address(computeDescriptorPool));
+			Debug.print("DescriptorSetLayout: " + Debug.address(computeDescriptorSetLayout));
+			Debug.print("DescriptorSet: " + Debug.address(computeDescriptorSet));
+			Debug.printState("ComputeUniformLayout", computeUniformBufferLayout);
+			Debug.printState("ComputeStorageLayout", computeStorageBufferLayout);
+			Debug.setDebugOutput(System.out);
 		}
-		System.out.println();
+		catch (FileNotFoundException e)
+		{
+			e.printStackTrace(System.out);
+		}
 	}
 	
 	private static long time;
@@ -618,24 +614,18 @@ public class ComputeTest extends RenderTest {
 			cameraPosition.add(movement.multiplyAll((float) enlapsedTimeSeconds));
 			rebuildProjectionMatrix = true;
 		}
+		String title = "Test fps=" + fps;
+		if (isCameraUnlocked) title += ", pos=" + cameraPosition + ", vel=" + cameraMovement + ", angles={" + cameraXRotation.asFloatBounded(AngleUnit.DEGREES) + ", " + cameraYRotation.asFloatBounded(AngleUnit.DEGREES) + "}";
+		window.setTitle(title);
 		
-		if (isCameraUnlocked)
-		{
-			window.setTitle("Test fps=" + fps + ", pos=" + cameraPosition + ", vel=" + cameraMovement + ", angles={" + cameraXRotation.asFloatBounded(AngleUnit.DEGREES) + ", " + cameraYRotation.asFloatBounded(AngleUnit.DEGREES) + "}");
-		}
-		else
-		{
-			window.setTitle("Test fps=" + fps);
-		}
-		if (rebuildProjectionMatrix)
-		{
-			renderer.updateUniformBuffers((b, l) -> l.set(PROJECTION, b, buildProjectionMatrix(window)));
-		}
+		if (rebuildProjectionMatrix) renderer.updateUniformBuffers((b, l) -> l.set(PROJECTION, b, buildProjectionMatrix(window)));
 		
 		window.pollEvents();
 		if (!window.isIconified())
 		{
 			while (presenter.present((commandBuffer, frameIndex) -> {
+				commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
+				commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), -1000, 1000);
 				presenter.beginRenderPass(commandBuffer);
 				renderer.setUniformBufferIndex(frameIndex);
 				renderer.draw(commandBuffer, PARTICLE_COUNT);
@@ -650,7 +640,7 @@ public class ComputeTest extends RenderTest {
 				});
 				computeUniformBufferLayout.set(ENLAPSED_TIME, uniformBuffer, (float) enlapsedTimeSeconds);
 				computeUniformBufferLayout.updateDescriptorSets();
-			}) == Result.RECREATED_SWAPCHAIN);
+			}) == Result.SWAPCHAIN_OUT_OF_DATE) window.pollEvents();
 		}
 		window.update();
 	}

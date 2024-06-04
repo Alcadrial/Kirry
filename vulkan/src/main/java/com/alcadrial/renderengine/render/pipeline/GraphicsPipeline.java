@@ -13,6 +13,7 @@ import org.lwjgl.vulkan.VkVertexInputBindingDescription;
 
 import com.alcadrial.renderengine.core.util.NotYetImplementedException;
 import com.alcadrial.renderengine.core.util.Nullable;
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.RenderPass;
@@ -255,5 +256,20 @@ public class GraphicsPipeline extends Pipeline {
 		if (autoCloseLayout) layout.close();
 		if (autoCloseRenderPass) renderPass.close();
 		super.close();
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("Vk: " + Debug.address(vk));
+		Debug.print("Layout", layout);
+		Debug.print("RenderPass", renderPass);
+		Debug.print("Inputs: " + inputs);
+		Debug.print("VertexShader: " + vertexShader.shader().getFile());
+		tessellationControlShader.ifPresent(s -> Debug.print("TessellationControlShader: " + s.shader().getFile()));
+		tessellationEvaluationShader.ifPresent(s -> Debug.print("TessellationEvaluationShader: " + s.shader().getFile()));
+		geometryShader.ifPresent(s -> Debug.print("GeometryShader: " + s.shader().getFile()));
+		fragmentShader.ifPresent(s -> Debug.print("FragmentShader: " + s.shader().getFile()));
+		
 	}
 }

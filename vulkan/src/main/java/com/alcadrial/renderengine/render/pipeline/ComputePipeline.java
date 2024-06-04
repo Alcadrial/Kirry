@@ -8,6 +8,7 @@ import org.lwjgl.vulkan.VkComputePipelineCreateInfo;
 import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
 
 import com.alcadrial.renderengine.core.util.NotYetImplementedException;
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
@@ -94,5 +95,13 @@ public class ComputePipeline extends Pipeline {
 	{
 		if (autoCloseLayout) layout.close();
 		super.close();
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("Vk: " + Debug.address(vk));
+		Debug.print("Layout", layout);
+		Debug.print("Inputs: " + inputs);
 	}
 }

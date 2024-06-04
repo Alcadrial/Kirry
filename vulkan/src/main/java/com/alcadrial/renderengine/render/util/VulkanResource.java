@@ -1,6 +1,6 @@
 package com.alcadrial.renderengine.render.util;
 
-public interface VulkanResource<VK> extends AutoCloseable {
+public interface VulkanResource<VK> extends AutoCloseable, VulkanDebug {
 	
 	// void recreate(Object... objects);
 	

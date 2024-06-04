@@ -28,11 +28,12 @@ public class VertexBuffer extends VulkanDoubleBuffer {
 	{
 		this(data.length);
 		asFloatBuffer().put(data);
+		unmapBuffer();
 	}
 	
 	public VertexBuffer(int size)
 	{
-		this(size, 0);
+		this(RenderEngine.getVulkan().getDevice(), size);
 	}
 	
 	public VertexBuffer(int size, int extraUsage)
@@ -55,11 +56,16 @@ public class VertexBuffer extends VulkanDoubleBuffer {
 		this(device, size, extraUsage, false);
 	}
 	
-	public VertexBuffer(Device device, long size, int extraUsage, boolean bidirectional)
+	public VertexBuffer(Device device, int size, int extraUsage, boolean bidirectional)
 	{
 		super(device, size * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | extraUsage, bidirectional);
 		offset = 0;
 		cursor = 0;
+	}
+	
+	public VertexBuffer(VertexBuffer buffer, long offset, int size)
+	{
+		super(buffer, offset * 4, size * 4);
 	}
 	
 	public long getOffset()
@@ -85,7 +91,7 @@ public class VertexBuffer extends VulkanDoubleBuffer {
 	}
 	
 	@Override
-	public synchronized Future<?> sendToPhysicalDevice(long offset, long size)
+	public synchronized Future<?> sendToPhysicalDevice(long offset, int size)
 	{
 		return super.sendToPhysicalDevice(offset * 4, size * 4);
 	}

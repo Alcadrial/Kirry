@@ -1,19 +1,40 @@
 package com.alcadrial.renderengine.render.test;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.concurrent.TimeUnit;
 
+import org.lwjgl.vulkan.EXTDebugReport;
+import org.lwjgl.vulkan.EXTDebugUtils;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
 
 import com.alcadrial.kroperties.Property;
+import com.alcadrial.renderengine.render.PhysicalDevice;
+import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.shader.PreparedShader;
+import com.alcadrial.renderengine.render.shader.Shader;
+import com.alcadrial.renderengine.render.shader.ShaderInfo;
+import com.alcadrial.renderengine.render.texture.Texture;
+import com.alcadrial.renderengine.render.util.PhysicalDeviceNotFoundException;
 import com.alcadrial.renderengine.render.util.Properties;
+import com.alcadrial.renderengine.render.util.Version;
 
 public class RenderTest {
 	
 	protected static final Object MONITOR = new Object();
 	private static final String[] SEVERITIES = new String[] {"UNKNOWN", "VERBOSE", "INFO", "WARNING", "ERROR"};
 	private static final String[] TYPES = new String[] {"UNKNOWN", "GENERAL", "VALIDATION", "PERFORMANCE"};
+	
+	public static void initRenderEngine()
+	{
+		RenderEngine.Builder builder = RenderEngine.create("Test", new Version(0, 0, 1, 0));
+		builder.messengerCallback(RenderTest::debugCallback);
+		builder.instanceLayersDebug("VK_LAYER_KHRONOS_validation");
+		builder.instanceExtensionsDebug(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME, EXTDebugReport.VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+		builder.initialize();
+	}
 	
 	public static int debugCallback(int messageSeverity, int messageType, long callbackDataId, long userDataId)
 	{
@@ -40,9 +61,52 @@ public class RenderTest {
 		return VK10.VK_FALSE;
 	}
 	
+	public static boolean pickPhysicalDevice()
+	{
+		try
+		{
+			if (TestProperties.DEVICE.isDefault()) RenderEngine.getVulkan().pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
+			else RenderEngine.getVulkan().pickPhysicalDevices(TestProperties.DEVICE.getValue());
+			return true;
+		}
+		catch (PhysicalDeviceNotFoundException e)
+		{
+			e.printStackTrace(System.out);
+			RenderEngine.terminate();
+			return false;
+		}
+	}
+	
+	public static Texture createDepthTexture(int width, int height)
+	{
+		Texture depthTexture = Texture.create2dTexture(RenderEngine.getVulkan().getDevice(), width, height, VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
+		depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		return depthTexture;
+	}
+	
 	public static File getFile(String path)
 	{
 		return new File(Properties.RESOURCE_PATH.getValue(), "assets/renderengine/" + path);
+	}
+	
+	public static PreparedShader loadShader(String path) throws IOException
+	{
+		Shader shader = new Shader(getFile(path));
+		ShaderInfo info = ShaderInfo.fromJson(getFile(path + ".json"));
+		if (TestProperties.FORCE_RECOMPILE_SHADERS.getValue()) shader.compile(info);
+		else
+		{
+			File binFile = getFile(path + ".bin");
+			if (binFile.canRead()) shader.loadCompiled(binFile);
+			else shader.compile(info);
+		}
+		if (!shader.isCompilationSuccessfull()) throw new IOException("Shader " + shader.getFile() + " has errors");
+		return new PreparedShader(shader, info);
+	}
+	
+	public static void saveShaderBinary(Shader shader) throws IOException
+	{
+		Files.write(new File(shader.getFile().getPath() + ".bin").toPath(), shader.getLastCompilation().get().getBinary());
 	}
 	
 	public static void println(String s, Runnable action, Property<Boolean> printProperty)

@@ -4,7 +4,7 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 
-import com.alcadrial.renderengine.render.util.LongDeviceResource;
+import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
 /**
@@ -13,7 +13,7 @@ import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
  * 
  * @author Alcadrial
  */
-public class Swapchain extends LongDeviceResource {
+public class Swapchain extends RawDeviceResource {
 	
 	static
 	{
@@ -38,5 +38,11 @@ public class Swapchain extends LongDeviceResource {
 		device.waitIdle();
 		KHRSwapchain.vkDestroySwapchainKHR(device.getVk(), vk, null);
 		super.close();
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("Vk: " + Debug.address(vk));
 	}
 }

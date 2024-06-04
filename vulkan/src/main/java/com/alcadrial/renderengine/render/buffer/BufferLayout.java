@@ -5,6 +5,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.function.Consumer;
 
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkDescriptorBufferInfo;
 import org.lwjgl.vulkan.VkDescriptorImageInfo;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
@@ -16,14 +17,16 @@ import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.core.util.Pair;
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
 import com.alcadrial.renderengine.render.texture.TextureView;
+import com.alcadrial.renderengine.render.util.VulkanDebug;
 
-public class BufferLayout {
+public class BufferLayout implements VulkanDebug {
 	
 	static
 	{
@@ -119,7 +122,7 @@ public class BufferLayout {
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.MATRIX_FLOAT_4X4, p.left.getType());
+			checkValue(ShaderInputType.MATRIX_FLOAT_4X4, p.left.getType());
 			buffer.asFloatBuffer().put(index * stride + p.right, value.toArray());
 		}
 	}
@@ -134,7 +137,7 @@ public class BufferLayout {
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.VECTOR_FLOAT_2, p.left.getType());
+			checkValue(ShaderInputType.VECTOR_FLOAT_2, p.left.getType());
 			buffer.asFloatBuffer().put(index * stride + p.right, value.getValuesArray());
 		}
 	}
@@ -149,7 +152,7 @@ public class BufferLayout {
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.VECTOR_FLOAT_3, p.left.getType());
+			checkValue(ShaderInputType.VECTOR_FLOAT_3, p.left.getType());
 			buffer.asFloatBuffer().put(index * stride + p.right, value.getValuesArray());
 		}
 	}
@@ -164,7 +167,7 @@ public class BufferLayout {
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.VECTOR_FLOAT_4, p.left.getType());
+			checkValue(ShaderInputType.VECTOR_FLOAT_4, p.left.getType());
 			buffer.asFloatBuffer().put(index * stride + p.right, value.getValuesArray());
 		}
 	}
@@ -179,7 +182,7 @@ public class BufferLayout {
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.VECTOR_INT_2, p.left.getType());
+			checkValue(ShaderInputType.VECTOR_INT_2, p.left.getType());
 			buffer.asIntBuffer().put(index * stride + p.right, value.getValuesArray());
 		}
 	}
@@ -194,7 +197,7 @@ public class BufferLayout {
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.VECTOR_INT_3, p.left.getType());
+			checkValue(ShaderInputType.VECTOR_INT_3, p.left.getType());
 			buffer.asIntBuffer().put(index * stride + p.right, value.getValuesArray());
 		}
 	}
@@ -209,7 +212,7 @@ public class BufferLayout {
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.VECTOR_INT_4, p.left.getType());
+			checkValue(ShaderInputType.VECTOR_INT_4, p.left.getType());
 			buffer.asIntBuffer().put(index * stride + p.right, value.getValuesArray());
 		}
 	}
@@ -225,7 +228,7 @@ public class BufferLayout {
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.SAMPLER_2D, p.left.getType());
+			checkValue(ShaderInputType.SAMPLER_2D, p.left.getType());
 			lock.lock();
 			try
 			{
@@ -250,7 +253,7 @@ public class BufferLayout {
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.INT, p.left.getType());
+			checkValue(ShaderInputType.INT, p.left.getType());
 			buffer.asIntBuffer().put(index * stride + p.right, value);
 		}
 	}
@@ -265,13 +268,71 @@ public class BufferLayout {
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
-			checkUniformValue(ShaderInputType.FLOAT, p.left.getType());
+			checkValue(ShaderInputType.FLOAT, p.left.getType());
 			buffer.asFloatBuffer().put(index * stride + p.right, value);
 		}
 	}
 	
-	private void checkUniformValue(ShaderInputType required, ShaderInputType provided)
+	private void checkValue(ShaderInputType required, ShaderInputType provided)
 	{
-		if (required != provided) throw new IllegalArgumentException("Provided a " + provided.getName() + " value for a " + required.getName() + " uniform");
+		if (required != provided) throw new IllegalArgumentException("Provided a " + provided.getName() + " value for a " + required.getName());
+	}
+	
+	/*
+	 *  
+	struct VkWriteDescriptorSet {
+		VkStructureType sType;
+		void const * pNext;
+		VkDescriptorSet dstSet;
+		uint32_t dstBinding;
+		uint32_t dstArrayElement;
+		uint32_t descriptorCount;
+		VkDescriptorType descriptorType;
+		VkDescriptorImageInfo const * pImageInfo;
+		VkDescriptorBufferInfo const * pBufferInfo;
+		VkBufferView const * pTexelBufferView;
+	}
+	 */
+	@Override
+	public void debug()
+	{
+		//VkWriteDescriptorSet
+		//writeDescriptorSets.
+		Debug.print("dstSet: " + Debug.address(writeDescriptorSets.dstSet()));
+		Debug.print("dstBinding: " + writeDescriptorSets.dstBinding());
+		Debug.print("dstArrayElement: " + writeDescriptorSets.dstArrayElement());
+		Debug.print("descriptorType: " + writeDescriptorSets.descriptorType());
+		VkDescriptorImageInfo.Buffer imageInfoBuffer = writeDescriptorSets.pImageInfo();
+		if (imageInfoBuffer != null)
+		{
+			Debug.print("pImageInfo [");
+			Debug.indent();
+			for (VkDescriptorImageInfo imageInfo : imageInfoBuffer)
+			{
+				Debug.print("Buffer [");
+				Debug.indent();
+				Debug.print("sampler: " + Debug.address(imageInfo.sampler()));
+				Debug.print("view: " + Debug.address(imageInfo.imageView()));
+				Debug.print("layout: " + imageInfo.imageLayout());
+				Debug.deindent();
+				Debug.print("]");
+			}
+			Debug.deindent();
+			Debug.print("]");
+		}
+		VkDescriptorBufferInfo.Buffer bufferInfoBuffer = writeDescriptorSets.pBufferInfo();
+		if (bufferInfoBuffer != null)
+		{
+			Debug.print("pBufferInfo [");
+			Debug.indent();
+			for (VkDescriptorBufferInfo bufferInfo : bufferInfoBuffer)
+			{
+				Debug.print("vk: " + Debug.address(bufferInfo.buffer()));
+				Debug.print("offset: " + bufferInfo.offset());
+				Debug.print("size: " + bufferInfo.range());
+			}
+			Debug.deindent();
+			Debug.print("]");
+		}
 	}
 }

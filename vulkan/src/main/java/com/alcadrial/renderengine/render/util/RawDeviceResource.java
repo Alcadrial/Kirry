@@ -3,14 +3,14 @@ package com.alcadrial.renderengine.render.util;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 
-public class LongDeviceResource extends DeviceResource<Long> {
+public abstract class RawDeviceResource extends AbstractDeviceResource<Long> {
 	
 	static
 	{
 		RenderEngine.assertLoaded();
 	}
 	
-	public LongDeviceResource(Device device)
+	public RawDeviceResource(Device device)
 	{
 		super(device);
 	}

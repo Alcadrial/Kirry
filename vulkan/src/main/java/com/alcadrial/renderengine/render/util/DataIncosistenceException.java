@@ -1,13 +1,6 @@
 package com.alcadrial.renderengine.render.util;
 
-import com.alcadrial.renderengine.render.RenderEngine;
-
 public class DataIncosistenceException extends RuntimeException {
-	
-	static
-	{
-		RenderEngine.assertLoaded();
-	}
 	
 	public DataIncosistenceException()
 	{

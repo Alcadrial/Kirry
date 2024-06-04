@@ -14,6 +14,7 @@ import org.lwjgl.glfw.GLFWWindowIconifyCallbackI;
 import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
+import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 
@@ -26,7 +27,6 @@ import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.axis.Axis;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
@@ -35,12 +35,12 @@ import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.test.RendererUtils.OrthoCubeVertexResult;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.Properties;
-import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.window.Presenter;
 import com.alcadrial.renderengine.render.window.Presenter.Result;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
@@ -60,14 +60,15 @@ public class InstancingTest extends RenderTest {
 		
 		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
 		
-		println("Render Engine initialization", () -> {
-			if (!RenderEngine.create("Test", new Version(0, 0, 1, 0)).messenger(InstancingTest::debugCallback).initialize()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		}, TestProperties.PRINT_LOADING_TIMES);
+		println("Render Engine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
+		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
 		
 		println("Start", InstancingTest::start, TestProperties.PRINT_LOADING_TIMES);
 		if (!RenderEngine.isInitializated()) return;
+		
 		println("Loop", InstancingTest::loop, TestProperties.PRINT_LOADING_TIMES);
 		if (!RenderEngine.isInitializated()) return;
+		
 		println("End", InstancingTest::end, TestProperties.PRINT_LOADING_TIMES);
 	}
 	
@@ -106,6 +107,27 @@ public class InstancingTest extends RenderTest {
 	
 	public static void start()
 	{
+		Shader vertexShader;
+		ShaderInfo vertexShaderInfo;
+		Shader fragmentShader;
+		ShaderInfo fragmentShaderInfo;
+		try
+		{
+			PreparedShader shader = loadShader(SHADER + ".vert");
+			vertexShader = shader.shader();
+			vertexShaderInfo = shader.info();
+			
+			shader = loadShader(SHADER + ".frag");
+			fragmentShader = shader.shader();
+			fragmentShaderInfo = shader.info();
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace(System.out);
+			RenderEngine.terminate();
+			return;
+		}
+		
 		Vulkan vulkan = RenderEngine.getVulkan();
 		
 		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
@@ -115,13 +137,12 @@ public class InstancingTest extends RenderTest {
 		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
 		
 		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getGraphicsQueueFamily() != null);
-		if (TestProperties.DEVICE.isDefault()) vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
-		else vulkan.pickPhysicalDevices(TestProperties.DEVICE.getValue());
+		if (!pickPhysicalDevice()) return;
 		
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.wideLines(true);
 		deviceFeatures.samplerAnisotropy(true);
-		vulkan.createDevice(deviceFeatures);
+		vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 		
 		VulkanWindow window = vulkan.getWindow();
 		Device device = vulkan.getDevice();
@@ -173,37 +194,17 @@ public class InstancingTest extends RenderTest {
 			}
 		});
 		
-		Shader vertexShader;
-		ShaderInfo vertexShaderInfo;
-		Shader fragmentShader;
-		ShaderInfo fragmentShaderInfo;
-		try
-		{
-			vertexShader = new Shader(getFile(SHADER + ".vert"));
-			vertexShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".vert.json"));
-			vertexShader.compile(vertexShaderInfo);
-			if (!vertexShader.isCompilationSuccessfull()) throw new IOException("Shader " + vertexShader.getFile() + " has errors");
-			
-			fragmentShader = new Shader(getFile(SHADER + ".frag"));
-			fragmentShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".frag.json"));
-			fragmentShader.compile(fragmentShaderInfo);
-			if (!fragmentShader.isCompilationSuccessfull()) throw new IOException("Shader " + fragmentShader.getFile() + " has errors");
-		}
-		catch (IOException e)
-		{
-			e.printStackTrace(System.out);
-			RenderEngine.terminate();
-			return;
-		}
-		
 		depthTexture = Texture.create2dTexture(device, window.getWidth(), window.getHeight(), VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
 		depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 		
-		presenter = new Presenter(device, window.getSurface(), depthTexture, 3);
+		presenter = new Presenter(device, window, (width, height) -> {
+			depthTexture = Texture.create2dTexture(device, width, height, VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
+			depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+			return depthTexture;
+		}, 3);
 		
 		Builder builder = Renderer.create();
 		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
-		builder.depthTexture(depthTexture);
 		builder.depthTestEnable(true);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
@@ -307,11 +308,13 @@ public class InstancingTest extends RenderTest {
 			println("Frame " + frame, () -> {
 				window.pollEvents();
 				while (presenter.present((commandBuffer, frameIndex) -> {
+					commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
+					commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), 0, 1);
 					presenter.beginRenderPass(commandBuffer);
 					renderer.setUniformBufferIndex(frameIndex);
 					renderer.draw(commandBuffer, instanceCount);
 					commandBuffer.endRenderPass();
-				}, () -> {}) == Result.RECREATED_SWAPCHAIN);
+				}, () -> {}) == Result.SWAPCHAIN_OUT_OF_DATE);
 				window.update();
 				renderer.updateUniformBuffers((b, l) -> l.set(MODEL, b, buildModelMatrix()));
 				f += (firstMilestone - pauseTime) / 1000000D;

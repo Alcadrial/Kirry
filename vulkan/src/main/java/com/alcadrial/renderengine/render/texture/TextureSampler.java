@@ -4,12 +4,13 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkSamplerCreateInfo;
 
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.util.LongDeviceResource;
+import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
-public class TextureSampler extends LongDeviceResource {
+public class TextureSampler extends RawDeviceResource {
 	
 	static
 	{
@@ -50,5 +51,11 @@ public class TextureSampler extends LongDeviceResource {
 	{
 		VK10.vkDestroySampler(device.getVk(), vk, null);
 		super.close();
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("Vk: " + Debug.address(vk));
 	}
 }

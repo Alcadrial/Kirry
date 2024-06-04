@@ -5,7 +5,9 @@ import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSurface;
@@ -33,6 +35,7 @@ import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.CommandBufferData;
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
@@ -41,10 +44,64 @@ import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.Surface;
 import com.alcadrial.renderengine.render.Swapchain;
 import com.alcadrial.renderengine.render.texture.Texture;
+import com.alcadrial.renderengine.render.util.VulkanDebug;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 
-public class Presenter implements AutoCloseable {
+public class Presenter implements AutoCloseable, VulkanDebug {
+	
+	public static class FrameData {
+		
+		private long image;
+		private long imageView;
+		private FrameBuffer frameBuffer;
+		private CommandBufferData command;
+		
+		public FrameData(long image)
+		{
+			this.image = image;
+		}
+		
+		public long getImage()
+		{
+			return image;
+		}
+		
+		public void setImage(long image)
+		{
+			this.image = image;
+		}
+		
+		public long getImageView()
+		{
+			return imageView;
+		}
+		
+		public void setImageView(long imageView)
+		{
+			this.imageView = imageView;
+		}
+		
+		public FrameBuffer getFrameBuffer()
+		{
+			return frameBuffer;
+		}
+		
+		public void setFrameBuffer(FrameBuffer frameBuffer)
+		{
+			this.frameBuffer = frameBuffer;
+		}
+		
+		public CommandBufferData getCommand()
+		{
+			return command;
+		}
+		
+		public void setCommand(CommandBufferData command)
+		{
+			this.command = command;
+		}
+	}
 	
 	static
 	{
@@ -54,7 +111,7 @@ public class Presenter implements AutoCloseable {
 	public enum Result {
 		SUCCESS,
 		// FAILED,
-		RECREATED_SWAPCHAIN,
+		SWAPCHAIN_OUT_OF_DATE,
 		EMPTY_SURFACE;
 	}
 	
@@ -64,13 +121,15 @@ public class Presenter implements AutoCloseable {
 	private Surface surface;
 	private Swapchain swapchain;
 	private RenderPass renderPass;
+	@Nullable
+	private BiFunction<Integer, Integer, Texture> depthTextureFactory;
+	
+	private boolean isSwapchainValid;
+	private ReentrantLock swapchainRecreationLock;
 	
 	private VkRenderPassBeginInfo renderPassBeginInfo;
 	
-	private List<Long> images;
-	private List<Long> imageViews;
-	private List<FrameBuffer> frameBuffers;
-	private List<CommandBufferData> commands;
+	private List<FrameData> frames;
 	
 	private Semaphore graphicsQueueSemaphor;
 	
@@ -80,15 +139,17 @@ public class Presenter implements AutoCloseable {
 	private float clearDepth;
 	private int clearStencil;
 	
-	public Presenter(Device device, Surface surface, @Nullable Texture depthTexture, int swappingBuffers)
+	public Presenter(Device device, VulkanWindow window, @Nullable BiFunction<Integer, Integer, Texture> depthTextureFactory, int swappingBuffers)
 	{
 		this.device = device;
-		this.surface = surface;
+		surface = window.getSurface();
+		this.depthTextureFactory = depthTextureFactory;
 		this.swappingBuffers = swappingBuffers;
 		clearColor = Color.BLACK;
 		clearDepth = 1;
 		clearStencil = 0;
 		graphicsQueueSemaphor = new Semaphore(1);
+		swapchainRecreationLock = new ReentrantLock();
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -96,7 +157,7 @@ public class Presenter implements AutoCloseable {
 			
 			surface.init(physicalDevice, stack);
 			
-			VkAttachmentDescription.Buffer attachmentDescriptions = VkAttachmentDescription.calloc(depthTexture != null ? 2 : 1, stack);
+			VkAttachmentDescription.Buffer attachmentDescriptions = VkAttachmentDescription.calloc(depthTextureFactory != null ? 2 : 1, stack);
 			
 			VkAttachmentDescription colorAttachment = attachmentDescriptions.get();
 			colorAttachment.format(surface.getFormat().format());
@@ -122,8 +183,11 @@ public class Presenter implements AutoCloseable {
 			int dstStageMask = VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 			int dstAccessMask = VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 			
-			if (depthTexture != null)
+			Texture depthTexture = null;
+			if (depthTextureFactory != null)
 			{
+				VkExtent2D extent = surface.getExtent();
+				depthTexture = depthTextureFactory.apply(extent.width(), extent.height());
 				VkAttachmentDescription depthAttachment = attachmentDescriptions.get();
 				depthAttachment.format(depthTexture.getFormat());
 				depthAttachment.samples(VK10.VK_SAMPLE_COUNT_1_BIT);
@@ -162,7 +226,7 @@ public class Presenter implements AutoCloseable {
 			renderPass = new RenderPass(device, renderPassCreateInfo);
 			
 			VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
-			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.getVk(), surface.getSurface(), capabilities), "Failed to create swap chain");
+			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.getVk(), surface.getVk(), capabilities), "Failed to create swap chain");
 			
 			VkSwapchainCreateInfoKHR swapchainCreateInfo = VkSwapchainCreateInfoKHR.calloc(stack);
 			swapchainCreateInfo.sType(KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR);
@@ -181,7 +245,7 @@ public class Presenter implements AutoCloseable {
 			swapchainCreateInfo.compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
 			swapchainCreateInfo.clipped(true);
 			swapchainCreateInfo.preTransform(capabilities.currentTransform());
-			swapchainCreateInfo.surface(surface.getSurface());
+			swapchainCreateInfo.surface(surface.getVk());
 			swapchainCreateInfo.imageFormat(surface.getFormat().format());
 			swapchainCreateInfo.imageColorSpace(surface.getFormat().colorSpace());
 			swapchainCreateInfo.imageExtent(surface.getExtent());
@@ -191,6 +255,11 @@ public class Presenter implements AutoCloseable {
 			
 			initialize(stack, depthTexture);
 		}
+		window.addSurfaceUpdateActions(s -> {
+			swapchainRecreationLock.lock();
+			isSwapchainValid = false;
+			swapchainRecreationLock.unlock();
+		});
 	}
 	
 	private void initialize(MemoryStack stack, @Nullable Texture depthTexture)
@@ -200,29 +269,30 @@ public class Presenter implements AutoCloseable {
 		long[] p0 = new long[p[0]];
 		VulkanErrorUtils.assertNoError(KHRSwapchain.vkGetSwapchainImagesKHR(device.getVk(), swapchain.getVk(), p, p0));
 		
-		images = new ArrayList<>(p[0]);
+		frames = new ArrayList<>(p[0]);
 		
-		for (long image : p0) images.add(image);
-		
-		imageViews = new ArrayList<>(images.size());
-		frameBuffers = new ArrayList<>(images.size());
+		for (long image : p0) frames.add(new FrameData(image));
 		
 		p0 = new long[1];
 		
 		LongBuffer attachments = stack.mallocLong(depthTexture != null ? 2 : 1);
 		if (depthTexture != null) attachments.put(1, depthTexture.getView().getVk());
 		
-		VkFramebufferCreateInfo framebufferCreateInfo = VkFramebufferCreateInfo.calloc(stack);
+		VkFramebufferCreateInfo framebufferCreateInfo = VkFramebufferCreateInfo.malloc(stack);
 		framebufferCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO);
+		framebufferCreateInfo.pNext(0);
+		framebufferCreateInfo.flags(0);
 		framebufferCreateInfo.renderPass(renderPass.getVk());
 		framebufferCreateInfo.width(surface.getExtent().width());
 		framebufferCreateInfo.height(surface.getExtent().height());
 		
 		framebufferCreateInfo.layers(1);
 		
-		VkImageViewCreateInfo imageViewCreateInfo = VkImageViewCreateInfo.calloc(stack);
+		VkImageViewCreateInfo imageViewCreateInfo = VkImageViewCreateInfo.malloc(stack);
 		
 		imageViewCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO);
+		imageViewCreateInfo.pNext(0);
+		imageViewCreateInfo.flags(0);
 		imageViewCreateInfo.viewType(VK10.VK_IMAGE_VIEW_TYPE_2D);
 		imageViewCreateInfo.format(surface.getFormat().format());
 		
@@ -237,26 +307,22 @@ public class Presenter implements AutoCloseable {
 		imageViewCreateInfo.subresourceRange().baseArrayLayer(0);
 		imageViewCreateInfo.subresourceRange().layerCount(1);
 		
-		for (long image : images)
+		for (FrameData frame : frames)
 		{
-			imageViewCreateInfo.image(image);
+			imageViewCreateInfo.image(frame.getImage());
 			
 			VulkanErrorUtils.assertNoError(VK10.vkCreateImageView(device.getVk(), imageViewCreateInfo, null, p0), "Failed to create image views");
-			imageViews.add(p0[0]);
+			frame.setImageView(p0[0]);
 			
 			attachments.put(0, p0[0]);
 			framebufferCreateInfo.pAttachments(attachments);
 			FrameBuffer frameBuffer = new FrameBuffer(device, framebufferCreateInfo);
-			frameBuffers.add(frameBuffer);
+			frame.setFrameBuffer(frameBuffer);
 		}
 		
 		renderPassBeginInfo = VkRenderPassBeginInfo.calloc();
 		renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
 		renderPassBeginInfo.renderPass(renderPass.getVk());
-		
-		VulkanErrorUtils.assertNoError(KHRSwapchain.vkGetSwapchainImagesKHR(device.getVk(), swapchain.getVk(), p, null));
-		int size = p[0];
-		commands = new ArrayList<>(size);
 		
 		List<VkCommandBuffer> commandBuffers = device.createMultiUseCommandBuffer(stack, 3);
 		
@@ -268,23 +334,30 @@ public class Presenter implements AutoCloseable {
 		fenceInfo.flags(VK10.VK_FENCE_CREATE_SIGNALED_BIT);
 		
 		long[][] p1 = new long[3][1];
-		for (int i = 0; i < size; i++)
+		for (int i = 0; i < p[0]; i++)
 		{
 			VulkanErrorUtils.assertNoError(VK10.vkCreateSemaphore(device.getVk(), semaphoreInfo, null, p1[0]), "Failed to create synchronization objects for the frame " + i);
 			VulkanErrorUtils.assertNoError(VK10.vkCreateSemaphore(device.getVk(), semaphoreInfo, null, p1[1]), "Failed to create synchronization objects for the frame " + i);
 			VulkanErrorUtils.assertNoError(VK10.vkCreateFence(device.getVk(), fenceInfo, null, p1[2]), "Failed to create synchronization objects for the frame " + i);
 			
-			commands.add(new CommandBufferData(device, commandBuffers.get(i), p1[0][0], p1[1][0], p1[2][0]));
+			frames.get(i).setCommand(new CommandBufferData(device, commandBuffers.get(i), p1[0][0], p1[1][0], p1[2][0]));
 		}
+		isSwapchainValid = true;
 	}
 	
-	private Result recreateSwapchain(MemoryStack stack)
+	private boolean recreateSwapchain(MemoryStack stack)
 	{
-		surface.init(device.getPhysicalDevice(), stack);
-		if (surface.getExtent().width() == 0 || surface.getExtent().height() == 0) return Result.EMPTY_SURFACE;
+		if (isSwapchainValid) return false;
+		
+		VkExtent2D extent = surface.getExtent();
+		if (extent.width() == 0 || extent.height() == 0) return false;
+		
+		Device oldDevice = device;
+		List<FrameData> oldFrames = frames;
+		Swapchain oldSwapchain = swapchain;
 		
 		VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
-		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device.getPhysicalDevice().getVk(), surface.getSurface(), capabilities), "Failed to recreate swap chain");
+		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device.getPhysicalDevice().getVk(), surface.getVk(), capabilities), "Failed to recreate swap chain");
 		
 		VkSwapchainCreateInfoKHR swapchainCreateInfo = VkSwapchainCreateInfoKHR.calloc(stack);
 		swapchainCreateInfo.sType(KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR);
@@ -303,36 +376,35 @@ public class Presenter implements AutoCloseable {
 		swapchainCreateInfo.compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
 		swapchainCreateInfo.clipped(true);
 		swapchainCreateInfo.preTransform(capabilities.currentTransform());
-		swapchainCreateInfo.surface(surface.getSurface());
+		swapchainCreateInfo.surface(surface.getVk());
 		swapchainCreateInfo.imageFormat(surface.getFormat().format());
 		swapchainCreateInfo.imageColorSpace(surface.getFormat().colorSpace());
-		swapchainCreateInfo.imageExtent(surface.getExtent());
+		swapchainCreateInfo.imageExtent(extent);
 		swapchainCreateInfo.presentMode(surface.getMode());
-		swapchainCreateInfo.oldSwapchain(swapchain.getVk());
+		swapchainCreateInfo.oldSwapchain(oldSwapchain.getVk());
 		
 		swapchain = new Swapchain(device, surface, swapchainCreateInfo);
 		
-		Device oldDevice = device;
-		List<FrameBuffer> oldFrameBuffers = frameBuffers;
-		List<Long> oldImageViews = imageViews;
-		Long oldVk = swapchain.getVk();
-		
-		device.waitAsyncIdle(() -> {
-			for (FrameBuffer frameBuffer : oldFrameBuffers) frameBuffer.close();
-			oldFrameBuffers.clear();
-			for (long imageView : oldImageViews) VK10.vkDestroyImageView(oldDevice.getVk(), imageView, null);
-			oldImageViews.clear();
-			KHRSwapchain.vkDestroySwapchainKHR(oldDevice.getVk(), oldVk, null);
+		oldDevice.waitAsyncIdle(() -> {
+			for (FrameData frame : oldFrames)
+			{
+				frame.frameBuffer.close();
+				VK10.vkDestroyImageView(oldDevice.getVk(), frame.imageView, null);
+			}
+			oldSwapchain.close();
 		});
 		
-		return Result.RECREATED_SWAPCHAIN;
+		initialize(stack, depthTextureFactory != null ? depthTextureFactory.apply(extent.width(), extent.height()) : null);
+		isSwapchainValid = true;
+		return true;
 	}
 	
 	public void beginRenderPass(CommandBufferData commandBuffer)
 	{
+		swapchainRecreationLock.lock();
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			FrameBuffer frameBuffer = frameBuffers.get(frameIndex);
+			FrameBuffer frameBuffer = frames.get(frameIndex).getFrameBuffer();
 			renderPassBeginInfo.framebuffer(frameBuffer.getVk());
 			
 			VkRect2D renderArea = VkRect2D.calloc(stack);
@@ -346,6 +418,10 @@ public class Presenter implements AutoCloseable {
 			
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 		}
+		finally
+		{
+			swapchainRecreationLock.unlock();
+		}
 	}
 	
 	public Result present()
@@ -355,16 +431,22 @@ public class Presenter implements AutoCloseable {
 	
 	public Result present(BiConsumer<CommandBufferData, Integer> onPresentAction, Runnable onCommandBufferEndAction)
 	{
+		swapchainRecreationLock.lock();
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
+			recreateSwapchain(stack);
+			
 			IntBuffer p = stack.mallocInt(1);
 			
-			CommandBufferData commandBuffer = commands.get(frameIndex);
+			CommandBufferData commandBuffer = frames.get(frameIndex).getCommand();
 			int result = KHRSwapchain.vkAcquireNextImageKHR(device.getVk(), swapchain.getVk(), Integer.MAX_VALUE, commandBuffer.getImageAvailableSemaphore(), 0, p);
-			if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR) return recreateSwapchain(stack);
+			if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR)
+			{
+				isSwapchainValid = false;
+				return Result.SWAPCHAIN_OUT_OF_DATE;
+			}
 			VulkanErrorUtils.assertNoError(result, "Error acquiring next image");
 			
-			device.waitForFences(commandBuffer.getFence());
 			graphicsQueueSemaphor.acquireUninterruptibly();
 			device.resetFence(commandBuffer.getFence());
 			
@@ -373,21 +455,28 @@ public class Presenter implements AutoCloseable {
 			onPresentAction.accept(commandBuffer, frameIndex);
 			commandBuffer.endRecording();
 			
-			LongBuffer p0 = stack.longs(commandBuffer.getImageAvailableSemaphore());
 			LongBuffer p1 = stack.longs(commandBuffer.getRenderFinishedSemaphore());
 			
 			VkSubmitInfo submitInfo = VkSubmitInfo.calloc(stack);
 			submitInfo.sType(VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO);
 			submitInfo.waitSemaphoreCount(1);
-			submitInfo.pWaitSemaphores(p0);
+			submitInfo.pWaitSemaphores(stack.longs(commandBuffer.getImageAvailableSemaphore()));
 			submitInfo.pWaitDstStageMask(stack.ints(VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT));
 			submitInfo.pCommandBuffers(VulkanUtils.toAddressBuffer(stack, commandBuffer));
 			submitInfo.pSignalSemaphores(p1);
 			
 			device.getGraphicsQueue().submit(submitInfo, commandBuffer.getFence());
 			device.waitAsyncForFences(() -> {
-				onCommandBufferEndAction.run();
-				graphicsQueueSemaphor.release();
+				//System.out.println("End");
+				try
+				{
+					onCommandBufferEndAction.run();
+				}
+				finally
+				{
+					graphicsQueueSemaphor.release();
+					//System.out.println("Endl");
+				}
 			}, commandBuffer.getFence());
 			
 			VkPresentInfoKHR presentInfo = VkPresentInfoKHR.calloc(stack);
@@ -398,12 +487,20 @@ public class Presenter implements AutoCloseable {
 			presentInfo.pImageIndices(p);
 			
 			result = KHRSwapchain.vkQueuePresentKHR(device.getPresentQueue().getVk(), presentInfo);
-			if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR) return recreateSwapchain(stack);
+			if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR || result == KHRSwapchain.VK_SUBOPTIMAL_KHR)
+			{
+				isSwapchainValid = false;
+				return Result.SWAPCHAIN_OUT_OF_DATE;
+			}
 			VulkanErrorUtils.assertNoError(result, "Error presenting queue");
 			
 			frameIndex = (frameIndex + 1) % swappingBuffers;
 			
 			return Result.SUCCESS;
+		}
+		finally
+		{
+			swapchainRecreationLock.unlock();
 		}
 	}
 	
@@ -431,6 +528,31 @@ public class Presenter implements AutoCloseable {
 	public void close()
 	{
 		renderPassBeginInfo.close();
-		for (long imageView : imageViews) VK10.vkDestroyImageView(device.getVk(), imageView, null);
+		for (FrameData frame : frames) VK10.vkDestroyImageView(device.getVk(), frame.getImageView(), null);
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("Device", device);
+		Debug.print("Surface", surface);
+		Debug.print("Swapchain" + (isSwapchainValid ? "" : " Invalid"), swapchain);
+		Debug.print("RenderPass ", renderPass);
+		Debug.print("Frames [");
+		Debug.indent();
+		for (int i = 0; i < frames.size(); i++)
+		{
+			Debug.print("Frame " + i + (i == frameIndex ? " Current" : "") + " [");
+			FrameData frame = frames.get(i);
+			Debug.indent();
+			Debug.print("Image: " + Debug.address(frame.image));
+			Debug.print("ImageView: " + Debug.address(frame.imageView));
+			Debug.print("FrameBuffer", frame.frameBuffer);
+			Debug.print("Command", frame.command);
+			Debug.deindent();
+			Debug.print("]");
+		}
+		Debug.deindent();
+		Debug.print("]");
 	}
 }

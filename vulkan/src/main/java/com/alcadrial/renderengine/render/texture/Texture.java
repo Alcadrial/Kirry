@@ -1,5 +1,7 @@
 package com.alcadrial.renderengine.render.texture;
 
+import java.util.concurrent.ExecutionException;
+
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VK13;
@@ -8,13 +10,14 @@ import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkImageCreateInfo;
 import org.lwjgl.vulkan.VkImageMemoryBarrier;
 
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
-import com.alcadrial.renderengine.render.util.LongDeviceResource;
+import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
-public class Texture extends LongDeviceResource {
+public class Texture extends RawDeviceResource {
 	
 	static
 	{
@@ -145,7 +148,16 @@ public class Texture extends LongDeviceResource {
 			{
 				VkCommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
 				changeLayout(commandBuffer, layout);
-				device.submitSingleUseCommandBuffer(stack, commandBuffer);
+				device.submitSingleUseCommandBuffer(stack, commandBuffer).get();
+			}
+			catch (InterruptedException e)
+			{
+				Thread.currentThread().interrupt();
+			}
+			catch (ExecutionException e)
+			{
+				e.printStackTrace();
+				assert false;
 			}
 		}
 	}
@@ -182,13 +194,11 @@ public class Texture extends LongDeviceResource {
 					
 					switch (layout)
 					{
-						case VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ->
-						{
+						case VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL -> {
 							barrier.dstAccessMask(VK10.VK_ACCESS_TRANSFER_WRITE_BIT);
 							destinationStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
 						}
-						case VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ->
-						{
+						case VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL -> {
 							barrier.dstAccessMask(VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 							destinationStage = VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 						}
@@ -283,5 +293,12 @@ public class Texture extends LongDeviceResource {
 		VK10.vkFreeMemory(device.getVk(), memory, null);
 		buffer.close();
 		super.close();
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("Vk: " + Debug.address(vk));
+		Debug.print("ImageView", view);
 	}
 }

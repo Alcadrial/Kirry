@@ -557,7 +557,7 @@ public class UniversalRenderTest implements RenderTest {
 		universalRenderer.draw(RenderingMode.QUADS, compact);
 		universalRenderer.pullBuffer();
 		universalRenderer.pushBuffer();
-		B\u00e8zierCurve.renderCurve(universalRenderer, 100, Color.RED, Vector2f.of(0, -400), Vector2f.of(0, -100), Vector2f.of(300, -100), Vector2f.of(300, -400), Vector2f.of(0, -400), Vector2f.of(0, -300), Vector2f.of(100, -300), Vector2f.of(100, -400), Vector2f.of(0, -400));
+		BèzierCurve.renderCurve(universalRenderer, 100, Color.RED, Vector2f.of(0, -400), Vector2f.of(0, -100), Vector2f.of(300, -100), Vector2f.of(300, -400), Vector2f.of(0, -400), Vector2f.of(0, -300), Vector2f.of(100, -300), Vector2f.of(100, -400), Vector2f.of(0, -400));
 		universalRenderer.draw(RenderingMode.LINE_STRIP, compact);
 		universalRenderer.clear();
 		EllipseCurve.renderCurve(universalRenderer, cursor, 300, 300, 50, Color.BLUE);

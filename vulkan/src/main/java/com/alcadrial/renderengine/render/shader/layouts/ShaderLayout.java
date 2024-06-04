@@ -91,6 +91,11 @@ public abstract sealed class ShaderLayout permits ShaderBufferLayout, ShaderLoca
 		{
 			return hasUsage;
 		}
+		
+		public boolean isUniform()
+		{
+			return this == UNIFORM_BUFFER || this == UNIFORM_BUFFER_DYNAMIC || this == INLINE_UNIFORM_BLOCK;
+		}
 	}
 	
 	private final Type type;

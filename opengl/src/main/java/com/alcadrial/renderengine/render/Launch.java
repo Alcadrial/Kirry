@@ -182,7 +182,8 @@ public class Launch {
 				}), builder.get());
 				return true;
 			}), FloatArrayBuffer::new);
-			@SuppressWarnings("unused") boolean floatArrayBufferStack = false;
+			@SuppressWarnings("unused")
+			boolean floatArrayBufferStack = false;
 			if (floatArrayBuffer) floatArrayBufferStack = t.test("Float Array Buffer Stack", enclosiveContext(() -> {
 				t.assertTest("Constructor", b -> b.size() == 0 && b.current() == b, new FloatArrayBufferStack());
 				t.println();
@@ -356,7 +357,8 @@ public class Launch {
 				}), builder.get());
 				return true;
 			}), ElementArrayBuffer::new);
-			@SuppressWarnings("unused") boolean elementArrayBufferStack = false;
+			@SuppressWarnings("unused")
+			boolean elementArrayBufferStack = false;
 			if (elementArrayBuffer) elementArrayBufferStack = t.test("Element Array Buffer Stack", enclosiveContext(() -> {
 				t.assertTest("Constructor", b -> b.size() == 0 && b.current() == b, new ElementArrayBufferStack());
 				t.println();

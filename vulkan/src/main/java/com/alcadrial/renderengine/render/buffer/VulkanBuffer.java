@@ -12,12 +12,13 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.util.LongDeviceResource;
+import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
-public class VulkanBuffer extends LongDeviceResource {
+public class VulkanBuffer extends RawDeviceResource {
 	
 	static
 	{
@@ -25,6 +26,7 @@ public class VulkanBuffer extends LongDeviceResource {
 	}
 	
 	protected long memory;
+	protected long offset;
 	protected int size;
 	protected Runnable closingMonitor;
 	private ByteBuffer map;
@@ -39,6 +41,7 @@ public class VulkanBuffer extends LongDeviceResource {
 	public VulkanBuffer(Device device, int size, int usage)
 	{
 		super(device);
+		offset = 0;
 		this.size = size;
 		this.usage = usage;
 		try (MemoryStack stack = MemoryStack.stackPush())
@@ -52,6 +55,7 @@ public class VulkanBuffer extends LongDeviceResource {
 	protected VulkanBuffer(Device device, int size, int usage, int flags)
 	{
 		super(device);
+		offset = 0;
 		this.size = size;
 		this.usage = usage;
 		try (MemoryStack stack = MemoryStack.stackPush())
@@ -65,6 +69,7 @@ public class VulkanBuffer extends LongDeviceResource {
 	public VulkanBuffer(VulkanBuffer buffer, long offset, int size)
 	{
 		super(buffer.device);
+		this.offset = offset;
 		this.size = size;
 		usage = buffer.usage;
 		try (MemoryStack stack = MemoryStack.stackPush())
@@ -166,6 +171,15 @@ public class VulkanBuffer extends LongDeviceResource {
 	
 	/**
 	 * 
+	 * @return the offset from memory in bytes
+	 */
+	public long getOffset()
+	{
+		return offset;
+	}
+	
+	/**
+	 * 
 	 * @return the size of this buffer in bytes
 	 */
 	public long getSize()
@@ -200,5 +214,14 @@ public class VulkanBuffer extends LongDeviceResource {
 		{
 			closingMonitor.run();
 		}
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("Vk: " + Debug.address(vk));
+		Debug.print("Offset: " + offset);
+		Debug.print("Memory: " + Debug.address(memory));
+		Debug.print("Size: " + size);
 	}
 }

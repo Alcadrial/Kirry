@@ -16,6 +16,7 @@ public class TestProperties {
 	public static final Property<Boolean> PRINT_FRAME_TIMES = register(new BooleanProperty("printFrameTimes", "Enable to print the time used to draw each frame.", true));
 	public static final Property<Integer> MAX_FRAME_RATE = register(new IntegerProperty("maxFrameRate", "Set the max frame rate to use.", 120));
 	public static final Property<Integer> DEVICE = register(new IntegerProperty("device", "Set the index of the physical device to use or -1 as \"don't care\".", -1));
+	public static final Property<Boolean> FORCE_RECOMPILE_SHADERS = register(new BooleanProperty("forceRecompileShader", "Forces shaders compiling", false, true));
 	
 	private static <T> Property<T> register(Property<T> property)
 	{
@@ -60,7 +61,7 @@ public class TestProperties {
 			}
 			System.exit(0);
 		}
-		File glslc = OperativeSystem.OS.withExecutableExtension(new File(new File(Properties.SHADER_COMPILER_PATH.getValue()), "glslc"));
+		File glslc = OperativeSystem.OS.withExecutableExtension(new File(Properties.SHADER_COMPILER_PATH.getValue(), "glslc"));
 		if (!glslc.exists())
 		{
 			if (Properties.SHADER_COMPILER_PATH.isDefault()) System.err.println("Cannot find \"glslc\" in " + glslc.getParent() + ", try using \"shaderCompilerPath=...\"");

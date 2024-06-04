@@ -6,11 +6,12 @@ import org.lwjgl.vulkan.VkComponentMapping;
 import org.lwjgl.vulkan.VkImageSubresourceRange;
 import org.lwjgl.vulkan.VkImageViewCreateInfo;
 
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.util.LongDeviceResource;
+import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
-public class TextureView extends LongDeviceResource {
+public class TextureView extends RawDeviceResource {
 	
 	static
 	{
@@ -53,5 +54,11 @@ public class TextureView extends LongDeviceResource {
 	{
 		VK10.vkDestroyImageView(device.getVk(), vk, null);
 		super.close();
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("Vk: " + Debug.address(vk));
 	}
 }

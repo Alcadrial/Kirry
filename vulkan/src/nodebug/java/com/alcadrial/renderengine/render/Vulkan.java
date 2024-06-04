@@ -20,6 +20,7 @@ import org.lwjgl.vulkan.VkInstanceCreateInfo;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 
+import com.alcadrial.renderengine.render.util.PhysicalDeviceNotFoundException;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
@@ -30,13 +31,13 @@ public class Vulkan implements AutoCloseable {
 		RenderEngine.assertLoaded();
 	}
 	
-	private class ThreadData {
+	class ThreadData {
 		
-		private VulkanWindow window;
-		private Predicate<PhysicalDevice> physicalDeviceFilter;
-		private List<PhysicalDevice> validPhysicalDevices;
-		private PhysicalDevice physicalDevice;
-		private Device device;
+		VulkanWindow window;
+		Predicate<PhysicalDevice> physicalDeviceFilter;
+		List<PhysicalDevice> validPhysicalDevices;
+		PhysicalDevice physicalDevice;
+		Device device;
 		
 		public ThreadData()
 		{
@@ -107,27 +108,28 @@ public class Vulkan implements AutoCloseable {
 	
 	public void setPhysicalDeviceFilter(Predicate<PhysicalDevice> physicalDeviceFilter)
 	{
-		getData().physicalDeviceFilter = VulkanErrorUtils.nonNull(physicalDeviceFilter);
-		getData().validPhysicalDevices = null;
+		ThreadData threadData = getData();
+		threadData.physicalDeviceFilter = VulkanErrorUtils.nonNull(physicalDeviceFilter);
+		threadData.validPhysicalDevices = null;
 	}
 	
-	public void pickPhysicalDevices(Comparator<PhysicalDevice> bestMatcher)
+	public void pickPhysicalDevices(Comparator<PhysicalDevice> bestMatcher) throws PhysicalDeviceNotFoundException
 	{
 		ThreadData threadData = getData();
 		if (threadData.physicalDevice == null)
 		{
-			threadData.physicalDevice = getValidPhysicalDevices().stream().sorted(bestMatcher).findFirst().orElseGet(() -> null);
-			VulkanErrorUtils.nonNull(threadData.physicalDevice, "No physical device has the required graphics properties");
+			threadData.physicalDevice = getValidPhysicalDevices().stream().sorted(bestMatcher).findFirst().orElse(null);
+			if (threadData.physicalDevice == null) throw new PhysicalDeviceNotFoundException("No physical device has the required graphics properties");
 		}
 	}
 	
-	public void pickPhysicalDevices(int index)
+	public void pickPhysicalDevices(int index) throws PhysicalDeviceNotFoundException
 	{
 		ThreadData threadData = getData();
 		if (threadData.physicalDevice == null)
 		{
 			List<PhysicalDevice> validPhysicalDevices = getValidPhysicalDevices();
-			VulkanErrorUtils.assertStatement(index >= 0 && index < validPhysicalDevices.size(), "Unknown physical device");
+			if (index < 0 || index >= validPhysicalDevices.size()) throw new PhysicalDeviceNotFoundException("Unknown physical device");
 			threadData.physicalDevice = validPhysicalDevices.get(index);
 		}
 	}
@@ -185,7 +187,7 @@ public class Vulkan implements AutoCloseable {
 	 * 
 	 * @param deviceFeatures
 	 */
-	public Device createDevice(VkPhysicalDeviceFeatures deviceFeatures)
+	public Device createDevice(VkPhysicalDeviceFeatures deviceFeatures, String... deviceExtensions)
 	{
 		ThreadData threadData = getData();
 		if (threadData.device == null)
@@ -207,19 +209,25 @@ public class Vulkan implements AutoCloseable {
 				}
 				queueCreateInfos.rewind();
 				
-				VkDeviceCreateInfo createInfo = VkDeviceCreateInfo.calloc(stack);
+				PointerBuffer deviceExtensionBuffer = stack.mallocPointer(deviceExtensions.length);
+				for (String extension : deviceExtensions) deviceExtensionBuffer.put(stack.UTF8(extension));
+				deviceExtensionBuffer.rewind();
 				
+				VkDeviceCreateInfo createInfo = VkDeviceCreateInfo.calloc(stack);
 				createInfo.sType(VK10.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO);
 				createInfo.pQueueCreateInfos(queueCreateInfos);
 				createInfo.pEnabledFeatures(deviceFeatures);
-				createInfo.ppEnabledLayerNames(RenderEngine.getValidationLayers(stack));
-				createInfo.ppEnabledExtensionNames(RenderEngine.getDeviceExtensions(stack));
+				createInfo.ppEnabledLayerNames(RenderEngine.getInstanceLayers(stack));
+				createInfo.ppEnabledExtensionNames(deviceExtensionBuffer);
 				
 				PointerBuffer devicePointer = stack.pointers(VK10.VK_NULL_HANDLE);
 				VulkanErrorUtils.assertNoError(VK10.vkCreateDevice(threadData.physicalDevice.getVk(), createInfo, null, devicePointer), "Failed to create logical device");
 				threadData.device = new Device(new VkDevice(devicePointer.get(0), threadData.physicalDevice.getVk(), createInfo), threadData.physicalDevice);
-				threadData.device.setGraphicsQueue(new Queue(threadData.device, graphicsQueue.getIndex()));
-				threadData.device.setPresentQueue(new Queue(threadData.device, presentationQueue.getIndex()));
+				
+				Queue queue = new Queue(threadData.device, graphicsQueue.getIndex());
+				
+				threadData.device.setGraphicsQueue(queue);
+				threadData.device.setPresentQueue(graphicsQueue.getIndex() == presentationQueue.getIndex() ? queue : new Queue(threadData.device, presentationQueue.getIndex()));
 				return threadData.device;
 			}
 			finally
@@ -256,7 +264,7 @@ public class Vulkan implements AutoCloseable {
 		return getData().window;
 	}
 	
-	private ThreadData getData()
+	ThreadData getData()
 	{
 		return data.computeIfAbsent(Thread.currentThread(), t -> new ThreadData());
 	}
@@ -274,7 +282,7 @@ public class Vulkan implements AutoCloseable {
 			if (threadData.window != null) threadData.window.close();
 		});
 		if (debugMessengerId != 0) EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(instance, debugMessengerId, null);
-		for (PhysicalDevice physicalDevice : physicalDevices) physicalDevice.close();
+		if (physicalDevices != null) for (PhysicalDevice physicalDevice : physicalDevices) physicalDevice.close();
 		VK10.vkDestroyInstance(instance, null);
 	}
 }

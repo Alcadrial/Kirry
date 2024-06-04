@@ -1,6 +1,8 @@
 package com.alcadrial.renderengine.render;
 
 import java.io.PrintStream;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -11,9 +13,7 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWVulkan;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.system.windows.Kernel32;
 import org.lwjgl.vulkan.EXTDebugUtils;
-import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkApplicationInfo;
@@ -21,14 +21,14 @@ import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackEXTI;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCreateInfoEXT;
 import org.lwjgl.vulkan.VkInstanceCreateInfo;
 
+import com.alcadrial.kurvilinear.SequentialMultiList;
 import com.alcadrial.renderengine.core.RenderEngineCore;
 import com.alcadrial.renderengine.render.util.Version;
 
 public class RenderEngine extends RenderEngineCore {
 	
-	private static final List<String> VALIDATION_LAYERS = List.of("VK_LAYER_KHRONOS_validation");
-	private static final List<String> INSTANCE_EXTENSIONS = List.of(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-	private static final List<String> DEVICE_EXTENSIONS = List.of(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+	private static volatile SequentialMultiList<String> instanceLayers = new SequentialMultiList<>();
+	private static volatile SequentialMultiList<String> instanceExtensions = new SequentialMultiList<>();
 	
 	private static volatile boolean debug = false;
 	private static volatile boolean initializated = false;
@@ -82,6 +82,11 @@ public class RenderEngine extends RenderEngineCore {
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
+			instanceLayers = builder.instanceLayers;
+			if (instanceLayers.listsSize() == 0) instanceLayers.addList();
+			instanceExtensions = builder.instanceExtensions;
+			if (instanceExtensions.listsSize() == 0) instanceExtensions.addList();
+			
 			VkApplicationInfo applicationInfo = VkApplicationInfo.calloc(stack);
 			
 			applicationInfo.sType(VK10.VK_STRUCTURE_TYPE_APPLICATION_INFO);
@@ -99,41 +104,43 @@ public class RenderEngine extends RenderEngineCore {
 			{
 				PointerBuffer requiredInstances = GLFWVulkan.glfwGetRequiredInstanceExtensions();
 				
+				int size = debug ? instanceExtensions.size() : instanceExtensions.size() - instanceExtensions.getList(0).size();
 				PointerBuffer enlargedBuffer;
 				
-				if (requiredInstances == null) enlargedBuffer = stack.mallocPointer(INSTANCE_EXTENSIONS.size());
+				if (requiredInstances == null)
+				{
+					enlargedBuffer = stack.mallocPointer(size);
+				}
 				else
 				{
-					enlargedBuffer = stack.mallocPointer(INSTANCE_EXTENSIONS.size() + requiredInstances.remaining());
+					enlargedBuffer = stack.mallocPointer(size + requiredInstances.remaining());
 					while (requiredInstances.remaining() > 0) enlargedBuffer.put(requiredInstances.get());
 				}
-				for (String name : INSTANCE_EXTENSIONS) enlargedBuffer.put(stack.UTF8(name));
+				if (debug) for (String name : instanceExtensions) enlargedBuffer.put(stack.UTF8(name));
+				else for (String name : instanceExtensions.subLists(1, instanceExtensions.listsSize())) enlargedBuffer.put(stack.UTF8(name));
 				enlargedBuffer.rewind();
 				
 				createInfo.ppEnabledExtensionNames(enlargedBuffer);
-				createInfo.ppEnabledLayerNames(getValidationLayers(stack));
+				createInfo.ppEnabledLayerNames(getInstanceLayers(stack));
 				
-				if (builder.messenger != null)
+				if (builder.messengerCallback != null)
 				{
-					VkDebugUtilsMessengerCreateInfoEXT info = VkDebugUtilsMessengerCreateInfoEXT.calloc(stack);
+					VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo = VkDebugUtilsMessengerCreateInfoEXT.calloc(stack);
 					
-					info.sType(EXTDebugUtils.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT);
-					info.messageSeverity(EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT);
-					info.messageType(EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT);
-					info.pfnUserCallback((VkDebugUtilsMessengerCallbackEXTI) (messageSeverity, messageType, callbackDataId, userDataId) -> {
-						if (debug) return builder.messenger.invoke(messageSeverity, messageType, callbackDataId, userDataId);
+					messengerCreateInfo.sType(EXTDebugUtils.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT);
+					messengerCreateInfo.messageSeverity(EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT);
+					messengerCreateInfo.messageType(EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT);
+					messengerCreateInfo.pfnUserCallback((VkDebugUtilsMessengerCallbackEXTI) (messageSeverity, messageType, callbackDataId, userDataId) -> {
+						if (debug) return builder.messengerCallback.invoke(messageSeverity, messageType, callbackDataId, userDataId);
 						return VK10.VK_FALSE;
 					});
 					
-					createInfo.pNext(info.address());
+					createInfo.pNext(messengerCreateInfo.address());
 				}
 			}
 			initializated = true;
 			vulkan = new Vulkan(createInfo);
-			executor = Executors.newCachedThreadPool(r -> new Thread(() -> {
-				Debug.println(Thread.currentThread().getName() + " -> " + Kernel32.GetCurrentThreadId());
-				r.run();
-			}));
+			executor = Executors.newCachedThreadPool();
 			return true;
 		}
 		catch (Exception e)
@@ -144,21 +151,10 @@ public class RenderEngine extends RenderEngineCore {
 		}
 	}
 	
-	static PointerBuffer getValidationLayers(MemoryStack stack)
+	static PointerBuffer getInstanceLayers(MemoryStack stack)
 	{
-		if (debug)
-		{
-			PointerBuffer array = stack.mallocPointer(VALIDATION_LAYERS.size());
-			for (String string : VALIDATION_LAYERS) array.put(stack.UTF8(string));
-			return array.rewind();
-		}
-		return stack.mallocPointer(0);
-	}
-	
-	static PointerBuffer getDeviceExtensions(MemoryStack stack)
-	{
-		PointerBuffer array = stack.mallocPointer(DEVICE_EXTENSIONS.size());
-		for (String string : DEVICE_EXTENSIONS) array.put(stack.UTF8(string));
+		PointerBuffer array = stack.mallocPointer(debug ? instanceLayers.size() : instanceLayers.size() - instanceLayers.getList(0).size());
+		for (String string : debug ? instanceLayers : instanceLayers.subLists(1, instanceLayers.listsSize())) array.put(stack.UTF8(string));
 		return array.rewind();
 	}
 	
@@ -197,16 +193,18 @@ public class RenderEngine extends RenderEngineCore {
 	
 	public static void assertLoaded()
 	{
-		if (!initializated) throw new RuntimeException("Use of RenderEngine Vulkan without initialization, use RenderEngine#initialize before anything");
+		if (!initializated) throw new RuntimeException("Using RenderEngine Vulkan without initialization, use RenderEngine#initialize before anything");
 	}
 	
 	public static void setWindowHint(int hint, boolean value)
 	{
+		assertLoaded();
 		GLFW.glfwWindowHint(hint, value ? GLFW.GLFW_TRUE : GLFW.GLFW_FALSE);
 	}
 	
 	public static void setWindowHint(int hint, int value)
 	{
+		assertLoaded();
 		GLFW.glfwWindowHint(hint, value);
 	}
 	
@@ -249,12 +247,20 @@ public class RenderEngine extends RenderEngineCore {
 		
 		private String applicationName;
 		private Version version;
-		private VkDebugUtilsMessengerCallbackEXTI messenger;
+		private VkDebugUtilsMessengerCallbackEXTI messengerCallback;
+		private SequentialMultiList<String> instanceLayers;
+		private SequentialMultiList<String> instanceExtensions;
 		
 		private Builder(String applicationName, Version version)
 		{
 			this.applicationName = applicationName;
 			this.version = version;
+			instanceLayers = new SequentialMultiList<>();
+			instanceLayers.addList();
+			instanceLayers.addList();
+			instanceExtensions = new SequentialMultiList<>();
+			instanceExtensions.addList();
+			instanceExtensions.addList();
 		}
 		
 		public Builder applicationName(String applicationName)
@@ -269,9 +275,67 @@ public class RenderEngine extends RenderEngineCore {
 			return this;
 		}
 		
-		public Builder messenger(VkDebugUtilsMessengerCallbackEXTI messenger)
+		public Builder messengerCallback(VkDebugUtilsMessengerCallbackEXTI messengerCallback)
 		{
-			this.messenger = messenger;
+			this.messengerCallback = messengerCallback;
+			return this;
+		}
+		
+		public Builder instanceExtensions(String... extensions)
+		{
+			return instanceExtensions(Arrays.asList(extensions));
+		}
+		
+		public Builder instanceExtensions(Collection<String> extensions)
+		{
+			List<String> list = instanceExtensions.getList(1);
+			list.clear();
+			list.addAll(extensions);
+			return this;
+		}
+		
+		public Builder instanceExtensionsDebug(String... extensions)
+		{
+			return instanceExtensionsDebug(Arrays.asList(extensions));
+		}
+		
+		public Builder instanceExtensionsDebug(Collection<String> extensions)
+		{
+			if (debug)
+			{
+				List<String> list = instanceExtensions.getList(0);
+				list.clear();
+				list.addAll(extensions);
+			}
+			return this;
+		}
+		
+		public Builder instanceLayers(String... extensions)
+		{
+			return instanceLayers(Arrays.asList(extensions));
+		}
+		
+		public Builder instanceLayers(Collection<String> extensions)
+		{
+			List<String> list = instanceLayers.getList(1);
+			list.clear();
+			list.addAll(extensions);
+			return this;
+		}
+		
+		public Builder instanceLayersDebug(String... extensions)
+		{
+			return instanceLayersDebug(Arrays.asList(extensions));
+		}
+		
+		public Builder instanceLayersDebug(Collection<String> extensions)
+		{
+			if (debug)
+			{
+				List<String> list = instanceLayers.getList(0);
+				list.clear();
+				list.addAll(extensions);
+			}
 			return this;
 		}
 		

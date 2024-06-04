@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -34,23 +33,20 @@ import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline.GraphicsPipelineBuildFunction;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
-import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
 import com.alcadrial.renderengine.render.shader.ShaderType;
+import com.alcadrial.renderengine.render.shader.ShaderUtils;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderCombinedImageSamplerLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderStorageBufferLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderUniformBufferLayout;
-import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.DataAccumulator;
+import com.alcadrial.renderengine.render.util.VulkanDebug;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
-public class Renderer implements AutoCloseable {
+public class Renderer implements AutoCloseable, VulkanDebug {
 	
 	static
 	{
@@ -178,6 +174,40 @@ public class Renderer implements AutoCloseable {
 		graphicsPipeline.close();
 		for (long l : descriptorSetLayouts) VK10.vkDestroyDescriptorSetLayout(device.getVk(), l, null);
 		VK10.vkDestroyDescriptorPool(device.getVk(), descriptorPool, null);
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("Device", device);
+		Debug.print("Pipeline ", graphicsPipeline);
+		Debug.print("DescriptorPool: " + Debug.address(descriptorPool));
+		Debug.print("VertexBuffers [");
+		Debug.indent();
+		for (Entry<Integer, List<VertexBuffer>> e : vertexBuffers.entrySet())
+		{
+			Debug.print("Binding " + e.getKey() + " [");
+			Debug.indent();
+			for (VertexBuffer vertexBuffer : e.getValue()) Debug.print("Buffer", vertexBuffer);
+			Debug.deindent();
+			Debug.print("]");
+		}
+		Debug.deindent();
+		Debug.print("]");
+		Debug.print("UniformBuffers [");
+		Debug.indent();
+		for (int i = 0; i < uniformBuffers.size(); i++)
+		{
+			Debug.print((i == uniformBufferIndex ? "Current " : "Set ") + i + " {");
+			Debug.indent();
+			Debug.print("DescriptorSetLayout: " + Debug.address(descriptorSetLayouts[i]));
+			Debug.print("DescriptorSet: " + Debug.address(descriptorSets[i][0]));
+			Debug.print("Buffer", uniformBuffers.get(i).l());
+			Debug.deindent();
+			Debug.print("}");
+		}
+		Debug.deindent();
+		Debug.print("]");
 	}
 	
 	public class ModificationPlan extends RendererDataAccumulator<ModificationPlan> {
@@ -332,7 +362,7 @@ public class Renderer implements AutoCloseable {
 		@SuppressWarnings("null")
 		protected void createUniformBuffers(int count)
 		{
-			Debug.println("Creating uniform buffers");
+			Debug.debug("Creating uniform buffers");
 			device.require();
 			
 			VkDescriptorPoolCreateInfo poolInfo = VulkanUtils.descriptorPoolCreateInfo(stack, VulkanUtils.descriptorPoolSize(stack, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, count));// static
@@ -345,12 +375,12 @@ public class Renderer implements AutoCloseable {
 			descriptorPool = p0[0];
 			
 			Map<Integer, ShaderLayoutBinding> bindingFlags = new HashMap<>();
-			extractData(vertexShader.require(), bindingFlags);
-			extractData(tessellationControlShader.get(), bindingFlags);
-			extractData(tessellationEvaluationShader.get(), bindingFlags);
-			extractData(geometryShader.get(), bindingFlags);
-			extractData(fragmentShader.get(), bindingFlags);
-			extractData(computeShader.get(), bindingFlags);
+			ShaderUtils.extractData(vertexShader.require(), bindingFlags);
+			ShaderUtils.extractData(tessellationControlShader.get(), bindingFlags);
+			ShaderUtils.extractData(tessellationEvaluationShader.get(), bindingFlags);
+			ShaderUtils.extractData(geometryShader.get(), bindingFlags);
+			ShaderUtils.extractData(fragmentShader.get(), bindingFlags);
+			ShaderUtils.extractData(computeShader.get(), bindingFlags);
 			
 			boolean useUniform = false;
 			boolean useStorage = false;
@@ -414,6 +444,7 @@ public class Renderer implements AutoCloseable {
 				if (useUniform) uniformBuffers.add(new Pair<>(uniformBuffer, uniformBufferLayout));
 				
 				int offset = 0;
+				int partialOffset = 0;
 				for (Entry<Integer, ShaderLayoutBinding> e : bindingFlags.entrySet())
 				{
 					if (offset % minOffsetAlignment != 0)
@@ -433,24 +464,24 @@ public class Renderer implements AutoCloseable {
 					Set<ShaderVariable> variables = e.getValue().getLayoutsVariables();
 					switch (e.getValue().getDescriptorType())
 					{
-						case UNIFORM_BUFFER ->
-						{
+						case UNIFORM_BUFFER -> {
 							VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
 							descriptorBufferInfo.buffer(uniformBuffer.getVk());
 							descriptorBufferInfo.offset(offset);
 							for (ShaderVariable variable : variables)
 							{
+								int size = variable.getType().getLength();
+								if (partialOffset > 0 && partialOffset + size > 16) offset += 16 - partialOffset;
 								uniformBufferLayout.mark(variable, offset / 4);
-								offset += variable.getType().getLength();
+								offset += size;
+								partialOffset = offset % 16;
 							}
 							descriptorBufferInfo.range(offset - descriptorBufferInfo.offset());
 							writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
 							writeDescriptorSet.pImageInfo(null);
 							writeDescriptorSet.pTexelBufferView(null);
 						}
-						case STORAGE_BUFFER ->
-						{
-							System.out.println("Storage");
+						case STORAGE_BUFFER -> {
 							VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
 							descriptorBufferInfo.buffer(storageBuffer.getVk());
 							descriptorBufferInfo.offset(offset);
@@ -464,8 +495,7 @@ public class Renderer implements AutoCloseable {
 							writeDescriptorSet.pImageInfo(null);
 							writeDescriptorSet.pTexelBufferView(null);
 						}
-						case COMBINED_IMAGE_SAMPLER ->
-						{
+						case COMBINED_IMAGE_SAMPLER -> {
 							VkDescriptorImageInfo.Buffer descriptorImageInfos = VkDescriptorImageInfo.calloc(variables.size());
 							for (ShaderVariable variable : variables)
 							{
@@ -483,57 +513,6 @@ public class Renderer implements AutoCloseable {
 					}
 				}
 				writeDescriptorSets.rewind();
-			}
-		}
-		
-		private void extractData(PreparedShader shader, Map<Integer, ShaderLayoutBinding> bindingFlags)
-		{
-			if (shader != null)
-			{
-				ShaderInfo info = shader.info();
-				ShaderLayoutBinding layoutBinding = new ShaderLayoutBinding(info.getType().getStageBit(), null, null);
-				for (ShaderLayout layout : info.getLayouts())
-				{
-					switch (layout.getType())
-					{
-						case COMBINED_IMAGE_SAMPLER ->
-						{
-							ShaderCombinedImageSamplerLayout combinedImageSamplerLayout = (ShaderCombinedImageSamplerLayout) layout;
-							layoutBinding.setLayoutsVariables(new LinkedHashSet<>(combinedImageSamplerLayout.getVariables()));
-							layoutBinding.setDescriptorType(layout.getType());
-							
-							bindingFlags.merge(combinedImageSamplerLayout.getBinding(), layoutBinding, (v, w) -> {
-								v.getLayoutsVariables().addAll(w.getLayoutsVariables());
-								v.setStages(v.getStages() | w.getStages());
-								return v;
-							});
-						}
-						case UNIFORM_BUFFER ->
-						{
-							ShaderUniformBufferLayout uniformBufferLayout = (ShaderUniformBufferLayout) layout;
-							layoutBinding.setLayoutsVariables(new LinkedHashSet<>(uniformBufferLayout.getVariables()));
-							layoutBinding.setDescriptorType(layout.getType());
-							
-							bindingFlags.merge(uniformBufferLayout.getBinding(), layoutBinding, (v, w) -> {
-								v.getLayoutsVariables().addAll(w.getLayoutsVariables());
-								v.setStages(v.getStages() | w.getStages());
-								return v;
-							});
-						}
-						case STORAGE_BUFFER ->
-						{
-							ShaderStorageBufferLayout storageBufferLayout = (ShaderStorageBufferLayout) layout;
-							layoutBinding.setLayoutsVariables(new LinkedHashSet<>(storageBufferLayout.getVariables()));
-							layoutBinding.setDescriptorType(layout.getType());
-							
-							bindingFlags.merge(storageBufferLayout.getBinding(), layoutBinding, (v, w) -> {
-								v.getLayoutsVariables().addAll(w.getLayoutsVariables());
-								v.setStages(v.getStages() | w.getStages());
-								return v;
-							});
-						}
-					}
-				}
 			}
 		}
 		
@@ -699,12 +678,6 @@ public class Renderer implements AutoCloseable {
 		}
 		
 		@Override
-		public RDA depthTexture(@Nullable Texture value)
-		{
-			return super.depthTexture(value);
-		}
-		
-		@Override
 		public RDA topology(@Nullable Integer value)
 		{
 			return super.topology(value);
@@ -744,6 +717,18 @@ public class Renderer implements AutoCloseable {
 		public RDA maxDepth(@Nullable Float value)
 		{
 			return super.maxDepth(value);
+		}
+		
+		@Override
+		public RDA dynamicViewport(Boolean value)
+		{
+			return super.dynamicViewport(value);
+		}
+		
+		@Override
+		public RDA dynamicScissor(Boolean value)
+		{
+			return super.dynamicScissor(value);
 		}
 	}
 }

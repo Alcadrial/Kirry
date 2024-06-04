@@ -88,12 +88,12 @@ public class VulkanUtils {
 	}
 	
 	@SafeVarargs
-	public static <VR extends AbstractVulkanResource<Long>> PointerBuffer toPointerBuffer(MemoryStack stack, VR... resources)
+	public static <VR extends AbstractVulkanResource<Pointer>> PointerBuffer toPointerBuffer(MemoryStack stack, VR... resources)
 	{
 		return toPointerBuffer(stack, List.of(resources));
 	}
 	
-	public static <VR extends AbstractVulkanResource<Long>> PointerBuffer toPointerBuffer(MemoryStack stack, List<VR> resources)
+	public static <VR extends AbstractVulkanResource<Pointer>> PointerBuffer toPointerBuffer(MemoryStack stack, List<VR> resources)
 	{
 		PointerBuffer buffer = stack.mallocPointer(resources.size());
 		for (VR vr : resources) buffer.put(vr.getVk());
@@ -160,6 +160,20 @@ public class VulkanUtils {
 	public static VkRect2D.Buffer rect2d(MemoryStack stack, VkOffset2D offset, VkExtent2D extent)
 	{
 		return VkRect2D.malloc(1, stack).apply(0, v -> v.set(offset, extent));
+	}
+	
+	/**
+	 * 
+	 * @param stack the stack from which to allocate
+	 * @param x the rectangle x offset
+	 * @param y the rectangle y offset
+	 * @param width the rectangle width
+	 * @param height the rectangle height
+	 * @return a new buffer of {@link VkRect2D}s in the stack
+	 */
+	public static VkRect2D.Buffer rect2d(MemoryStack stack, int x, int y, int width, int height)
+	{
+		return rect2d(stack, VkOffset2D.malloc(stack).set(x, y), VkExtent2D.malloc(stack).set(width, height));
 	}
 	
 	/**
@@ -341,7 +355,7 @@ public class VulkanUtils {
 	 * @param count the number of command buffers to allocate from the pool
 	 * @return a new {@link VkCommandBufferAllocateInfo} in the stack
 	 */
-	public static VkCommandBufferAllocateInfo commandBufferAllocateInfo(MemoryStack stack, long commandPool, int level, int count)
+	public static VkCommandBufferAllocateInfo commandBufferAllocateInfo(MemoryStack stack, Long commandPool, int level, int count)
 	{
 		return VkCommandBufferAllocateInfo.calloc(stack).sType(VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO).commandPool(commandPool).level(level).commandBufferCount(count);
 	}

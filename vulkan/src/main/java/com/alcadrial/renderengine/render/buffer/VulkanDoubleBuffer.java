@@ -6,8 +6,10 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkCommandBuffer;
 
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 
 public class VulkanDoubleBuffer extends VulkanBuffer {
@@ -18,26 +20,44 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 	}
 	
 	protected long gpuVk;
+	protected long gpuOffset;
 	protected long gpuMemory;
-	protected long gpuSize;
+	protected int gpuSize;
+	private int gpuUsage;
 	
-	public VulkanDoubleBuffer(Device device, long size, int usage)
+	public VulkanDoubleBuffer(Device device, int size, int usage)
 	{
 		this(device, size, usage, false);
 	}
 	
-	public VulkanDoubleBuffer(Device device, long size, int usage, boolean bidirectional)
+	public VulkanDoubleBuffer(Device device, int size, int usage, boolean bidirectional)
 	{
 		this(device, size, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | (bidirectional ? VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT : 0), usage | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT | (bidirectional ? VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT : 0));
 	}
 	
-	protected VulkanDoubleBuffer(Device device, long size, int localUsage, int gpuUsage)
+	protected VulkanDoubleBuffer(Device device, int size, int localUsage, int gpuUsage)
 	{
 		super(device, size, localUsage, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+		this.gpuUsage = gpuUsage;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			gpuVk = device.createBuffer(stack, size, gpuUsage);
+			gpuOffset = 0;
 			gpuMemory = device.allocateBufferMemory(stack, gpuVk, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			gpuSize = size;
+		}
+	}
+	
+	protected VulkanDoubleBuffer(VulkanDoubleBuffer buffer, long offset, int size)
+	{
+		super(buffer, offset, size);
+		gpuUsage = buffer.gpuUsage;
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			gpuVk = device.createBuffer(stack, size, gpuUsage);
+			gpuOffset = offset;
+			gpuMemory = buffer.gpuMemory;
+			VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), gpuVk, gpuMemory, offset), "Failed to bind buffer memory");
 			gpuSize = size;
 		}
 	}
@@ -47,7 +67,7 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 		return sendToPhysicalDevice(0, size);
 	}
 	
-	public synchronized Future<?> sendToPhysicalDevice(long offset, long size)
+	public synchronized Future<?> sendToPhysicalDevice(long offset, int size)
 	{
 		return sendToPhysicalDevice(offset, size, gpuVk);
 	}
@@ -57,7 +77,7 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 		return sendToPhysicalDevice(0, size, dstBuffer);
 	}
 	
-	public synchronized Future<?> sendToPhysicalDevice(long offset, long size, long dstBuffer)
+	public synchronized Future<?> sendToPhysicalDevice(long offset, int size, long dstBuffer)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -77,7 +97,7 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 		return queryFromPhysicalDevice(0, gpuSize);
 	}
 	
-	public synchronized Future<?> queryFromPhysicalDevice(long offset, long size)
+	public synchronized Future<?> queryFromPhysicalDevice(long offset, int size)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -97,21 +117,45 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 		return gpuVk;
 	}
 	
-	public long getGpuSize()
+	public int getGpuSize()
 	{
 		return gpuSize;
 	}
 	
-	@Override
-	public void close()
+	public int getGpuUsage()
 	{
-		synchronized (closingMonitor)
-		{
-			super.close();
-			VK10.vkDestroyBuffer(device.getVk(), gpuVk, null);
-			VK10.vkFreeMemory(device.getVk(), gpuMemory, null);
-			gpuVk = 0;
-			gpuMemory = 0;
-		}
+		return gpuUsage;
+	}
+	
+	@Override
+	protected void closeCopy()
+	{
+		super.closeCopy();
+		VK10.vkDestroyBuffer(device.getVk(), gpuVk, null);
+		gpuVk = 0;
+		gpuMemory = 0;
+	}
+	
+	@Override
+	protected void closeOriginal()
+	{
+		super.closeOriginal();
+		VK10.vkDestroyBuffer(device.getVk(), gpuVk, null);
+		VK10.vkFreeMemory(device.getVk(), gpuMemory, null);
+		gpuVk = 0;
+		gpuMemory = 0;
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("Vk (cpu): " + Debug.address(vk));
+		Debug.print("Memory (cpu): " + Debug.address(memory));
+		Debug.print("Offset (cpu): " + offset);
+		Debug.print("Size (cpu): " + size);
+		Debug.print("Vk (gpu): " + Debug.address(gpuVk));
+		Debug.print("Memory (gpu): " + Debug.address(gpuMemory));
+		Debug.print("Offset (gpu): " + gpuOffset);
+		Debug.print("Size (gpu): " + gpuSize);
 	}
 }

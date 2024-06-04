@@ -17,6 +17,7 @@ import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
@@ -27,7 +28,6 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
@@ -35,13 +35,13 @@ import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.test.RendererUtils.RectangleVertexResult;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
 import com.alcadrial.renderengine.render.util.Properties;
-import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.window.Presenter;
 import com.alcadrial.renderengine.render.window.Presenter.Result;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
@@ -59,14 +59,15 @@ public class TextureTest extends RenderTest {
 		
 		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
 		
-		println("Render Engine initialization", () -> {
-			if (!RenderEngine.create("Test", new Version(0, 0, 1, 0)).messenger(TextureTest::debugCallback).initialize()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		}, TestProperties.PRINT_LOADING_TIMES);
+		println("Render Engine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
+		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
 		
 		println("Start", TextureTest::start, TestProperties.PRINT_LOADING_TIMES);
 		if (!RenderEngine.isInitializated()) return;
+		
 		println("Loop", TextureTest::loop, TestProperties.PRINT_LOADING_TIMES);
 		if (!RenderEngine.isInitializated()) return;
+		
 		println("End", TextureTest::end, TestProperties.PRINT_LOADING_TIMES);
 	}
 	
@@ -79,6 +80,27 @@ public class TextureTest extends RenderTest {
 	
 	public static void start()
 	{
+		Shader vertexShader;
+		ShaderInfo vertexShaderInfo;
+		Shader fragmentShader;
+		ShaderInfo fragmentShaderInfo;
+		try
+		{
+			PreparedShader shader = loadShader(SHADER + ".vert");
+			vertexShader = shader.shader();
+			vertexShaderInfo = shader.info();
+			
+			shader = loadShader(SHADER + ".frag");
+			fragmentShader = shader.shader();
+			fragmentShaderInfo = shader.info();
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace(System.out);
+			RenderEngine.terminate();
+			return;
+		}
+		
 		Vulkan vulkan = RenderEngine.getVulkan();
 		
 		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
@@ -87,11 +109,11 @@ public class TextureTest extends RenderTest {
 		
 		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
 		
-		vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
+		if (!pickPhysicalDevice()) return;
+		
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.samplerAnisotropy(true);
-		vulkan.createDevice(deviceFeatures);
-		Device device = vulkan.getDevice();
+		Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 		
 		VulkanWindow window = vulkan.getWindow();
 		
@@ -155,22 +177,8 @@ public class TextureTest extends RenderTest {
 			}
 		});
 		
-		Shader vertexShader;
-		ShaderInfo vertexShaderInfo;
-		Shader fragmentShader;
-		ShaderInfo fragmentShaderInfo;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			vertexShader = new Shader(getFile(SHADER + ".vert"));
-			vertexShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".vert.json"));
-			vertexShader.compile(vertexShaderInfo);
-			if (!vertexShader.isCompilationSuccessfull()) throw new IOException("Shader " + vertexShader.getFile() + " has errors");
-			
-			fragmentShader = new Shader(getFile(SHADER + ".frag"));
-			fragmentShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".frag.json"));
-			fragmentShader.compile(fragmentShaderInfo);
-			if (!fragmentShader.isCompilationSuccessfull()) throw new IOException("Shader " + fragmentShader.getFile() + " has errors");
-			
 			BufferedImage image = ImageIO.read(getFile("icon.png"));
 			
 			texture = Texture.create2dTexture(device, image.getWidth(), image.getHeight(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
@@ -192,14 +200,17 @@ public class TextureTest extends RenderTest {
 			return;
 		}
 		
-		presenter = new Presenter(device, window.getSurface(), null, 3);
+		presenter = new Presenter(device, window, null, 3);
 		
 		Builder builder = Renderer.create();
 		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.uniformBuffer(new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
+		builder.dynamicViewport(false).dynamicScissor(false);
 		renderer = builder.build(window, device, presenter.getRenderPass(), 3);
+		
+		window.addSurfaceUpdateActions(surface -> renderer.startModificationPlan().targetWindow(window).submit());
 		
 		vertexBuffer = new VertexBuffer(28 * 4);
 		indexBuffer = new IndexBuffer(6 * 4);
@@ -294,7 +305,7 @@ public class TextureTest extends RenderTest {
 				renderer.setUniformBufferIndex(frameIndex);
 				renderer.draw(commandBuffer);
 				commandBuffer.endRenderPass();
-			}, () -> {}) == Result.RECREATED_SWAPCHAIN);
+			}, () -> {}) == Result.SWAPCHAIN_OUT_OF_DATE);
 			window.update();
 		}
 		window.pollEvents();

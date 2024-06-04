@@ -11,6 +11,7 @@ import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWWindowCloseCallbackI;
 import org.lwjgl.glfw.GLFWWindowIconifyCallbackI;
 import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
+import org.lwjgl.glfw.GLFWWindowPosCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.vulkan.VK10;
@@ -23,7 +24,6 @@ import com.alcadrial.kroperties.Property;
 import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
@@ -32,10 +32,10 @@ import com.alcadrial.renderengine.render.VertexAccumulator.VertexResult;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.util.Properties;
-import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.window.Presenter;
 import com.alcadrial.renderengine.render.window.Presenter.Result;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
@@ -52,14 +52,15 @@ public class Tests extends RenderTest {
 		
 		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
 		
-		System.out.println("Render Engine initialization time = " + recordTime(() -> {
-			if (!RenderEngine.create("Test", new Version(0, 0, 1, 0)).messenger(Tests::debugCallback).initialize()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		}, TimeUnit.MICROSECONDS) / 1000D + "ms");
+		println("Render Engine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
+		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
 		
 		System.out.println("Start time = " + recordTime(Tests::start, TimeUnit.MICROSECONDS) / 1000D + "ms");
 		if (!RenderEngine.isInitializated()) return;
+		
 		System.out.println("Loop time = " + recordTime(Tests::loop, TimeUnit.MICROSECONDS) / 1000D + "ms");
 		if (!RenderEngine.isInitializated()) return;
+		
 		System.out.println("End time = " + recordTime(Tests::end, TimeUnit.MICROSECONDS) / 1000D + "ms");
 	}
 	
@@ -79,7 +80,8 @@ public class Tests extends RenderTest {
 		
 		System.out.println("Window creation time = " + recordTime(() -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TimeUnit.MICROSECONDS) / 1000D + "ms");
 		
-		vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
+		if (!pickPhysicalDevice()) return;
+		
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.wideLines(true);
 		Device device = vulkan.createDevice(deviceFeatures);
@@ -103,21 +105,34 @@ public class Tests extends RenderTest {
 			System.out.println(maximized ? "Maximized" : "Restored");
 		});
 		
-		Vector2i[] oldPos = new Vector2i[] {Vector2i.of(0, 0)};
 		Vector2f[] oldMousePos = new Vector2f[] {Vector2f.of(0, 0), Vector2f.of(0, 0)};
+		Vector2i[] oldWindowPos = new Vector2i[] {Vector2i.of(0, 0)};
 		boolean[] pressing = new boolean[2];
 		window.setCallback((GLFWMouseButtonCallbackI) (w, button, action, mods) -> {
-			if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) if (pressing[0] = action == GLFW.GLFW_PRESS) window.getMousePos(oldMousePos[0]);
+			if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) if (pressing[0] = action == GLFW.GLFW_PRESS)
+			{
+				window.getMousePos(oldMousePos[0]);
+				window.getPos(oldWindowPos[0]);
+				oldMousePos[1].setAll(0, 0).add(oldWindowPos[0]).add(oldMousePos[0]);
+				System.out.println("start " + oldWindowPos[0] + " " + oldMousePos[0]);
+			}
 		});
 		window.setCallback((GLFWCursorPosCallbackI) (w, x, y) -> {
-			if (pressing[0] && !pressing[1])
+			if (pressing[1])
 			{
-				pressing[1] = true;
-				window.getPos(oldPos[0]);
-				window.setPos(Vector2i.of((float) x - oldMousePos[0].x() + oldPos[0].x(), (float) y - oldMousePos[0].y() + oldPos[0].y(), RoundingMode.FLOOR));
-				window.getMousePos(oldMousePos[0]);
+				System.out.println("skip " + oldMousePos[1] + " " + window.getPos().add((float) x, (float) y));
 				pressing[1] = false;
+				return;
 			}
+			if (pressing[0])
+			{
+				Vector2f newPos = Vector2f.of(oldWindowPos[0]).add((float) x, (float) y).subtract(oldMousePos[0]);
+				System.out.println("move " + newPos);
+				window.setPos(Vector2i.of(newPos, RoundingMode.FLOOR));
+			}
+		});
+		window.setCallback((GLFWWindowPosCallbackI) (w, x, y) -> {
+			pressing[1] = true;
 		});
 		
 		Shader vertexShader;
@@ -143,13 +158,15 @@ public class Tests extends RenderTest {
 			return;
 		}
 		
-		presenter = new Presenter(device, window.getSurface(), null, 3);
+		presenter = new Presenter(device, window, null, 3);
 		
 		Builder builder = Renderer.create();
 		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
 		builder.lineWidth(2F);
+		builder.uniformBuffer(new VulkanBuffer(device, 16 * 4, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
+		builder.dynamicViewport(false).dynamicScissor(false);
 		renderer = builder.build(window, device, presenter.getRenderPass(), 3);
 		
 		vertexBuffer = new VertexBuffer(70);
@@ -239,7 +256,7 @@ public class Tests extends RenderTest {
 				renderer.setUniformBufferIndex(frameIndex);
 				renderer.draw(commandBuffer);
 				commandBuffer.endRenderPass();
-			}, () -> {}) == Result.RECREATED_SWAPCHAIN);
+			}, () -> {}) == Result.SWAPCHAIN_OUT_OF_DATE);
 			window.update();
 			frame++;
 		}

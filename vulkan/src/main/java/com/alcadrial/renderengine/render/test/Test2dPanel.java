@@ -14,6 +14,7 @@ import org.lwjgl.glfw.GLFWWindowIconifyCallbackI;
 import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
+import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 
@@ -23,7 +24,6 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
@@ -36,7 +36,6 @@ import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.test.RendererUtils.RectangleVertexResult;
 import com.alcadrial.renderengine.render.util.Properties;
-import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.window.Presenter;
 import com.alcadrial.renderengine.render.window.Presenter.Result;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
@@ -53,14 +52,15 @@ public class Test2dPanel extends RenderTest {
 		
 		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
 		
-		println("Render Engine initialization", () -> {
-			if (!RenderEngine.create("Test", new Version(0, 0, 1, 0)).messenger(Test2dPanel::debugCallback).initialize()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		}, TestProperties.PRINT_LOADING_TIMES);
+		println("Render Engine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
+		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
 		
 		println("Start", Test2dPanel::start, TestProperties.PRINT_LOADING_TIMES);
 		if (!RenderEngine.isInitializated()) return;
+		
 		println("Loop", Test2dPanel::loop, TestProperties.PRINT_LOADING_TIMES);
 		if (!RenderEngine.isInitializated()) return;
+		
 		println("End", Test2dPanel::end, TestProperties.PRINT_LOADING_TIMES);
 	}
 	
@@ -80,10 +80,10 @@ public class Test2dPanel extends RenderTest {
 		
 		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
 		
-		vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
+		if (!pickPhysicalDevice()) return;
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.wideLines(true);
-		vulkan.createDevice(deviceFeatures);
+		vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 		
 		VulkanWindow window = vulkan.getWindow();
 		Device device = vulkan.getDevice();
@@ -171,7 +171,7 @@ public class Test2dPanel extends RenderTest {
 			return;
 		}
 		
-		presenter = new Presenter(device, window.getSurface(), null, 3);
+		presenter = new Presenter(device, window, null, 3);
 		
 		Builder builder = Renderer.create();
 		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
@@ -278,11 +278,13 @@ public class Test2dPanel extends RenderTest {
 		{
 			isModified = false;
 			while (presenter.present((commandBuffer, frameIndex) -> {
+				commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
+				commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), 0, 1);
 				presenter.beginRenderPass(commandBuffer);
 				renderer.setUniformBufferIndex(frameIndex);
 				renderer.draw(commandBuffer);
 				commandBuffer.endRenderPass();
-			}, () -> {}) == Result.RECREATED_SWAPCHAIN);
+			}, () -> {}) == Result.SWAPCHAIN_OUT_OF_DATE);
 			window.update();
 		}
 		window.pollEvents();

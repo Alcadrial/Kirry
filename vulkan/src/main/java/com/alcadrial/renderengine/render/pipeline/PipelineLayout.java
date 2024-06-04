@@ -3,12 +3,13 @@ package com.alcadrial.renderengine.render.pipeline;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.util.LongDeviceResource;
+import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
-public class PipelineLayout extends LongDeviceResource {
+public class PipelineLayout extends RawDeviceResource {
 	
 	static
 	{
@@ -29,5 +30,11 @@ public class PipelineLayout extends LongDeviceResource {
 	{
 		VK10.vkDestroyPipelineLayout(device.getVk(), vk, null);
 		super.close();
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("Vk: " + Debug.address(vk));
 	}
 }

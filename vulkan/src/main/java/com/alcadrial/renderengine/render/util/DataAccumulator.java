@@ -18,6 +18,7 @@ import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
 import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState;
 import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineDepthStencilStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineDynamicStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineInputAssemblyStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineMultisampleStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo;
@@ -135,6 +136,8 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected List<VkViewport> viewports;
 	protected List<VkRect2D> scissors;
 	// }
+	protected DataElement<Boolean> dynamicViewport;
+	protected DataElement<Boolean> dynamicScissor;
 	// VkPipelineInputAssemblyStateCreateInfo {
 	protected DataElement<Integer> topology;
 	protected DataElement<Boolean> primitiveRestartEnable;
@@ -158,7 +161,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 			}
 			catch (IllegalArgumentException | IllegalAccessException e)
 			{
-				throw new RuntimeException("The field \"" + field.getName() + "\" cannot be initialized, this cannot happen!");
+				throw new IllegalStateException("The field \"" + field.getName() + "\" cannot be initialized, this cannot happen!", e);
 			}
 		}
 	}
@@ -175,7 +178,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 			}
 			catch (IllegalArgumentException | IllegalAccessException e)
 			{
-				throw new RuntimeException("The field \"" + field.getName() + "\" cannot be copied, this cannot happen!");
+				throw new IllegalStateException("The field \"" + field.getName() + "\" cannot be copied, this cannot happen!", e);
 			}
 		}
 	}
@@ -280,7 +283,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		if (value == null) element.set(null);
 		else
 		{
-			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
+			Debug.debugIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
 			element.set(value.isCompilationSuccessfull() ? new PreparedShader(value, info) : null);
 		}
 		return myself();
@@ -292,7 +295,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		else
 		{
 			Shader shader = value.shader();
-			Debug.printlnIf(!shader.isCompilationSuccessfull(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
+			Debug.debugIf(!shader.isCompilationSuccessfull(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
 			element.set(shader.isCompilationSuccessfull() ? value : null);
 		}
 		return myself();
@@ -313,7 +316,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		if (value != null)
 		{
 			Shader shader = value.shader();
-			Debug.printlnIf(!shader.isCompilationSuccessfull(), "Shader " + shader + " cannot be used becouse of errors");
+			Debug.debugIf(!shader.isCompilationSuccessfull(), "Shader " + shader + " cannot be used becouse of errors");
 			DataElement<PreparedShader> element;
 			element = switch (type)
 			{
@@ -326,7 +329,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 				default -> null;
 			};
 			if (element != null) element.set(shader.isCompilationSuccessfull() ? value : null);
-			else Debug.println("Shader " + shader.getFile() + " cannot be used becouse the type is unknown");
+			else Debug.debug("Shader " + shader.getFile() + " cannot be used becouse the type is unknown");
 		}
 		return myself();
 	}
@@ -343,7 +346,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	{
 		if (value != null)
 		{
-			Debug.printlnIf(!value.isCompilationSuccessfull(), "Shader " + value + " cannot be used becouse of errors");
+			Debug.debugIf(!value.isCompilationSuccessfull(), "Shader " + value + " cannot be used becouse of errors");
 			DataElement<PreparedShader> element;
 			element = switch (type)
 			{
@@ -356,7 +359,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 				default -> null;
 			};
 			if (element != null) element.set(value.isCompilationSuccessfull() ? new PreparedShader(value, null) : null);
-			else Debug.println("Shader " + value.getFile() + " cannot be used becouse the type is unknown");
+			else Debug.debug("Shader " + value.getFile() + " cannot be used becouse the type is unknown");
 		}
 		return myself();
 	}
@@ -529,6 +532,18 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		return myself();
 	}
 	
+	protected SDA dynamicViewport(@Nullable Boolean value)
+	{
+		dynamicViewport.set(value);
+		return myself();
+	}
+	
+	protected SDA dynamicScissor(@Nullable Boolean value)
+	{
+		dynamicScissor.set(value);
+		return myself();
+	}
+	
 	protected SDA depthClampEnable(@Nullable Boolean value)
 	{
 		depthClampEnable.set(value);
@@ -687,10 +702,13 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	{
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly = VulkanUtils.pipelineInputAssemblyStateInfo(stack, topology.orElse(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST), primitiveRestartEnable.orElse(false));
 		
-		VkViewport.Buffer viewport = load(c -> VkViewport.malloc(c, stack), orElse(viewports, VkViewport.malloc(stack).set(0, outputSize.y(), outputSize.x(), -outputSize.y(), 0, 1)));// static
-		VkRect2D.Buffer scissor = load(c -> VkRect2D.malloc(c, stack), orElse(scissors, VkRect2D.malloc(stack).set(VulkanUtils.offset(stack, 0, 0), VkExtent2D.malloc(stack).set(outputSize.x(), outputSize.y()))));// static
+		VkPipelineViewportStateCreateInfo viewportState = VkPipelineViewportStateCreateInfo.calloc(stack);
+		viewportState.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO);
+		viewportState.viewportCount(1);
+		viewportState.scissorCount(1);
 		
-		VkPipelineViewportStateCreateInfo viewportState = VulkanUtils.pipelineViewportStateInfo(stack, viewport, scissor);
+		if (!dynamicViewport.orElse(false)) viewportState.pViewports(load(c -> VkViewport.malloc(c, stack), orElse(viewports, VkViewport.malloc(stack).set(0, outputSize.y(), outputSize.x(), -outputSize.y(), 0, 1))));
+		if (!dynamicScissor.orElse(false)) viewportState.pScissors(load(c -> VkRect2D.malloc(c, stack), orElse(scissors, VkRect2D.malloc(stack).set(VulkanUtils.offset(stack, 0, 0), VkExtent2D.malloc(stack).set(outputSize.x(), outputSize.y())))));
 		
 		VkPipelineRasterizationStateCreateInfo pipelineRasterizationStateCreateInfo = VkPipelineRasterizationStateCreateInfo.calloc(stack);
 		pipelineRasterizationStateCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO);
@@ -729,6 +747,10 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		// pipelineDepthStencilStateCreateInfo.front();
 		// pipelineDepthStencilStateCreateInfo.back();
 		
+		VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = VkPipelineDynamicStateCreateInfo.calloc(stack);
+		dynamicStateCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO);
+		dynamicStateCreateInfo.pDynamicStates(enabledDynamicStates(stack, true, true));
+		
 		VkGraphicsPipelineCreateInfo.Buffer pipelineInfo = VkGraphicsPipelineCreateInfo.calloc(1, stack);
 		pipelineInfo.sType(VK10.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
 		pipelineInfo.pInputAssemblyState(inputAssembly);
@@ -737,6 +759,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		pipelineInfo.pMultisampleState(pipelineMultisampleStateCreateInfo);
 		pipelineInfo.pColorBlendState(pipelineColorBlendStateCreateInfo);
 		pipelineInfo.pDepthStencilState(pipelineDepthStencilStateCreateInfo);
+		pipelineInfo.pDynamicState(dynamicStateCreateInfo);
 		pipelineInfo.renderPass(renderPass.require().getVk());
 		pipelineInfo.subpass(0);
 		pipelineInfo.basePipelineHandle(VK10.VK_NULL_HANDLE);
@@ -852,6 +875,20 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected boolean isValid(Shader shader)
 	{
 		return shader != null && shader.isCompilationSuccessfull();
+	}
+	
+	protected IntBuffer enabledDynamicStates(MemoryStack stack, boolean... defaults)
+	{
+		assert defaults.length == 2;
+		boolean enableDynamicViewport = dynamicViewport.orElse(defaults[0]);
+		boolean enabledDynamicScissor = dynamicScissor.orElse(defaults[1]);
+		int size = 0;
+		if (enableDynamicViewport) size++;
+		if (enabledDynamicScissor) size++;
+		IntBuffer buffer = stack.mallocInt(size);
+		if (enableDynamicViewport) buffer.put(VK10.VK_DYNAMIC_STATE_VIEWPORT);
+		if (enabledDynamicScissor) buffer.put(VK10.VK_DYNAMIC_STATE_SCISSOR);
+		return buffer.rewind();
 	}
 	
 	protected void clearAllModificationMarks()

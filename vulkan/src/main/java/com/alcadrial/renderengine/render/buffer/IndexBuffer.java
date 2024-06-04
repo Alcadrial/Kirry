@@ -18,12 +18,14 @@ public class IndexBuffer extends VulkanDoubleBuffer {
 	{
 		this(RenderEngine.getVulkan().getDevice(), data.length);
 		asIntBuffer().put(data);
+		unmapBuffer();
 	}
 	
 	public IndexBuffer(Device device, int[] data)
 	{
 		this(device, data.length);
 		asIntBuffer().put(data);
+		unmapBuffer();
 	}
 	
 	public IndexBuffer(int size)
@@ -34,6 +36,11 @@ public class IndexBuffer extends VulkanDoubleBuffer {
 	public IndexBuffer(Device device, int size)
 	{
 		super(device, size * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+	}
+	
+	public IndexBuffer(IndexBuffer buffer, long offset, int size)
+	{
+		super(buffer, offset * 4, size * 4);
 	}
 	
 	public int getIndexType()
@@ -48,7 +55,7 @@ public class IndexBuffer extends VulkanDoubleBuffer {
 	}
 	
 	@Override
-	public synchronized Future<?> sendToPhysicalDevice(long offset, long size)
+	public synchronized Future<?> sendToPhysicalDevice(long offset, int size)
 	{
 		return super.sendToPhysicalDevice(offset * 4, size * 4);
 	}

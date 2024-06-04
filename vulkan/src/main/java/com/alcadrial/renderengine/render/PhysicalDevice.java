@@ -19,7 +19,6 @@ import org.lwjgl.vulkan.VkQueueFamilyProperties;
 
 import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
-import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
 /**
  * A physically connected device usable by vulkan that is necessary
@@ -177,7 +176,7 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	@Nullable
 	public QueueFamily getQueueFamily(int flags, @Nullable Surface surface, @Nullable Comparator<QueueFamily> preference)
 	{
-		VulkanErrorUtils.assertStatement(flags < 16, "Unsupported flag: " + flags);
+		if (flags >= 16) throw new IllegalArgumentException("Unsupported flag: " + flags);
 		
 		int minimalIndex = (~flags) & 0xF;
 		Integer[] steps = new Integer[minimalIndex + 1];
@@ -198,7 +197,7 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 				l = i.next();
 				for (QueueFamily family : l)
 				{
-					KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(vk, family.getIndex(), surface.getSurface(), p);
+					KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(vk, family.getIndex(), surface.getVk(), p);
 					if (p[0] == VK10.VK_TRUE)
 					{
 						bestFamily = l.get(0);
@@ -230,7 +229,7 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 				l = i.next();
 				for (QueueFamily family : l)
 				{
-					KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(vk, family.getIndex(), surface.getSurface(), p);
+					KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(vk, family.getIndex(), surface.getVk(), p);
 					if (p[0] == VK10.VK_TRUE && preference.compare(family, bestFamily) > 0) bestFamily = family;
 				}
 			}
@@ -265,5 +264,11 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	public void close()
 	{
 		properties.close();
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("vk: " + Debug.address(vk));
 	}
 }

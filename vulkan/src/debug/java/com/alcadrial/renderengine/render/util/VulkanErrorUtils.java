@@ -12,7 +12,7 @@ import org.lwjgl.vulkan.KHRVideoQueue;
 import org.lwjgl.vulkan.NVGLSLShader;
 import org.lwjgl.vulkan.VK13;
 
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngine; 
 
 public class VulkanErrorUtils {
 	
@@ -65,6 +65,11 @@ public class VulkanErrorUtils {
 	{
 		if (pointer == 0) throw new NullPointerException(error);
 		return pointer;
+	}
+	
+	public static void assertStatement(boolean flag, String details)
+	{
+		if (!flag) throw new AssertionError(details);
 	}
 	
 	public static void assertNoError(int error, String details)
@@ -125,16 +130,5 @@ public class VulkanErrorUtils {
 			case VK13.VK_ERROR_UNKNOWN -> "UNKNOWN ERROR";
 			default -> "UNKNOWN ERROR " + error;
 		};
-	}
-	
-	public static void assertStatement(boolean value, String error)
-	{
-		if (value) return;
-		throw new AssertionError(error);
-	}
-	
-	public static void error(String error)
-	{
-		throw new AssertionError(error);
 	}
 }

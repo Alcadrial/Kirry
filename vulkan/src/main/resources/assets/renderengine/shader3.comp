@@ -12,11 +12,11 @@ layout (binding = 0) uniform U {
 	float ENLAPSED_TIME;
 };
 
-layout (std140, binding = 1) readonly buffer Input {
+layout (std430, binding = 1) readonly buffer Input {
    Particle particlesIn[];
 };
 
-layout (std140, binding = 2) buffer Output {
+layout (std430, binding = 2) buffer Output {
    Particle particlesOut[];
 };
 

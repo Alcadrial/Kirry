@@ -5,7 +5,7 @@ import java.util.Objects;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 
-public abstract class DeviceResource<VK> extends AbstractVulkanResource<VK> {
+public abstract class AbstractDeviceResource<VK> extends AbstractVulkanResource<VK> {
 	
 	static
 	{
@@ -14,7 +14,7 @@ public abstract class DeviceResource<VK> extends AbstractVulkanResource<VK> {
 	
 	protected Device device;
 	
-	public DeviceResource(Device device)
+	public AbstractDeviceResource(Device device)
 	{
 		this.device = Objects.requireNonNull(device);
 		device.addToDestructionList(this);

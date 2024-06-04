@@ -18,7 +18,7 @@ public class Shader {
 		RenderEngine.assertLoaded();
 	}
 	
-	public static final File GLSLC = new File(new File(Properties.SHADER_COMPILER_PATH.getValue()), "glslc");
+	public static final File GLSLC = new File(Properties.SHADER_COMPILER_PATH.getValue(), "glslc");
 	public static final String GLSLC_PATH = GLSLC.toString();
 	
 	private File file;
@@ -29,7 +29,11 @@ public class Shader {
 	{
 		this.file = VulkanErrorUtils.nonNull(file);
 		code = Files.readAllLines(file.toPath()).toArray(String[]::new);
-		
+	}
+	
+	public CompiledShader loadCompiled(File compiledFile) throws IOException
+	{
+		return compiled = CompiledShader.ofSuccess(code, Files.readAllBytes(compiledFile.toPath()));
 	}
 	
 	public CompiledShader compile(ShaderInfo info)

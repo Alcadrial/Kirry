@@ -5,7 +5,7 @@ import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.renderer.universal.UniversalRenderer;
 
-public class B\u00e8zierCurve {
+public class BèzierCurve {
 	
 	public static void renderCurve(UniversalRenderer renderer, float precision, Color color, Vector2f... points)
 	{
