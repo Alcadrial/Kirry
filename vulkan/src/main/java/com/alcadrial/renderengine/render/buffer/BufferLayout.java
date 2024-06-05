@@ -278,30 +278,21 @@ public class BufferLayout implements VulkanDebug {
 		if (required != provided) throw new IllegalArgumentException("Provided a " + provided.getName() + " value for a " + required.getName());
 	}
 	
-	/*
-	 *  
-	struct VkWriteDescriptorSet {
-		VkStructureType sType;
-		void const * pNext;
-		VkDescriptorSet dstSet;
-		uint32_t dstBinding;
-		uint32_t dstArrayElement;
-		uint32_t descriptorCount;
-		VkDescriptorType descriptorType;
-		VkDescriptorImageInfo const * pImageInfo;
-		VkDescriptorBufferInfo const * pBufferInfo;
-		VkBufferView const * pTexelBufferView;
-	}
-	 */
 	@Override
 	public void debug()
 	{
-		//VkWriteDescriptorSet
-		//writeDescriptorSets.
 		Debug.print("dstSet: " + Debug.address(writeDescriptorSets.dstSet()));
 		Debug.print("dstBinding: " + writeDescriptorSets.dstBinding());
 		Debug.print("dstArrayElement: " + writeDescriptorSets.dstArrayElement());
 		Debug.print("descriptorType: " + writeDescriptorSets.descriptorType());
+		Debug.print("marks {");
+		Debug.indent();
+		for (Pair<ShaderVariable, Integer> p : marks.values().stream().sorted((p0, p1) -> Integer.compare(p0.r(), p1.r())).toList())
+		{
+			Debug.print(p.l() + " -> " + p.r());
+		}
+		Debug.deindent();
+		Debug.print("}");
 		VkDescriptorImageInfo.Buffer imageInfoBuffer = writeDescriptorSets.pImageInfo();
 		if (imageInfoBuffer != null)
 		{

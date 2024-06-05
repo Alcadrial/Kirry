@@ -13,7 +13,6 @@ import org.lwjgl.glfw.GLFWCursorPosCallbackI;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
-import org.lwjgl.system.windows.Kernel32;
 import org.lwjgl.vulkan.EXTDepthRangeUnrestricted;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
@@ -67,7 +66,6 @@ public class ComputerTest extends RenderTest {
 	public static void main(String[] args)
 	{
 		TestProperties.init(args);
-		System.out.println("main -> " + Kernel32.GetCurrentThreadId());
 		
 		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
 		
@@ -105,9 +103,6 @@ public class ComputerTest extends RenderTest {
 	private static VertexBuffer storageBuffer1;
 	private static IndexBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
-	
-	private static BufferLayout computeUniformBufferLayout;
-	private static BufferLayout computeStorageBufferLayout;
 	
 	private static Vector3f cameraPosition;
 	private static Vector3f cameraMovement;
@@ -190,7 +185,7 @@ public class ComputerTest extends RenderTest {
 		cameraPosition = Vector3f.of(0, 0, -1);
 		cameraMovement = Vector3f.of(0, 0, 0);
 		cameraXRotation = Angle.of(0, AngleUnit.RADIANS);
-		cameraYRotation = Angle.of(0, AngleUnit.RADIANS);
+		cameraYRotation = Angle.of(270, AngleUnit.DEGREES);
 		isCameraUnlocked = false;
 		
 		Vector2i[] oldPos = new Vector2i[] {Vector2i.of(0, 0)};
@@ -299,8 +294,8 @@ public class ComputerTest extends RenderTest {
 		}
 		
 		computer = new Computer(device, localSize);
-		computer.setInputBuffer(storageBuffer0, computeStorageBufferLayout);
-		computer.setOutputBuffer(storageBuffer1, computeStorageBufferLayout);
+		computer.setInputBuffer(storageBuffer0, null);
+		computer.setOutputBuffer(storageBuffer1, null);
 		computer.setUniformBuffer(uniformBuffer);
 		computer.init(new PreparedShader(computeShader, computeShaderInfo));
 		{
@@ -365,7 +360,7 @@ public class ComputerTest extends RenderTest {
 				{
 					Color c = colors[random.nextInt(colors.length)];
 					cursor.put(i / 10).put(j / 10).put(k / 10).put(0F);
-					cursor.put(random.nextFloat(-1 / 20F, 1 / 20F)).put(random.nextFloat(-1 / 20F, 1 / 20F)).put(random.nextFloat(-1 / 20F, 1 / 20F)).put(0F);
+					cursor.put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(0);
 					cursor.put(c.r() / 255).put(c.g() / 255).put(c.b() / 255).put(c.a() / 255);
 				}
 			}
@@ -461,7 +456,6 @@ public class ComputerTest extends RenderTest {
 	
 	public static void frame()
 	{
-		//	printState();
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		
 		if (!cameraMovement.equals(Vector3f.origin()))
@@ -479,19 +473,11 @@ public class ComputerTest extends RenderTest {
 			cameraPosition.add(movement.multiplyAll((float) enlapsedTimeSeconds));
 			rebuildProjectionMatrix = true;
 		}
+		String title = "Test fps=" + fps;
+		if (isCameraUnlocked) title += ", pos=" + cameraPosition + ", vel=" + cameraMovement + ", angles={" + cameraXRotation.asFloatBounded(AngleUnit.DEGREES) + ", " + cameraYRotation.asFloatBounded(AngleUnit.DEGREES) + "}";
+		window.setTitle(title);
 		
-		if (isCameraUnlocked)
-		{
-			window.setTitle("Test fps=" + fps + ", pos=" + cameraPosition + ", vel=" + cameraMovement + ", angles={" + cameraXRotation.asFloatBounded(AngleUnit.DEGREES) + ", " + cameraYRotation.asFloatBounded(AngleUnit.DEGREES) + "}");
-		}
-		else
-		{
-			window.setTitle("Test fps=" + fps);
-		}
-		if (rebuildProjectionMatrix)
-		{
-			renderer.updateUniformBuffers((b, l) -> l.set(PROJECTION, b, buildProjectionMatrix(window)));
-		}
+		if (rebuildProjectionMatrix) renderer.updateUniformBuffers((b, l) -> l.set(PROJECTION, b, buildProjectionMatrix(window)));
 		
 		window.pollEvents();
 		if (!window.isIconified())
@@ -506,8 +492,8 @@ public class ComputerTest extends RenderTest {
 				computer.dispatch(commandBuffer, PARTICLE_COUNT, 1, 1);
 			}, () -> {
 				computer.swapBuffers();
-				computeUniformBufferLayout.set(ENLAPSED_TIME, uniformBuffer, (float) enlapsedTimeSeconds);
-				computeUniformBufferLayout.updateDescriptorSets();
+				computer.getComputeUniformBufferLayout().set(ENLAPSED_TIME, uniformBuffer, (float) enlapsedTimeSeconds);
+				computer.getComputeUniformBufferLayout().updateDescriptorSets();
 			}) == Result.SWAPCHAIN_OUT_OF_DATE);
 		}
 		window.update();

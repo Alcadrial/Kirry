@@ -27,6 +27,11 @@ public class Debug {
 	
 	public static void printState(String name, VulkanDebug vk)
 	{
+		if (vk == null)
+		{
+			print(name + ": null");
+			return;
+		}
 		print(name + " {");
 		indent();
 		vk.debug();
