@@ -28,6 +28,7 @@ import com.alcadrial.renderengine.render.shader.ShaderUtils;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
+import com.alcadrial.renderengine.render.shader.layouts.ShaderLocalSizeLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderUniformBufferLayout;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
@@ -56,11 +57,15 @@ public class Computer implements AutoCloseable, VulkanDebug {
 	private BufferLayout computeUniformBufferLayout;
 	private BufferLayout computeStorageBufferLayout;
 	private ReentrantLock computeDescriptorSetLock;
+	private PreparedShader computeShader;
 	
-	public Computer(Device device, Vector3i groupCount)
+	public Computer(Device device, PreparedShader computeShader)
 	{
+		VulkanErrorUtils.match(computeShader.info().getType(), ShaderType.COMPUTE, "Only compute shader can be used");
 		this.device = device;
-		this.groupCount = groupCount;
+		this.computeShader = computeShader;
+		for (ShaderLayout layout : computeShader.info().getLayouts()) if (layout.getType() == Type.LOCAL_SIZE) groupCount = ((ShaderLocalSizeLayout) layout).getLocalSize();
+		VulkanErrorUtils.nonNull(groupCount, "Missing localsize in shader info");
 	}
 	
 	public void setInputBuffer(VertexBuffer inputBuffer, BufferLayout layout)
@@ -93,9 +98,8 @@ public class Computer implements AutoCloseable, VulkanDebug {
 		return computeUniformBufferLayout;
 	}
 	
-	public void init(PreparedShader computeShader)
+	public void init()
 	{
-		assert computeShader.info().getType() == ShaderType.COMPUTE;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			VkDescriptorPoolCreateInfo poolInfo = VulkanUtils.descriptorPoolCreateInfo(stack, VulkanUtils.descriptorPoolSize(stack, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4));// static

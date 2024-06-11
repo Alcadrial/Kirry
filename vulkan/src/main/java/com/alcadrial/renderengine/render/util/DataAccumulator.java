@@ -1,6 +1,7 @@
 package com.alcadrial.renderengine.render.util;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.List;
@@ -31,7 +32,6 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.core.util.NotUsed;
 import com.alcadrial.renderengine.core.util.Nullable;
-import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
@@ -45,10 +45,8 @@ import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline.GraphicsPipelineBuildFunction;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
-import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.Shader;
-import com.alcadrial.renderengine.render.shader.ShaderInfo;
-import com.alcadrial.renderengine.render.shader.ShaderType;
+import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
@@ -74,13 +72,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected final MemoryStack stack;
 	protected DataElement<Boolean> autoCloseLayout;
 	protected DataElement<Boolean> autoCloseRenderPass;
-	protected DataElement<PreparedShader> shader;
-	protected DataElement<PreparedShader> vertexShader;
-	protected DataElement<PreparedShader> tessellationControlShader;
-	protected DataElement<PreparedShader> tessellationEvaluationShader;
-	protected DataElement<PreparedShader> geometryShader;
-	protected DataElement<PreparedShader> fragmentShader;
-	protected DataElement<PreparedShader> computeShader;
+	protected DataElement<ShaderProgram> shaderProgram;
 	protected DataElement<VulkanWindow> targetWindow;
 	protected DataElement<Device> device;
 	protected DataElement<PhysicalDevice> physicalDevice;
@@ -89,6 +81,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected DataElement<FrameBuffer> frameBuffer;
 	protected DataElement<RenderPass> renderPass;
 	protected DataElement<Surface> surface;
+	protected DataElement<Vector2i> size;
 	protected DataElement<Swapchain> swapchain;
 	protected DataElement<VertexBuffer> vertexBuffer;
 	protected DataElement<IndexBuffer> indexBuffer;
@@ -174,9 +167,11 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		{
 			try
 			{
-				((DataElement<Object>) field.get(this)).data = ((DataElement<Object>) field.get(defaultSource)).data;
+				DataElement<Object> dataElement = (DataElement<Object>) field.get(this);
+				dataElement.data = ((DataElement<Object>) field.get(defaultSource)).data;
+				if (dataElement.data instanceof Cloneable c) dataElement.data = Object.class.getDeclaredMethod("clone").invoke(c);
 			}
-			catch (IllegalArgumentException | IllegalAccessException e)
+			catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException | NoSuchMethodException | SecurityException e)
 			{
 				throw new IllegalStateException("The field \"" + field.getName() + "\" cannot be copied, this cannot happen!", e);
 			}
@@ -278,150 +273,10 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		return myself();
 	}
 	
-	private SDA shader(DataElement<PreparedShader> element, @Nullable Shader value, @Nullable ShaderInfo info)
+	protected SDA shaderProgram(@Nullable ShaderProgram value)
 	{
-		if (value == null) element.set(null);
-		else
-		{
-			Debug.debugIf(!value.isCompilationSuccessfull(), "Shader " + value.getFile() + " cannot be used becouse of errors");
-			element.set(value.isCompilationSuccessfull() ? new PreparedShader(value, info) : null);
-		}
+		shaderProgram.set(value);
 		return myself();
-	}
-	
-	protected SDA shader(DataElement<PreparedShader> element, @Nullable PreparedShader value)
-	{
-		if (value == null) element.set(null);
-		else
-		{
-			Shader shader = value.shader();
-			Debug.debugIf(!shader.isCompilationSuccessfull(), "Shader " + shader.getFile() + " cannot be used becouse of errors");
-			element.set(shader.isCompilationSuccessfull() ? value : null);
-		}
-		return myself();
-	}
-	
-	protected SDA shader(@Nullable PreparedShader value)
-	{
-		return shader(shader, value);
-	}
-	
-	protected SDA shader(@Nullable Shader value, @Nullable ShaderInfo info)
-	{
-		return shader(shader, value, info);
-	}
-	
-	protected SDA genericShader(@Nullable PreparedShader value, ShaderType type)
-	{
-		if (value != null)
-		{
-			Shader shader = value.shader();
-			Debug.debugIf(!shader.isCompilationSuccessfull(), "Shader " + shader + " cannot be used becouse of errors");
-			DataElement<PreparedShader> element;
-			element = switch (type)
-			{
-				case VERTEX -> vertexShader;
-				case TESS_CONTROL -> tessellationControlShader;
-				case TESS_EVALUATION -> tessellationEvaluationShader;
-				case GEOMETRY -> geometryShader;
-				case FRAGMENT -> fragmentShader;
-				case COMPUTE -> computeShader;
-				default -> null;
-			};
-			if (element != null) element.set(shader.isCompilationSuccessfull() ? value : null);
-			else Debug.debug("Shader " + shader.getFile() + " cannot be used becouse the type is unknown");
-		}
-		return myself();
-	}
-	
-	/**
-	 * 
-	 * @param value
-	 * @param info
-	 * @param type
-	 * 
-	 * @return this for chaining
-	 */
-	protected SDA genericShader(@Nullable Shader value, @Nullable ShaderInfo info, ShaderType type)
-	{
-		if (value != null)
-		{
-			Debug.debugIf(!value.isCompilationSuccessfull(), "Shader " + value + " cannot be used becouse of errors");
-			DataElement<PreparedShader> element;
-			element = switch (type)
-			{
-				case VERTEX -> vertexShader;
-				case TESS_CONTROL -> tessellationControlShader;
-				case TESS_EVALUATION -> tessellationEvaluationShader;
-				case GEOMETRY -> geometryShader;
-				case FRAGMENT -> fragmentShader;
-				case COMPUTE -> computeShader;
-				default -> null;
-			};
-			if (element != null) element.set(value.isCompilationSuccessfull() ? new PreparedShader(value, null) : null);
-			else Debug.debug("Shader " + value.getFile() + " cannot be used becouse the type is unknown");
-		}
-		return myself();
-	}
-	
-	protected SDA vertexShader(@Nullable PreparedShader value)
-	{
-		return shader(vertexShader, value);
-	}
-	
-	protected SDA vertexShader(@Nullable Shader value, @Nullable ShaderInfo info)
-	{
-		return shader(vertexShader, value, info);
-	}
-	
-	protected SDA tessellationControlShader(@Nullable PreparedShader value)
-	{
-		return shader(tessellationControlShader, value);
-	}
-	
-	protected SDA tessellationControlShader(@Nullable Shader value, @Nullable ShaderInfo info)
-	{
-		return shader(tessellationControlShader, value, info);
-	}
-	
-	protected SDA tessellationEvaluationShader(@Nullable PreparedShader value)
-	{
-		return shader(tessellationEvaluationShader, value);
-	}
-	
-	protected SDA tessellationEvaluationShader(@Nullable Shader value, @Nullable ShaderInfo info)
-	{
-		return shader(tessellationEvaluationShader, value, info);
-	}
-	
-	protected SDA geometryShader(@Nullable PreparedShader value)
-	{
-		return shader(geometryShader, value);
-	}
-	
-	protected SDA geometryShader(@Nullable Shader value, @Nullable ShaderInfo info)
-	{
-		return shader(geometryShader, value, info);
-	}
-	
-	protected SDA fragmentShader(@Nullable PreparedShader value)
-	{
-		return shader(fragmentShader, value);
-	}
-	
-	protected SDA fragmentShader(@Nullable Shader value, @Nullable ShaderInfo info)
-	{
-		return shader(fragmentShader, value, info);
-	}
-	
-	protected SDA computeShader(@Nullable PreparedShader value)
-	{
-		return shader(computeShader, value);
-	}
-	
-	protected SDA computeShader(@Nullable Shader value, @Nullable ShaderInfo info)
-	{
-		return shader(computeShader, value, info);
 	}
 	
 	protected SDA targetWindow(@Nullable VulkanWindow value)
@@ -469,6 +324,12 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected SDA surface(@Nullable Surface value)
 	{
 		surface.set(value);
+		return myself();
+	}
+	
+	protected SDA size(@Nullable Vector2i value)
+	{
+		size.set(value);
 		return myself();
 	}
 	
@@ -694,7 +555,6 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	 * @return a new graphics pipeline
 	 * @renderengine.Requires
 	 * 		{@link #device}<br>
-	 * 		{@link #surface}<br>
 	 * 		{@link #renderPass}<br>
 	 * 		{@link #pipelineLayout}
 	 */
@@ -768,12 +628,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		GraphicsPipeline.Builder builder = GraphicsPipeline.create();
 		builder.autoCloseLayout(false);
 		builder.autoCloseRenderPass(false);
-		builder.vertexShader(vertexShader.get());
-		builder.tessellationControlShader(tessellationControlShader.get());
-		builder.tessellationEvaluationShader(tessellationEvaluationShader.get());
-		builder.geometryShader(geometryShader.get());
-		builder.fragmentShader(fragmentShader.get());
-		builder.computeShader(computeShader.get());
+		builder.shaderProgram(shaderProgram.get());
 		return builder.build(buildFunction, device.require(), pipelineLayout.require(), renderPass.require(), pipelineInfo);
 	}
 	
@@ -879,7 +734,6 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	
 	protected IntBuffer enabledDynamicStates(MemoryStack stack, boolean... defaults)
 	{
-		assert defaults.length == 2;
 		boolean enableDynamicViewport = dynamicViewport.orElse(defaults[0]);
 		boolean enabledDynamicScissor = dynamicScissor.orElse(defaults[1]);
 		int size = 0;

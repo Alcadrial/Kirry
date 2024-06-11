@@ -20,12 +20,15 @@ public class RenderPass extends RawDeviceResource {
 		RenderEngine.assertLoaded();
 	}
 	
+	private Device device;
+	
 	public RenderPass(Device device, VkRenderPassCreateInfo renderPassInfo)
 	{
 		super(device);
 		long[] p = new long[1];
 		VulkanErrorUtils.assertNoError(VK10.vkCreateRenderPass(device.getVk(), renderPassInfo, null, p), "Failed to create render pass");
 		vk = p[0];
+		this.device = device;
 	}
 	
 	/**
@@ -54,5 +57,6 @@ public class RenderPass extends RawDeviceResource {
 	public void debug()
 	{
 		Debug.print("Vk: " + Debug.address(vk));
+		Debug.print("Device: " + Debug.address(device.getVk()));
 	}
 }

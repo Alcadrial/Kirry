@@ -31,6 +31,13 @@ public class Shader {
 		code = Files.readAllLines(file.toPath()).toArray(String[]::new);
 	}
 	
+	Shader(byte[] defaultVertexShaderBinary)
+	{
+		file = new File("default");
+		code = new String[0];
+		compiled = CompiledShader.ofSuccess(code, defaultVertexShaderBinary);
+	}
+	
 	public CompiledShader loadCompiled(File compiledFile) throws IOException
 	{
 		return compiled = CompiledShader.ofSuccess(code, Files.readAllBytes(compiledFile.toPath()));

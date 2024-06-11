@@ -62,7 +62,7 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 		}
 	}
 	
-	public Future<?> sendToPhysicalDevice()
+	public synchronized Future<?> sendToPhysicalDevice()
 	{
 		return sendToPhysicalDevice(0, size);
 	}

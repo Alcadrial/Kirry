@@ -25,14 +25,12 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
-import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.axis.Axis;
 import com.alcadrial.renderengine.core.cursor.CursorInputMode;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Computer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
@@ -42,12 +40,7 @@ import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
-import com.alcadrial.renderengine.render.shader.Shader;
-import com.alcadrial.renderengine.render.shader.ShaderInfo;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLocalSizeLayout;
-import com.alcadrial.renderengine.render.util.PhysicalDeviceNotFoundException;
+import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.SphereDataCollector;
 import com.alcadrial.renderengine.render.window.Presenter;
@@ -124,25 +117,14 @@ public class ComputerTest extends RenderTest {
 	
 	public static void start()
 	{
-		Shader vertexShader;
-		ShaderInfo vertexShaderInfo;
-		Shader fragmentShader;
-		ShaderInfo fragmentShaderInfo;
-		Shader computeShader;
-		ShaderInfo computeShaderInfo;
+		ShaderProgram shaderProgram;
+		PreparedShader computeShader;
 		try
 		{
-			PreparedShader shader = loadShader(SHADER + ".vert");
-			vertexShader = shader.shader();
-			vertexShaderInfo = shader.info();
-			
-			shader = loadShader(SHADER + ".frag");
-			fragmentShader = shader.shader();
-			fragmentShaderInfo = shader.info();
-			
-			shader = loadShader(SHADER + ".comp");
-			computeShader = shader.shader();
-			computeShaderInfo = shader.info();
+			PreparedShader vertexShader = loadShader(SHADER + ".vert");
+			PreparedShader fragmentShader = loadShader(SHADER + ".frag");
+			computeShader = loadShader(SHADER + ".comp");
+			shaderProgram = ShaderProgram.create().add(vertexShader, fragmentShader).build();
 		}
 		catch (IOException e)
 		{
@@ -157,26 +139,16 @@ public class ComputerTest extends RenderTest {
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
-		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
-		VulkanWindow window = vulkan.getWindow();
+		VulkanWindow window = new VulkanWindow(1080, 720, "Test");
+		vulkan.setWindow(window);
 		
-		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT | VK10.VK_QUEUE_COMPUTE_BIT, window.getSurface()) != null);
-		try
-		{
-			if (TestProperties.DEVICE.isDefault()) vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
-			else vulkan.pickPhysicalDevices(TestProperties.DEVICE.getValue());
-		}
-		catch (PhysicalDeviceNotFoundException e)
-		{
-			e.printStackTrace(System.out);
-			RenderEngine.terminate();
-			return;
-		}
+		if (!pickPhysicalDevice(window)) return;
 		
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.wideLines(true);
 		deviceFeatures.samplerAnisotropy(true);
 		Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME, EXTDepthRangeUnrestricted.VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME);
+		window.init(device);
 		
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			renderer.updateUniformBuffers((b, l) -> l.set(PROJECTION, b, buildProjectionMatrix(window)));
@@ -271,33 +243,20 @@ public class ComputerTest extends RenderTest {
 		presenter = new Presenter(device, window, RenderTest::createDepthTexture, 3);
 		
 		Builder builder = Renderer.create();
-		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
+		builder.shaderProgram(shaderProgram);
 		builder.depthTestEnable(true);
 		builder.cullMode(VK10.VK_CULL_MODE_NONE);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.uniformBuffer(uniformBuffer);
 		builder.minDepth(-1000F).maxDepth(1000F);
 		
-		renderer = builder.build(window, device, presenter.getRenderPass(), 3, ComputeCustomGraphicsPipeline::new);
+		renderer = builder.build(device, window.getSurface().getSize(), presenter.getRenderPass(), 3, ComputeCustomGraphicsPipeline::new);
 		
-		Vector3i localSize = null;
-		for (ShaderLayout layout : computeShaderInfo.getLayouts()) if (layout.getType() == Type.LOCAL_SIZE)
-		{
-			localSize = ((ShaderLocalSizeLayout) layout).getLocalSize();
-			break;
-		}
-		if (localSize == null)
-		{
-			System.out.println("Missing localsize in shader info");
-			RenderEngine.terminate();
-			return;
-		}
-		
-		computer = new Computer(device, localSize);
+		computer = new Computer(device, computeShader);
 		computer.setInputBuffer(storageBuffer0, null);
 		computer.setOutputBuffer(storageBuffer1, null);
 		computer.setUniformBuffer(uniformBuffer);
-		computer.init(new PreparedShader(computeShader, computeShaderInfo));
+		computer.init();
 		{
 			BufferLayout uniformBufferLayout = computer.getComputeUniformBufferLayout();
 			uniformBufferLayout.set(MIN_BOUND, uniformBuffer, MIN_BOUND_VALUE);

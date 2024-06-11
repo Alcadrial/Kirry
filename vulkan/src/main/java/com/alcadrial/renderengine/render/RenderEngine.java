@@ -5,9 +5,20 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BooleanSupplier;
+import java.util.function.DoubleSupplier;
+import java.util.function.IntSupplier;
+import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFW;
@@ -27,6 +38,8 @@ import com.alcadrial.renderengine.render.util.Version;
 
 public class RenderEngine extends RenderEngineCore {
 	
+	private static final Lock LOCK = new ReentrantLock();
+	
 	private static volatile SequentialMultiList<String> instanceLayers = new SequentialMultiList<>();
 	private static volatile SequentialMultiList<String> instanceExtensions = new SequentialMultiList<>();
 	
@@ -35,6 +48,9 @@ public class RenderEngine extends RenderEngineCore {
 	private static volatile Exception initException = null;
 	private static volatile Vulkan vulkan = null;
 	private static volatile ExecutorService executor = null;
+	private static volatile boolean multiThreading = false;
+	private static volatile Thread mainThread = null;
+	private static volatile LinkedBlockingQueue<Runnable> mainThreadActions = null;
 	
 	/**
 	 * Creates a builder that can be used to choose various aspects of the engine.
@@ -80,8 +96,11 @@ public class RenderEngine extends RenderEngineCore {
 	
 	private static boolean initVulkan(Builder builder)
 	{
+		LOCK.lock();
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
+			mainThreadActions = new LinkedBlockingQueue<>();
+			multiThreading = builder.multiThreading;
 			instanceLayers = builder.instanceLayers;
 			if (instanceLayers.listsSize() == 0) instanceLayers.addList();
 			instanceExtensions = builder.instanceExtensions;
@@ -126,12 +145,13 @@ public class RenderEngine extends RenderEngineCore {
 				if (builder.messengerCallback != null)
 				{
 					VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo = VkDebugUtilsMessengerCreateInfoEXT.calloc(stack);
+					VkDebugUtilsMessengerCallbackEXTI callback = builder.messengerCallback;
 					
 					messengerCreateInfo.sType(EXTDebugUtils.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT);
 					messengerCreateInfo.messageSeverity(EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT);
 					messengerCreateInfo.messageType(EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT);
 					messengerCreateInfo.pfnUserCallback((VkDebugUtilsMessengerCallbackEXTI) (messageSeverity, messageType, callbackDataId, userDataId) -> {
-						if (debug) return builder.messengerCallback.invoke(messageSeverity, messageType, callbackDataId, userDataId);
+						if (debug) return callback.invoke(messageSeverity, messageType, callbackDataId, userDataId);
 						return VK10.VK_FALSE;
 					});
 					
@@ -145,9 +165,14 @@ public class RenderEngine extends RenderEngineCore {
 		}
 		catch (Exception e)
 		{
+			mainThreadActions = null;
 			initException = e;
 			initializated = false;
 			return false;
+		}
+		finally
+		{
+			LOCK.unlock();
 		}
 	}
 	
@@ -165,24 +190,48 @@ public class RenderEngine extends RenderEngineCore {
 	 */
 	public static void terminate()
 	{
-		if (initializated)
+		LOCK.lock();
+		try
 		{
-			if (executor != null) executor.shutdown();
-			vulkan.close();
-			vulkan = null;
-			GLFW.glfwTerminate();
-			if (executor != null)
+			if (initializated)
 			{
-				try
+				if (executor != null) executor.shutdown();
+				vulkan.close();
+				vulkan = null;
+				Future<?> f = requestMainThread(() -> {
+					GLFW.glfwTerminate();
+					if (executor != null)
+					{
+						try
+						{
+							executor.awaitTermination(1, TimeUnit.MILLISECONDS);
+						}
+						catch (InterruptedException e)
+						{}
+						executor.shutdownNow();
+						executor = null;
+					}
+					mainThreadActions = null;
+					initializated = false;
+				});
+				while (!f.isDone())
 				{
-					executor.awaitTermination(1, TimeUnit.MILLISECONDS);
+					try
+					{
+						f.get();
+					}
+					catch (InterruptedException e)
+					{}
+					catch (ExecutionException e)
+					{
+						throw (RuntimeException) e.getCause();
+					}
 				}
-				catch (InterruptedException e)
-				{}
-				executor.shutdownNow();
-				executor = null;
 			}
-			initializated = false;
+		}
+		finally
+		{
+			LOCK.unlock();
 		}
 	}
 	
@@ -199,13 +248,13 @@ public class RenderEngine extends RenderEngineCore {
 	public static void setWindowHint(int hint, boolean value)
 	{
 		assertLoaded();
-		GLFW.glfwWindowHint(hint, value ? GLFW.GLFW_TRUE : GLFW.GLFW_FALSE);
+		requestMainThread(() -> GLFW.glfwWindowHint(hint, value ? GLFW.GLFW_TRUE : GLFW.GLFW_FALSE));
 	}
 	
 	public static void setWindowHint(int hint, int value)
 	{
 		assertLoaded();
-		GLFW.glfwWindowHint(hint, value);
+		requestMainThread(() -> GLFW.glfwWindowHint(hint, value));
 	}
 	
 	public static boolean isDebug()
@@ -243,10 +292,180 @@ public class RenderEngine extends RenderEngineCore {
 		Debug.setDebugOutput(debugOutput);
 	}
 	
+	public static void awaitRequestMainThread(Runnable action)
+	{
+		assertLoaded();
+		if (multiThreading && mainThread != Thread.currentThread())
+		{
+			CompletableFuture<?> f = new CompletableFuture<>();
+			mainThreadActions.add(() -> {
+				action.run();
+				f.complete(null);
+			});
+			boolean interrupted = false;
+			while (!f.isDone())
+			{
+				try
+				{
+					f.get();
+				}
+				catch (InterruptedException e)
+				{
+					interrupted = true;
+				}
+				catch (ExecutionException e)
+				{
+					throw (RuntimeException) e.getCause();
+				}
+			}
+			if (interrupted) Thread.currentThread().interrupt();
+		}
+		else action.run();
+	}
+	
+	public static Future<?> requestMainThread(Runnable action)
+	{
+		assertLoaded();
+		CompletableFuture<?> f = new CompletableFuture<>();
+		if (multiThreading && mainThread != Thread.currentThread())
+		{
+			mainThreadActions.add(() -> {
+				action.run();
+				f.complete(null);
+			});
+		}
+		else
+		{
+			action.run();
+			f.complete(null);
+		}
+		return f;
+	}
+	
+	public static boolean awaitRequestMainThread(BooleanSupplier action)
+	{
+		return awaitRequestMainThread((Supplier<Boolean>) action::getAsBoolean);
+	}
+	
+	public static int awaitRequestMainThread(IntSupplier action)
+	{
+		return awaitRequestMainThread((Supplier<Integer>) action::getAsInt);
+	}
+	
+	public static long awaitRequestMainThread(LongSupplier action)
+	{
+		return awaitRequestMainThread((Supplier<Long>) action::getAsLong);
+	}
+	
+	public static double awaitRequestMainThread(DoubleSupplier action)
+	{
+		return awaitRequestMainThread((Supplier<Double>) action::getAsDouble);
+	}
+	
+	public static <T> T awaitRequestMainThread(Supplier<T> action)
+	{
+		assertLoaded();
+		if (!multiThreading || mainThread == Thread.currentThread()) return action.get();
+		
+		CompletableFuture<T> f = new CompletableFuture<>();
+		mainThreadActions.add(() -> f.complete(action.get()));
+		boolean interrupted = false;
+		try
+		{
+			do
+			{
+				try
+				{
+					return f.get();
+				}
+				catch (InterruptedException e)
+				{
+					interrupted = true;
+				}
+				catch (ExecutionException e)
+				{
+					throw (RuntimeException) e.getCause();
+				}
+			} while (!f.isDone());
+			try
+			{
+				return f.get();
+			}
+			catch (Exception e)
+			{
+				throw new IllegalStateException();
+			}
+		}
+		finally
+		{
+			if (interrupted) Thread.currentThread().interrupt();
+		}
+	}
+	
+	public static <T> Future<T> requestMainThread(Supplier<T> action)
+	{
+		assertLoaded();
+		CompletableFuture<T> f = new CompletableFuture<>();
+		if (multiThreading && mainThread != Thread.currentThread()) mainThreadActions.add(() -> f.complete(action.get()));
+		else f.complete(action.get());
+		return f;
+	}
+	
+	public static void serveRenderEngine()
+	{
+		assertLoaded();
+		LOCK.lock();
+		try
+		{
+			if (multiThreading)
+			{
+				if (mainThread != null) throw new DuplicateMainThreadException();
+				mainThread = Thread.currentThread();
+				while (initializated)
+				{
+					try
+					{
+						LOCK.unlock();
+						mainThreadActions.take().run();
+						LOCK.lock();
+					}
+					catch (InterruptedException e)
+					{}
+				}
+				mainThread = null;
+			}
+		}
+		finally
+		{
+			LOCK.unlock();
+		}
+	}
+	
+	public static void serveOnceRenderEngine()
+	{
+		assertLoaded();
+		LOCK.lock();
+		try
+		{
+			if (multiThreading)
+			{
+				if (mainThread != null) throw new DuplicateMainThreadException();
+				mainThread = Thread.currentThread();
+				while (initializated && mainThreadActions.peek() != null) mainThreadActions.poll().run();
+				mainThread = null;
+			}
+		}
+		finally
+		{
+			LOCK.unlock();
+		}
+	}
+	
 	public static class Builder {
 		
 		private String applicationName;
 		private Version version;
+		private boolean multiThreading;
 		private VkDebugUtilsMessengerCallbackEXTI messengerCallback;
 		private SequentialMultiList<String> instanceLayers;
 		private SequentialMultiList<String> instanceExtensions;
@@ -255,6 +474,7 @@ public class RenderEngine extends RenderEngineCore {
 		{
 			this.applicationName = applicationName;
 			this.version = version;
+			multiThreading = true;
 			instanceLayers = new SequentialMultiList<>();
 			instanceLayers.addList();
 			instanceLayers.addList();
@@ -272,6 +492,12 @@ public class RenderEngine extends RenderEngineCore {
 		public Builder version(Version version)
 		{
 			this.version = version;
+			return this;
+		}
+		
+		public Builder multiThreading(boolean multiThreading)
+		{
+			this.multiThreading = multiThreading;
 			return this;
 		}
 		

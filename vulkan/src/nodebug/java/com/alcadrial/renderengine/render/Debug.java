@@ -1,6 +1,7 @@
 package com.alcadrial.renderengine.render;
 
 import java.io.PrintStream;
+import java.util.Collection;
 
 import org.lwjgl.system.Pointer;
 import org.lwjgl.system.windows.Kernel32;
@@ -27,6 +28,11 @@ public class Debug {
 	
 	public static void printState(String name, VulkanDebug vk)
 	{
+		if (vk == null)
+		{
+			print(name + ": null");
+			return;
+		}
 		print(name + " {");
 		indent();
 		vk.debug();
@@ -65,11 +71,30 @@ public class Debug {
 	
 	public static void print(String name, VulkanResource<?> vk)
 	{
-		Debug.print(name + " {");
-		Debug.indent();
+		if (vk == null)
+		{
+			print(name + ": null");
+			return;
+		}
+		print(name + " {");
+		indent();
 		vk.debug();
-		Debug.deindent();
-		Debug.print("}");
+		deindent();
+		print("}");
+	}
+	
+	public static void print(String name, Collection<?> collection)
+	{
+		if (collection == null)
+		{
+			print(name + ": null");
+			return;
+		}
+		print(name + " {");
+		indent();
+		for (Object obj : collection) print(obj);
+		deindent();
+		print("}");
 	}
 	
 	public static void print(Object obj)

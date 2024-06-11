@@ -32,9 +32,8 @@ import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
-import com.alcadrial.renderengine.render.shader.Shader;
-import com.alcadrial.renderengine.render.shader.ShaderInfo;
-import com.alcadrial.renderengine.render.test.RendererUtils.RectangleVertexResult;
+import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.test.RenderingDataUtils.RectangleVertexResult;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.window.Presenter;
 import com.alcadrial.renderengine.render.window.Presenter.Result;
@@ -78,15 +77,13 @@ public class Test2dPanel extends RenderTest {
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
-		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
-		
-		if (!pickPhysicalDevice()) return;
+		VulkanWindow window = new VulkanWindow(1080, 720, "Test");
+		vulkan.setWindow(window);
+		if (!pickPhysicalDevice(window)) return;
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.wideLines(true);
-		vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-		
-		VulkanWindow window = vulkan.getWindow();
-		Device device = vulkan.getDevice();
+		Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+		window.init(device);
 		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
 			System.out.println(iconified ? "Iconified" : "Restored");
@@ -148,21 +145,10 @@ public class Test2dPanel extends RenderTest {
 			}
 		});
 		
-		Shader vertexShader;
-		ShaderInfo vertexShaderInfo;
-		Shader fragmentShader;
-		ShaderInfo fragmentShaderInfo;
+		ShaderProgram shaderProgram;
 		try
 		{
-			vertexShader = new Shader(getFile(SHADER + ".vert"));
-			vertexShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".vert.json"));
-			vertexShader.compile(vertexShaderInfo);
-			if (!vertexShader.isCompilationSuccessfull()) throw new IOException("Shader " + vertexShader.getFile() + " has errors");
-			
-			fragmentShader = new Shader(getFile(SHADER + ".frag"));
-			fragmentShaderInfo = ShaderInfo.fromJson(getFile(SHADER + ".frag.json"));
-			fragmentShader.compile(fragmentShaderInfo);
-			if (!fragmentShader.isCompilationSuccessfull()) throw new IOException("Shader " + fragmentShader.getFile() + " has errors");
+			shaderProgram = ShaderProgram.create().add(loadShader(SHADER + ".vert"), loadShader(SHADER + ".frag")).build();
 		}
 		catch (IOException e)
 		{
@@ -174,12 +160,12 @@ public class Test2dPanel extends RenderTest {
 		presenter = new Presenter(device, window, null, 3);
 		
 		Builder builder = Renderer.create();
-		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
+		builder.shaderProgram(shaderProgram);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.lineWidth(2F);
 		builder.uniformBuffer(new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
-		renderer = builder.build(window, device, presenter.getRenderPass(), 3);
+		renderer = builder.build(device, window.getSurface().getSize(), presenter.getRenderPass(), 3);
 		
 		vertexBuffer = new VertexBuffer(7 * 4 * 512 * 512);
 		indexBuffer = new IndexBuffer(6 * 512 * 512);
@@ -193,7 +179,7 @@ public class Test2dPanel extends RenderTest {
 		{
 			for (int j = -256; j < 256; j++)
 			{
-				RectangleVertexResult result = RendererUtils.loadRectangleXYZRGBA(vertexAccumulator, j, i, j + 1, i + 1, 0, random.nextFloat(255), random.nextFloat(255), random.nextFloat(255), random.nextFloat(255));
+				RectangleVertexResult result = RenderingDataUtils.loadRectangleXYZRGBA(vertexAccumulator, j, i, j + 1, i + 1, 0, random.nextFloat(255), random.nextFloat(255), random.nextFloat(255), random.nextFloat(255));
 				buffer.put(result.getR0().getIndex());
 				buffer.put(result.getR1().getIndex());
 				buffer.put(result.getR3().getIndex());

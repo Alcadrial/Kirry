@@ -451,9 +451,9 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 			device.resetFence(commandBuffer.getFence());
 			
 			commandBuffer.reset();
-			commandBuffer.startRecording();
+			VulkanErrorUtils.assertStatement(commandBuffer.startRecording(), "Failed to record commands");
 			onPresentAction.accept(commandBuffer, frameIndex);
-			commandBuffer.endRecording();
+			VulkanErrorUtils.assertStatement(commandBuffer.endRecording(), "Failed to record commands");
 			
 			LongBuffer p1 = stack.longs(commandBuffer.getRenderFinishedSemaphore());
 			
@@ -467,7 +467,6 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 			
 			device.getGraphicsQueue().submit(submitInfo, commandBuffer.getFence());
 			device.waitAsyncForFences(() -> {
-				//System.out.println("End");
 				try
 				{
 					onCommandBufferEndAction.run();
@@ -475,7 +474,6 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 				finally
 				{
 					graphicsQueueSemaphor.release();
-					//System.out.println("Endl");
 				}
 			}, commandBuffer.getFence());
 			
@@ -486,7 +484,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 			presentInfo.pSwapchains(stack.longs(swapchain.getVk()));
 			presentInfo.pImageIndices(p);
 			
-			result = KHRSwapchain.vkQueuePresentKHR(device.getPresentQueue().getVk(), presentInfo);
+			result = device.getPresentQueue().present(presentInfo);
 			if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR || result == KHRSwapchain.VK_SUBOPTIMAL_KHR)
 			{
 				isSwapchainValid = false;
@@ -529,6 +527,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 	{
 		renderPassBeginInfo.close();
 		for (FrameData frame : frames) VK10.vkDestroyImageView(device.getVk(), frame.getImageView(), null);
+		swapchain.close();
 	}
 	
 	@Override

@@ -145,9 +145,19 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		destructionList.remove(resource);
 	}
 	
-	public synchronized void waitIdle()
+	public void waitIdle()
 	{
-		VK10.vkDeviceWaitIdle(vk);
+		synchronized (graphicsQueue)
+		{
+			if (presentQueue == null || presentQueue == graphicsQueue) VK10.vkDeviceWaitIdle(vk);
+			else
+			{
+				synchronized (presentQueue)
+				{
+					VK10.vkDeviceWaitIdle(vk);
+				}
+			}
+		}
 	}
 	
 	public Future<?> waitAsyncIdle(Runnable action)
@@ -170,7 +180,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	 * 
 	 * @param fences
 	 */
-	public synchronized void waitForFences(long... fences)
+	public void waitForFences(long... fences)
 	{
 		while (VK10.vkWaitForFences(vk, fences, true, 0xFFFFFFFF) == VK10.VK_TIMEOUT);
 	}
@@ -180,7 +190,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	 * @param action
 	 * @param fences
 	 */
-	public synchronized Future<?> waitAsyncForFences(Runnable action, long... fences)
+	public Future<?> waitAsyncForFences(Runnable action, long... fences)
 	{
 		return RenderEngine.getExecutor().submit(() -> {
 			waitForFences(fences);
@@ -193,7 +203,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	 * @param action
 	 * @param fences
 	 */
-	public synchronized Future<?> waitAsyncForFences(Consumer<Device> action, long... fences)
+	public Future<?> waitAsyncForFences(Consumer<Device> action, long... fences)
 	{
 		return RenderEngine.getExecutor().submit(() -> {
 			waitForFences(fences);

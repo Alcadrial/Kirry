@@ -1,13 +1,13 @@
 package com.alcadrial.renderengine.render;
 
 import java.util.concurrent.Future;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkPresentInfoKHR;
 import org.lwjgl.vulkan.VkQueue;
 import org.lwjgl.vulkan.VkSubmitInfo;
 
@@ -21,7 +21,6 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 		RenderEngine.assertLoaded();
 	}
 	
-	private Lock lock;
 	private final int familyIndex;
 	
 	public Queue(Device device, int familyIndex)
@@ -34,7 +33,6 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 			vk = new VkQueue(pGraphicsQueue.get(0), device.getVk());
 			this.familyIndex = familyIndex;
 		}
-		lock = new ReentrantLock();
 	}
 	
 	public int getFamilyIndex()
@@ -42,62 +40,36 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 		return familyIndex;
 	}
 	
-	public void submit(VkSubmitInfo submitInfo, long fence)
+	public synchronized void submit(VkSubmitInfo submitInfo, long fence)
 	{
-		lock.lock();
-		try
-		{
-			VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(vk, submitInfo, fence), "Failed to submit queue");
-		}
-		finally
-		{
-			lock.unlock();
-		}
+		VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(vk, submitInfo, fence), "Failed to submit queue");
 	}
 	
-	public void waitIdle()
+	public synchronized void waitIdle()
 	{
-		lock.lock();
-		try
-		{
-			VK10.vkQueueWaitIdle(vk);
-		}
-		finally
-		{
-			lock.unlock();
-		}
+		VK10.vkQueueWaitIdle(vk);
 	}
 	
 	public Future<?> waitAsyncIdle(Runnable action)
 	{
 		return RenderEngine.getExecutor().submit(() -> {
-			lock.lock();
-			try
-			{
-				VK10.vkQueueWaitIdle(vk);
-				action.run();
-			}
-			finally
-			{
-				lock.unlock();
-			}
+			VK10.vkQueueWaitIdle(vk);
+			action.run();
+			
 		});
 	}
 	
 	public Future<?> waitAsyncIdle(Consumer<Queue> action)
 	{
 		return RenderEngine.getExecutor().submit(() -> {
-			lock.lock();
-			try
-			{
-				VK10.vkQueueWaitIdle(vk);
-				action.accept(this);
-			}
-			finally
-			{
-				lock.unlock();
-			}
+			VK10.vkQueueWaitIdle(vk);
+			action.accept(this);
 		});
+	}
+	
+	public int present(VkPresentInfoKHR presentInfo)
+	{
+		return KHRSwapchain.vkQueuePresentKHR(vk, presentInfo);
 	}
 	
 	@Override

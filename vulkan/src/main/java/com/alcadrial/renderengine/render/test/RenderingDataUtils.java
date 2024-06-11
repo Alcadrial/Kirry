@@ -14,7 +14,7 @@ import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.util.Tracker;
 
-public class RendererUtils {
+public class RenderingDataUtils {
 	
 	public static void loadOrthoCube(Renderer renderer, VertexBuffer vertexBuffer, Matrix4f matrix, Vector3f start, Vector3f end, Color color)
 	{

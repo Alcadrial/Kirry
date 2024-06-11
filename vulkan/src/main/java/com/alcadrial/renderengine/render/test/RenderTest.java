@@ -13,6 +13,7 @@ import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
 import com.alcadrial.kroperties.Property;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
@@ -20,6 +21,7 @@ import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.PhysicalDeviceNotFoundException;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.Version;
+import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class RenderTest {
 	
@@ -33,6 +35,17 @@ public class RenderTest {
 		builder.messengerCallback(RenderTest::debugCallback);
 		builder.instanceLayersDebug("VK_LAYER_KHRONOS_validation");
 		builder.instanceExtensionsDebug(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME, EXTDebugReport.VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+		builder.multiThreading(false);
+		builder.initialize();
+	}
+	
+	public static void initMultiThreadRenderEngine()
+	{
+		RenderEngine.Builder builder = RenderEngine.create("Test", new Version(0, 0, 1, 0));
+		builder.messengerCallback(RenderTest::debugCallback);
+		builder.instanceLayersDebug("VK_LAYER_KHRONOS_validation");
+		builder.instanceExtensionsDebug(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME, EXTDebugReport.VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+		builder.multiThreading(true);
 		builder.initialize();
 	}
 	
@@ -61,12 +74,14 @@ public class RenderTest {
 		return VK10.VK_FALSE;
 	}
 	
-	public static boolean pickPhysicalDevice()
+	public static boolean pickPhysicalDevice(VulkanWindow window)
 	{
 		try
 		{
-			if (TestProperties.DEVICE.isDefault()) RenderEngine.getVulkan().pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
-			else RenderEngine.getVulkan().pickPhysicalDevices(TestProperties.DEVICE.getValue());
+			Vulkan vulkan = RenderEngine.getVulkan();
+			vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT | VK10.VK_QUEUE_COMPUTE_BIT, window.getSurface()) != null);
+			if (TestProperties.DEVICE.isDefault()) vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
+			else vulkan.pickPhysicalDevices(TestProperties.DEVICE.getValue());
 			return true;
 		}
 		catch (PhysicalDeviceNotFoundException e)

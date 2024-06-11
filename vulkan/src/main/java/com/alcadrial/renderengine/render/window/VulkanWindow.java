@@ -2,6 +2,7 @@ package com.alcadrial.renderengine.render.window;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import org.lwjgl.glfw.GLFW;
@@ -24,14 +25,21 @@ import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.CallbackI;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.Window;
 import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.Debug;
+import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.Queue;
+import com.alcadrial.renderengine.render.QueueFamily;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Surface;
+import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanResource;
 
@@ -42,6 +50,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		RenderEngine.assertLoaded();
 	}
 	
+	private Device device;
 	private Surface surface;
 	private int width;
 	private int height;
@@ -61,13 +70,26 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	public VulkanWindow(int width, int height, String title)
 	{
 		RenderEngine.setWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API);
-		id = VulkanErrorUtils.nonNull(GLFW.glfwCreateWindow(width, height, title, 0, 0), "Cannot create window");
+		
+		id = VulkanErrorUtils.nonNull(RenderEngine.awaitRequestMainThread(() -> GLFW.glfwCreateWindow(width, height, title, 0, 0)), "Cannot create window");
+		
 		this.width = width;
 		this.height = height;
 		this.title = title;
 		surface = new Surface(this);
 		surfaceUpdateActions = new LinkedList<>();
 		resetCallbacks();
+	}
+	
+	public void init(Device device)
+	{
+		if (this.device == null)
+		{
+			this.device = Objects.requireNonNull(device);
+			
+			QueueFamily presentationQueue = VulkanErrorUtils.nonNull(device.getPhysicalDevice().getQueueFamily(0, surface), "Missing valid presentation queue family");
+			device.setPresentQueue(device.getGraphicsQueue().getFamilyIndex() == presentationQueue.getIndex() ? device.getGraphicsQueue() : new Queue(device, presentationQueue.getIndex()));
+		}
 	}
 	
 	public void update()
@@ -85,109 +107,119 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		surfaceUpdateActions.remove(action);
 	}
 	
+	@Override
+	public void pollEvents()
+	{
+		RenderEngine.requestMainThread(GLFW::glfwPollEvents);
+	}
+	
 	public final void resetCallbacks()
 	{
-		GLFW.glfwSetCharCallback(id, null);
-		GLFW.glfwSetCharModsCallback(id, null);
-		GLFW.glfwSetCursorEnterCallback(id, null);
-		GLFW.glfwSetCursorPosCallback(id, null);
-		GLFW.glfwSetDropCallback(id, null);
-		GLFW.glfwSetKeyCallback(id, null);
-		GLFW.glfwSetMouseButtonCallback(id, null);
-		GLFW.glfwSetScrollCallback(id, null);
-		GLFW.glfwSetWindowCloseCallback(id, w -> onHide());
-		GLFW.glfwSetWindowContentScaleCallback(id, null);
-		GLFW.glfwSetWindowFocusCallback(id, (w, f) -> onFocus());
-		GLFW.glfwSetWindowIconifyCallback(id, (w, c) -> {
-			isIconified = c;
-			if (c) onIconify();
-			else onRestore();
-		});
-		GLFW.glfwSetWindowMaximizeCallback(id, (w, m) -> {
-			if (m) onMaximize();
-			else onRestore();
-		});
-		GLFW.glfwSetWindowPosCallback(id, null);
-		GLFW.glfwSetWindowRefreshCallback(id, null);
-		GLFW.glfwSetWindowSizeCallback(id, (p, w, h) -> {
-			width = w;
-			height = h;
-		});
-		GLFW.glfwSetFramebufferSizeCallback(id, (p, w, h) -> {
-			
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				surface.reinit(stack);
-			}
-			for (Consumer<Surface> action : surfaceUpdateActions) action.accept(surface);
+		RenderEngine.awaitRequestMainThread(() -> {
+			GLFW.glfwSetCharCallback(id, null);
+			GLFW.glfwSetCharModsCallback(id, null);
+			GLFW.glfwSetCursorEnterCallback(id, null);
+			GLFW.glfwSetCursorPosCallback(id, null);
+			GLFW.glfwSetDropCallback(id, null);
+			GLFW.glfwSetKeyCallback(id, null);
+			GLFW.glfwSetMouseButtonCallback(id, null);
+			GLFW.glfwSetScrollCallback(id, null);
+			GLFW.glfwSetWindowCloseCallback(id, w -> onHide());
+			GLFW.glfwSetWindowContentScaleCallback(id, null);
+			GLFW.glfwSetWindowFocusCallback(id, (w, f) -> onFocus());
+			GLFW.glfwSetWindowIconifyCallback(id, (w, c) -> {
+				isIconified = c;
+				if (c) onIconify();
+				else onRestore();
+			});
+			GLFW.glfwSetWindowMaximizeCallback(id, (w, m) -> {
+				if (m) onMaximize();
+				else onRestore();
+			});
+			GLFW.glfwSetWindowPosCallback(id, null);
+			GLFW.glfwSetWindowRefreshCallback(id, null);
+			GLFW.glfwSetWindowSizeCallback(id, (p, w, h) -> {
+				width = w;
+				height = h;
+			});
+			GLFW.glfwSetFramebufferSizeCallback(id, (p, w, h) -> {
+				
+				try (MemoryStack stack = MemoryStack.stackPush())
+				{
+					surface.reinit(stack);
+				}
+				for (Consumer<Surface> action : surfaceUpdateActions) action.accept(surface);
+			});
 		});
 	}
 	
 	public final void setCallback(CallbackI callback)
 	{
-		if (callback instanceof GLFWCharCallbackI i) GLFW.glfwSetCharCallback(id, i);
-		if (callback instanceof GLFWCharModsCallbackI i) GLFW.glfwSetCharModsCallback(id, i);
-		if (callback instanceof GLFWCursorEnterCallbackI i) GLFW.glfwSetCursorEnterCallback(id, i);
-		if (callback instanceof GLFWCursorPosCallbackI i) GLFW.glfwSetCursorPosCallback(id, i);
-		if (callback instanceof GLFWDropCallbackI i) GLFW.glfwSetDropCallback(id, i);
-		if (callback instanceof GLFWKeyCallbackI i) GLFW.glfwSetKeyCallback(id, i);
-		if (callback instanceof GLFWMouseButtonCallbackI i) GLFW.glfwSetMouseButtonCallback(id, i);
-		if (callback instanceof GLFWScrollCallbackI i) GLFW.glfwSetScrollCallback(id, i);
-		if (callback instanceof GLFWWindowCloseCallbackI i) GLFW.glfwSetWindowCloseCallback(id, w -> {
-			onHide();
-			i.invoke(w);
-		});
-		if (callback instanceof GLFWWindowContentScaleCallbackI i) GLFW.glfwSetWindowContentScaleCallback(id, i);
-		if (callback instanceof GLFWWindowFocusCallbackI i) GLFW.glfwSetWindowFocusCallback(id, (w, f) -> {
-			onFocus();
-			i.invoke(w, f);
-		});
-		if (callback instanceof GLFWWindowIconifyCallbackI i) GLFW.glfwSetWindowIconifyCallback(id, (w, c) -> {
-			isIconified = c;
-			if (c) onIconify();
-			else onRestore();
-			i.invoke(w, c);
-		});
-		if (callback instanceof GLFWWindowMaximizeCallbackI i) GLFW.glfwSetWindowMaximizeCallback(id, (w, m) -> {
-			if (m) onMaximize();
-			else onRestore();
-			i.invoke(w, m);
-		});
-		if (callback instanceof GLFWWindowPosCallbackI i) GLFW.glfwSetWindowPosCallback(id, i);
-		if (callback instanceof GLFWWindowRefreshCallbackI i) GLFW.glfwSetWindowRefreshCallback(id, i);
-		if (callback instanceof GLFWWindowSizeCallbackI i) GLFW.glfwSetWindowSizeCallback(id, (p, w, h) -> {
-			width = w;
-			height = h;
-			i.invoke(p, w, h);
-		});
-		if (callback instanceof GLFWFramebufferSizeCallbackI i) GLFW.glfwSetFramebufferSizeCallback(id, (p, w, h) -> {
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				surface.reinit(stack);
-			}
-			for (Consumer<Surface> action : surfaceUpdateActions) action.accept(surface);
-			i.invoke(p, w, h);
+		RenderEngine.awaitRequestMainThread(() -> {
+			if (callback instanceof GLFWCharCallbackI i) GLFW.glfwSetCharCallback(id, i);
+			if (callback instanceof GLFWCharModsCallbackI i) GLFW.glfwSetCharModsCallback(id, i);
+			if (callback instanceof GLFWCursorEnterCallbackI i) GLFW.glfwSetCursorEnterCallback(id, i);
+			if (callback instanceof GLFWCursorPosCallbackI i) GLFW.glfwSetCursorPosCallback(id, i);
+			if (callback instanceof GLFWDropCallbackI i) GLFW.glfwSetDropCallback(id, i);
+			if (callback instanceof GLFWKeyCallbackI i) GLFW.glfwSetKeyCallback(id, i);
+			if (callback instanceof GLFWMouseButtonCallbackI i) GLFW.glfwSetMouseButtonCallback(id, i);
+			if (callback instanceof GLFWScrollCallbackI i) GLFW.glfwSetScrollCallback(id, i);
+			if (callback instanceof GLFWWindowCloseCallbackI i) GLFW.glfwSetWindowCloseCallback(id, w -> {
+				onHide();
+				i.invoke(w);
+			});
+			if (callback instanceof GLFWWindowContentScaleCallbackI i) GLFW.glfwSetWindowContentScaleCallback(id, i);
+			if (callback instanceof GLFWWindowFocusCallbackI i) GLFW.glfwSetWindowFocusCallback(id, (w, f) -> {
+				onFocus();
+				i.invoke(w, f);
+			});
+			if (callback instanceof GLFWWindowIconifyCallbackI i) GLFW.glfwSetWindowIconifyCallback(id, (w, c) -> {
+				isIconified = c;
+				if (c) onIconify();
+				else onRestore();
+				i.invoke(w, c);
+			});
+			if (callback instanceof GLFWWindowMaximizeCallbackI i) GLFW.glfwSetWindowMaximizeCallback(id, (w, m) -> {
+				if (m) onMaximize();
+				else onRestore();
+				i.invoke(w, m);
+			});
+			if (callback instanceof GLFWWindowPosCallbackI i) GLFW.glfwSetWindowPosCallback(id, i);
+			if (callback instanceof GLFWWindowRefreshCallbackI i) GLFW.glfwSetWindowRefreshCallback(id, i);
+			if (callback instanceof GLFWWindowSizeCallbackI i) GLFW.glfwSetWindowSizeCallback(id, (p, w, h) -> {
+				width = w;
+				height = h;
+				i.invoke(p, w, h);
+			});
+			if (callback instanceof GLFWFramebufferSizeCallbackI i) GLFW.glfwSetFramebufferSizeCallback(id, (p, w, h) -> {
+				try (MemoryStack stack = MemoryStack.stackPush())
+				{
+					surface.reinit(stack);
+				}
+				for (Consumer<Surface> action : surfaceUpdateActions) action.accept(surface);
+				i.invoke(p, w, h);
+			});
 		});
 	}
 	
 	public final Vector2f getMousePos(Vector2f holder)
 	{
 		double[][] p = new double[2][1];
-		GLFW.glfwGetCursorPos(id, p[0], p[1]);
+		RenderEngine.awaitRequestMainThread(() -> GLFW.glfwGetCursorPos(id, p[0], p[1]));
 		return holder.setAll((float) p[0][0], (float) p[1][0]);
 	}
 	
 	public final Vector2f getMousePos()
 	{
 		double[][] p = new double[2][1];
-		GLFW.glfwGetCursorPos(id, p[0], p[1]);
+		RenderEngine.awaitRequestMainThread(() -> GLFW.glfwGetCursorPos(id, p[0], p[1]));
 		return Vector2f.of((float) p[0][0], (float) p[1][0]);
 	}
 	
 	public final Pair<Double, Double> getHighPrecisionMousePos(Pair<Double, Double> holder)
 	{
 		double[][] p = new double[2][1];
-		GLFW.glfwGetCursorPos(id, p[0], p[1]);
+		RenderEngine.awaitRequestMainThread(() -> GLFW.glfwGetCursorPos(id, p[0], p[1]));
 		holder.setLeft(p[0][0]);
 		holder.setRight(p[1][0]);
 		return holder;
@@ -196,43 +228,48 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	public final Pair<Double, Double> getHighPrecisionMousePos()
 	{
 		double[][] p = new double[2][1];
-		GLFW.glfwGetCursorPos(id, p[0], p[1]);
+		RenderEngine.awaitRequestMainThread(() -> GLFW.glfwGetCursorPos(id, p[0], p[1]));
 		return new Pair<>(p[0][0], p[1][0]);
 	}
 	
 	public final void setMousePos(Vector2f pos)
 	{
-		GLFW.glfwSetCursorPos(id, pos.x(), pos.y());
+		RenderEngine.requestMainThread(() -> GLFW.glfwSetCursorPos(id, pos.x(), pos.y()));
 	}
 	
 	public final void setMousePos(Pair<Double, Double> pos)
 	{
-		GLFW.glfwSetCursorPos(id, pos.l(), pos.r());
+		RenderEngine.requestMainThread(() -> GLFW.glfwSetCursorPos(id, pos.l(), pos.r()));
 	}
 	
 	public final Vector2i getPos(Vector2i holder)
 	{
 		int[][] p = new int[2][1];
-		GLFW.glfwGetWindowPos(id, p[0], p[1]);
+		RenderEngine.awaitRequestMainThread(() -> GLFW.glfwGetWindowPos(id, p[0], p[1]));
 		return holder.setAll(p[0][0], p[1][0]);
 	}
 	
 	public final Vector2i getPos()
 	{
 		int[][] p = new int[2][1];
-		GLFW.glfwGetWindowPos(id, p[0], p[1]);
+		RenderEngine.awaitRequestMainThread(() -> GLFW.glfwGetWindowPos(id, p[0], p[1]));
 		return Vector2i.of(p[0][0], p[1][0]);
 	}
 	
 	public final void setPos(Vector2i pos)
 	{
-		GLFW.glfwSetWindowPos(id, pos.x(), pos.y());
+		RenderEngine.requestMainThread(() -> GLFW.glfwSetWindowPos(id, pos.x(), pos.y()));
 	}
 	
 	@Override
 	public Long getVk()
 	{
 		return id;
+	}
+	
+	public Device getDevice()
+	{
+		return device;
 	}
 	
 	public boolean isIconified()
@@ -262,7 +299,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	
 	public void setTitle(String title)
 	{
-		GLFW.glfwSetWindowTitle(id, title);
+		RenderEngine.requestMainThread(() -> GLFW.glfwSetWindowTitle(id, title));
 		this.title = title;
 	}
 	
@@ -270,7 +307,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	public void close()
 	{
 		surface.close();
-		GLFW.glfwDestroyWindow(id);
+		RenderEngine.awaitRequestMainThread(() -> GLFW.glfwDestroyWindow(id));
 		id = 0L;
 	}
 	

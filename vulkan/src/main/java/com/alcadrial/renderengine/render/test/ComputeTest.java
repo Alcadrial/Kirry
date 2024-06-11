@@ -17,7 +17,6 @@ import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.system.windows.Kernel32;
 import org.lwjgl.vulkan.EXTDepthRangeUnrestricted;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
@@ -35,11 +34,9 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
-import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.axis.Axis;
 import com.alcadrial.renderengine.core.cursor.CursorInputMode;
 import com.alcadrial.renderengine.core.util.color.Color;
-import com.alcadrial.renderengine.render.Computer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -52,9 +49,8 @@ import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.pipeline.ComputePipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
-import com.alcadrial.renderengine.render.shader.Shader;
-import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
+import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
 import com.alcadrial.renderengine.render.util.Properties;
@@ -77,7 +73,6 @@ public class ComputeTest extends RenderTest {
 	public static void main(String[] args)
 	{
 		TestProperties.init(args);
-		System.out.println(Kernel32.GetCurrentThreadId());
 		
 		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
 		
@@ -108,7 +103,6 @@ public class ComputeTest extends RenderTest {
 	private static long fps;
 	private static Presenter presenter;
 	private static Renderer renderer;
-	private static Computer computer;
 	private static VertexBuffer vertexBuffer;
 	private static VertexBuffer vertexStorageBuffer;
 	private static VertexBuffer storageBuffer0;
@@ -145,25 +139,12 @@ public class ComputeTest extends RenderTest {
 	
 	public static void start()
 	{
-		Shader vertexShader;
-		ShaderInfo vertexShaderInfo;
-		Shader fragmentShader;
-		ShaderInfo fragmentShaderInfo;
-		Shader computeShader;
-		ShaderInfo computeShaderInfo;
+		ShaderProgram shaderProgram;
+		PreparedShader computeShader;
 		try
 		{
-			PreparedShader shader = loadShader(SHADER + ".vert");
-			vertexShader = shader.shader();
-			vertexShaderInfo = shader.info();
-			
-			shader = loadShader(SHADER + ".frag");
-			fragmentShader = shader.shader();
-			fragmentShaderInfo = shader.info();
-			
-			shader = loadShader(SHADER + ".comp");
-			computeShader = shader.shader();
-			computeShaderInfo = shader.info();
+			shaderProgram = ShaderProgram.create().add(loadShader(SHADER + ".vert"), loadShader(SHADER + ".frag")).build();
+			computeShader = loadShader(SHADER + ".comp");
 		}
 		catch (IOException e)
 		{
@@ -172,13 +153,7 @@ public class ComputeTest extends RenderTest {
 			return;
 		}
 		
-		Debug.onDebug(() -> {
-			
-			for (int i = 0; i < 1000000; i++)
-			{
-				System.out.println(i);
-			}
-		});
+		Debug.onDebug(() -> System.out.println("Debug active"));
 		
 		Vulkan vulkan = RenderEngine.getVulkan();
 		
@@ -186,16 +161,16 @@ public class ComputeTest extends RenderTest {
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
-		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
-		VulkanWindow window = vulkan.getWindow();
+		VulkanWindow window = new VulkanWindow(1080, 720, "Test");
+		vulkan.setWindow(window);
 		
-		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT | VK10.VK_QUEUE_COMPUTE_BIT, window.getSurface()) != null);
-		if (!pickPhysicalDevice()) return;
+		if (!pickPhysicalDevice(window)) return;
 		
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.wideLines(true);
 		deviceFeatures.samplerAnisotropy(true);
 		Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME, EXTDepthRangeUnrestricted.VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME);
+		window.init(device);
 		
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			renderer.updateUniformBuffers((b, l) -> l.set(PROJECTION, b, buildProjectionMatrix(window)));
@@ -288,13 +263,13 @@ public class ComputeTest extends RenderTest {
 		presenter = new Presenter(device, window, RenderTest::createDepthTexture, 3);
 		
 		Renderer.Builder builder = Renderer.create();
-		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo)/* .computeShader(computeShader, computeShaderInfo) */;
+		builder.shaderProgram(shaderProgram);
 		builder.depthTestEnable(true);
 		builder.cullMode(VK10.VK_CULL_MODE_NONE);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.uniformBuffer(uniformBuffer);
 		
-		renderer = builder.build(window, device, presenter.getRenderPass(), 3, ComputeCustomGraphicsPipeline::new);
+		renderer = builder.build(device, window.getSurface().getSize(), presenter.getRenderPass(), 3, ComputeCustomGraphicsPipeline::new);
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -347,7 +322,7 @@ public class ComputeTest extends RenderTest {
 			
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
 			pipelineLayoutInfo.pSetLayouts(p);
-			computePipeline = new ComputePipeline(device, new PipelineLayout(device, pipelineLayoutInfo), true, new PreparedShader(computeShader, computeShaderInfo));
+			computePipeline = new ComputePipeline(device, new PipelineLayout(device, pipelineLayoutInfo), true, computeShader);
 			
 			VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(3);
 			

@@ -1,7 +1,7 @@
 package com.alcadrial.renderengine.render.test;
 
 import java.util.Arrays;
-import java.util.Optional;
+import java.util.List;
 
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -17,6 +17,8 @@ import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
+import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.shader.ShaderType;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
@@ -27,9 +29,9 @@ public class ComputeCustomGraphicsPipeline extends GraphicsPipeline {
 		RenderEngine.assertLoaded();
 	}
 	
-	public ComputeCustomGraphicsPipeline(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, Buffer createInfo, PreparedShader vertexShader, Optional<PreparedShader> tessellationControlShader, Optional<PreparedShader> tessellationEvaluationShader, Optional<PreparedShader> geometryShader, Optional<PreparedShader> fragmentShader)
+	public ComputeCustomGraphicsPipeline(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, Buffer createInfo, ShaderProgram shaderProgram)
 	{
-		super(device, layout, autoCloseLayout, renderPass, autoCloseRenderPass, createInfo, vertexShader, tessellationControlShader, tessellationEvaluationShader, geometryShader, fragmentShader);
+		super(device, layout, autoCloseLayout, renderPass, autoCloseRenderPass, createInfo, shaderProgram);
 	}
 	
 	@Override
@@ -54,12 +56,15 @@ public class ComputeCustomGraphicsPipeline extends GraphicsPipeline {
 			
 			inputs = Arrays.asList(ShaderVariable.VERTEX_POSITION);
 			
-			int stages = 2;
-			
-			VkPipelineShaderStageCreateInfo.Buffer shaderStages = VkPipelineShaderStageCreateInfo.calloc(stages, stack);
-			
-			fillShaderStageCreateInfo(stack, shaderStages.get(), vertexShader);
-			fillShaderStageCreateInfo(stack, shaderStages.get(), fragmentShader.orElseThrow());
+			VkPipelineShaderStageCreateInfo.Buffer shaderStages = VkPipelineShaderStageCreateInfo.calloc(2, stack);
+			{
+				List<PreparedShader> vertexShaders = shaderProgram.getshaders().stream().filter(ps -> ps.info().getType() == ShaderType.VERTEX).toList();
+				List<PreparedShader> fragmentShaders = shaderProgram.getshaders().stream().filter(ps -> ps.info().getType() == ShaderType.FRAGMENT).toList();
+				VkPipelineShaderStageCreateInfo stage = shaderStages.get();
+				for (PreparedShader prepared : vertexShaders) fillShaderStageCreateInfo(stack, stage, prepared);
+				stage = shaderStages.get();
+				for (PreparedShader prepared : fragmentShaders) fillShaderStageCreateInfo(stack, stage, prepared);
+			}
 			
 			createInfo.pVertexInputState(vertexInputInfo);
 			createInfo.pStages(shaderStages.rewind());

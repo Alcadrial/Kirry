@@ -27,6 +27,13 @@ public class ShaderInfo {
 		RenderEngine.assertLoaded();
 	}
 	
+	/**
+	 * 
+	 * @param json
+	 * @throws FileNotFoundException
+	 * @throws IOException
+	 * @see #fromJson(InputStream)
+	 */
 	public static ShaderInfo fromJson(File json) throws FileNotFoundException, IOException
 	{
 		FileUtils.assertExtension(json, "json");
@@ -85,8 +92,7 @@ public class ShaderInfo {
 				switch (reader.nextName())
 				{
 					case "entryPoint" -> entryPoint = reader.nextString();
-					case "layouts" ->
-					{
+					case "layouts" -> {
 						if (layouts != null) layouts.clear();
 						layouts = new LinkedList<>();
 						

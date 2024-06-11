@@ -36,10 +36,8 @@ import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
-import com.alcadrial.renderengine.render.shader.PreparedShader;
-import com.alcadrial.renderengine.render.shader.Shader;
-import com.alcadrial.renderengine.render.shader.ShaderInfo;
-import com.alcadrial.renderengine.render.test.RendererUtils.OrthoCubeVertexResult;
+import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.test.RenderingDataUtils.OrthoCubeVertexResult;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.window.Presenter;
 import com.alcadrial.renderengine.render.window.Presenter.Result;
@@ -99,19 +97,10 @@ public class DepthBufferTest extends RenderTest {
 	
 	public static void start()
 	{
-		Shader vertexShader;
-		ShaderInfo vertexShaderInfo;
-		Shader fragmentShader;
-		ShaderInfo fragmentShaderInfo;
+		ShaderProgram shaderProgram;
 		try
 		{
-			PreparedShader shader = loadShader(SHADER + ".vert");
-			vertexShader = shader.shader();
-			vertexShaderInfo = shader.info();
-			
-			shader = loadShader(SHADER + ".frag");
-			fragmentShader = shader.shader();
-			fragmentShaderInfo = shader.info();
+			shaderProgram = ShaderProgram.create().add(loadShader(SHADER + ".vert"), loadShader(SHADER + ".frag")).build();
 		}
 		catch (IOException e)
 		{
@@ -126,18 +115,16 @@ public class DepthBufferTest extends RenderTest {
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
-		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
+		VulkanWindow window = new VulkanWindow(1080, 720, "Test");
+		vulkan.setWindow(window);
 		
-		vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getGraphicsQueueFamily() != null);
-		if (!pickPhysicalDevice()) return;
+		if (!pickPhysicalDevice(window)) return;
 		
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.wideLines(true);
 		deviceFeatures.samplerAnisotropy(true);
-		vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME, EXTDepthRangeUnrestricted.VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME);
-		
-		VulkanWindow window = vulkan.getWindow();
-		Device device = vulkan.getDevice();
+		Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME, EXTDepthRangeUnrestricted.VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME);
+		window.init(device);
 		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
 			System.out.println(iconified ? "Iconified" : "Restored");
@@ -189,12 +176,12 @@ public class DepthBufferTest extends RenderTest {
 		presenter = new Presenter(device, window, RenderTest::createDepthTexture, 3);
 		
 		Builder builder = Renderer.create();
-		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
+		builder.shaderProgram(shaderProgram);
 		builder.depthTestEnable(true);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.uniformBuffer(new VulkanBuffer(device, Math.max(256 * 2, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
-		renderer = builder.build(window, device, presenter.getRenderPass(), 3);
+		renderer = builder.build(device, window.getSurface().getSize(), presenter.getRenderPass(), 3);
 		
 		lightPos = Vector3f.of(0.3F, 1, 0);
 		f = 0;
@@ -220,7 +207,7 @@ public class DepthBufferTest extends RenderTest {
 			Color.VERY_LIGHT_BLUE
 		};
 		
-		OrthoCubeVertexResult result = RendererUtils.loadOrthoCube(renderer, vertexBuffer, Vector3f.of(-1, -1, -1), Vector3f.of(1, 1, 1), (i, j) -> colors[i]);
+		OrthoCubeVertexResult result = RenderingDataUtils.loadOrthoCube(renderer, vertexBuffer, Vector3f.of(-1, -1, -1), Vector3f.of(1, 1, 1), (i, j) -> colors[i]);
 		
 		IntBuffer buffer = indexBuffer.asIntBuffer();
 		result.foreach(rResult -> {

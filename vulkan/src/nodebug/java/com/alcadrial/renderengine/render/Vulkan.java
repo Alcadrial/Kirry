@@ -9,6 +9,7 @@ import java.util.function.Predicate;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.windows.Kernel32;
 import org.lwjgl.vulkan.EXTDebugUtils;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCreateInfoEXT;
@@ -38,11 +39,13 @@ public class Vulkan implements AutoCloseable {
 		List<PhysicalDevice> validPhysicalDevices;
 		PhysicalDevice physicalDevice;
 		Device device;
+		long threadId;
 		
 		public ThreadData()
 		{
 			window = defaultWindow;
 			physicalDeviceFilter = defaultPhysicalDeviceFilter;
+			threadId = Kernel32.GetCurrentThreadId();
 		}
 	}
 	
@@ -196,7 +199,6 @@ public class Vulkan implements AutoCloseable {
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
 				QueueFamily graphicsQueue = VulkanErrorUtils.nonNull(threadData.physicalDevice.getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT), "Missing valid graphics queue family");
-				QueueFamily presentationQueue = VulkanErrorUtils.nonNull(threadData.physicalDevice.getQueueFamily(0, threadData.window.getSurface()), "Missing valid presentation queue family");
 				
 				VkDeviceQueueCreateInfo.Buffer queueCreateInfos = VkDeviceQueueCreateInfo.calloc(threadData.physicalDevice.indices(), stack);
 				
@@ -225,9 +227,13 @@ public class Vulkan implements AutoCloseable {
 				threadData.device = new Device(new VkDevice(devicePointer.get(0), threadData.physicalDevice.getVk(), createInfo), threadData.physicalDevice);
 				
 				Queue queue = new Queue(threadData.device, graphicsQueue.getIndex());
-				
 				threadData.device.setGraphicsQueue(queue);
-				threadData.device.setPresentQueue(graphicsQueue.getIndex() == presentationQueue.getIndex() ? queue : new Queue(threadData.device, presentationQueue.getIndex()));
+				
+				if (threadData.window != null)
+				{
+					QueueFamily presentationQueue = VulkanErrorUtils.nonNull(threadData.physicalDevice.getQueueFamily(0, threadData.window.getSurface()), "Missing valid presentation queue family");
+					threadData.device.setPresentQueue(graphicsQueue.getIndex() == presentationQueue.getIndex() ? queue : new Queue(threadData.device, presentationQueue.getIndex()));
+				}
 				return threadData.device;
 			}
 			finally

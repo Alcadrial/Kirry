@@ -24,6 +24,7 @@ import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
+import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.buffer.BufferLayout;
@@ -33,10 +34,9 @@ import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline.GraphicsPipelineBuildFunction;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
-import com.alcadrial.renderengine.render.shader.Shader;
-import com.alcadrial.renderengine.render.shader.ShaderInfo;
+import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
-import com.alcadrial.renderengine.render.shader.ShaderType;
+import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderUtils;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
@@ -44,7 +44,6 @@ import com.alcadrial.renderengine.render.util.DataAccumulator;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
-import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class Renderer implements AutoCloseable, VulkanDebug {
 	
@@ -226,12 +225,6 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			return super.device(device);
 		}
 		
-		@Override
-		public ModificationPlan targetWindow(@Nullable VulkanWindow targetWindow)
-		{
-			return super.targetWindow(targetWindow);
-		}
-		
 		public void submit()
 		{
 			submit(GraphicsPipeline::new);
@@ -259,9 +252,8 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			boolean deviceModified = device.isModified();
 			
 			physicalDevice.set(device.require().getPhysicalDevice());
-			surface.set(targetWindow.require().getSurface());
 			
-			if (deviceModified || vertexShader.isModified() || tessellationControlShader.isModified() || tessellationEvaluationShader.isModified() || geometryShader.isModified() || fragmentShader.isModified() || computeShader.isModified())
+			if (deviceModified || shaderProgram.isModified())
 			{
 				createUniformBuffers(Renderer.this.descriptorSetLayouts.length);
 				
@@ -296,7 +288,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			}
 			
 			Renderer.this.graphicsPipeline.getDevice().waitAsyncIdle(Renderer.this.graphicsPipeline::close);
-			graphicsPipeline.set(createGraphicsPipeline(surface.get().getSize(), builderFunction));
+			graphicsPipeline.set(createGraphicsPipeline(size.require(), builderFunction));
 			
 			Renderer.this.device = device.get();
 			Renderer.this.graphicsPipeline = graphicsPipeline.get();
@@ -311,19 +303,18 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		private Builder()
 		{}
 		
-		public Renderer build(VulkanWindow targetWindow, Device device, RenderPass renderPass, int uniformBufferCount)
+		public Renderer build(Device device, Vector2i outputSize, RenderPass renderPass, int uniformBufferCount)
 		{
-			return build(targetWindow, device, renderPass, uniformBufferCount, GraphicsPipeline::new);
+			return build(device, outputSize, renderPass, uniformBufferCount, GraphicsPipeline::new);
 		}
 		
-		public Renderer build(VulkanWindow targetWindow, Device device, RenderPass renderPass, int uniformBufferCount, GraphicsPipelineBuildFunction<?> builderFunction)
+		public Renderer build(Device device, Vector2i outputSize, RenderPass renderPass, int uniformBufferCount, GraphicsPipelineBuildFunction<?> builderFunction)
 		{
 			try
 			{
 				this.device.setNonNull(device);
-				this.targetWindow.setNonNull(targetWindow);
 				physicalDevice.set(device.getPhysicalDevice());
-				surface.set(targetWindow.getSurface());
+				size.setNonNull(outputSize);
 				this.renderPass.setNonNull(renderPass);
 				
 				createUniformBuffers(uniformBufferCount);
@@ -333,7 +324,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 				
 				pipelineLayout.set(new PipelineLayout(device, pipelineLayoutInfo));
 				
-				graphicsPipeline.set(createGraphicsPipeline(surface.get().getSize(), builderFunction));
+				graphicsPipeline.set(createGraphicsPipeline(outputSize, builderFunction));
 				
 				return new Renderer(this, device, graphicsPipeline.get(), descriptorSetLayouts, descriptorSets, descriptorPool, uniformBuffers);
 			}
@@ -375,12 +366,8 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			descriptorPool = p0[0];
 			
 			Map<Integer, ShaderLayoutBinding> bindingFlags = new HashMap<>();
-			ShaderUtils.extractData(vertexShader.require(), bindingFlags);
-			ShaderUtils.extractData(tessellationControlShader.get(), bindingFlags);
-			ShaderUtils.extractData(tessellationEvaluationShader.get(), bindingFlags);
-			ShaderUtils.extractData(geometryShader.get(), bindingFlags);
-			ShaderUtils.extractData(fragmentShader.get(), bindingFlags);
-			ShaderUtils.extractData(computeShader.get(), bindingFlags);
+			
+			for (PreparedShader prepared : shaderProgram.require().getshaders()) ShaderUtils.extractData(prepared, bindingFlags);
 			
 			boolean useUniform = false;
 			boolean useStorage = false;
@@ -528,45 +515,10 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			return super.storageBuffer(value);
 		}
 		
-		public RDA shader(@Nullable Shader shader, @Nullable ShaderInfo info, ShaderType type)
-		{
-			return super.genericShader(shader, info, type);
-		}
-		
 		@Override
-		public RDA vertexShader(@Nullable Shader shader, @Nullable ShaderInfo info)
+		public RDA shaderProgram(ShaderProgram value)
 		{
-			return super.vertexShader(shader, info);
-		}
-		
-		@Override
-		public RDA tessellationControlShader(@Nullable Shader shader, @Nullable ShaderInfo info)
-		{
-			return super.tessellationControlShader(shader, info);
-		}
-		
-		@Override
-		public RDA tessellationEvaluationShader(@Nullable Shader shader, @Nullable ShaderInfo info)
-		{
-			return super.tessellationEvaluationShader(shader, info);
-		}
-		
-		@Override
-		public RDA geometryShader(@Nullable Shader shader, @Nullable ShaderInfo info)
-		{
-			return super.geometryShader(shader, info);
-		}
-		
-		@Override
-		public RDA fragmentShader(@Nullable Shader shader, @Nullable ShaderInfo info)
-		{
-			return super.fragmentShader(shader, info);
-		}
-		
-		@Override
-		public RDA computeShader(@Nullable Shader shader, @Nullable ShaderInfo info)
-		{
-			return super.computeShader(shader, info);
+			return super.shaderProgram(value);
 		}
 		
 		@Override
@@ -729,6 +681,12 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		public RDA dynamicScissor(Boolean value)
 		{
 			return super.dynamicScissor(value);
+		}
+		
+		@Override
+		public RDA size(Vector2i value)
+		{
+			return super.size(value);
 		}
 	}
 }

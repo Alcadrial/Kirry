@@ -1,7 +1,10 @@
 package com.alcadrial.renderengine.render.pipeline;
 
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -18,9 +21,8 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
-import com.alcadrial.renderengine.render.shader.Shader;
-import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
+import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderType;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.util.DataAccumulator;
@@ -52,46 +54,17 @@ public class GraphicsPipeline extends Pipeline {
 			return super.autoCloseRenderPass(value);
 		}
 		
-		public Builder shader(@Nullable Shader shader, @Nullable ShaderInfo info, ShaderType type)
-		{
-			return super.genericShader(shader, info, type);
-		}
-		
 		@Override
-		public Builder vertexShader(@Nullable Shader shader, @Nullable ShaderInfo info)
+		public Builder shaderProgram(@Nullable ShaderProgram value)
 		{
-			return super.vertexShader(shader, info);
-		}
-		
-		@Override
-		public Builder tessellationControlShader(@Nullable Shader shader, @Nullable ShaderInfo info)
-		{
-			return super.tessellationControlShader(shader, info);
-		}
-		
-		@Override
-		public Builder tessellationEvaluationShader(@Nullable Shader shader, @Nullable ShaderInfo info)
-		{
-			return super.tessellationEvaluationShader(shader, info);
-		}
-		
-		@Override
-		public Builder geometryShader(@Nullable Shader shader, @Nullable ShaderInfo info)
-		{
-			return super.geometryShader(shader, info);
-		}
-		
-		@Override
-		public Builder fragmentShader(@Nullable Shader shader, @Nullable ShaderInfo info)
-		{
-			return super.fragmentShader(shader, info);
+			return super.shaderProgram(value);
 		}
 		
 		public GraphicsPipeline build(Device device, PipelineLayout layout, RenderPass renderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo)
 		{
 			try
 			{
-				return new GraphicsPipeline(device, layout, autoCloseLayout.orElse(true), renderPass, autoCloseRenderPass.orElse(true), createInfo, vertexShader.require("The vertex shader is required"), tessellationControlShader.asOptional(), tessellationEvaluationShader.asOptional(), geometryShader.asOptional(), fragmentShader.asOptional());
+				return new GraphicsPipeline(device, layout, autoCloseLayout.orElse(true), renderPass, autoCloseRenderPass.orElse(true), createInfo, shaderProgram.require());
 			}
 			finally
 			{
@@ -101,14 +74,16 @@ public class GraphicsPipeline extends Pipeline {
 		
 		public <GP extends GraphicsPipeline> GP build(GraphicsPipelineBuildFunction<GP> buildFunction, Device device, PipelineLayout layout, RenderPass renderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo)
 		{
-			return buildFunction.build(device, layout, autoCloseLayout.orElse(true), renderPass, autoCloseRenderPass.orElse(true), createInfo, vertexShader.require("The vertex shader is required"), tessellationControlShader.asOptional(), tessellationEvaluationShader.asOptional(), geometryShader.asOptional(), fragmentShader.asOptional());
+			GP graphicsPipeline = buildFunction.build(device, layout, autoCloseLayout.orElse(true), renderPass, autoCloseRenderPass.orElse(true), createInfo, shaderProgram.require());
+			close();
+			return graphicsPipeline;
 		}
 	}
 	
 	@FunctionalInterface
 	public interface GraphicsPipelineBuildFunction<GP extends GraphicsPipeline> {
 		
-		GP build(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo, PreparedShader vertexShader, Optional<PreparedShader> tessellationControlShader, Optional<PreparedShader> tessellationEvaluationShader, Optional<PreparedShader> geometryShader, Optional<PreparedShader> fragmentShader);
+		GP build(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo, ShaderProgram program);
 	}
 	
 	public static Builder create()
@@ -120,25 +95,17 @@ public class GraphicsPipeline extends Pipeline {
 	protected RenderPass renderPass;
 	protected boolean autoCloseRenderPass;
 	
-	protected PreparedShader vertexShader;
-	protected Optional<PreparedShader> tessellationControlShader;
-	protected Optional<PreparedShader> tessellationEvaluationShader;
-	protected Optional<PreparedShader> geometryShader;
-	protected Optional<PreparedShader> fragmentShader;
+	protected ShaderProgram shaderProgram;
 	
 	protected List<ShaderVariable> inputs;
 	
-	public GraphicsPipeline(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo, PreparedShader vertexShader, Optional<PreparedShader> tessellationControlShader, Optional<PreparedShader> tessellationEvaluationShader, Optional<PreparedShader> geometryShader, Optional<PreparedShader> fragmentShader)
+	public GraphicsPipeline(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo, ShaderProgram program)
 	{
 		super(device, layout);
 		this.autoCloseLayout = autoCloseLayout;
 		this.renderPass = renderPass;
 		this.autoCloseRenderPass = autoCloseRenderPass;
-		this.vertexShader = vertexShader;
-		this.tessellationControlShader = tessellationControlShader;
-		this.tessellationEvaluationShader = tessellationEvaluationShader;
-		this.geometryShader = geometryShader;
-		this.fragmentShader = fragmentShader;
+		shaderProgram = program;
 		inputs = List.of();
 		
 		createVk(createInfo);
@@ -151,7 +118,7 @@ public class GraphicsPipeline extends Pipeline {
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo = VkPipelineVertexInputStateCreateInfo.calloc(stack);
 			vertexInputInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
 			
-			inputs = extractInputs(vertexShader);
+			inputs = shaderProgram.getshaders().stream().filter(ps -> ps.info().getType() == ShaderType.VERTEX).map(this::extractInputs).collect(LinkedList::new, List::addAll, List::addAll);
 			
 			int size = 0;
 			int locationSize = 0;
@@ -171,19 +138,21 @@ public class GraphicsPipeline extends Pipeline {
 			vertexInputInfo.pVertexBindingDescriptions(bindingDescription);
 			vertexInputInfo.pVertexAttributeDescriptions(attributeDescriptions.rewind());
 			
-			int stages = 1;
-			if (tessellationControlShader.isPresent()) stages++;
-			if (tessellationEvaluationShader.isPresent()) stages++;
-			if (geometryShader.isPresent()) stages++;
-			if (fragmentShader.isPresent()) stages++;
+			Map<ShaderType, List<PreparedShader>> shaderStagesMap = shaderProgram.getshaders().stream().collect(Collectors.groupingBy(ps -> ps.info().getType()));
 			
-			VkPipelineShaderStageCreateInfo.Buffer shaderStages = VkPipelineShaderStageCreateInfo.calloc(stages, stack);
-			
-			fillShaderStageCreateInfo(stack, shaderStages.get(), vertexShader);
-			tessellationControlShader.ifPresent(shader -> fillShaderStageCreateInfo(stack, shaderStages.get(), shader));
-			tessellationEvaluationShader.ifPresent(shader -> fillShaderStageCreateInfo(stack, shaderStages.get(), shader));
-			geometryShader.ifPresent(shader -> fillShaderStageCreateInfo(stack, shaderStages.get(), shader));
-			fragmentShader.ifPresent(shader -> fillShaderStageCreateInfo(stack, shaderStages.get(), shader));
+			VkPipelineShaderStageCreateInfo.Buffer shaderStages = VkPipelineShaderStageCreateInfo.calloc(shaderStagesMap.size(), stack);
+			try
+			{
+				for (Entry<ShaderType, List<PreparedShader>> e : shaderStagesMap.entrySet())
+				{
+					VkPipelineShaderStageCreateInfo stage = shaderStages.get();
+					for (PreparedShader shader : e.getValue()) fillShaderStageCreateInfo(stack, stage, shader);
+				}
+			}
+			catch (OutOfMemoryError e)
+			{
+				throw e;
+			}
 			
 			createInfo.pVertexInputState(vertexInputInfo);
 			createInfo.pStages(shaderStages.rewind());
@@ -225,29 +194,9 @@ public class GraphicsPipeline extends Pipeline {
 		return inputs;
 	}
 	
-	public PreparedShader getVertexShader()
+	public ShaderProgram getShaderProgram()
 	{
-		return vertexShader;
-	}
-	
-	public Optional<PreparedShader> getTessellationControlShader()
-	{
-		return tessellationControlShader;
-	}
-	
-	public Optional<PreparedShader> getTessellationEvaluationShader()
-	{
-		return tessellationEvaluationShader;
-	}
-	
-	public Optional<PreparedShader> getGeometryShader()
-	{
-		return geometryShader;
-	}
-	
-	public Optional<PreparedShader> getFragmentShader()
-	{
-		return fragmentShader;
+		return shaderProgram;
 	}
 	
 	@Override
@@ -264,12 +213,18 @@ public class GraphicsPipeline extends Pipeline {
 		Debug.print("Vk: " + Debug.address(vk));
 		Debug.print("Layout", layout);
 		Debug.print("RenderPass", renderPass);
-		Debug.print("Inputs: " + inputs);
-		Debug.print("VertexShader: " + vertexShader.shader().getFile());
-		tessellationControlShader.ifPresent(s -> Debug.print("TessellationControlShader: " + s.shader().getFile()));
-		tessellationEvaluationShader.ifPresent(s -> Debug.print("TessellationEvaluationShader: " + s.shader().getFile()));
-		geometryShader.ifPresent(s -> Debug.print("GeometryShader: " + s.shader().getFile()));
-		fragmentShader.ifPresent(s -> Debug.print("FragmentShader: " + s.shader().getFile()));
-		
+		Debug.print("Inputs", inputs);
+		Debug.print("Shaders {");
+		Debug.indent();
+		for (Entry<ShaderType, List<PreparedShader>> e : shaderProgram.getshaders().stream().collect(Collectors.groupingBy(ps -> ps.info().getType())).entrySet())
+		{
+			Debug.print(e.getKey() + " {");
+			Debug.indent();
+			for (PreparedShader prepared : e.getValue()) Debug.print(prepared.shader().getFile());
+			Debug.deindent();
+			Debug.print("}");
+		}
+		Debug.deindent();
+		Debug.print("}");
 	}
 }

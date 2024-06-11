@@ -36,9 +36,8 @@ import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
-import com.alcadrial.renderengine.render.shader.Shader;
-import com.alcadrial.renderengine.render.shader.ShaderInfo;
-import com.alcadrial.renderengine.render.test.RendererUtils.RectangleVertexResult;
+import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.test.RenderingDataUtils.RectangleVertexResult;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
 import com.alcadrial.renderengine.render.util.Properties;
@@ -80,19 +79,12 @@ public class TextureTest extends RenderTest {
 	
 	public static void start()
 	{
-		Shader vertexShader;
-		ShaderInfo vertexShaderInfo;
-		Shader fragmentShader;
-		ShaderInfo fragmentShaderInfo;
+		ShaderProgram shaderProgram;
 		try
 		{
-			PreparedShader shader = loadShader(SHADER + ".vert");
-			vertexShader = shader.shader();
-			vertexShaderInfo = shader.info();
-			
-			shader = loadShader(SHADER + ".frag");
-			fragmentShader = shader.shader();
-			fragmentShaderInfo = shader.info();
+			PreparedShader vertexShader = loadShader(SHADER + ".vert");
+			PreparedShader fragmentShader = loadShader(SHADER + ".frag");
+			shaderProgram = ShaderProgram.create().add(vertexShader, fragmentShader).build();
 		}
 		catch (IOException e)
 		{
@@ -107,15 +99,13 @@ public class TextureTest extends RenderTest {
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
-		println("Window creation", () -> vulkan.setWindow(new VulkanWindow(1080, 720, "Test")), TestProperties.PRINT_LOADING_TIMES);
-		
-		if (!pickPhysicalDevice()) return;
+		VulkanWindow window = new VulkanWindow(1080, 720, "Test");
+		vulkan.setWindow(window);
+		if (!pickPhysicalDevice(window)) return;
 		
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.samplerAnisotropy(true);
 		Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-		
-		VulkanWindow window = vulkan.getWindow();
 		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
 			System.out.println(iconified ? "Iconified" : "Restored");
@@ -203,21 +193,21 @@ public class TextureTest extends RenderTest {
 		presenter = new Presenter(device, window, null, 3);
 		
 		Builder builder = Renderer.create();
-		builder.vertexShader(vertexShader, vertexShaderInfo).fragmentShader(fragmentShader, fragmentShaderInfo);
+		builder.shaderProgram(shaderProgram);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.uniformBuffer(new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
 		builder.dynamicViewport(false).dynamicScissor(false);
-		renderer = builder.build(window, device, presenter.getRenderPass(), 3);
+		renderer = builder.build(device, window.getSurface().getSize(), presenter.getRenderPass(), 3);
 		
-		window.addSurfaceUpdateActions(surface -> renderer.startModificationPlan().targetWindow(window).submit());
+		window.addSurfaceUpdateActions(surface -> renderer.startModificationPlan().size(surface.getSize()).submit());
 		
 		vertexBuffer = new VertexBuffer(28 * 4);
 		indexBuffer = new IndexBuffer(6 * 4);
 		renderer.addVertexBuffer(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
 		
-		RectangleVertexResult result = RendererUtils.sendRectangleXYZUV(renderer, vertexBuffer, -256, -256, 256, 256, 0, 0, 0, 1, 1);
+		RectangleVertexResult result = RenderingDataUtils.sendRectangleXYZUV(renderer, vertexBuffer, -256, -256, 256, 256, 0, 0, 0, 1, 1);
 		
 		IntBuffer buffer = indexBuffer.asIntBuffer();
 		buffer.put(result.getR0().getIndex());
