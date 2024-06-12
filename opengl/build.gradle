@@ -2,13 +2,10 @@ plugins {
 	id("java")
 	id("java-library")
 	id("maven-publish")
-	id("com.alcadrial.klug") version "0.2.1"
+	id("com.alcadrial.klug") version "0.2.3"
 }
 
 eclipse.project.name = "RenderEngine Opengl"
-
-compileJava.options.encoding = "UTF-8"
-javadoc.options.encoding = "UTF-8"
 
 dependencies {
 	implementation(project(":core"))

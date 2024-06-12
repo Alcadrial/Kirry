@@ -73,7 +73,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 	private long descriptorPool;
 	private List<Pair<VulkanBuffer, BufferLayout>> uniformBuffers;
 	private List<Deque<BiConsumer<VulkanBuffer, BufferLayout>>> uniformBuffersUpdates;
-	private List<Consumer<CommandBufferData>> extraCommands;
+	private List<Consumer<CommandBuffer>> extraCommands;
 	private int uniformBufferIndex;
 	
 	private Renderer(Builder builder, Device device, GraphicsPipeline graphicsPipeline, long[] descriptorSetLayouts, long[][] descriptorSets, long descriptorPool, List<Pair<VulkanBuffer, BufferLayout>> uniformBuffers)
@@ -107,7 +107,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		for (Deque<BiConsumer<VulkanBuffer, BufferLayout>> queue : uniformBuffersUpdates) queue.add(action);
 	}
 	
-	public void addExtraCommand(Consumer<CommandBufferData> command)
+	public void addExtraCommand(Consumer<CommandBuffer> command)
 	{
 		extraCommands.add(command);
 	}
@@ -117,12 +117,12 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		this.uniformBufferIndex = uniformBufferIndex;
 	}
 	
-	public void draw(CommandBufferData commandBuffer)
+	public void draw(CommandBuffer commandBuffer)
 	{
 		draw(commandBuffer, 1);
 	}
 	
-	public void draw(CommandBufferData commandBuffer, int instanceCount)
+	public void draw(CommandBuffer commandBuffer, int instanceCount)
 	{
 		Deque<BiConsumer<VulkanBuffer, BufferLayout>> queue = uniformBuffersUpdates.get(uniformBufferIndex);
 		boolean update = queue.size() > 0;
@@ -141,7 +141,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			commandBuffer.bindDescriptorSets(graphicsPipeline, descriptorSets[uniformBufferIndex], new int[0]);
 			commandBuffer.drawIndexed((int) (indexBuffer.getSize() / 4), instanceCount, 0, 0, 0);
 			
-			for (Consumer<CommandBufferData> command : extraCommands) command.accept(commandBuffer);
+			for (Consumer<CommandBuffer> command : extraCommands) command.accept(commandBuffer);
 		}
 	}
 	

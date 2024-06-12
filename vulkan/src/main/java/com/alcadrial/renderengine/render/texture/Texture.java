@@ -6,10 +6,11 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkBufferImageCopy;
-import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkImageCreateInfo;
 import org.lwjgl.vulkan.VkImageMemoryBarrier;
 
+import com.alcadrial.renderengine.core.util.Nonnull;
+import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -24,32 +25,32 @@ public class Texture extends RawDeviceResource {
 		RenderEngine.assertLoaded();
 	}
 	
-	public static Texture create1dTexture(Device device, int width, int format, int usage, int aspectMask)
+	public static @Nonnull Texture create1dTexture(Device device, int width, int format, int usage, int aspectMask)
 	{
 		return new Texture(device, width, 1, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, 1, VK10.VK_IMAGE_TYPE_1D);
 	}
 	
-	public static Texture create1dTexture(Device device, int width, int format, int usage, int aspectMask, int mipLevels)
+	public static @Nonnull Texture create1dTexture(Device device, int width, int format, int usage, int aspectMask, int mipLevels)
 	{
 		return new Texture(device, width, 1, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_1D);
 	}
 	
-	public static Texture create2dTexture(Device device, int width, int height, int format, int usage, int aspectMask)
+	public static @Nonnull Texture create2dTexture(Device device, int width, int height, int format, int usage, int aspectMask)
 	{
 		return new Texture(device, width, height, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, 1, VK10.VK_IMAGE_TYPE_2D);
 	}
 	
-	public static Texture create2dTexture(Device device, int width, int height, int format, int usage, int aspectMask, int mipLevels)
+	public static @Nonnull Texture create2dTexture(Device device, int width, int height, int format, int usage, int aspectMask, int mipLevels)
 	{
 		return new Texture(device, width, height, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_2D);
 	}
 	
-	public static Texture create3dTexture(Device device, int width, int height, int depth, int format, int usage, int aspectMask)
+	public static @Nonnull Texture create3dTexture(Device device, int width, int height, int depth, int format, int usage, int aspectMask)
 	{
 		return new Texture(device, width, height, depth, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, 1, VK10.VK_IMAGE_TYPE_3D);
 	}
 	
-	public static Texture create3dTexture(Device device, int width, int height, int depth, int format, int usage, int aspectMask, int mipLevels)
+	public static @Nonnull Texture create3dTexture(Device device, int width, int height, int depth, int format, int usage, int aspectMask, int mipLevels)
 	{
 		return new Texture(device, width, height, depth, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_3D);
 	}
@@ -115,13 +116,13 @@ public class Texture extends RawDeviceResource {
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VkCommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
+			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
 			sendToPhysicalDevice(commandBuffer);
 			device.submitSingleUseCommandBuffer(stack, commandBuffer);
 		}
 	}
 	
-	public void sendToPhysicalDevice(VkCommandBuffer commandBuffer)
+	public void sendToPhysicalDevice(CommandBuffer commandBuffer)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -136,7 +137,7 @@ public class Texture extends RawDeviceResource {
 			region.imageOffset().set(0, 0, 0);
 			region.imageExtent().set(width, height, depth);
 			
-			VK10.vkCmdCopyBufferToImage(commandBuffer, buffer.getVk(), vk, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region);
+			VK10.vkCmdCopyBufferToImage(commandBuffer.getVk(), buffer.getVk(), vk, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region);
 		}
 	}
 	
@@ -146,7 +147,7 @@ public class Texture extends RawDeviceResource {
 		{
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
-				VkCommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
+				CommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
 				changeLayout(commandBuffer, layout);
 				device.submitSingleUseCommandBuffer(stack, commandBuffer).get();
 			}
@@ -165,7 +166,7 @@ public class Texture extends RawDeviceResource {
 	/**
 	 * Layout is updated instantly, without waiting the execution of the command buffer
 	 */
-	public void changeLayout(VkCommandBuffer commandBuffer, int layout)
+	public void changeLayout(CommandBuffer commandBuffer, int layout)
 	{
 		if (this.layout != layout)
 		{
@@ -223,7 +224,7 @@ public class Texture extends RawDeviceResource {
 				}
 				else throw new UnsupportedOperationException("Transition not supported: " + this.layout + " -> " + layout);
 				
-				VK10.vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, null, null, barrier);
+				commandBuffer.pipelineBarrier(sourceStage, destinationStage, 0, null, null, barrier);
 				
 				this.layout = layout;
 			}

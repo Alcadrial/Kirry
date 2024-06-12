@@ -3,19 +3,15 @@ plugins {
 	id("application")
 	id("java-library")
 	id("maven-publish")
-	id("com.alcadrial.klug") version "0.2.1"
+	id("com.alcadrial.klug") version "0.2.3"
 }
 
 eclipse.project.name = "RenderEngine Vulkan"
 
 klugDebug.enableDebug = true
 
-compileJava.options.encoding = "UTF-8"
-
-javadoc {
-	options.tags("renderengine.vulkan:a:Vulkan API:", "renderengine.Requires:a:Requires:", "renderengine.Optional:a:Optional:")
-	options.encoding = "UTF-8"
-}
+java.toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+javadoc.options.tags("renderengine.vulkan:a:Vulkan API:", "renderengine.Requires:a:Requires:", "renderengine.Optional:a:Optional:")
 
 dependencies {
 	implementation(project(":core"))

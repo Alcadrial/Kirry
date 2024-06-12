@@ -13,10 +13,15 @@ import org.lwjgl.glfw.GLFWCursorPosCallbackI;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
+import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.EXTDepthRangeUnrestricted;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkClearValue;
+import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
+import org.lwjgl.vulkan.VkRect2D;
+import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.Math;
 import com.alcadrial.kector.angle.Angle;
@@ -28,10 +33,13 @@ import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.axis.Axis;
 import com.alcadrial.renderengine.core.cursor.CursorInputMode;
 import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Computer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.Vulkan;
@@ -43,8 +51,6 @@ import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.SphereDataCollector;
-import com.alcadrial.renderengine.render.window.Presenter;
-import com.alcadrial.renderengine.render.window.Presenter.Result;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class ComputerTest extends RenderTest {
@@ -87,7 +93,7 @@ public class ComputerTest extends RenderTest {
 	private static final Vector3f DOWN = Axis.NEGATIVE_Y;
 	
 	private static long fps;
-	private static Presenter presenter;
+	private static RenderPass renderPass;
 	private static Renderer renderer;
 	private static Computer computer;
 	private static VertexBuffer vertexBuffer;
@@ -240,7 +246,7 @@ public class ComputerTest extends RenderTest {
 			
 			uniformBuffer = new VulkanBuffer(device, Math.max(minOffsetAlignment * 3, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 		}
-		presenter = new Presenter(device, window, RenderTest::createDepthTexture, 3);
+		renderPass = createRenderPassWithDepth(device, window.getSurface().getFormat().format());
 		
 		Builder builder = Renderer.create();
 		builder.shaderProgram(shaderProgram);
@@ -250,7 +256,7 @@ public class ComputerTest extends RenderTest {
 		builder.uniformBuffer(uniformBuffer);
 		builder.minDepth(-1000F).maxDepth(1000F);
 		
-		renderer = builder.build(device, window.getSurface().getSize(), presenter.getRenderPass(), 3, ComputeCustomGraphicsPipeline::new);
+		renderer = builder.build(device, window.getSurface().getSize(), renderPass, 3, ComputeCustomGraphicsPipeline::new);
 		
 		computer = new Computer(device, computeShader);
 		computer.setInputBuffer(storageBuffer0, null);
@@ -350,7 +356,7 @@ public class ComputerTest extends RenderTest {
 		{
 			Debug.setDebugOutput(stream);
 			Debug.printState();
-			Debug.printState("Presenter", presenter);
+			Debug.printState("RenderPass", renderPass);
 			Debug.printState("Renderer", renderer);
 			Debug.printState("Computer", computer);
 			Debug.setDebugOutput(System.out);
@@ -366,8 +372,6 @@ public class ComputerTest extends RenderTest {
 	public static void loop()
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
-		
-		presenter.setClearColor(Color.of(0, 0, 0, 0));
 		
 		int maxfps = TestProperties.MAX_FRAME_RATE.getValue();
 		long firstHighMilestone = 1000000000;
@@ -441,19 +445,43 @@ public class ComputerTest extends RenderTest {
 		window.pollEvents();
 		if (!window.isIconified())
 		{
-			while (presenter.present((commandBuffer, frameIndex) -> {
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				CommandBuffer commandBuffer = window.getDevice().createSingleUseCommandBuffer(stack);
+				
+				VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
+				renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
+				renderPassBeginInfo.pNext(0);
+				
+				renderPassBeginInfo.renderPass(renderPass.getVk());
+				
+				FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
+				renderPassBeginInfo.framebuffer(frameBuffer.getVk());
+				
+				VkRect2D renderArea = VkRect2D.calloc(stack);
+				renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
+				renderPassBeginInfo.renderArea(renderArea);
+				
+				VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
+				clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
+				clearValues.get().depthStencil().depth(1).stencil(0);
+				renderPassBeginInfo.pClearValues(clearValues.rewind());
+				
 				commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
 				commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), -1000, 1000);
-				presenter.beginRenderPass(commandBuffer);
-				renderer.setUniformBufferIndex(frameIndex);
+				commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
+				renderer.setUniformBufferIndex(window.getFrameIndex());
 				renderer.draw(commandBuffer, PARTICLE_COUNT);
 				commandBuffer.endRenderPass();
 				computer.dispatch(commandBuffer, PARTICLE_COUNT, 1, 1);
-			}, () -> {
-				computer.swapBuffers();
-				computer.getComputeUniformBufferLayout().set(ENLAPSED_TIME, uniformBuffer, (float) enlapsedTimeSeconds);
-				computer.getComputeUniformBufferLayout().updateDescriptorSets();
-			}) == Result.SWAPCHAIN_OUT_OF_DATE);
+				commandBuffer.endRecording();
+				
+				window.swapBuffers(commandBuffer, () -> {
+					computer.swapBuffers();
+					computer.getComputeUniformBufferLayout().set(ENLAPSED_TIME, uniformBuffer, (float) enlapsedTimeSeconds);
+					computer.getComputeUniformBufferLayout().updateDescriptorSets();
+				});
+			}
 		}
 		window.update();
 	}
@@ -462,7 +490,6 @@ public class ComputerTest extends RenderTest {
 	{
 		computer.close();
 		renderer.close();
-		presenter.close();
 		RenderEngine.getVulkan().getWindow().hide();
 		synchronized (MONITOR)
 		{

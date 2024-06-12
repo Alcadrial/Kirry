@@ -25,17 +25,31 @@ import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.CallbackI;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkAttachmentDescription;
+import org.lwjgl.vulkan.VkAttachmentReference;
+import org.lwjgl.vulkan.VkClearValue;
+import org.lwjgl.vulkan.VkExtent2D;
+import org.lwjgl.vulkan.VkRect2D;
+import org.lwjgl.vulkan.VkRenderPassBeginInfo;
+import org.lwjgl.vulkan.VkRenderPassCreateInfo;
+import org.lwjgl.vulkan.VkSubpassDependency;
+import org.lwjgl.vulkan.VkSubpassDescription;
 
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.Window;
+import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.core.util.Pair;
+import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.Queue;
 import com.alcadrial.renderengine.render.QueueFamily;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Surface;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
@@ -57,6 +71,14 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private String title;
 	private boolean isIconified;
 	private List<Consumer<Surface>> surfaceUpdateActions;
+	private Screen screen;
+	private Presenter presenter;
+	private Renderer renderer;
+	private boolean useDepthTexture;
+	private ShaderProgram shaderProgram;
+	private RenderPass renderPass;
+	private @Nullable Texture depthTexture;
+	private List<CommandBuffer> commandBuffers;
 	
 	/**
 	 * <b>WARNING:</b> the window hint {@link GLFW#GLFW_CLIENT_API CLIENT_API} is set to {@link GLFW#GLFW_NO_API NO_API}
@@ -79,22 +101,65 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		surface = new Surface(this);
 		surfaceUpdateActions = new LinkedList<>();
 		resetCallbacks();
+		useDepthTexture = true;
+		shaderProgram = ShaderProgram.DEFAULT;
 	}
 	
+	/*
+	 * useDepthTexture ? (w, h) -> {
+			Texture depthTexture = Texture.create2dTexture(device, w, h, VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
+			depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+			return depthTexture;
+		} : null
+	 */
 	public void init(Device device)
 	{
 		if (this.device == null)
 		{
-			this.device = Objects.requireNonNull(device);
-			
-			QueueFamily presentationQueue = VulkanErrorUtils.nonNull(device.getPhysicalDevice().getQueueFamily(0, surface), "Missing valid presentation queue family");
-			device.setPresentQueue(device.getGraphicsQueue().getFamilyIndex() == presentationQueue.getIndex() ? device.getGraphicsQueue() : new Queue(device, presentationQueue.getIndex()));
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				this.device = Objects.requireNonNull(device);
+				
+				QueueFamily presentationQueue = VulkanErrorUtils.nonNull(device.getPhysicalDevice().getQueueFamily(0, surface), "Missing valid presentation queue family");
+				device.setPresentQueue(device.getGraphicsQueue().getFamilyIndex() == presentationQueue.getIndex() ? device.getGraphicsQueue() : new Queue(device, presentationQueue.getIndex()));
+				
+				surface.init(device.getPhysicalDevice(), stack);
+				createRenderPass();
+				presenter = new Presenter(device, this, renderPass, 3);
+				commandBuffers = device.createMultiUseCommandBuffer(stack, 3);
+				for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.startRecording();
+				prepareFrameBuffers(stack);
+				presenter.startPresentation();
+			}
 		}
 	}
 	
 	public void update()
 	{
-		
+		if (screen != null)
+		{
+			if (!screen.isInitialized()) screen.initializeRendering(null, null, 0);
+			if (!screen.isRendered()) screen.render(null, null, 0);
+			
+			if (!screen.isOnScreen()) screen.draw(null, null, null, 0);
+			
+			CommandBuffer commandBuffer = commandBuffers.get(getFrameIndex());
+			commandBuffer.endRecording();
+			swapBuffers(commandBuffer);
+			commandBuffer.startRecording();
+		}
+	}
+	
+	public void swapBuffers(CommandBuffer commandBuffer)
+	{
+		presenter.endPresentation(commandBuffer);
+		presenter.startPresentation();
+	}
+	
+	public void swapBuffers(CommandBuffer commandBuffer, Runnable onCommandBufferEndAction)
+	{
+		presenter.endPresentation(commandBuffer, onCommandBufferEndAction);
+		presenter.startPresentation();
 	}
 	
 	public void addSurfaceUpdateActions(Consumer<Surface> action)
@@ -105,6 +170,114 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	public void removeSurfaceUpdateActions(Consumer<Surface> action)
 	{
 		surfaceUpdateActions.remove(action);
+	}
+	
+	private void createRenderPass()
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VkAttachmentDescription.Buffer attachmentDescriptions = VkAttachmentDescription.calloc(useDepthTexture ? 2 : 1, stack);
+			
+			VkAttachmentDescription colorAttachment = attachmentDescriptions.get();
+			colorAttachment.format(surface.getFormat().format());
+			colorAttachment.samples(VK10.VK_SAMPLE_COUNT_1_BIT);
+			colorAttachment.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR);
+			colorAttachment.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE);
+			colorAttachment.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE);
+			colorAttachment.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE);
+			colorAttachment.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED);
+			colorAttachment.finalLayout(KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+			
+			VkAttachmentReference.Buffer colorAttachmentRef = VkAttachmentReference.calloc(1, stack);
+			colorAttachmentRef.attachment(0);
+			colorAttachmentRef.layout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+			
+			VkSubpassDescription.Buffer subpassDescription = VkSubpassDescription.calloc(1, stack);
+			subpassDescription.pipelineBindPoint(VK10.VK_PIPELINE_BIND_POINT_GRAPHICS);
+			subpassDescription.colorAttachmentCount(1);
+			subpassDescription.pColorAttachments(colorAttachmentRef);
+			
+			int srcStageMask = VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			int srcAccessMask = 0;
+			int dstStageMask = VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			int dstAccessMask = VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			
+			if (useDepthTexture)
+			{
+				VkAttachmentDescription depthAttachment = attachmentDescriptions.get();
+				depthAttachment.format(VK10.VK_FORMAT_D24_UNORM_S8_UINT);//dynamic
+				depthAttachment.samples(VK10.VK_SAMPLE_COUNT_1_BIT);
+				depthAttachment.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR);
+				depthAttachment.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE);
+				depthAttachment.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE);
+				depthAttachment.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE);
+				depthAttachment.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED);
+				depthAttachment.finalLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+				
+				VkAttachmentReference depthAttachmentRef = VkAttachmentReference.calloc(stack);
+				depthAttachmentRef.attachment(1);
+				depthAttachmentRef.layout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+				
+				subpassDescription.pDepthStencilAttachment(depthAttachmentRef);
+				
+				srcStageMask |= VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+				dstStageMask |= VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+				dstAccessMask |= VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			}
+			
+			VkSubpassDependency.Buffer subpassDependency = VkSubpassDependency.calloc(1, stack);
+			subpassDependency.srcSubpass(VK10.VK_SUBPASS_EXTERNAL);
+			subpassDependency.dstSubpass(0);
+			subpassDependency.srcStageMask(srcStageMask);
+			subpassDependency.srcAccessMask(srcAccessMask);
+			subpassDependency.dstStageMask(dstStageMask);
+			subpassDependency.dstAccessMask(dstAccessMask);
+			
+			VkRenderPassCreateInfo renderPassCreateInfo = VkRenderPassCreateInfo.calloc(stack);
+			renderPassCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO);
+			renderPassCreateInfo.pAttachments(attachmentDescriptions.rewind());
+			renderPassCreateInfo.pSubpasses(subpassDescription);
+			renderPassCreateInfo.pDependencies(subpassDependency);
+			
+			renderPass = new RenderPass(device, renderPassCreateInfo);
+		}
+	}
+	
+	private void prepareFrameBuffers(MemoryStack stack)
+	{
+		if (useDepthTexture)
+		{
+			VkExtent2D extent = surface.getExtent();
+			depthTexture = Texture.create2dTexture(device, extent.width(), extent.height(), VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
+			depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		}
+		//TODO
+		presenter.initialize(depthTexture);
+		
+		VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
+		renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
+		renderPassBeginInfo.pNext(0);
+		
+		renderPassBeginInfo.renderPass(renderPass.getVk());
+		
+		VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
+		clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
+		clearValues.get().depthStencil().depth(1).stencil(0);
+		renderPassBeginInfo.pClearValues(clearValues.rewind());
+		
+		for (int i = 0; i < commandBuffers.size(); i++)
+		{
+			CommandBuffer commandBuffer = commandBuffers.get(i);
+			FrameBuffer frameBuffer = presenter.getFrameBuffer(i);
+			renderPassBeginInfo.framebuffer(frameBuffer.getVk());
+			
+			VkRect2D renderArea = VkRect2D.calloc(stack);
+			renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
+			renderPassBeginInfo.renderArea(renderArea);
+			
+			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
+			commandBuffer.endRenderPass();
+		}
 	}
 	
 	@Override
@@ -147,6 +320,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				try (MemoryStack stack = MemoryStack.stackPush())
 				{
 					surface.reinit(stack);
+					prepareFrameBuffers(stack);
 				}
 				for (Consumer<Surface> action : surfaceUpdateActions) action.accept(surface);
 			});
@@ -200,6 +374,21 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				i.invoke(p, w, h);
 			});
 		});
+	}
+	
+	public void setScreen(Screen screen)
+	{
+		if (renderer == null)
+		{
+			
+			renderer = Renderer.create().shaderProgram(shaderProgram).build(device, surface.getSize(), presenter.getRenderPass(), 3);
+		}
+		this.screen = Objects.requireNonNull(screen);
+	}
+	
+	public Screen getScreen()
+	{
+		return screen;
 	}
 	
 	public final Vector2f getMousePos(Vector2f holder)
@@ -303,9 +492,31 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		this.title = title;
 	}
 	
+	public int getFrameIndex()
+	{
+		return presenter.getFrameIndex();
+	}
+	
+	public FrameBuffer getCurrentFrameBuffer()
+	{
+		return presenter.getFrameBuffer(getFrameIndex());
+	}
+	
+	public void setUseDepthTexture(boolean useDepthTexture)
+	{
+		this.useDepthTexture = useDepthTexture;
+	}
+	
+	public void setShaderProgram(ShaderProgram shaderProgram)
+	{
+		this.shaderProgram = shaderProgram;
+	}
+	
 	@Override
 	public void close()
 	{
+		if (renderer != null) renderer.close();
+		if (presenter != null) presenter.close();
 		surface.close();
 		RenderEngine.awaitRequestMainThread(() -> GLFW.glfwDestroyWindow(id));
 		id = 0L;

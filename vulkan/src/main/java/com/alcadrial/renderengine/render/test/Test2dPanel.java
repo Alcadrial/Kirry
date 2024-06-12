@@ -14,17 +14,24 @@ import org.lwjgl.glfw.GLFWWindowIconifyCallbackI;
 import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
+import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkClearValue;
+import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
+import org.lwjgl.vulkan.VkRect2D;
+import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Test;
-import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.VertexAccumulator;
@@ -35,8 +42,6 @@ import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.test.RenderingDataUtils.RectangleVertexResult;
 import com.alcadrial.renderengine.render.util.Properties;
-import com.alcadrial.renderengine.render.window.Presenter;
-import com.alcadrial.renderengine.render.window.Presenter.Result;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
@@ -63,7 +68,7 @@ public class Test2dPanel extends RenderTest {
 		println("End", Test2dPanel::end, TestProperties.PRINT_LOADING_TIMES);
 	}
 	
-	private static Presenter presenter;
+	private static RenderPass renderPass;
 	private static Renderer renderer;
 	private static VertexBuffer vertexBuffer;
 	private static IndexBuffer indexBuffer;
@@ -79,7 +84,9 @@ public class Test2dPanel extends RenderTest {
 		
 		VulkanWindow window = new VulkanWindow(1080, 720, "Test");
 		vulkan.setWindow(window);
+		window.setUseDepthTexture(false);
 		if (!pickPhysicalDevice(window)) return;
+		
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.wideLines(true);
 		Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -157,7 +164,7 @@ public class Test2dPanel extends RenderTest {
 			return;
 		}
 		
-		presenter = new Presenter(device, window, null, 3);
+		renderPass = createRenderPass(device, window.getSurface().getFormat().format());
 		
 		Builder builder = Renderer.create();
 		builder.shaderProgram(shaderProgram);
@@ -165,7 +172,7 @@ public class Test2dPanel extends RenderTest {
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.lineWidth(2F);
 		builder.uniformBuffer(new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
-		renderer = builder.build(device, window.getSurface().getSize(), presenter.getRenderPass(), 3);
+		renderer = builder.build(device, window.getSurface().getSize(), renderPass, 3);
 		
 		vertexBuffer = new VertexBuffer(7 * 4 * 512 * 512);
 		indexBuffer = new IndexBuffer(6 * 512 * 512);
@@ -201,7 +208,6 @@ public class Test2dPanel extends RenderTest {
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		
-		presenter.setClearColor(Color.of(0, 0, 0, 0));
 		isModified = true;
 		isModifiedMatrix = true;
 		
@@ -263,15 +269,40 @@ public class Test2dPanel extends RenderTest {
 		if (isModified)
 		{
 			isModified = false;
-			while (presenter.present((commandBuffer, frameIndex) -> {
+			
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				CommandBuffer commandBuffer = window.getDevice().createSingleUseCommandBuffer(stack);
+				
+				VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
+				renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
+				renderPassBeginInfo.pNext(0);
+				
+				renderPassBeginInfo.renderPass(renderPass.getVk());
+				
+				FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
+				renderPassBeginInfo.framebuffer(frameBuffer.getVk());
+				
+				VkRect2D renderArea = VkRect2D.calloc(stack);
+				renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
+				renderPassBeginInfo.renderArea(renderArea);
+				
+				VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
+				clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
+				clearValues.get().depthStencil().depth(1).stencil(0);
+				renderPassBeginInfo.pClearValues(clearValues.rewind());
+				
 				commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
 				commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), 0, 1);
-				presenter.beginRenderPass(commandBuffer);
-				renderer.setUniformBufferIndex(frameIndex);
+				commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
+				renderer.setUniformBufferIndex(window.getFrameIndex());
 				renderer.draw(commandBuffer);
 				commandBuffer.endRenderPass();
-			}, () -> {}) == Result.SWAPCHAIN_OUT_OF_DATE);
-			window.update();
+				commandBuffer.endRecording();
+				
+				window.swapBuffers(commandBuffer);
+				window.update();
+			}
 		}
 		window.pollEvents();
 	}
@@ -279,7 +310,6 @@ public class Test2dPanel extends RenderTest {
 	public static void end()
 	{
 		renderer.close();
-		presenter.close();
 		RenderEngine.getVulkan().getWindow().hide();
 		synchronized (MONITOR)
 		{

@@ -24,25 +24,18 @@ import com.alcadrial.renderengine.render.pipeline.Pipeline;
 import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 
-public class CommandBufferData extends AbstractDeviceResource<VkCommandBuffer> {
+public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	
 	static
 	{
 		RenderEngine.assertLoaded();
 	}
-	
-	private final long imageAvailable;
-	private final long renderFinished;
-	private final long fence;
 	private boolean isRecording;
 	
-	public CommandBufferData(Device device, VkCommandBuffer commandBuffer, long imageAvailable, long renderFinished, long fence)
+	public CommandBuffer(Device device, VkCommandBuffer commandBuffer)
 	{
 		super(device);
 		vk = commandBuffer;
-		this.imageAvailable = imageAvailable;
-		this.renderFinished = renderFinished;
-		this.fence = fence;
 		isRecording = false;
 	}
 	
@@ -53,8 +46,7 @@ public class CommandBufferData extends AbstractDeviceResource<VkCommandBuffer> {
 		{
 			VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.calloc(stack);
 			beginInfo.sType(VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
-			int error = VK10.vkBeginCommandBuffer(vk, beginInfo);
-			if (error < 0) return false;
+			if (VK10.vkBeginCommandBuffer(vk, beginInfo) < 0) return false;
 		}
 		isRecording = true;
 		return true;
@@ -80,7 +72,7 @@ public class CommandBufferData extends AbstractDeviceResource<VkCommandBuffer> {
 		VK10.vkCmdBindIndexBuffer(vk, buffer.getGpuVk(), offset, buffer.getIndexType());
 	}
 	
-	public void bindVertexBuffers(int bindingOffset, VertexBuffer... buffers)
+	public synchronized void bindVertexBuffers(int bindingOffset, VertexBuffer... buffers)
 	{
 		bindVertexBuffers(bindingOffset, List.of(buffers));
 	}
@@ -99,7 +91,7 @@ public class CommandBufferData extends AbstractDeviceResource<VkCommandBuffer> {
 		throw new NotYetImplementedException();
 	}
 	
-	public void clear(List<VkClearAttachment> clearAttachments, List<VkClearRect> clearRects)
+	public synchronized void clear(List<VkClearAttachment> clearAttachments, List<VkClearRect> clearRects)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -162,7 +154,7 @@ public class CommandBufferData extends AbstractDeviceResource<VkCommandBuffer> {
 		VK10.vkCmdEndRenderPass(vk);
 	}
 	
-	public synchronized void executeCommands(List<CommandBufferData> commands)
+	public synchronized void executeCommands(List<CommandBuffer> commands)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -239,7 +231,7 @@ public class CommandBufferData extends AbstractDeviceResource<VkCommandBuffer> {
 		throw new NotYetImplementedException();
 	}
 	
-	public void setScissor(int x, int y, int width, int height)
+	public synchronized void setScissor(int x, int y, int width, int height)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -247,12 +239,12 @@ public class CommandBufferData extends AbstractDeviceResource<VkCommandBuffer> {
 		}
 	}
 	
-	public void setScissor(VkRect2D.Buffer scissors)
+	public synchronized void setScissor(VkRect2D.Buffer scissors)
 	{
 		VK10.vkCmdSetScissor(vk, 0, scissors);
 	}
 	
-	public void setViewport(int x, int y, int width, int height, int minZ, int maxZ)
+	public synchronized void setViewport(int x, int y, int width, int height, int minZ, int maxZ)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -260,7 +252,7 @@ public class CommandBufferData extends AbstractDeviceResource<VkCommandBuffer> {
 		}
 	}
 	
-	public void setViewport(VkViewport.Buffer viewports)
+	public synchronized void setViewport(VkViewport.Buffer viewports)
 	{
 		VK10.vkCmdSetViewport(vk, 0, viewports);
 	}
@@ -278,41 +270,14 @@ public class CommandBufferData extends AbstractDeviceResource<VkCommandBuffer> {
 		VK10.vkResetCommandBuffer(vk, 0);
 	}
 	
-	public long getImageAvailableSemaphore()
-	{
-		return imageAvailable;
-	}
-	
-	public long getRenderFinishedSemaphore()
-	{
-		return renderFinished;
-	}
-	
-	public long getFence()
-	{
-		return fence;
-	}
-	
 	public synchronized boolean isRecording()
 	{
 		return isRecording;
 	}
 	
 	@Override
-	public synchronized void close()
-	{
-		VK10.vkDestroySemaphore(device.getVk(), imageAvailable, null);
-		VK10.vkDestroySemaphore(device.getVk(), renderFinished, null);
-		VK10.vkDestroyFence(device.getVk(), fence, null);
-		super.close();
-	}
-	
-	@Override
 	public void debug()
 	{
 		Debug.print("vk: " + Debug.address(vk));
-		Debug.print("Semaphor (ImageAvailable): " + Debug.address(imageAvailable));
-		Debug.print("Semaphor (RenderFinished): " + Debug.address(renderFinished));
-		Debug.print("Fence: " + Debug.address(fence));
 	}
 }

@@ -4,8 +4,8 @@ import java.util.concurrent.Future;
 
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
-import org.lwjgl.vulkan.VkCommandBuffer;
 
+import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -81,8 +81,8 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VkCommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
-			VK10.vkCmdCopyBuffer(commandBuffer, vk, dstBuffer, VulkanUtils.bufferCopy(stack, offset, offset, size));
+			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
+			VK10.vkCmdCopyBuffer(commandBuffer.getVk(), vk, dstBuffer, VulkanUtils.bufferCopy(stack, offset, offset, size));
 			Future<?> future = device.submitSingleUseCommandBuffer(stack, commandBuffer);
 			return RenderEngine.getExecutor().submit(() -> {
 				future.get();
@@ -101,8 +101,8 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VkCommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
-			VK10.vkCmdCopyBuffer(commandBuffer, gpuVk, vk, VulkanUtils.bufferCopy(stack, offset, offset, size));
+			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
+			VK10.vkCmdCopyBuffer(commandBuffer.getVk(), gpuVk, vk, VulkanUtils.bufferCopy(stack, offset, offset, size));
 			Future<?> future = device.submitSingleUseCommandBuffer(stack, commandBuffer);
 			return RenderEngine.getExecutor().submit(() -> {
 				future.get();

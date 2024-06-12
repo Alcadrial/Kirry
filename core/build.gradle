@@ -2,17 +2,12 @@ plugins {
 	id("java")
 	id("java-library")
 	id("maven-publish")
-	id("com.alcadrial.klug") version "0.2.1"
+	id("com.alcadrial.klug") version "0.2.3"
 }
 
 eclipse.project.name = "RenderEngine Core"
 
-compileJava.options.encoding = "UTF-8"
-
-javadoc {
-	options.tags("apiNote::API Note:", "implSpec::Implementation Requirements:", "implNote::Implementation Note:")
-	options.addBooleanOption("html5", true)
-}
+javadoc.options.tags("apiNote::API Note:", "implSpec::Implementation Requirements:", "implNote::Implementation Note:")
 	
 dependencies {
 	implementation("com.alcadrial.kector:Kector:${kectorVersion}")
@@ -32,19 +27,19 @@ publishing {
 		}
 	}
 	repositories {
-		if (localMaven != null) {
+		if (klug.localMaven != null) {
 			maven {
 				name = "LocalMaven"
-				url = localMaven
+				url = klug.localMaven
 			}
 		}
-		if (remoteMaven != null) {
+		if (klug.remoteMaven != null) {
 			maven {
 				name = "RemoveMaven"
-				url = remoteMaven
+				url = klug.remoteMaven
 				credentials {
-					username = remoteMavenUsername
-					password = remoteMavenPassword
+					username = klug.remoteMavenUsername
+					password = klug.remoteMavenPassword
 				}
 			}
 		}

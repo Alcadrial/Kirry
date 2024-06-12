@@ -199,6 +199,8 @@ public class Vulkan implements AutoCloseable {
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
 				QueueFamily graphicsQueue = VulkanErrorUtils.nonNull(threadData.physicalDevice.getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT), "Missing valid graphics queue family");
+				QueueFamily computeQueue = VulkanErrorUtils.nonNull(threadData.physicalDevice.getQueueFamily(VK10.VK_QUEUE_COMPUTE_BIT), "Missing valid compute queue family");
+				QueueFamily graphicsComputeQueue = VulkanErrorUtils.nonNull(threadData.physicalDevice.getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT | VK10.VK_QUEUE_COMPUTE_BIT));
 				
 				VkDeviceQueueCreateInfo.Buffer queueCreateInfos = VkDeviceQueueCreateInfo.calloc(threadData.physicalDevice.indices(), stack);
 				
@@ -228,6 +230,10 @@ public class Vulkan implements AutoCloseable {
 				
 				Queue queue = new Queue(threadData.device, graphicsQueue.getIndex());
 				threadData.device.setGraphicsQueue(queue);
+				queue = new Queue(threadData.device, computeQueue.getIndex());
+				threadData.device.setComputeQueue(queue);
+				queue = new Queue(threadData.device, graphicsComputeQueue.getIndex());
+				threadData.device.setGraphicsComputeQueue(queue);
 				
 				if (threadData.window != null)
 				{
@@ -279,13 +285,13 @@ public class Vulkan implements AutoCloseable {
 	public void close()
 	{
 		data.forEachValue(Long.MAX_VALUE, threadData -> {
+			if (threadData.window != null) threadData.window.close();
 			if (threadData.device != null)
 			{
 				closingDevice = threadData.device;
 				threadData.device.close();
 				closingDevice = null;
 			}
-			if (threadData.window != null) threadData.window.close();
 		});
 		if (debugMessengerId != 0) EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(instance, debugMessengerId, null);
 		if (physicalDevices != null) for (PhysicalDevice physicalDevice : physicalDevices) physicalDevice.close();

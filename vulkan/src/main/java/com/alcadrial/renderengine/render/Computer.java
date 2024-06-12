@@ -234,7 +234,7 @@ public class Computer implements AutoCloseable, VulkanDebug {
 		this.groupCount = groupCount;
 	}
 	
-	public void dispatch(CommandBufferData commandBuffer, int countX, int countY, int countZ)
+	public void dispatch(CommandBuffer commandBuffer, int countX, int countY, int countZ)
 	{
 		commandBuffer.bindPipeline(computePipeline);
 		commandBuffer.bindDescriptorSets(computePipeline, computeDescriptorSet, new int[0]);

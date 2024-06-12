@@ -69,6 +69,11 @@ public class Debug {
 		prefix = prefix.substring(0, prefix.length() - 1);
 	}
 	
+	public static void print(String name, long vk)
+	{
+		print(name + ": " + address(vk));
+	}
+	
 	public static void print(String name, VulkanResource<?> vk)
 	{
 		if (vk == null)

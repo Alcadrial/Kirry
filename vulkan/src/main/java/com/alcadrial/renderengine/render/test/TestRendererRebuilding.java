@@ -12,18 +12,25 @@ import org.lwjgl.glfw.GLFWWindowIconifyCallbackI;
 import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
+import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkClearValue;
+import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
+import org.lwjgl.vulkan.VkRect2D;
+import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kroperties.Property;
 import com.alcadrial.renderengine.core.util.Test;
-import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.Renderer.ModificationPlan;
@@ -35,8 +42,6 @@ import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.util.Properties;
-import com.alcadrial.renderengine.render.window.Presenter;
-import com.alcadrial.renderengine.render.window.Presenter.Result;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
@@ -97,7 +102,7 @@ public class TestRendererRebuilding extends RenderTest {
 	
 	public static final class Logic {
 		
-		private Presenter presenter;
+		private RenderPass renderPass;
 		private Renderer renderer;
 		private VertexBuffer vertexBuffer;
 		private IndexBuffer indexBuffer;
@@ -126,11 +131,13 @@ public class TestRendererRebuilding extends RenderTest {
 			
 			VulkanWindow window = new VulkanWindow(1080, 720, "Test");
 			vulkan.setWindow(window);
+			window.setUseDepthTexture(false);
 			if (!pickPhysicalDevice(window)) return;
 			
 			VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 			deviceFeatures.wideLines(true);
 			Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+			window.init(device);
 			
 			window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
 				System.out.println(iconified ? "Iconified" : "Restored");
@@ -166,8 +173,6 @@ public class TestRendererRebuilding extends RenderTest {
 				}
 			});
 			
-			presenter = new Presenter(device, window, null, 3);
-			
 			Builder builder = Renderer.create();
 			builder.shaderProgram(shaderProgram);
 			builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
@@ -175,7 +180,9 @@ public class TestRendererRebuilding extends RenderTest {
 			builder.lineWidth(2F);
 			builder.uniformBuffer(new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
 			builder.dynamicViewport(false).dynamicScissor(false);
-			renderer = builder.build(device, window.getSurface().getSize(), presenter.getRenderPass(), 3);
+			
+			renderPass = createRenderPass(device, window.getSurface().getFormat().format());
+			renderer = builder.build(device, window.getSurface().getSize(), renderPass, 3);
 			
 			vertexBuffer = new VertexBuffer(device, 70);
 			indexBuffer = new IndexBuffer(device, 24);
@@ -222,8 +229,6 @@ public class TestRendererRebuilding extends RenderTest {
 		{
 			VulkanWindow window = RenderEngine.getVulkan().getWindow();
 			
-			presenter.setClearColor(Color.of(0, 0, 0, 0));
-			
 			int maxfps = TestProperties.MAX_FRAME_RATE.getValue();
 			long firstHighMilestone = 1000000000;
 			long firstMilestone = 1000000000 / maxfps;
@@ -236,75 +241,99 @@ public class TestRendererRebuilding extends RenderTest {
 			
 			ModificationPlan modificationPlan = renderer.getCurrentModificationPlan();
 			boolean modified = false;
-			
 			while (!window.shouldClose())
 			{
-				current = System.nanoTime();
-				long enlapsed = current - time;
-				long pauseTime = milestone - enlapsed;
-				if (pauseTime > 0)
-				{
-					try
-					{
-						synchronized (window)
-						{
-							window.wait(pauseTime / 1000000, (int) (pauseTime % 1000000));
-						}
-					}
-					catch (InterruptedException e)
-					{
-						e.printStackTrace(System.out);
-					}
-					continue;
-				}
-				milestone += (1 - pauseTime / firstMilestone) * firstMilestone;
-				if (enlapsed >= highMilestone)
-				{
-					window.setTitle("Test fps=" + frame);
-					frame = 0;
-					highMilestone += (enlapsed - highMilestone + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
-				}
 				
-				if (i++ == 5)
+				try (MemoryStack stack = MemoryStack.stackPush())
 				{
-					f += 0.25F;
-					if (f > 50) f = 1;
-					modificationPlan.lineWidth(f);
-					modified = true;
-					i = 0;
-				}
-				if (j++ % 10 == 0)
-				{
-					if (k % 16 >= 8) indexBuffer.asIntBuffer().put(k % 8 * 3, indices, k % 8 * 3, 3);
-					else indexBuffer.asIntBuffer().put(k % 8 * 3, new int[] {0, 0, 0}, 0, 3);
-					indexBuffer.sendToPhysicalDevice(k % 8 * 3, 3);
-					k++;
-				}
-				if (++l % 25 == 0)
-				{
-					modificationPlan.topology(l % 50 == 0 ? VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST : VK10.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
-					modified = true;
-				}
-				if (modified)
-				{
-					renderer.startModificationPlan().submit();
-				}
-				window.pollEvents();
-				while (presenter.present((commandBuffer, frameIndex) -> {
-					presenter.beginRenderPass(commandBuffer);
-					renderer.setUniformBufferIndex(frameIndex);
+					current = System.nanoTime();
+					long enlapsed = current - time;
+					long pauseTime = milestone - enlapsed;
+					if (pauseTime > 0)
+					{
+						try
+						{
+							synchronized (window)
+							{
+								window.wait(pauseTime / 1000000, (int) (pauseTime % 1000000));
+							}
+						}
+						catch (InterruptedException e)
+						{
+							e.printStackTrace(System.out);
+						}
+						continue;
+					}
+					milestone += (1 - pauseTime / firstMilestone) * firstMilestone;
+					if (enlapsed >= highMilestone)
+					{
+						window.setTitle("Test fps=" + frame);
+						frame = 0;
+						highMilestone += (enlapsed - highMilestone + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
+					}
+					
+					if (i++ == 5)
+					{
+						f += 0.25F;
+						if (f > 50) f = 1;
+						modificationPlan.lineWidth(f);
+						modified = true;
+						i = 0;
+					}
+					if (j++ % 10 == 0)
+					{
+						if (k % 16 >= 8) indexBuffer.asIntBuffer().put(k % 8 * 3, indices, k % 8 * 3, 3);
+						else indexBuffer.asIntBuffer().put(k % 8 * 3, new int[] {0, 0, 0}, 0, 3);
+						indexBuffer.sendToPhysicalDevice(k % 8 * 3, 3);
+						k++;
+					}
+					if (++l % 25 == 0)
+					{
+						modificationPlan.topology(l % 50 == 0 ? VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST : VK10.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
+						modified = true;
+					}
+					if (modified)
+					{
+						renderer.startModificationPlan().submit();
+					}
+					
+					CommandBuffer commandBuffer = window.getDevice().createSingleUseCommandBuffer(stack);
+					
+					VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
+					renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
+					renderPassBeginInfo.pNext(0);
+					
+					renderPassBeginInfo.renderPass(renderPass.getVk());
+					
+					FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
+					renderPassBeginInfo.framebuffer(frameBuffer.getVk());
+					
+					VkRect2D renderArea = VkRect2D.calloc(stack);
+					renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
+					renderPassBeginInfo.renderArea(renderArea);
+					
+					VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
+					clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
+					clearValues.get().depthStencil().depth(1).stencil(0);
+					renderPassBeginInfo.pClearValues(clearValues.rewind());
+					
+					commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
+					renderer.setUniformBufferIndex(window.getFrameIndex());
 					renderer.draw(commandBuffer);
 					commandBuffer.endRenderPass();
-				}, () -> {}) == Result.SWAPCHAIN_OUT_OF_DATE);
-				window.update();
-				frame++;
+					commandBuffer.endRecording();
+					
+					window.swapBuffers(commandBuffer);
+					window.pollEvents();
+					window.update();
+					frame++;
+				}
 			}
 		}
 		
 		public void end()
 		{
 			renderer.close();
-			presenter.close();
 			RenderEngine.getVulkan().getWindow().close();
 			synchronized (MONITOR)
 			{

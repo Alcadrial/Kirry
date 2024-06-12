@@ -19,16 +19,21 @@ import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
-import org.lwjgl.vulkan.VkCommandBuffer;
+import org.lwjgl.vulkan.VkClearValue;
+import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
+import org.lwjgl.vulkan.VkRect2D;
+import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Test;
-import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.Vulkan;
@@ -41,8 +46,6 @@ import com.alcadrial.renderengine.render.test.RenderingDataUtils.RectangleVertex
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
 import com.alcadrial.renderengine.render.util.Properties;
-import com.alcadrial.renderengine.render.window.Presenter;
-import com.alcadrial.renderengine.render.window.Presenter.Result;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
@@ -70,8 +73,8 @@ public class TextureTest extends RenderTest {
 		println("End", TextureTest::end, TestProperties.PRINT_LOADING_TIMES);
 	}
 	
-	private static Presenter presenter;
 	private static Renderer renderer;
+	private static RenderPass renderPass;
 	private static Texture texture;
 	private static VertexBuffer vertexBuffer;
 	private static IndexBuffer indexBuffer;
@@ -100,12 +103,14 @@ public class TextureTest extends RenderTest {
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
 		VulkanWindow window = new VulkanWindow(1080, 720, "Test");
+		window.setUseDepthTexture(false);
 		vulkan.setWindow(window);
 		if (!pickPhysicalDevice(window)) return;
 		
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.samplerAnisotropy(true);
 		Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+		window.init(device);
 		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
 			System.out.println(iconified ? "Iconified" : "Restored");
@@ -169,11 +174,11 @@ public class TextureTest extends RenderTest {
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			BufferedImage image = ImageIO.read(getFile("icon.png"));
+			BufferedImage image = ImageIO.read(getFile("KhishweTransparent.png"));
 			
 			texture = Texture.create2dTexture(device, image.getWidth(), image.getHeight(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 			
-			VkCommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
+			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
 			
 			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 			IntBuffer buffer = texture.getBuffer().asIntBuffer();
@@ -182,6 +187,8 @@ public class TextureTest extends RenderTest {
 			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			
 			device.submitSingleUseCommandBuffer(stack, commandBuffer);
+			
+			renderPass = createRenderPass(device, window.getSurface().getFormat().format());
 		}
 		catch (IOException e)
 		{
@@ -190,15 +197,13 @@ public class TextureTest extends RenderTest {
 			return;
 		}
 		
-		presenter = new Presenter(device, window, null, 3);
-		
 		Builder builder = Renderer.create();
 		builder.shaderProgram(shaderProgram);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.uniformBuffer(new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
 		builder.dynamicViewport(false).dynamicScissor(false);
-		renderer = builder.build(device, window.getSurface().getSize(), presenter.getRenderPass(), 3);
+		renderer = builder.build(device, window.getSurface().getSize(), renderPass, 3);
 		
 		window.addSurfaceUpdateActions(surface -> renderer.startModificationPlan().size(surface.getSize()).submit());
 		
@@ -229,7 +234,6 @@ public class TextureTest extends RenderTest {
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		
-		presenter.setClearColor(Color.of(0, 0, 0, 0));
 		isModified = true;
 		isModifiedMatrix = true;
 		
@@ -289,14 +293,40 @@ public class TextureTest extends RenderTest {
 		}
 		if (isModified)
 		{
-			isModified = false;
-			while (presenter.present((commandBuffer, frameIndex) -> {
-				presenter.beginRenderPass(commandBuffer);
-				renderer.setUniformBufferIndex(frameIndex);
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				isModified = false;
+				
+				CommandBuffer commandBuffer = window.getDevice().createSingleUseCommandBuffer(stack);
+				
+				VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
+				renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
+				renderPassBeginInfo.pNext(0);
+				
+				renderPassBeginInfo.renderPass(renderPass.getVk());
+				
+				FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
+				renderPassBeginInfo.framebuffer(frameBuffer.getVk());
+				
+				VkRect2D renderArea = VkRect2D.calloc(stack);
+				renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
+				renderPassBeginInfo.renderArea(renderArea);
+				
+				VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
+				clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
+				clearValues.get().depthStencil().depth(1).stencil(0);
+				renderPassBeginInfo.pClearValues(clearValues.rewind());
+				
+				commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
+				renderer.setUniformBufferIndex(window.getFrameIndex());
 				renderer.draw(commandBuffer);
 				commandBuffer.endRenderPass();
-			}, () -> {}) == Result.SWAPCHAIN_OUT_OF_DATE);
-			window.update();
+				commandBuffer.endRecording();
+				
+				window.swapBuffers(commandBuffer);
+				
+				window.update();
+			}
 		}
 		window.pollEvents();
 	}
@@ -304,7 +334,6 @@ public class TextureTest extends RenderTest {
 	public static void end()
 	{
 		renderer.close();
-		presenter.close();
 		RenderEngine.getVulkan().getWindow().hide();
 		synchronized (MONITOR)
 		{
