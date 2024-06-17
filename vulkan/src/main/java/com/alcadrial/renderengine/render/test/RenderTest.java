@@ -5,23 +5,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.concurrent.TimeUnit;
 
-import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.EXTDebugReport;
 import org.lwjgl.vulkan.EXTDebugUtils;
-import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
-import org.lwjgl.vulkan.VkAttachmentDescription;
-import org.lwjgl.vulkan.VkAttachmentReference;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
-import org.lwjgl.vulkan.VkRenderPassCreateInfo;
-import org.lwjgl.vulkan.VkSubpassDependency;
-import org.lwjgl.vulkan.VkSubpassDescription;
 
 import com.alcadrial.kroperties.Property;
-import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.Shader;
@@ -106,117 +97,6 @@ public class RenderTest {
 		Texture depthTexture = Texture.create2dTexture(RenderEngine.getVulkan().getDevice(), width, height, VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
 		depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 		return depthTexture;
-	}
-	
-	public static RenderPass createRenderPass(Device device, int colorFormat)
-	{
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			VkAttachmentDescription.Buffer attachmentDescriptions = VkAttachmentDescription.calloc(1, stack);
-			
-			VkAttachmentDescription colorAttachment = attachmentDescriptions.get();
-			colorAttachment.format(colorFormat);
-			colorAttachment.samples(VK10.VK_SAMPLE_COUNT_1_BIT);
-			colorAttachment.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR);
-			colorAttachment.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE);
-			colorAttachment.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE);
-			colorAttachment.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE);
-			colorAttachment.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED);
-			colorAttachment.finalLayout(KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-			
-			VkAttachmentReference.Buffer colorAttachmentRef = VkAttachmentReference.calloc(1, stack);
-			colorAttachmentRef.attachment(0);
-			colorAttachmentRef.layout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-			
-			VkSubpassDescription.Buffer subpassDescription = VkSubpassDescription.calloc(1, stack);
-			subpassDescription.pipelineBindPoint(VK10.VK_PIPELINE_BIND_POINT_GRAPHICS);
-			subpassDescription.colorAttachmentCount(1);
-			subpassDescription.pColorAttachments(colorAttachmentRef);
-			
-			int srcStageMask = VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			int srcAccessMask = 0;
-			int dstStageMask = VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			int dstAccessMask = VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			
-			VkSubpassDependency.Buffer subpassDependency = VkSubpassDependency.calloc(1, stack);
-			subpassDependency.srcSubpass(VK10.VK_SUBPASS_EXTERNAL);
-			subpassDependency.dstSubpass(0);
-			subpassDependency.srcStageMask(srcStageMask);
-			subpassDependency.srcAccessMask(srcAccessMask);
-			subpassDependency.dstStageMask(dstStageMask);
-			subpassDependency.dstAccessMask(dstAccessMask);
-			
-			VkRenderPassCreateInfo renderPassCreateInfo = VkRenderPassCreateInfo.calloc(stack);
-			renderPassCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO);
-			renderPassCreateInfo.pAttachments(attachmentDescriptions.rewind());
-			renderPassCreateInfo.pSubpasses(subpassDescription);
-			renderPassCreateInfo.pDependencies(subpassDependency);
-			
-			return new RenderPass(device, renderPassCreateInfo);
-		}
-	}
-	
-	public static RenderPass createRenderPassWithDepth(Device device, int colorFormat)
-	{
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			VkAttachmentDescription.Buffer attachmentDescriptions = VkAttachmentDescription.calloc(2, stack);
-			
-			VkAttachmentDescription colorAttachment = attachmentDescriptions.get();
-			colorAttachment.format(colorFormat);
-			colorAttachment.samples(VK10.VK_SAMPLE_COUNT_1_BIT);
-			colorAttachment.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR);
-			colorAttachment.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE);
-			colorAttachment.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE);
-			colorAttachment.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE);
-			colorAttachment.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED);
-			colorAttachment.finalLayout(KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-			
-			VkAttachmentReference.Buffer colorAttachmentRef = VkAttachmentReference.calloc(1, stack);
-			colorAttachmentRef.attachment(0);
-			colorAttachmentRef.layout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-			
-			VkAttachmentDescription depthAttachment = attachmentDescriptions.get();
-			depthAttachment.format(VK10.VK_FORMAT_D24_UNORM_S8_UINT);//dynamic
-			depthAttachment.samples(VK10.VK_SAMPLE_COUNT_1_BIT);
-			depthAttachment.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR);
-			depthAttachment.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE);
-			depthAttachment.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE);
-			depthAttachment.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE);
-			depthAttachment.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED);
-			depthAttachment.finalLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-			
-			VkAttachmentReference depthAttachmentRef = VkAttachmentReference.calloc(stack);
-			depthAttachmentRef.attachment(1);
-			depthAttachmentRef.layout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-			
-			VkSubpassDescription.Buffer subpassDescription = VkSubpassDescription.calloc(1, stack);
-			subpassDescription.pipelineBindPoint(VK10.VK_PIPELINE_BIND_POINT_GRAPHICS);
-			subpassDescription.colorAttachmentCount(1);
-			subpassDescription.pColorAttachments(colorAttachmentRef);
-			subpassDescription.pDepthStencilAttachment(depthAttachmentRef);
-			
-			int srcStageMask = VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			int srcAccessMask = 0;
-			int dstStageMask = VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			int dstAccessMask = VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			
-			VkSubpassDependency.Buffer subpassDependency = VkSubpassDependency.calloc(1, stack);
-			subpassDependency.srcSubpass(VK10.VK_SUBPASS_EXTERNAL);
-			subpassDependency.dstSubpass(0);
-			subpassDependency.srcStageMask(srcStageMask);
-			subpassDependency.srcAccessMask(srcAccessMask);
-			subpassDependency.dstStageMask(dstStageMask);
-			subpassDependency.dstAccessMask(dstAccessMask);
-			
-			VkRenderPassCreateInfo renderPassCreateInfo = VkRenderPassCreateInfo.calloc(stack);
-			renderPassCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO);
-			renderPassCreateInfo.pAttachments(attachmentDescriptions.rewind());
-			renderPassCreateInfo.pSubpasses(subpassDescription);
-			renderPassCreateInfo.pDependencies(subpassDependency);
-			
-			return new RenderPass(device, renderPassCreateInfo);
-		}
 	}
 	
 	public static File getFile(String path)

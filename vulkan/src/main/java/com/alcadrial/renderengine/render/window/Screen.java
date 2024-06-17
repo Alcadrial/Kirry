@@ -4,45 +4,42 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.FrameBuffer;
-import com.alcadrial.renderengine.render.RenderingManager;
+import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.renderpass.RenderPass;
+import com.alcadrial.renderengine.render.window.widget.ActionResult;
 
 public interface Screen {
 	
 	/**
-	 * Use to create objects like {@link FrameBuffer}s and {@link VertexBuffer}s to use in the {@link #render(Matrix4f, CommandBuffer, float) render} method.
-	 * 
-	 * @param matrix a custom matrix
-	 * @param manager
-	 * @param partialFrame
+	 * Use to create objects like {@link FrameBuffer}s and {@link VertexBuffer}s to use in the {@link #render(Matrix4f, Renderer) render} method.
 	 */
-	void initializeRendering(Matrix4f matrix, RenderingManager manager, float partialFrame);
+	void initializeRendering();
 	/**
-	 * Draws textures and collects vertices to use in the {@link #draw(Matrix4f, CommandBuffer, RenderingManager, float) draw} method.
+	 * Draws textures and collects vertices to use in the {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw} method.
 	 * <p>
-	 * This method is called after {@link #initializeRendering(Matrix4f, RenderingManager, float) initializeRendering}.
+	 * This method is called after {@link #initializeRendering() initializeRendering}.
 	 * 
 	 * @param matrix a custom matrix
-	 * @param commandBuffer
-	 * @param partialFrame
+	 * @param renderer
 	 */
-	void render(Matrix4f matrix, CommandBuffer commandBuffer, float partialFrame);
+	void render(Matrix4f matrix, Renderer renderer);
 	/**
 	 * Draws the widget on the screen. If the widget is already drawn on the screen, the implementation may not draw anything or may draw only
 	 * the missing portion of the widget if any.
 	 * <p>
 	 * If the method {@link #requestDraw() requestDraw} is called, is guaranteed to that this call will draw the entire widget.
 	 * <p>
-	 * This method is called after {@link #render(Matrix4f, CommandBuffer, float) render}.
+	 * This method is called after {@link #render(Matrix4f, Renderer) render}.
 	 * 
 	 * @param matrix the tranformation matrix
 	 * @param commandBuffer TODO
-	 * @param manager
+	 * @param renderer
 	 * @param partialFrame
 	 */
-	void draw(Matrix4f matrix, CommandBuffer commandBuffer, RenderingManager manager, float partialFrame);
+	void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame);
 	/**
-	 * Closes any resource previously allocated in {@link #initializeRendering(Matrix4f, RenderingManager, float) initializeRendering}.
+	 * Closes any resource previously allocated in {@link #initializeRendering() initializeRendering}.
 	 * <p>
 	 * The invokation this method will allow another invokation of initializeRendering.
 	 */
@@ -56,23 +53,23 @@ public interface Screen {
 	boolean isOnScreen();
 	/**
 	 * Returns true if this widget has collected all the vertices after a 
-	 * {@link #render(Matrix4f, CommandBuffer, float) render} and is ready to {@link #draw(Matrix4f, CommandBuffer, RenderingManager, float) draw}.
+	 * {@link #render(Matrix4f, Renderer) render} and is ready to {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw}.
 	 * 
 	 * @return true if this widget has been rendered
 	 */
 	boolean isRendered();
 	/**
-	 * Returns true if this widget had created all the rendering objects necessary for {@link #render(Matrix4f, CommandBuffer, float) render}.
+	 * Returns true if this widget had created all the rendering objects necessary for {@link #render(Matrix4f, Renderer) render}.
 	 * 
 	 * @return true if this widget has been initialized for rendering
 	 */
 	boolean isInitialized();
 	/**
-	 * Marks this widget to not skip the next {@link #render(Matrix4f, CommandBuffer, float) render}.
+	 * Marks this widget to not skip the next {@link #render(Matrix4f, Renderer) render}.
 	 */
 	void requestRender();
 	/**
-	 * Marks this widget to not skip the next {@link #draw(Matrix4f, CommandBuffer, RenderingManager, float) draw}.
+	 * Marks this widget to not skip the next {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw}.
 	 */
 	void requestDraw();
 	
@@ -87,4 +84,5 @@ public interface Screen {
 	ActionResult onDragStart(Vector2i mousePos);
 	ActionResult onDragEnd(Vector2i startPos, Vector2i endPos);
 	ActionResult onScroll(double xScroll, double yScroll, Vector2i mousePos);
+	RenderPass getRenderPass();
 }

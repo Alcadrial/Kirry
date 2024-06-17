@@ -25,7 +25,6 @@ import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.CallbackI;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkAttachmentDescription;
 import org.lwjgl.vulkan.VkAttachmentReference;
@@ -37,6 +36,7 @@ import org.lwjgl.vulkan.VkRenderPassCreateInfo;
 import org.lwjgl.vulkan.VkSubpassDependency;
 import org.lwjgl.vulkan.VkSubpassDescription;
 
+import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.Window;
@@ -49,9 +49,10 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.Queue;
 import com.alcadrial.renderengine.render.QueueFamily;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Surface;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
@@ -79,6 +80,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private RenderPass renderPass;
 	private @Nullable Texture depthTexture;
 	private List<CommandBuffer> commandBuffers;
+	private int drawCount;
 	
 	/**
 	 * <b>WARNING:</b> the window hint {@link GLFW#GLFW_CLIENT_API CLIENT_API} is set to {@link GLFW#GLFW_NO_API NO_API}
@@ -103,6 +105,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		resetCallbacks();
 		useDepthTexture = true;
 		shaderProgram = ShaderProgram.DEFAULT;
+		drawCount = 0;
 	}
 	
 	/*
@@ -126,6 +129,8 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				surface.init(device.getPhysicalDevice(), stack);
 				createRenderPass();
 				presenter = new Presenter(device, this, renderPass, 3);
+				renderer = Renderer.create().shaderProgram(shaderProgram).build(device, surface.getSize(), presenter.getRenderPass(), 3);
+				
 				commandBuffers = device.createMultiUseCommandBuffer(stack, 3);
 				for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.startRecording();
 				prepareFrameBuffers(stack);
@@ -138,12 +143,42 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	{
 		if (screen != null)
 		{
-			if (!screen.isInitialized()) screen.initializeRendering(null, null, 0);
-			if (!screen.isRendered()) screen.render(null, null, 0);
-			
-			if (!screen.isOnScreen()) screen.draw(null, null, null, 0);
-			
 			CommandBuffer commandBuffer = commandBuffers.get(getFrameIndex());
+			
+			if (!screen.isInitialized()) screen.initializeRendering();
+			if (!screen.isRendered()) screen.render(new Matrix4f().orthographicPositive(width, height), renderer);
+			if (drawCount++ < 3)
+			{
+				try (MemoryStack stack = MemoryStack.stackPush())
+				{
+					VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
+					renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
+					renderPassBeginInfo.pNext(0);
+					
+					renderPassBeginInfo.renderPass(screen.getRenderPass().getVk());
+					
+					VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
+					clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
+					clearValues.get().depthStencil().depth(1).stencil(0);
+					renderPassBeginInfo.pClearValues(clearValues.rewind());
+					
+					FrameBuffer frameBuffer = presenter.getFrameBuffer(getFrameIndex());
+					renderPassBeginInfo.framebuffer(frameBuffer.getVk());
+					
+					VkRect2D renderArea = VkRect2D.calloc(stack);
+					renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
+					renderPassBeginInfo.renderArea(renderArea);
+					
+					commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
+				}
+				
+				commandBuffer.setScissor(0, 0, getWidth(), getHeight());
+				commandBuffer.setViewport(0, getHeight(), getWidth(), -getHeight(), -1000, 1000);
+				renderer.setUniformBufferIndex(getFrameIndex());
+				screen.draw(null, commandBuffer, renderer, 0);
+				commandBuffer.endRenderPass();
+			}
+			
 			commandBuffer.endRecording();
 			swapBuffers(commandBuffer);
 			commandBuffer.startRecording();
@@ -186,7 +221,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			colorAttachment.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE);
 			colorAttachment.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE);
 			colorAttachment.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED);
-			colorAttachment.finalLayout(KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+			colorAttachment.finalLayout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 			
 			VkAttachmentReference.Buffer colorAttachmentRef = VkAttachmentReference.calloc(1, stack);
 			colorAttachmentRef.attachment(0);
@@ -251,7 +286,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			depthTexture = Texture.create2dTexture(device, extent.width(), extent.height(), VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
 			depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 		}
-		//TODO
 		presenter.initialize(depthTexture);
 		
 		VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
@@ -378,11 +412,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	
 	public void setScreen(Screen screen)
 	{
-		if (renderer == null)
-		{
-			
-			renderer = Renderer.create().shaderProgram(shaderProgram).build(device, surface.getSize(), presenter.getRenderPass(), 3);
-		}
 		this.screen = Objects.requireNonNull(screen);
 	}
 	

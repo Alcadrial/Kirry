@@ -4,7 +4,9 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.RenderingManager;
+import com.alcadrial.renderengine.render.Renderer;
+import com.alcadrial.renderengine.render.renderpass.RenderPass;
+import com.alcadrial.renderengine.render.window.widget.ActionResult;
 
 public class BlackScreen implements Screen {
 	
@@ -21,19 +23,19 @@ public class BlackScreen implements Screen {
 	}
 	
 	@Override
-	public void initializeRendering(Matrix4f matrix, RenderingManager manager, float partialFrame)
+	public void initializeRendering()
 	{
 		
 	}
 	
 	@Override
-	public void render(Matrix4f matrix, CommandBuffer commandBuffer, float partialFrame)
+	public void render(Matrix4f matrix, Renderer renderer)
 	{
 		
 	}
 	
 	@Override
-	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, RenderingManager manager, float partialFrame)
+	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame)
 	{
 		
 	}
@@ -120,5 +122,11 @@ public class BlackScreen implements Screen {
 	public ActionResult onScroll(double xScroll, double yScroll, Vector2i mousePos)
 	{
 		return ActionResult.CONSUME;
+	}
+
+	@Override
+	public RenderPass getRenderPass()
+	{
+		return null;
 	}
 }

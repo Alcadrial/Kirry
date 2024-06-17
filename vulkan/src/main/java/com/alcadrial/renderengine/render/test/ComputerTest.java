@@ -39,7 +39,6 @@ import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.Vulkan;
@@ -47,6 +46,8 @@ import com.alcadrial.renderengine.render.buffer.BufferLayout;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.renderpass.RenderPass;
+import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.util.Properties;
@@ -246,7 +247,7 @@ public class ComputerTest extends RenderTest {
 			
 			uniformBuffer = new VulkanBuffer(device, Math.max(minOffsetAlignment * 3, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 		}
-		renderPass = createRenderPassWithDepth(device, window.getSurface().getFormat().format());
+		renderPass = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
 		
 		Builder builder = Renderer.create();
 		builder.shaderProgram(shaderProgram);
@@ -317,18 +318,13 @@ public class ComputerTest extends RenderTest {
 		Random random = new Random();
 		
 		FloatBuffer cursor = storageBuffer0.asFloatBuffer();
-		for (float i = -DIM; i < DIM; i++)
+		
+		for (float i = -DIM; i < DIM; i++) for (float j = -DIM; j < DIM; j++) for (float k = -DIM; k < DIM; k++)
 		{
-			for (float j = -DIM; j < DIM; j++)
-			{
-				for (float k = -DIM; k < DIM; k++)
-				{
-					Color c = colors[random.nextInt(colors.length)];
-					cursor.put(i / 10).put(j / 10).put(k / 10).put(0F);
-					cursor.put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(0);
-					cursor.put(c.r() / 255).put(c.g() / 255).put(c.b() / 255).put(c.a() / 255);
-				}
-			}
+			Color c = colors[random.nextInt(colors.length)];
+			cursor.put(i / 10).put(j / 10).put(k / 10).put(0F);
+			cursor.put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(0);
+			cursor.put(c.r() / 255).put(c.g() / 255).put(c.b() / 255).put(c.a() / 255);
 		}
 		
 		try

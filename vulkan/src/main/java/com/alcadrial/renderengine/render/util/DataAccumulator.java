@@ -4,6 +4,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -36,7 +37,6 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.Surface;
 import com.alcadrial.renderengine.render.Swapchain;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
@@ -45,6 +45,7 @@ import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline.GraphicsPipelineBuildFunction;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
+import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.texture.Texture;
@@ -64,7 +65,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		Field[] allFields = DataAccumulator.class.getDeclaredFields();
 		Field[] fs = new Field[allFields.length];
 		int i = 0;
-		for (Field field : DataAccumulator.class.getDeclaredFields()) if (field.getType().equals(DataElement.class)) fs[i++] = field;
+		for (Field field : DataAccumulator.class.getDeclaredFields()) if (field.getType().equals(DataAccumulator.DataElement.class)) fs[i++] = field;
 		ELEMENTS = new Field[i];
 		for (int j = 0; j < i; j++) ELEMENTS[j] = fs[j];
 	}
@@ -761,7 +762,29 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		stack.close();
 	}
 	
-	protected static class DataElement<T> {
+	protected class DataElement<T> {
+		
+		private static <E extends RuntimeException> E removeLastStackTrace(E e)
+		{
+			StackTraceElement[] stackTrace = e.getStackTrace();
+			boolean flag = true;
+			for (int i = 0; i < stackTrace.length; i++)
+			{
+				if (flag)
+				{
+					if (stackTrace[i].getClassName().equals(DataElement.class.getName()))
+					{
+						flag = false;
+					}
+				}
+				else if (!stackTrace[i].getClassName().equals(DataElement.class.getName()))
+				{
+					e.setStackTrace(Arrays.copyOfRange(stackTrace, i, stackTrace.length));
+					return e;
+				}
+			}
+			return e;
+		}
 		
 		private T data;
 		private boolean isModified;
@@ -773,12 +796,26 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		
 		public T require()
 		{
-			return Objects.requireNonNull(data);
+			try
+			{
+				return Objects.requireNonNull(data);
+			}
+			catch (NullPointerException e)
+			{
+				throw removeLastStackTrace(e);
+			}
 		}
 		
 		public T require(String error)
 		{
-			return Objects.requireNonNull(data, error);
+			try
+			{
+				return Objects.requireNonNull(data, error);
+			}
+			catch (NullPointerException e)
+			{
+				throw removeLastStackTrace(e);
+			}
 		}
 		
 		public T orElse(T data)
@@ -799,14 +836,28 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		
 		public void setNonNull(T data)
 		{
-			Objects.requireNonNull(data);
+			try
+			{
+				Objects.requireNonNull(data);
+			}
+			catch (NullPointerException e)
+			{
+				throw removeLastStackTrace(e);
+			}
 			isModified = Objects.equals(data, this.data);
 			this.data = data;
 		}
 		
 		public void setNonNull(T data, String error)
 		{
-			Objects.requireNonNull(data, error);
+			try
+			{
+				Objects.requireNonNull(data, error);
+			}
+			catch (NullPointerException e)
+			{
+				throw removeLastStackTrace(e);
+			}
 			isModified = Objects.equals(data, this.data);
 			this.data = data;
 		}

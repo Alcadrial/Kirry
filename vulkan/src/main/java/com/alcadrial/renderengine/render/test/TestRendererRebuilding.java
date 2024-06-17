@@ -30,7 +30,6 @@ import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.RenderPass;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.Renderer.ModificationPlan;
@@ -40,6 +39,8 @@ import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.renderpass.RenderPass;
+import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
@@ -181,7 +182,7 @@ public class TestRendererRebuilding extends RenderTest {
 			builder.uniformBuffer(new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
 			builder.dynamicViewport(false).dynamicScissor(false);
 			
-			renderPass = createRenderPass(device, window.getSurface().getFormat().format());
+			renderPass = RenderPassTemplate.initColorTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
 			renderer = builder.build(device, window.getSurface().getSize(), renderPass, 3);
 			
 			vertexBuffer = new VertexBuffer(device, 70);

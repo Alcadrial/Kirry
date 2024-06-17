@@ -1,8 +1,11 @@
-package com.alcadrial.renderengine.render;
+package com.alcadrial.renderengine.render.renderpass;
 
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkRenderPassCreateInfo;
 
+import com.alcadrial.renderengine.render.Debug;
+import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 

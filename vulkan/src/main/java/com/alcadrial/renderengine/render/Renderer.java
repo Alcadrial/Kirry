@@ -34,6 +34,7 @@ import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline.GraphicsPipelineBuildFunction;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
+import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
@@ -88,6 +89,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		uniformBuffersUpdates = new LinkedList<>();
 		vertexBuffers = new HashMap<>();
 		extraCommands = new LinkedList<>();
+		uniformBufferIndex = -1;
 		
 		for (int i = 0; i < uniformBuffers.size(); i++)
 		{
@@ -124,22 +126,32 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 	
 	public void draw(CommandBuffer commandBuffer, int instanceCount)
 	{
-		Deque<BiConsumer<VulkanBuffer, BufferLayout>> queue = uniformBuffersUpdates.get(uniformBufferIndex);
-		boolean update = queue.size() > 0;
-		
-		BiConsumer<VulkanBuffer, BufferLayout> action;
-		while ((action = queue.poll()) != null) for (Pair<VulkanBuffer, BufferLayout> p : uniformBuffers) action.accept(p.left, p.right);
-		
-		BufferLayout layout = uniformBuffers.get(uniformBufferIndex).right;
-		if (update) layout.updateDescriptorSets();
+		if (uniformBufferIndex >= 0)
+		{
+			Deque<BiConsumer<VulkanBuffer, BufferLayout>> queue = uniformBuffersUpdates.get(uniformBufferIndex);
+			boolean update = queue.size() > 0;
+			
+			BiConsumer<VulkanBuffer, BufferLayout> action;
+			while ((action = queue.poll()) != null) for (Pair<VulkanBuffer, BufferLayout> p : uniformBuffers) action.accept(p.left, p.right);
+			
+			BufferLayout layout = uniformBuffers.get(uniformBufferIndex).right;
+			if (update) layout.updateDescriptorSets();
+		}
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			commandBuffer.bindPipeline(graphicsPipeline);
 			for (Entry<Integer, List<VertexBuffer>> p : vertexBuffers.entrySet()) commandBuffer.bindVertexBuffers(p.getKey(), p.getValue());
-			commandBuffer.bindIndexBuffer(indexBuffer, 0);
-			commandBuffer.bindDescriptorSets(graphicsPipeline, descriptorSets[uniformBufferIndex], new int[0]);
-			commandBuffer.drawIndexed((int) (indexBuffer.getSize() / 4), instanceCount, 0, 0, 0);
+			if (uniformBufferIndex >= 0) commandBuffer.bindDescriptorSets(graphicsPipeline, descriptorSets[uniformBufferIndex], new int[0]);
+			if (indexBuffer != null)
+			{
+				commandBuffer.bindIndexBuffer(indexBuffer, 0);
+				commandBuffer.drawIndexed((int) (indexBuffer.getSize() / 4), instanceCount, 0, 0, 0);
+			}
+			else
+			{
+				commandBuffer.draw(0, instanceCount, 0, 0);
+			}
 			
 			for (Consumer<CommandBuffer> command : extraCommands) command.accept(commandBuffer);
 		}
@@ -159,6 +171,11 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 	public void addVertexBuffer(int binding, VertexBuffer vertexBuffer)
 	{
 		vertexBuffers.computeIfAbsent(binding, k -> new LinkedList<>()).add(vertexBuffer);
+	}
+	
+	public void resetVertexBuffer(int binding)
+	{
+		vertexBuffers.put(binding, new LinkedList<>());
 	}
 	
 	public void setIndexBuffer(IndexBuffer indexBuffer)
@@ -411,12 +428,12 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			if (useUniform)
 			{
 				uniformBuffers = new ArrayList<>(count);
-				uniformBuffer = this.uniformBuffer.orElse(new VulkanBuffer(device.get(), 1, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
+				uniformBuffer = this.uniformBuffer.require("Shaders require uniforms so a uniform buffer is required");
 			}
 			else uniformBuffers = List.of();
 			if (useStorage)
 			{
-				storageBuffer = this.storageBuffer.orElse(new VulkanBuffer(device.get(), 1, VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT));
+				storageBuffer = this.storageBuffer.require("Shaders require storages so a storage buffer is required");
 			}
 			
 			int minOffsetAlignment = (int) physicalDevice.get().getLimits().minUniformBufferOffsetAlignment();
