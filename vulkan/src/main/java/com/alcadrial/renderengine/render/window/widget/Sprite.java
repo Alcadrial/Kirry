@@ -16,6 +16,7 @@ import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.test.RenderingDataUtils;
 import com.alcadrial.renderengine.render.test.RenderingDataUtils.RectangleVertexResult;
 import com.alcadrial.renderengine.render.texture.TextureRegion;
+import com.alcadrial.renderengine.render.texture.TextureSampler;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class Sprite extends AbstractWidget {
@@ -51,9 +52,7 @@ public class Sprite extends AbstractWidget {
 		Vector3f pos = matrix.multiply(Vector4f.of(this.pos).xyz1()).xyz();
 		Vector2f end = matrix.multiply(Vector4f.of(this.pos.add(size)).xyz1()).xy();
 		
-		//	RectangleVertexResult result = RenderingDataUtils.sendRectangleXYZUV(renderer, buffer, pos.x(), pos.y(), 0, end.x(), end.y(), texture.getUvStart().x(), texture.getUvStart().y(), texture.getUvEnd().x(), texture.getUvEnd().y());
-		
-		RectangleVertexResult result = RenderingDataUtils.sendRectangleXYZRGBA(renderer, buffer, pos.x(), pos.y(), 0, end.x(), end.y(), 0.8F, 0.8F, 0, 1);
+		RectangleVertexResult result = RenderingDataUtils.sendRectangleXYZUV(renderer, buffer, pos.x(), pos.y(), end.x(), end.y(), 0, texture.getUvStart().x(), texture.getUvStart().y(), texture.getUvEnd().x(), texture.getUvEnd().y());
 		
 		IntBuffer buffer = indexBuffer.asIntBuffer();
 		buffer.put(result.getR0().getIndex());
@@ -68,7 +67,10 @@ public class Sprite extends AbstractWidget {
 	@Override
 	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame)
 	{
-		//	super.draw(matrix, commandBuffer, renderer, partialFrame);
+		renderer.updateUniformBuffers((b, l) -> {
+			l.set("TRANSFORMATION", b, new Matrix4f());
+			l.set("TEXTURE_SAMPLER", texture.getTexture().getView(), new TextureSampler(buffer.getDevice()));
+		});
 		renderer.resetVertexBuffer(0);
 		renderer.addVertexBuffer(0, buffer);
 		renderer.setIndexBuffer(indexBuffer);

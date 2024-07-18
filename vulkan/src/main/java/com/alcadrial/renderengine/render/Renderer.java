@@ -219,6 +219,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			Debug.print("DescriptorSetLayout: " + Debug.address(descriptorSetLayouts[i]));
 			Debug.print("DescriptorSet: " + Debug.address(descriptorSets[i][0]));
 			Debug.print("Buffer", uniformBuffers.get(i).l());
+			Debug.print("Layout", uniformBuffers.get(i).r());
 			Debug.deindent();
 			Debug.print("}");
 		}
@@ -442,7 +443,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			{
 				descriptorSets[i] = new long[] {p1[i]};
 				Lock lock = new ReentrantLock();
-				VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(bindingFlags.size(), stack);
+				VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(bindingFlags.size());
 				BufferLayout uniformBufferLayout = new BufferLayout(device.get(), writeDescriptorSets, 0, lock);
 				BufferLayout storageBufferLayout = new BufferLayout(device.get(), writeDescriptorSets, 0, lock);
 				if (useUniform) uniformBuffers.add(new Pair<>(uniformBuffer, uniformBufferLayout));
@@ -455,7 +456,6 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 					{
 						offset += minOffsetAlignment - offset % minOffsetAlignment;
 					}
-					System.out.println("Binding " + e.getKey() + " " + e.getValue().getDescriptorType());
 					VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
 					writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
 					writeDescriptorSet.pNext(0);

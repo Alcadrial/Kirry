@@ -281,6 +281,7 @@ public class BufferLayout implements VulkanDebug {
 	@Override
 	public void debug()
 	{
+		Debug.print(Debug.validity(writeDescriptorSets, VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET));
 		Debug.print("dstSet: " + Debug.address(writeDescriptorSets.dstSet()));
 		Debug.print("dstBinding: " + writeDescriptorSets.dstBinding());
 		Debug.print("dstArrayElement: " + writeDescriptorSets.dstArrayElement());
@@ -300,6 +301,11 @@ public class BufferLayout implements VulkanDebug {
 			Debug.indent();
 			for (VkDescriptorImageInfo imageInfo : imageInfoBuffer)
 			{
+				if (imageInfo.address() == 0)
+				{
+					Debug.print("null");
+					continue;
+				}
 				Debug.print("Buffer [");
 				Debug.indent();
 				Debug.print("sampler: " + Debug.address(imageInfo.sampler()));
@@ -318,6 +324,11 @@ public class BufferLayout implements VulkanDebug {
 			Debug.indent();
 			for (VkDescriptorBufferInfo bufferInfo : bufferInfoBuffer)
 			{
+				if (bufferInfo.address() == 0)
+				{
+					Debug.print("null");
+					continue;
+				}
 				Debug.print("vk: " + Debug.address(bufferInfo.buffer()));
 				Debug.print("offset: " + bufferInfo.offset());
 				Debug.print("size: " + bufferInfo.range());

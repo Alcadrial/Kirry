@@ -82,6 +82,8 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private List<CommandBuffer> commandBuffers;
 	private int drawCount;
 	
+	private VulkanBuffer uniformBuffer;
+	
 	/**
 	 * <b>WARNING:</b> the window hint {@link GLFW#GLFW_CLIENT_API CLIENT_API} is set to {@link GLFW#GLFW_NO_API NO_API}
 	 * using {@link RenderEngine#setWindowHint(int, int) RenderEngine#setWindowHint}
@@ -129,7 +131,9 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				surface.init(device.getPhysicalDevice(), stack);
 				createRenderPass();
 				presenter = new Presenter(device, this, renderPass, 3);
-				renderer = Renderer.create().shaderProgram(shaderProgram).build(device, surface.getSize(), presenter.getRenderPass(), 3);
+				
+				uniformBuffer = new VulkanBuffer(device, 1024, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+				renderer = Renderer.create().uniformBuffer(uniformBuffer).shaderProgram(shaderProgram).build(device, surface.getSize(), presenter.getRenderPass(), 3);
 				
 				commandBuffers = device.createMultiUseCommandBuffer(stack, 3);
 				for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.startRecording();
@@ -557,5 +561,8 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		Debug.print("Vk: " + Debug.address(id));
 		Debug.print("Size: " + width + "x" + height);
 		Debug.print("Surface: ", surface);
+		Debug.print("Presenter: ", presenter);
+		Debug.print("Renderer: ", renderer);
+		Debug.print("ShaderProgram: " + shaderProgram.getshaders());
 	}
 }

@@ -3,12 +3,15 @@ package com.alcadrial.renderengine.render;
 import java.io.PrintStream;
 import java.util.Collection;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
+import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.system.Pointer;
+import org.lwjgl.system.Struct;
+import org.lwjgl.system.StructBuffer;
 
 import com.alcadrial.renderengine.render.Vulkan.ThreadData;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
-import com.alcadrial.renderengine.render.util.VulkanResource;
 
 public class Debug {
 	
@@ -77,7 +80,7 @@ public class Debug {
 		print(name + ": " + address(vk));
 	}
 	
-	public static void print(String name, VulkanResource<?> vk)
+	public static void print(String name, VulkanDebug vk)
 	{
 		if (vk == null)
 		{
@@ -108,6 +111,16 @@ public class Debug {
 	public static void print(Object obj)
 	{
 		debugOutput.println(prefix + obj);
+	}
+	
+	public static String validity(Struct<?> p, int type)
+	{
+		return p.address() == MemoryUtil.NULL ? "NULL POINTER" : MemoryUtil.memGetInt(p.address()) == type ? "VALID" : "INVALID";
+	}
+	
+	public static String validity(StructBuffer<?, ?> p, int type)
+	{
+		return p.stream().map(s -> Debug.validity(s, type)).collect(Collectors.joining(", ", "[", "]"));
 	}
 	
 	public static String address(Pointer p)

@@ -15,9 +15,8 @@ public abstract class AbstractWidget implements Widget {
 	private static final byte EMPTY_STATE = 0x00;
 	private static final byte INITIALIZED_BIT = 0x01;
 	private static final byte RENDERED_BIT = 0x02;
-	private static final byte DRAWN_BIT = 0x04;
-	private static final byte HOVERED_BIT = 0x08;
-	private static final byte DRAGGING_BIT = 0x10;
+	private static final byte HOVERED_BIT = 0x04;
+	private static final byte DRAGGING_BIT = 0x08;
 	
 	protected VulkanWindow window;
 	protected Vector3i pos;
@@ -61,19 +60,13 @@ public abstract class AbstractWidget implements Widget {
 	@Override
 	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer manager, float partialFrame)
 	{
-		setInternalStateBit(DRAWN_BIT, true);
+		
 	}
 	
 	@Override
 	public Vector4i drawingArea(Matrix4f matrix, float partialFrame)
 	{
 		return Vector4i.of(Vector2i.of(pos.multiply(matrix).xy()), Vector2i.of(getPos().add(size).multiply(matrix).xy()));
-	}
-	
-	@Override
-	public boolean isOnScreen()
-	{
-		return getInternalStateBit(DRAWN_BIT);
 	}
 	
 	@Override
@@ -104,12 +97,6 @@ public abstract class AbstractWidget implements Widget {
 	public void requestRender()
 	{
 		setInternalStateBit(RENDERED_BIT, false);
-	}
-	
-	@Override
-	public void requestDraw()
-	{
-		setInternalStateBit(DRAWN_BIT, false);
 	}
 	
 	@Override

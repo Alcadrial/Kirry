@@ -53,7 +53,7 @@ public class ScreenTest extends RenderTest {
 		println("End", ScreenTest::end, TestProperties.PRINT_LOADING_TIMES);
 	}
 	
-	private static final String SHADER = "shader";
+	private static final String SHADER = "shader0";
 	private static int index = 0;
 	private static final List<Screen> SCREENS = new LinkedList<>();
 	
@@ -104,21 +104,36 @@ public class ScreenTest extends RenderTest {
 		Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME, EXTDepthRangeUnrestricted.VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME);
 		window.init(device);
 		
-		Texture texture;
+		Texture textureKhishweTransparent;
+		Texture textureIcon;
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			BufferedImage image = ImageIO.read(getFile("KhishweTransparent.png"));
+			BufferedImage khishweTransparent = ImageIO.read(getFile("KhishweTransparent.png"));
 			
-			texture = Texture.create2dTexture(device, image.getWidth(), image.getHeight(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+			textureKhishweTransparent = Texture.create2dTexture(device, khishweTransparent.getWidth(), khishweTransparent.getHeight(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 			
 			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
 			
-			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-			IntBuffer buffer = texture.getBuffer().asIntBuffer();
-			for (int element : image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth())) buffer.put(element);
-			texture.sendToPhysicalDevice(commandBuffer);
-			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			textureKhishweTransparent.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			IntBuffer buffer = textureKhishweTransparent.getBuffer().asIntBuffer();
+			for (int element : khishweTransparent.getRGB(0, 0, khishweTransparent.getWidth(), khishweTransparent.getHeight(), null, 0, khishweTransparent.getWidth())) buffer.put(element);
+			textureKhishweTransparent.sendToPhysicalDevice(commandBuffer);
+			textureKhishweTransparent.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			
+			device.submitSingleUseCommandBuffer(stack, commandBuffer);
+			
+			BufferedImage icon = ImageIO.read(getFile("icon.png"));
+			
+			textureIcon = Texture.create2dTexture(device, icon.getWidth(), icon.getHeight(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+			
+			commandBuffer = device.createSingleUseCommandBuffer(stack);
+			
+			textureIcon.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			buffer = textureIcon.getBuffer().asIntBuffer();
+			for (int element : icon.getRGB(0, 0, icon.getWidth(), icon.getHeight(), null, 0, icon.getWidth())) buffer.put(element);
+			textureIcon.sendToPhysicalDevice(commandBuffer);
+			textureIcon.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			
 			device.submitSingleUseCommandBuffer(stack, commandBuffer);
 			
@@ -133,8 +148,10 @@ public class ScreenTest extends RenderTest {
 		
 		SCREENS.add(BlackScreen.BLACK_SCREEN);
 		BasicScreen s = new BasicScreen();
-		Sprite sprite = new Sprite(window, Vector2i.of(20, 20), Vector2i.of(256, 256), new TextureRegion(texture, Vector2f.origin(), Vector2f.of(1, 1)));
-		s.add(sprite);
+		s.add(new Sprite(window, Vector2i.of(20, 20), Vector2i.of(256, 256), new TextureRegion(textureKhishweTransparent, Vector2f.origin(), Vector2f.of(1, 1))));
+		s.add(new Sprite(window, Vector2i.of(296, 20), Vector2i.of(256, 256), new TextureRegion(textureIcon, Vector2f.origin(), Vector2f.of(1, 1))));
+		s.add(new Sprite(window, Vector2i.of(20, 296), Vector2i.of(256, 256), new TextureRegion(textureIcon, Vector2f.origin(), Vector2f.of(1, 1))));
+		s.add(new Sprite(window, Vector2i.of(296, 296), Vector2i.of(256, 256), new TextureRegion(textureKhishweTransparent, Vector2f.origin(), Vector2f.of(1, 1))));
 		SCREENS.add(s);
 		
 		window.setScreen(SCREENS.get(1));

@@ -56,8 +56,7 @@ public class BasicScreen implements Screen {
 	@Override
 	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame)
 	{
-		
-		for (Widget widget : widgets) if (!widget.isOnScreen()) widget.draw(matrix, commandBuffer, renderer, partialFrame);
+		for (Widget widget : widgets) widget.draw(matrix, commandBuffer, renderer, partialFrame);
 	}
 	
 	@Override

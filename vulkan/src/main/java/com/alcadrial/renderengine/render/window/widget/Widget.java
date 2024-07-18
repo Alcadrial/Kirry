@@ -29,12 +29,10 @@ public interface Widget {
 	 * Draws the widget on the screen. If the widget is already drawn on the screen, the implementation may not draw anything or may draw only
 	 * the missing portion of the widget if any.
 	 * <p>
-	 * If the method {@link #requestDraw() requestDraw} is called, is guaranteed to that this call will draw the entire widget.
-	 * <p>
 	 * This method is called after {@link #render(Matrix4f, Renderer) render}.
 	 * 
 	 * @param matrix the tranformation matrix
-	 * @param commandBuffer TODO
+	 * @param commandBuffer 
 	 * @param manager
 	 * @param partialFrame
 	 */
@@ -57,12 +55,6 @@ public interface Widget {
 	 */
 	Vector4i drawingArea(Matrix4f matrix, float partialFrame);
 	/**
-	 * Returns true if this widget has been drawn into the screen and it should not be cleared.
-	 * 
-	 * @return true if this widget has been drawn into the screen and it should not be cleared
-	 */
-	boolean isOnScreen();
-	/**
 	 * Returns true if this widget has collected all the vertices after a 
 	 * {@link #render(Matrix4f, Renderer) render} and is ready to {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw}.
 	 * 
@@ -79,10 +71,6 @@ public interface Widget {
 	 * Marks this widget to not skip the next {@link #render(Matrix4f, Renderer) render}.
 	 */
 	void requestRender();
-	/**
-	 * Marks this widget to not skip the next {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw}.
-	 */
-	void requestDraw();
 	
 	boolean isMouseHover();
 	boolean isHovered(Vector2i v);
