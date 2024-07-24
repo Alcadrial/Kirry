@@ -355,10 +355,13 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			});
 			GLFW.glfwSetFramebufferSizeCallback(id, (p, w, h) -> {
 				
-				try (MemoryStack stack = MemoryStack.stackPush())
+				if (w != 0)
 				{
-					surface.reinit(stack);
-					prepareFrameBuffers(stack);
+					try (MemoryStack stack = MemoryStack.stackPush())
+					{
+						surface.reinit(stack);
+						prepareFrameBuffers(stack);
+					}
 				}
 				for (Consumer<Surface> action : surfaceUpdateActions) action.accept(surface);
 			});

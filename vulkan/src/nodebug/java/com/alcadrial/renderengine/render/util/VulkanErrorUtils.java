@@ -59,6 +59,11 @@ public class VulkanErrorUtils {
 		if (!flag) System.err.println("[ASSERT] " + details);
 	}
 	
+	public static void assertNoError(int error, Supplier<String> details)
+	{
+		if (error < 0) throw new AssertionError(details.get() + ": " + getErrorString(error));
+	}
+	
 	public static void assertNoError(int error, String details)
 	{
 		if (error < 0) System.err.println("[ASSERT] " + getErrorString(error) + " " + details);

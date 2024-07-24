@@ -378,6 +378,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	private long allocateMemory(MemoryStack stack, VkMemoryRequirements memRequirements, int properties)
 	{
+		if (memRequirements.size() == 0) throw new IllegalArgumentException("Cannot allocate 0 bytes memory");
 		int index;
 		VkPhysicalDeviceMemoryProperties memProperties = VkPhysicalDeviceMemoryProperties.malloc(stack);
 		VK10.vkGetPhysicalDeviceMemoryProperties(physicalDevice.getVk(), memProperties);
@@ -393,7 +394,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		if (index == memProperties.memoryTypeCount()) throw new OutOfSpaceException("Failed to find suitable memory type");
 		
 		LongBuffer p = stack.mallocLong(1);
-		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(vk, VulkanUtils.memoryAllocateInfo(stack, memRequirements.size(), index), null, p), "Failed to allocate image memory");
+		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(vk, VulkanUtils.memoryAllocateInfo(stack, memRequirements.size(), index), null, p), () -> "Failed to allocate image memory (" + memRequirements.size() + " bytes)");
 		return p.get();
 	}
 	

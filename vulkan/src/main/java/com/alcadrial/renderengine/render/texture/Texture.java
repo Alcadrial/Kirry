@@ -289,10 +289,10 @@ public class Texture extends RawDeviceResource {
 	@Override
 	public void close()
 	{
-		view.close();
-		VK10.vkDestroyImage(device.getVk(), vk, null);
+		if (view != null) view.close();
+		if (vk != null) VK10.vkDestroyImage(device.getVk(), vk, null);
 		VK10.vkFreeMemory(device.getVk(), memory, null);
-		buffer.close();
+		if (buffer != null) buffer.close();
 		super.close();
 	}
 	

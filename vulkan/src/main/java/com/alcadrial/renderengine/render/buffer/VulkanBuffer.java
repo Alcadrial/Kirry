@@ -7,16 +7,19 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
+import java.util.concurrent.Future;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 
+import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.VulkanUtils;
 
 public class VulkanBuffer extends RawDeviceResource {
 	
@@ -26,10 +29,12 @@ public class VulkanBuffer extends RawDeviceResource {
 	}
 	
 	protected long memory;
+	private ByteBuffer map;
+	private int mappings;
+	
 	protected long offset;
 	protected int size;
-	protected Runnable closingMonitor;
-	private ByteBuffer map;
+	private VulkanBuffer parent;
 	private int usage;
 	
 	/**
@@ -44,12 +49,12 @@ public class VulkanBuffer extends RawDeviceResource {
 		offset = 0;
 		this.size = size;
 		this.usage = usage;
+		parent = null;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			vk = device.createBuffer(stack, size, usage);
 			memory = device.allocateBufferMemory(stack, vk, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		}
-		closingMonitor = this::closeOriginal;
 	}
 	
 	protected VulkanBuffer(Device device, int size, int usage, int flags)
@@ -58,12 +63,27 @@ public class VulkanBuffer extends RawDeviceResource {
 		offset = 0;
 		this.size = size;
 		this.usage = usage;
+		parent = null;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			vk = device.createBuffer(stack, size, usage);
 			memory = device.allocateBufferMemory(stack, vk, flags);
 		}
-		closingMonitor = this::closeOriginal;
+	}
+	
+	public VulkanBuffer(VulkanBuffer buffer, long offset, int usage, int size)
+	{
+		super(buffer.device);
+		this.offset = offset;
+		this.size = size;
+		this.usage = usage;
+		parent = buffer;
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			vk = device.createBuffer(stack, size, usage);
+			memory = buffer.memory;
+			VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), vk, memory, offset), "Failed to bind buffer memory");
+		}
 	}
 	
 	public VulkanBuffer(VulkanBuffer buffer, long offset, int size)
@@ -72,13 +92,13 @@ public class VulkanBuffer extends RawDeviceResource {
 		this.offset = offset;
 		this.size = size;
 		usage = buffer.usage;
+		parent = buffer;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			vk = device.createBuffer(stack, size, usage);
 			memory = buffer.memory;
 			VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), vk, memory, offset), "Failed to bind buffer memory");
 		}
-		closingMonitor = this::closeCopy;
 	}
 	
 	public byte[] getAllBytes()
@@ -111,15 +131,45 @@ public class VulkanBuffer extends RawDeviceResource {
 		return array;
 	}
 	
+	public synchronized Future<?> copyToBuffer(VulkanBuffer dstBuffer)
+	{
+		return copyToBuffer(0, 0, size, dstBuffer.vk);
+	}
+	
+	public synchronized Future<?> copyToBuffer(long offset, int size, VulkanBuffer dstBuffer)
+	{
+		return copyToBuffer(offset, offset, size, dstBuffer.vk);
+	}
+	
+	public synchronized Future<?> copyToBuffer(long srcOffset, long dstOffset, int size, VulkanBuffer dstBuffer)
+	{
+		return copyToBuffer(srcOffset, dstOffset, size, dstBuffer.vk);
+	}
+	
+	protected synchronized Future<?> copyToBuffer(long srcOffset, long dstOffset, int size, long dstBuffer)
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
+			VK10.vkCmdCopyBuffer(commandBuffer.getVk(), vk, dstBuffer, VulkanUtils.bufferCopy(stack, srcOffset, dstOffset, size));
+			return device.submitSingleUseCommandBuffer(stack, commandBuffer);
+		}
+	}
+	
 	private synchronized ByteBuffer getByteBuffer()
 	{
 		if (map == null)
 		{
-			try (MemoryStack stack = MemoryStack.stackPush())
+			if (parent != null) map = parent.getByteBuffer().position((int) offset);
+			else
 			{
-				PointerBuffer gpuData = stack.mallocPointer(1);
-				VulkanErrorUtils.assertNoError(VK10.vkMapMemory(device.getVk(), memory, 0, size, 0, gpuData), "Failed to map buffer memory");
-				map = gpuData.getByteBuffer((int) size);
+				try (MemoryStack stack = MemoryStack.stackPush())
+				{
+					PointerBuffer gpuData = stack.mallocPointer(1);
+					VulkanErrorUtils.assertNoError(VK10.vkMapMemory(device.getVk(), memory, offset, size, 0, gpuData), "Failed to map buffer memory");
+					map = gpuData.getByteBuffer((int) size);
+					mappings++;
+				}
 			}
 		}
 		return map;
@@ -164,8 +214,14 @@ public class VulkanBuffer extends RawDeviceResource {
 	{
 		if (map != null)
 		{
-			VK10.vkUnmapMemory(device.getVk(), memory);
-			map = null;
+			if (parent != null) parent.unmapBuffer();
+			else if (mappings <= 1)
+			{
+				mappings = 0;
+				VK10.vkUnmapMemory(device.getVk(), memory);
+				map = null;
+			}
+			else mappings--;
 		}
 	}
 	
@@ -210,10 +266,9 @@ public class VulkanBuffer extends RawDeviceResource {
 	@Override
 	public void close()
 	{
-		synchronized (closingMonitor)
-		{
-			closingMonitor.run();
-		}
+		if (map != null) unmapBuffer();
+		if (parent != null) closeCopy();
+		else closeOriginal();
 	}
 	
 	@Override

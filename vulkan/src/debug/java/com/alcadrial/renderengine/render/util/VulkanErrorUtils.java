@@ -1,5 +1,7 @@
 package com.alcadrial.renderengine.render.util;
 
+import java.util.function.Supplier;
+
 import org.lwjgl.vulkan.EXTDebugReport;
 import org.lwjgl.vulkan.EXTFullScreenExclusive;
 import org.lwjgl.vulkan.EXTImageCompressionControl;
@@ -12,7 +14,7 @@ import org.lwjgl.vulkan.KHRVideoQueue;
 import org.lwjgl.vulkan.NVGLSLShader;
 import org.lwjgl.vulkan.VK13;
 
-import com.alcadrial.renderengine.render.RenderEngine; 
+import com.alcadrial.renderengine.render.RenderEngine;
 
 public class VulkanErrorUtils {
 	
@@ -70,6 +72,11 @@ public class VulkanErrorUtils {
 	public static void assertStatement(boolean flag, String details)
 	{
 		if (!flag) throw new AssertionError(details);
+	}
+	
+	public static void assertNoError(int error, Supplier<String> details)
+	{
+		if (error < 0) throw new AssertionError(details.get() + ": " + getErrorString(error));
 	}
 	
 	public static void assertNoError(int error, String details)
