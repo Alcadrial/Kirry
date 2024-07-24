@@ -4,7 +4,7 @@ import java.nio.IntBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.util.Tracker;
@@ -17,11 +17,11 @@ public class VertexAccumulator {
 	}
 	
 	private GraphicsPipeline graphicsPipeline;
-	private VertexBuffer vertexBuffer;
+	private VulkanBuffer vertexBuffer;
 	private int bufferIndex;
 	private int index;
 	
-	public VertexAccumulator(GraphicsPipeline graphicsPipeline, VertexBuffer vertexBuffer)
+	public VertexAccumulator(GraphicsPipeline graphicsPipeline, VulkanBuffer vertexBuffer)
 	{
 		this.graphicsPipeline = graphicsPipeline;
 		this.vertexBuffer = vertexBuffer;
@@ -34,7 +34,7 @@ public class VertexAccumulator {
 	
 	public void end()
 	{
-		vertexBuffer.sendToPhysicalDevice();
+		//vertexBuffer.sendToPhysicalDevice();
 	}
 	
 	public class VertexBuilder extends AbstractVertexBuilder<VertexBuilder, VertexResult> {
@@ -79,11 +79,11 @@ public class VertexAccumulator {
 	
 	public class VertexResult implements IVertexResult {
 		
-		private VertexBuffer vertexBuffer;
+		private VulkanBuffer vertexBuffer;
 		private Map<ShaderVariable, Integer> inputs;
 		private int index;
 		
-		public VertexResult(VertexBuffer vertexBuffer, Map<ShaderVariable, Integer> inputs, int index)
+		public VertexResult(VulkanBuffer vertexBuffer, Map<ShaderVariable, Integer> inputs, int index)
 		{
 			this.vertexBuffer = vertexBuffer;
 			this.inputs = inputs;
@@ -97,7 +97,7 @@ public class VertexAccumulator {
 		}
 		
 		@Override
-		public VertexBuffer getBuffer()
+		public VulkanBuffer getBuffer()
 		{
 			return vertexBuffer;
 		}
@@ -112,11 +112,11 @@ public class VertexAccumulator {
 	private class InputTracker implements Tracker<int[]> {
 		
 		private int bufferIndex;
-		private VertexBuffer vertexBuffer;
+		private VulkanBuffer vertexBuffer;
 		private int size;
 		private boolean valid;
 		
-		public InputTracker(int index, VertexBuffer vertexBuffer, int size)
+		public InputTracker(int index, VulkanBuffer vertexBuffer, int size)
 		{
 			bufferIndex = index;
 			this.vertexBuffer = vertexBuffer;
@@ -139,7 +139,7 @@ public class VertexAccumulator {
 		@Override
 		public void flush()
 		{
-			vertexBuffer.sendToPhysicalDevice(bufferIndex, size);
+			//vertexBuffer.sendToPhysicalDevice(bufferIndex, size);
 		}
 		
 		@Override

@@ -68,6 +68,7 @@ public class VertexBuffer extends VulkanDoubleBuffer {
 		super(buffer, offset * 4, size * 4);
 	}
 	
+	@Override
 	public long getOffset()
 	{
 		return offset;
@@ -85,9 +86,9 @@ public class VertexBuffer extends VulkanDoubleBuffer {
 	}
 	
 	@Override
-	public synchronized Future<?> sendToPhysicalDevice(long dstBuffer)
+	public synchronized Future<?> sendToPhysicalDevice(VulkanBuffer dstBuffer)
 	{
-		return super.sendToPhysicalDevice(0, size, dstBuffer);
+		return copyToBuffer(0, size, dstBuffer);
 	}
 	
 	@Override

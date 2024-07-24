@@ -28,7 +28,6 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.buffer.BufferLayout;
-import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
@@ -67,8 +66,8 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 	private ModificationPlan modificationPlan;
 	private Device device;
 	private GraphicsPipeline graphicsPipeline;
-	private Map<Integer, List<VertexBuffer>> vertexBuffers;
-	private IndexBuffer indexBuffer;
+	private Map<Integer, List<VulkanBuffer>> vertexBuffers;
+	private VulkanBuffer indexBuffer;
 	private long[] descriptorSetLayouts;
 	private long[][] descriptorSets;
 	private long descriptorPool;
@@ -99,7 +98,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		}
 	}
 	
-	public VertexAccumulator accumulate(VertexBuffer vertexBuffer)
+	public VertexAccumulator accumulate(VulkanBuffer vertexBuffer)
 	{
 		return new VertexAccumulator(graphicsPipeline, vertexBuffer);
 	}
@@ -141,11 +140,11 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			commandBuffer.bindPipeline(graphicsPipeline);
-			for (Entry<Integer, List<VertexBuffer>> p : vertexBuffers.entrySet()) commandBuffer.bindVertexBuffers(p.getKey(), p.getValue());
+			for (Entry<Integer, List<VulkanBuffer>> p : vertexBuffers.entrySet()) commandBuffer.bindVertexBuffers(p.getKey(), p.getValue());
 			if (uniformBufferIndex >= 0) commandBuffer.bindDescriptorSets(graphicsPipeline, descriptorSets[uniformBufferIndex], new int[0]);
 			if (indexBuffer != null)
 			{
-				commandBuffer.bindIndexBuffer(indexBuffer, 0);
+				commandBuffer.bindIndexBuffer(indexBuffer, 0, VK10.VK_INDEX_TYPE_UINT32);
 				commandBuffer.drawIndexed((int) (indexBuffer.getSize() / 4), instanceCount, 0, 0, 0);
 			}
 			else
@@ -168,9 +167,14 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		return modificationPlan;
 	}
 	
-	public void addVertexBuffer(int binding, VertexBuffer vertexBuffer)
+	public void addVertexBuffer(int binding, VulkanBuffer vertexBuffer)
 	{
 		vertexBuffers.computeIfAbsent(binding, k -> new LinkedList<>()).add(vertexBuffer);
+	}
+	
+	public void addVertexBuffer(int binding, VertexBuffer vertexBuffer)
+	{
+		vertexBuffers.computeIfAbsent(binding, k -> new LinkedList<>()).add(vertexBuffer.getGpuBuffer());
 	}
 	
 	public void resetVertexBuffer(int binding)
@@ -178,7 +182,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		vertexBuffers.put(binding, new LinkedList<>());
 	}
 	
-	public void setIndexBuffer(IndexBuffer indexBuffer)
+	public void setIndexBuffer(VulkanBuffer indexBuffer)
 	{
 		this.indexBuffer = indexBuffer;
 	}
@@ -200,11 +204,11 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		Debug.print("DescriptorPool: " + Debug.address(descriptorPool));
 		Debug.print("VertexBuffers [");
 		Debug.indent();
-		for (Entry<Integer, List<VertexBuffer>> e : vertexBuffers.entrySet())
+		for (Entry<Integer, List<VulkanBuffer>> e : vertexBuffers.entrySet())
 		{
 			Debug.print("Binding " + e.getKey() + " [");
 			Debug.indent();
-			for (VertexBuffer vertexBuffer : e.getValue()) Debug.print("Buffer", vertexBuffer);
+			for (VulkanBuffer vertexBuffer : e.getValue()) Debug.print("Buffer", vertexBuffer);
 			Debug.deindent();
 			Debug.print("]");
 		}

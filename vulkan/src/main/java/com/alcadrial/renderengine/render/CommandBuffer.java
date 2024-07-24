@@ -17,7 +17,6 @@ import org.lwjgl.vulkan.VkViewport;
 
 import com.alcadrial.renderengine.core.util.NotYetImplementedException;
 import com.alcadrial.renderengine.core.util.Nullable;
-import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.pipeline.Pipeline;
@@ -67,9 +66,9 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		VK10.vkCmdBindDescriptorSets(vk, pipeline.bindPoint(), pipeline.getLayout().getVk(), 0, descriptorSets, dynamicOffsets);
 	}
 	
-	public synchronized void bindIndexBuffer(IndexBuffer buffer, long offset)
+	public synchronized void bindIndexBuffer(VulkanBuffer buffer, long offset, int indexType)
 	{
-		VK10.vkCmdBindIndexBuffer(vk, buffer.getGpuVk(), offset, buffer.getIndexType());
+		VK10.vkCmdBindIndexBuffer(vk, buffer.getVk(), offset, indexType);
 	}
 	
 	public synchronized void bindVertexBuffers(int bindingOffset, VertexBuffer... buffers)
@@ -77,9 +76,9 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		bindVertexBuffers(bindingOffset, List.of(buffers));
 	}
 	
-	public synchronized void bindVertexBuffers(int bindingOffset, List<VertexBuffer> buffers)
+	public synchronized void bindVertexBuffers(int bindingOffset, List<VulkanBuffer> buffers)
 	{
-		VK10.vkCmdBindVertexBuffers(vk, bindingOffset, buffers.stream().mapToLong(VertexBuffer::getGpuVk).toArray(), buffers.stream().mapToLong(VertexBuffer::getOffset).toArray());
+		VK10.vkCmdBindVertexBuffers(vk, bindingOffset, buffers.stream().mapToLong(VulkanBuffer::getVk).toArray(), new long[buffers.size()]);
 	}
 	
 	/**

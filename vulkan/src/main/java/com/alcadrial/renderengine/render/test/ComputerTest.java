@@ -332,7 +332,7 @@ public class ComputerTest extends RenderTest {
 			vertexBuffer.sendToPhysicalDevice().get();
 			indexBuffer.sendToPhysicalDevice().get();
 			storageBuffer0.sendToPhysicalDevice().get();
-			storageBuffer0.sendToPhysicalDevice(storageBuffer1.getGpuVk()).get();
+			storageBuffer0.sendToPhysicalDevice(storageBuffer1.getGpuBuffer()).get();
 		}
 		catch (Exception e)
 		{

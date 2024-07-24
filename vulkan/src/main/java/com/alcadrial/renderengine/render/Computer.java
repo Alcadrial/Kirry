@@ -70,14 +70,14 @@ public class Computer implements AutoCloseable, VulkanDebug {
 	
 	public void setInputBuffer(VertexBuffer inputBuffer, BufferLayout layout)
 	{
-		assert (inputBuffer.getGpuUsage() & VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0 : "Only Storage Buffers can be used in compute";
+		assert (inputBuffer.getGpuBuffer().getUsage() & VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0 : "Only Storage Buffers can be used in compute";
 		this.inputBuffer = inputBuffer;
 		inputLayout = layout;
 	}
 	
 	public void setOutputBuffer(VertexBuffer outputBuffer, BufferLayout layout)
 	{
-		assert (outputBuffer.getGpuUsage() & VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0 : "Only Storage Buffers can be used in compute";
+		assert (outputBuffer.getGpuBuffer().getUsage() & VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0 : "Only Storage Buffers can be used in compute";
 		this.outputBuffer = outputBuffer;
 		outputLayout = layout;
 	}
@@ -175,9 +175,9 @@ public class Computer implements AutoCloseable, VulkanDebug {
 			writeDescriptorSet.descriptorCount(1);
 			writeDescriptorSet.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
 			descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-			descriptorBufferInfo.buffer(inputBuffer.getGpuVk());
+			descriptorBufferInfo.buffer(inputBuffer.getGpuBuffer().getVk());
 			descriptorBufferInfo.offset(0);
-			descriptorBufferInfo.range(inputBuffer.getGpuSize());
+			descriptorBufferInfo.range(inputBuffer.getSize());
 			writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
 			writeDescriptorSet.pImageInfo(null);
 			writeDescriptorSet.pTexelBufferView(null);
@@ -191,9 +191,9 @@ public class Computer implements AutoCloseable, VulkanDebug {
 			writeDescriptorSet.descriptorCount(1);
 			writeDescriptorSet.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
 			descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-			descriptorBufferInfo.buffer(outputBuffer.getGpuVk());
+			descriptorBufferInfo.buffer(outputBuffer.getGpuBuffer().getVk());
 			descriptorBufferInfo.offset(0);
-			descriptorBufferInfo.range(outputBuffer.getGpuSize());
+			descriptorBufferInfo.range(outputBuffer.getSize());
 			writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
 			writeDescriptorSet.pImageInfo(null);
 			writeDescriptorSet.pTexelBufferView(null);
@@ -214,8 +214,8 @@ public class Computer implements AutoCloseable, VulkanDebug {
 			VertexBuffer t = inputBuffer;
 			inputBuffer = outputBuffer;
 			outputBuffer = t;
-			sets.get(0).pBufferInfo().buffer(inputBuffer.getGpuVk());
-			sets.get(1).pBufferInfo().buffer(outputBuffer.getGpuVk());
+			sets.get(0).pBufferInfo().buffer(inputBuffer.getGpuBuffer().getVk());
+			sets.get(1).pBufferInfo().buffer(outputBuffer.getGpuBuffer().getVk());
 		});
 	}
 	

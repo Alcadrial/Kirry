@@ -377,7 +377,7 @@ public class ComputeTest extends RenderTest {
 			writeDescriptorSet.descriptorCount(1);
 			writeDescriptorSet.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
 			descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-			descriptorBufferInfo.buffer(storageBuffer0.getGpuVk());
+			descriptorBufferInfo.buffer(storageBuffer0.getGpuBuffer().getVk());
 			descriptorBufferInfo.offset(0);
 			descriptorBufferInfo.range(4 * 12 * PARTICLE_COUNT);
 			writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
@@ -393,7 +393,7 @@ public class ComputeTest extends RenderTest {
 			writeDescriptorSet.descriptorCount(1);
 			writeDescriptorSet.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
 			descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-			descriptorBufferInfo.buffer(storageBuffer1.getGpuVk());
+			descriptorBufferInfo.buffer(storageBuffer1.getGpuBuffer().getVk());
 			descriptorBufferInfo.offset(0);
 			descriptorBufferInfo.range(4 * 12 * PARTICLE_COUNT);
 			writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
@@ -477,7 +477,7 @@ public class ComputeTest extends RenderTest {
 			vertexBuffer.sendToPhysicalDevice().get();
 			indexBuffer.sendToPhysicalDevice().get();
 			storageBuffer0.sendToPhysicalDevice().get();
-			storageBuffer0.sendToPhysicalDevice(storageBuffer1.getGpuVk()).get();
+			storageBuffer0.sendToPhysicalDevice(storageBuffer1.getGpuBuffer()).get();
 		}
 		catch (Exception e)
 		{
@@ -635,8 +635,8 @@ public class ComputeTest extends RenderTest {
 				
 				window.swapBuffers(commandBuffer, () -> {
 					computeStorageBufferLayout.update(sets -> {
-						sets.get(I++ % 2).pBufferInfo().buffer(storageBuffer0.getGpuVk());
-						sets.get(I % 2).pBufferInfo().buffer(storageBuffer1.getGpuVk());
+						sets.get(I++ % 2).pBufferInfo().buffer(storageBuffer0.getGpuBuffer().getVk());
+						sets.get(I % 2).pBufferInfo().buffer(storageBuffer1.getGpuBuffer().getVk());
 					});
 					computeUniformBufferLayout.set(ENLAPSED_TIME, uniformBuffer, (float) enlapsedTimeSeconds);
 					computeUniformBufferLayout.updateDescriptorSets();

@@ -11,6 +11,7 @@ import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.VertexAccumulator;
 import com.alcadrial.renderengine.render.VertexAccumulator.VertexResult;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.util.Tracker;
 
@@ -61,7 +62,7 @@ public class RenderingDataUtils {
 		accumulator.end();
 	}
 	
-	public static OrthoCubeVertexResult loadOrthoCube(Renderer renderer, VertexBuffer vertexBuffer, Vector3f start, Vector3f end, BiFunction<Integer, Integer, Color> color)
+	public static OrthoCubeVertexResult loadOrthoCube(Renderer renderer, VulkanBuffer vertexBuffer, Vector3f start, Vector3f end, BiFunction<Integer, Integer, Color> color)
 	{
 		float sX = start.x();
 		float sY = start.y();
