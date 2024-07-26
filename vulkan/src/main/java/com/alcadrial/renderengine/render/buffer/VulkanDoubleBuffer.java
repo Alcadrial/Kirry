@@ -33,7 +33,7 @@ public class VulkanDoubleBuffer extends VulkanBuffer {
 	protected VulkanDoubleBuffer(Device device, int size, int localUsage, int gpuUsage)
 	{
 		super(device, size, localUsage, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-		gpuBuffer = new VulkanBuffer(device, size, gpuUsage);
+		gpuBuffer = new VulkanBuffer(device, size, gpuUsage, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	}
 	
 	protected VulkanDoubleBuffer(VulkanDoubleBuffer buffer, long offset, int size)
