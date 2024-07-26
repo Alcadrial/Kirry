@@ -1,6 +1,5 @@
 package com.alcadrial.renderengine.render.test.buffer;
 
-import java.io.File;
 import java.io.IOException;
 import java.math.RoundingMode;
 import java.nio.FloatBuffer;
@@ -381,10 +380,5 @@ public class StaticBigBufferTest extends RenderTest {
 			MONITOR.notify();
 		}
 		RenderEngine.terminate();
-	}
-	
-	public static File getFile(String path)
-	{
-		return new File(Properties.RESOURCE_PATH.getValue(), "assets/renderengine/" + path);
 	}
 }

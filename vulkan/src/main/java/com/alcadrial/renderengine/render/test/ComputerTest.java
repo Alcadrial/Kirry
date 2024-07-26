@@ -273,9 +273,9 @@ public class ComputerTest extends RenderTest {
 		}
 		
 		indexBuffer = new IndexBuffer(2064);
-		renderer.addVertexBuffer(0, vertexBuffer);
-		renderer.addVertexBuffer(1, storageBuffer0);
-		renderer.setIndexBuffer(indexBuffer);
+		renderer.addVertexBuffer(0, vertexBuffer.getGpuBuffer());
+		renderer.addVertexBuffer(1, storageBuffer0.getGpuBuffer());
+		renderer.setIndexBuffer(indexBuffer.getGpuBuffer());
 		renderer.updateUniformBuffers((b, l) -> {
 			l.set(PROJECTION, b, buildProjectionMatrix(window));
 		});

@@ -19,13 +19,15 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 	
 	private int remoteAllocationOffset;
 	private int localAllocationOffset;
-	protected LinkedList<Slot<?>> slots;
+	protected LinkedList<Slot<?>> localSlots;
+	protected LinkedList<Slot<?>> remoteSlots;
 	
 	public StaticBigBuffer(Device device, int size)
 	{
 		super(device, size, 0);
 		remoteAllocationOffset = 0;
-		slots = new LinkedList<>();
+		localSlots = new LinkedList<>();
+		remoteSlots = new LinkedList<>();
 	}
 	
 	@Override
@@ -35,16 +37,19 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 		
 		VulkanBuffer bigBuffer;
 		int allocationOffset;
+		LinkedList<Slot<?>> slots;
 		
 		if (isLocalBufferingActive())
 		{
 			bigBuffer = localBigBuffer;
 			allocationOffset = localAllocationOffset;
+			slots = localSlots;
 		}
 		else
 		{
 			bigBuffer = remoteBigBuffer;
 			allocationOffset = remoteAllocationOffset;
+			slots = remoteSlots;
 		}
 		
 		if (bigBuffer.size >= allocationOffset + size)
@@ -88,15 +93,23 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 	@Override
 	public void sync()
 	{
-		for (Slot<?> slot : slots) slot.getBuffer().close();
+		
 	}
 	
 	@Override
 	public void clear()
 	{
-		localAllocationOffset = 0;
-		remoteAllocationOffset = 0;
-		for (Slot<?> slot : slots) slot.getBuffer().close();
-		slots.clear();
+		if (isLocalBufferingActive())
+		{
+			localAllocationOffset = 0;
+			for (Slot<?> slot : localSlots) slot.getBuffer().close();
+			localSlots.clear();
+		}
+		else
+		{
+			remoteAllocationOffset = 0;
+			for (Slot<?> slot : remoteSlots) slot.getBuffer().close();
+			remoteSlots.clear();
+		}
 	}
 }

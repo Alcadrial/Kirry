@@ -67,11 +67,17 @@ public abstract class BigVulkanBuffer implements AutoCloseable {
 			return allocate(remoteBuffer.size, remoteBuffer.getUsage());
 		}
 		
+		public VulkanBuffer mapLocal(VulkanBuffer remoteBuffer, int localSize)
+		{
+			return allocate(localSize, remoteBuffer.getUsage());
+		}
+		
 		@Override
 		public void close()
 		{
 			synchronized (BigVulkanBuffer.this)
 			{
+				clear();
 				localBigBuffer.close();
 				localBigBuffer = null;
 			}
