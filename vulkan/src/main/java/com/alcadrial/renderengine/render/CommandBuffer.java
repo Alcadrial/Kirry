@@ -2,6 +2,7 @@ package com.alcadrial.renderengine.render;
 
 import java.util.List;
 
+import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkBufferMemoryBarrier;
@@ -29,13 +30,16 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	{
 		RenderEngine.assertLoaded();
 	}
-	private boolean isRecording;
 	
-	public CommandBuffer(Device device, VkCommandBuffer commandBuffer)
+	private boolean isRecording;
+	private CommandPool pool;
+	
+	public CommandBuffer(Device device, CommandPool pool, VkCommandBuffer commandBuffer)
 	{
 		super(device);
 		vk = commandBuffer;
 		isRecording = false;
+		this.pool = pool;
 	}
 	
 	public synchronized boolean startRecording()
@@ -45,7 +49,10 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		{
 			VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.calloc(stack);
 			beginInfo.sType(VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
-			if (VK10.vkBeginCommandBuffer(vk, beginInfo) < 0) return false;
+			synchronized (pool)
+			{
+				if (VK10.vkBeginCommandBuffer(vk, beginInfo) < 0) return false;
+			}
 		}
 		isRecording = true;
 		return true;
@@ -53,32 +60,52 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	
 	public synchronized void beginRenderPass(VkRenderPassBeginInfo renderPassBeginInfo, int subpassContents)
 	{
-		VK10.vkCmdBeginRenderPass(vk, renderPassBeginInfo, subpassContents);
+		synchronized (pool)
+		{
+			VK10.vkCmdBeginRenderPass(vk, renderPassBeginInfo, subpassContents);
+		}
 	}
 	
 	public synchronized void bindPipeline(Pipeline pipeline)
 	{
-		VK10.vkCmdBindPipeline(vk, pipeline.bindPoint(), pipeline.getVk());
+		synchronized (pool)
+		{
+			VK10.vkCmdBindPipeline(vk, pipeline.bindPoint(), pipeline.getVk());
+		}
 	}
 	
 	public synchronized void bindDescriptorSets(Pipeline pipeline, long[] descriptorSets, int[] dynamicOffsets)
 	{
-		VK10.vkCmdBindDescriptorSets(vk, pipeline.bindPoint(), pipeline.getLayout().getVk(), 0, descriptorSets, dynamicOffsets);
+		synchronized (pool)
+		{
+			VK10.vkCmdBindDescriptorSets(vk, pipeline.bindPoint(), pipeline.getLayout().getVk(), 0, descriptorSets, dynamicOffsets);
+		}
 	}
 	
 	public synchronized void bindIndexBuffer(VulkanBuffer buffer, long offset, int indexType)
 	{
-		VK10.vkCmdBindIndexBuffer(vk, buffer.getVk(), offset, indexType);
+		synchronized (pool)
+		{
+			VK10.vkCmdBindIndexBuffer(vk, buffer.getVk(), offset, indexType);
+		}
 	}
 	
-	public synchronized void bindVertexBuffers(int bindingOffset, VertexBuffer... buffers)
+	public void bindVertexBuffers(int bindingOffset, VertexBuffer... buffers)
 	{
 		bindVertexBuffers(bindingOffset, List.of(buffers));
 	}
 	
-	public synchronized void bindVertexBuffers(int bindingOffset, List<VulkanBuffer> buffers)
+	public void bindVertexBuffers(int bindingOffset, List<VulkanBuffer> buffers)
 	{
-		VK10.vkCmdBindVertexBuffers(vk, bindingOffset, buffers.stream().mapToLong(VulkanBuffer::getVk).toArray(), new long[buffers.size()]);
+		bindVertexBuffers(bindingOffset, buffers.stream().mapToLong(VulkanBuffer::getVk).toArray());
+	}
+	
+	private synchronized void bindVertexBuffers(int bindingOffset, long... buffers)
+	{
+		synchronized (pool)
+		{
+			VK10.vkCmdBindVertexBuffers(vk, bindingOffset, buffers, new long[buffers.length]);
+		}
 	}
 	
 	/**
@@ -94,7 +121,12 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VK10.vkCmdClearAttachments(vk, VulkanUtils.toBuffer(stack, clearAttachments, VkClearAttachment::calloc), VulkanUtils.toBuffer(stack, clearRects, VkClearRect::calloc));
+			VkClearAttachment.Buffer clearAttachmentsBuffer = VulkanUtils.toBuffer(stack, clearAttachments, VkClearAttachment::calloc);
+			VkClearRect.Buffer clearRectsBuffer = VulkanUtils.toBuffer(stack, clearRects, VkClearRect::calloc);
+			synchronized (pool)
+			{
+				VK10.vkCmdClearAttachments(vk, clearAttachmentsBuffer, clearRectsBuffer);
+			}
 		}
 	}
 	
@@ -120,50 +152,78 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	
 	public synchronized void dispatch(int groupCountX, int groupCountY, int groupCountZ)
 	{
-		VK10.vkCmdDispatch(vk, groupCountX, groupCountY, groupCountZ);
+		synchronized (pool)
+		{
+			VK10.vkCmdDispatch(vk, groupCountX, groupCountY, groupCountZ);
+		}
 	}
 	
 	public synchronized void dispatchIndirect(VulkanBuffer buffer, long offset)
 	{
-		VK10.vkCmdDispatchIndirect(vk, buffer.getVk(), offset);
+		synchronized (pool)
+		{
+			VK10.vkCmdDispatchIndirect(vk, buffer.getVk(), offset);
+		}
 	}
 	
 	public synchronized void draw(int vertexCount, int instanceCount, int vertexOffset, int instanceOffset)
 	{
-		VK10.vkCmdDraw(vk, vertexCount, instanceCount, vertexOffset, instanceOffset);
+		synchronized (pool)
+		{
+			VK10.vkCmdDraw(vk, vertexCount, instanceCount, vertexOffset, instanceOffset);
+		}
 	}
 	
 	public synchronized void drawIndexed(int indexCount, int instanceCount, int indexOffset, int vertexOffset, int instanceOffset)
 	{
-		VK10.vkCmdDrawIndexed(vk, indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
+		synchronized (pool)
+		{
+			VK10.vkCmdDrawIndexed(vk, indexCount, instanceCount, indexOffset, vertexOffset, instanceOffset);
+		}
 	}
 	
 	public synchronized void drawIndirect(VulkanBuffer buffer, long offset, int drawCount, int stride)
 	{
-		VK10.vkCmdDrawIndirect(vk, buffer.getVk(), offset, drawCount, stride);
+		synchronized (pool)
+		{
+			VK10.vkCmdDrawIndirect(vk, buffer.getVk(), offset, drawCount, stride);
+		}
 	}
 	
 	public synchronized void drawIndexedIndirect(VulkanBuffer buffer, long offset, int drawCount, int stride)
 	{
-		VK10.vkCmdDrawIndexedIndirect(vk, buffer.getVk(), offset, drawCount, stride);
+		synchronized (pool)
+		{
+			VK10.vkCmdDrawIndexedIndirect(vk, buffer.getVk(), offset, drawCount, stride);
+		}
 	}
 	
 	public synchronized void endRenderPass()
 	{
-		VK10.vkCmdEndRenderPass(vk);
+		synchronized (pool)
+		{
+			VK10.vkCmdEndRenderPass(vk);
+		}
 	}
 	
 	public synchronized void executeCommands(List<CommandBuffer> commands)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VK10.vkCmdExecuteCommands(vk, VulkanUtils.toAddressBuffer(stack, commands));
+			PointerBuffer buffer = VulkanUtils.toAddressBuffer(stack, commands);
+			synchronized (pool)
+			{
+				VK10.vkCmdExecuteCommands(vk, buffer);
+			}
 		}
 	}
 	
 	public synchronized void fillBuffer(VulkanBuffer buffer, long offset, long size, int value)
 	{
-		VK10.vkCmdFillBuffer(vk, buffer.getVk(), offset, size, value);
+		synchronized (pool)
+		{
+			VK10.vkCmdFillBuffer(vk, buffer.getVk(), offset, size, value);
+		}
 	}
 	
 	/**
@@ -172,12 +232,18 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	 */
 	public synchronized void nextSubpass(int subpassContents)
 	{
-		VK10.vkCmdNextSubpass(vk, subpassContents);
+		synchronized (pool)
+		{
+			VK10.vkCmdNextSubpass(vk, subpassContents);
+		}
 	}
 	
 	public synchronized void pipelineBarrier(int srcStageMask, int dstStageMask, int dependencyFlags, @Nullable VkMemoryBarrier.Buffer memoryBarriers, @Nullable VkBufferMemoryBarrier.Buffer bufferMemoryBarriers, @Nullable VkImageMemoryBarrier.Buffer imageMemoryBarriers)
 	{
-		VK10.vkCmdPipelineBarrier(vk, srcStageMask, dstStageMask, dependencyFlags, memoryBarriers, bufferMemoryBarriers, imageMemoryBarriers);
+		synchronized (pool)
+		{
+			VK10.vkCmdPipelineBarrier(vk, srcStageMask, dstStageMask, dependencyFlags, memoryBarriers, bufferMemoryBarriers, imageMemoryBarriers);
+		}
 	}
 	
 	// pushConstants
@@ -230,43 +296,55 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		throw new NotYetImplementedException();
 	}
 	
-	public synchronized void setScissor(int x, int y, int width, int height)
+	public void setScissor(int x, int y, int width, int height)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VK10.vkCmdSetScissor(vk, 0, VulkanUtils.rect2d(stack, x, y, width, height));
+			setScissor(VulkanUtils.rect2d(stack, x, y, width, height));
 		}
 	}
 	
 	public synchronized void setScissor(VkRect2D.Buffer scissors)
 	{
-		VK10.vkCmdSetScissor(vk, 0, scissors);
+		synchronized (pool)
+		{
+			VK10.vkCmdSetScissor(vk, 0, scissors);
+		}
 	}
 	
-	public synchronized void setViewport(int x, int y, int width, int height, int minZ, int maxZ)
+	public void setViewport(int x, int y, int width, int height, int minZ, int maxZ)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VK10.vkCmdSetViewport(vk, 0, VulkanUtils.viewport(stack, x, y, width, height, minZ, maxZ));
+			setViewport(VulkanUtils.viewport(stack, x, y, width, height, minZ, maxZ));
 		}
 	}
 	
 	public synchronized void setViewport(VkViewport.Buffer viewports)
 	{
-		VK10.vkCmdSetViewport(vk, 0, viewports);
+		synchronized (pool)
+		{
+			VK10.vkCmdSetViewport(vk, 0, viewports);
+		}
 	}
 	
 	public synchronized boolean endRecording()
 	{
 		if (!isRecording) return false;
-		VK10.vkEndCommandBuffer(vk);
+		synchronized (pool)
+		{
+			VK10.vkEndCommandBuffer(vk);
+		}
 		isRecording = false;
 		return true;
 	}
 	
 	public synchronized void reset()
 	{
-		VK10.vkResetCommandBuffer(vk, 0);
+		synchronized (pool)
+		{
+			VK10.vkResetCommandBuffer(vk, 0);
+		}
 	}
 	
 	public synchronized boolean isRecording()

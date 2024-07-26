@@ -12,8 +12,8 @@ import java.util.concurrent.Future;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkBufferCopy;
 
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -150,9 +150,10 @@ public class VulkanBuffer extends RawDeviceResource {
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer(stack);
-			VK10.vkCmdCopyBuffer(commandBuffer.getVk(), vk, dstBuffer, VulkanUtils.bufferCopy(stack, srcOffset, dstOffset, size));
-			return device.submitSingleUseCommandBuffer(stack, commandBuffer);
+			VkBufferCopy.Buffer copy = VulkanUtils.bufferCopy(stack, srcOffset, dstOffset, size);
+			return device.configureSingleUseCommandBuffer(stack, device.getGraphicsQueue(), commandBuffer -> {
+				VK10.vkCmdCopyBuffer(commandBuffer.getVk(), vk, dstBuffer, copy);
+			});
 		}
 	}
 	

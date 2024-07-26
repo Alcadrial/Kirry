@@ -300,15 +300,25 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		useResetCommandPool(pool -> VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, pool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, count), p), "Failed to create multi use command buffer"));
 		List<CommandBuffer> commandBuffers = new ArrayList<>(count);
 		
-		for (int i = 0; i < count; i++) commandBuffers.add(new CommandBuffer(this, new VkCommandBuffer(p.get(), vk)));
+		for (int i = 0; i < count; i++) commandBuffers.add(new CommandBuffer(this, resetCommandPool, new VkCommandBuffer(p.get(), vk)));
 		return commandBuffers;
+	}
+	
+	public Future<?> configureSingleUseCommandBuffer(MemoryStack stack, Queue queue, Consumer<CommandBuffer> configure)
+	{
+		PointerBuffer p = stack.callocPointer(1);
+		useShortLivedCommandPool(pool -> VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, pool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to create single use command buffer"));
+		CommandBuffer commandBuffer = new CommandBuffer(this, shortLivedCommandPool, new VkCommandBuffer(p.get(), vk));
+		VulkanErrorUtils.assertStatement(commandBuffer.startRecording(), "Failed to create single use command buffer");
+		useShortLivedCommandPool(pool -> configure.accept(commandBuffer));
+		return submitSingleUseCommandBuffer(stack, commandBuffer, queue);
 	}
 	
 	public CommandBuffer createSingleUseCommandBuffer(MemoryStack stack)
 	{
 		PointerBuffer p = stack.callocPointer(1);
 		useShortLivedCommandPool(pool -> VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, pool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to create single use command buffer"));
-		CommandBuffer commandBuffer = new CommandBuffer(this, new VkCommandBuffer(p.get(), vk));
+		CommandBuffer commandBuffer = new CommandBuffer(this, shortLivedCommandPool, new VkCommandBuffer(p.get(), vk));
 		VulkanErrorUtils.assertStatement(commandBuffer.startRecording(), "Failed to create single use command buffer");
 		return commandBuffer;
 	}
@@ -327,6 +337,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		return RenderEngine.getExecutor().submit(() -> {
 			waitForFences(fence);
 			useShortLivedCommandPool(pool -> VK10.vkFreeCommandBuffers(vk, pool, commandBuffer.getVk()));
+			destructionList.remove(commandBuffer);
 			destroyFence(fence);
 		});
 	}
