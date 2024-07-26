@@ -2,6 +2,7 @@ package com.alcadrial.renderengine.render.test;
 
 import java.io.IOException;
 import java.math.RoundingMode;
+import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.Random;
 
@@ -33,7 +34,6 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
-import com.alcadrial.renderengine.render.VertexAccumulator;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
@@ -41,8 +41,6 @@ import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.test.RenderingDataUtils.RectangleVertexResult;
-import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
@@ -53,20 +51,7 @@ public class Test2dPanel extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		TestProperties.init(args);
-		
-		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
-		
-		println("Render Engine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		
-		println("Start", Test2dPanel::start, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) return;
-		
-		println("Loop", Test2dPanel::loop, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) return;
-		
-		println("End", Test2dPanel::end, TestProperties.PRINT_LOADING_TIMES);
+		mainTest(args, Test2dPanel::start, Test2dPanel::loop, Test2dPanel::end);
 	}
 	
 	private static RenderPass renderPass;
@@ -177,28 +162,23 @@ public class Test2dPanel extends RenderTest {
 		
 		vertexBuffer = new VertexBuffer(7 * 4 * 512 * 512);
 		indexBuffer = new IndexBuffer(6 * 512 * 512);
-		renderer.addVertexBuffer(0, vertexBuffer);
-		renderer.setIndexBuffer(indexBuffer);
+		renderer.addVertexBuffer(0, vertexBuffer.getGpuBuffer());
+		renderer.setIndexBuffer(indexBuffer.getGpuBuffer());
 		
 		Random random = new Random();
-		VertexAccumulator vertexAccumulator = renderer.accumulate(vertexBuffer);
-		IntBuffer buffer = indexBuffer.asIntBuffer();
+		FloatBuffer buffer = vertexBuffer.asFloatBuffer();
+		IntBuffer buffer0 = indexBuffer.asIntBuffer();
+		int k = 0;
 		for (int i = -256; i < 256; i++)
 		{
 			for (int j = -256; j < 256; j++)
 			{
-				RectangleVertexResult result = RenderingDataUtils.loadRectangleXYZRGBA(vertexAccumulator, j, i, j + 1, i + 1, 0, random.nextFloat(255), random.nextFloat(255), random.nextFloat(255), random.nextFloat(255));
-				buffer.put(result.getR0().getIndex());
-				buffer.put(result.getR1().getIndex());
-				buffer.put(result.getR3().getIndex());
-				buffer.put(result.getR1().getIndex());
-				buffer.put(result.getR2().getIndex());
-				buffer.put(result.getR3().getIndex());
+				RenderingDataUtils.loadRectangleColor(buffer, buffer0, k, j, i, j + 1, i + 1, 0, random.nextFloat(), random.nextFloat(), random.nextFloat(), random.nextFloat());
+				k += 4;
 			}
 		}
-		vertexAccumulator.end();
+		vertexBuffer.sendToPhysicalDevice();
 		indexBuffer.sendToPhysicalDevice();
-		
 	}
 	
 	private static long time;

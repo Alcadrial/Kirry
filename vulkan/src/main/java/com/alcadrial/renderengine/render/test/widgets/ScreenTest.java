@@ -24,10 +24,8 @@ import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.test.RenderTest;
-import com.alcadrial.renderengine.render.test.TestProperties;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureRegion;
-import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.window.BlackScreen;
 import com.alcadrial.renderengine.render.window.Screen;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
@@ -37,20 +35,7 @@ public class ScreenTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		TestProperties.init(args);
-		
-		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
-		
-		println("Render Engine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		
-		println("Start", ScreenTest::start, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) return;
-		
-		println("Loop", ScreenTest::loop, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) return;
-		
-		println("End", ScreenTest::end, TestProperties.PRINT_LOADING_TIMES);
+		mainTest(args, ScreenTest::start, ScreenTest::loop, ScreenTest::end);
 	}
 	
 	private static final String SHADER = "shader0";
@@ -154,7 +139,7 @@ public class ScreenTest extends RenderTest {
 		s.add(new Sprite(window, Vector2i.of(296, 296), Vector2i.of(256, 256), new TextureRegion(textureKhishweTransparent, Vector2f.origin(), Vector2f.of(1, 1))));
 		SCREENS.add(s);
 		
-		window.setScreen(SCREENS.get(1));
+		window.setScreen(SCREENS.get(0));
 	}
 	
 	public static void loop()

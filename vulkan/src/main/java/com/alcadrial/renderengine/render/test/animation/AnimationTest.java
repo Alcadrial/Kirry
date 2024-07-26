@@ -62,8 +62,8 @@ public class AnimationTest extends RenderTest {
 	private static final String LIGHT_INTENSITY = "LIGHT_INTENSITY";
 	private static final String SPACE_FOG_INTENSITY = "SPACE_FOG_INTENSITY";
 	
-	private static final int PRECISION = 8192;
-	private static final int CUBES = 64;
+	private static final int PRECISION = 4096;
+	private static final int CUBES = 1024;
 	
 	public static void main(String[] args)
 	{

@@ -43,10 +43,8 @@ import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.test.RenderingDataUtils.RectangleVertexResult;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
-import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
@@ -58,20 +56,7 @@ public class TextureTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		TestProperties.init(args);
-		
-		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
-		
-		println("Render Engine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		
-		println("Start", TextureTest::start, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) return;
-		
-		println("Loop", TextureTest::loop, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) return;
-		
-		println("End", TextureTest::end, TestProperties.PRINT_LOADING_TIMES);
+		mainTest(args, TextureTest::start, TextureTest::loop, TextureTest::end);
 	}
 	
 	private static Renderer renderer;
@@ -210,18 +195,12 @@ public class TextureTest extends RenderTest {
 		
 		vertexBuffer = new VertexBuffer(28 * 4);
 		indexBuffer = new IndexBuffer(6 * 4);
-		renderer.addVertexBuffer(0, vertexBuffer);
-		renderer.setIndexBuffer(indexBuffer);
+		renderer.addVertexBuffer(0, vertexBuffer.getGpuBuffer());
+		renderer.setIndexBuffer(indexBuffer.getGpuBuffer());
 		
-		RectangleVertexResult result = RenderingDataUtils.sendRectangleXYZUV(renderer, vertexBuffer, -256, -256, 256, 256, 0, 0, 0, 1, 1);
+		RenderingDataUtils.loadRectangleUv(vertexBuffer.asFloatBuffer(), indexBuffer.asIntBuffer(), 0, -256, -256, 256, 256, 0, 0, 0, 1, 1);
 		
-		IntBuffer buffer = indexBuffer.asIntBuffer();
-		buffer.put(result.getR0().getIndex());
-		buffer.put(result.getR1().getIndex());
-		buffer.put(result.getR3().getIndex());
-		buffer.put(result.getR1().getIndex());
-		buffer.put(result.getR2().getIndex());
-		buffer.put(result.getR3().getIndex());
+		vertexBuffer.sendToPhysicalDevice();
 		indexBuffer.sendToPhysicalDevice();
 		
 		renderer.updateUniformBuffers((b, l) -> l.set(TEXTURE_SAMPLER_UNIFORM, texture.getView(), new TextureSampler(device)));
