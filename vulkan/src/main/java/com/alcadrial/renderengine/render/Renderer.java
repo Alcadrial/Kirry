@@ -441,7 +441,8 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 				storageBuffer = this.storageBuffer.require("Shaders require storages so a storage buffer is required");
 			}
 			
-			int minOffsetAlignment = (int) physicalDevice.get().getLimits().minUniformBufferOffsetAlignment();
+			int minUniformOffsetAlignment = (int) physicalDevice.get().getLimits().minUniformBufferOffsetAlignment();
+			int minStorageOffsetAlignment = (int) physicalDevice.get().getLimits().minStorageBufferOffsetAlignment();
 			
 			for (int i = 0; i < count; i++)
 			{
@@ -452,13 +453,18 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 				BufferLayout storageBufferLayout = new BufferLayout(device.get(), writeDescriptorSets, 0, lock);
 				if (useUniform) uniformBuffers.add(new Pair<>(uniformBuffer, uniformBufferLayout));
 				
-				int offset = 0;
+				int uniformOffset = 0;
+				int storageOffset = 0;
 				int partialOffset = 0;
 				for (Entry<Integer, ShaderLayoutBinding> e : bindingFlags.entrySet())
 				{
-					if (offset % minOffsetAlignment != 0)
+					if (uniformOffset % minUniformOffsetAlignment != 0)
 					{
-						offset += minOffsetAlignment - offset % minOffsetAlignment;
+						uniformOffset += minUniformOffsetAlignment - uniformOffset % minUniformOffsetAlignment;
+					}
+					if (storageOffset % minStorageOffsetAlignment != 0)
+					{
+						storageOffset += minStorageOffsetAlignment - storageOffset % minStorageOffsetAlignment;
 					}
 					VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
 					writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
@@ -475,16 +481,16 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 						case UNIFORM_BUFFER -> {
 							VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
 							descriptorBufferInfo.buffer(uniformBuffer.getVk());
-							descriptorBufferInfo.offset(offset);
+							descriptorBufferInfo.offset(uniformOffset);
 							for (ShaderVariable variable : variables)
 							{
 								int size = variable.getType().getLength();
-								if (partialOffset > 0 && partialOffset + size > 16) offset += 16 - partialOffset;
-								uniformBufferLayout.mark(variable, offset / 4);
-								offset += size;
-								partialOffset = offset % 16;
+								if (partialOffset > 0 && partialOffset + size > 16) uniformOffset += 16 - partialOffset;
+								uniformBufferLayout.mark(variable, uniformOffset / 4);
+								uniformOffset += size;
+								partialOffset = uniformOffset % 16;
 							}
-							descriptorBufferInfo.range(offset - descriptorBufferInfo.offset());
+							descriptorBufferInfo.range(uniformOffset - descriptorBufferInfo.offset());
 							writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
 							writeDescriptorSet.pImageInfo(null);
 							writeDescriptorSet.pTexelBufferView(null);
@@ -492,13 +498,13 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 						case STORAGE_BUFFER -> {
 							VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
 							descriptorBufferInfo.buffer(storageBuffer.getVk());
-							descriptorBufferInfo.offset(offset);
+							descriptorBufferInfo.offset(storageOffset);
 							for (ShaderVariable variable : variables)
 							{
-								storageBufferLayout.mark(variable, offset / 4);
-								offset += variable.getType().getLength();
+								storageBufferLayout.mark(variable, storageOffset / 4);
+								storageOffset += variable.getType().getLength();
 							}
-							descriptorBufferInfo.range(offset - descriptorBufferInfo.offset());
+							descriptorBufferInfo.range(storageBuffer.getSize());
 							writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
 							writeDescriptorSet.pImageInfo(null);
 							writeDescriptorSet.pTexelBufferView(null);

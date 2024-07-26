@@ -64,7 +64,7 @@ public abstract class Pipeline extends RawDeviceResource {
 	@Override
 	public void close()
 	{
-		VK10.vkDestroyPipeline(device.getVk(), vk, null);
+		if (vk != null) VK10.vkDestroyPipeline(device.getVk(), vk, null);
 		super.close();
 	}
 }
