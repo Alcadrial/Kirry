@@ -29,6 +29,32 @@ public class RenderTest {
 	private static final String[] SEVERITIES = new String[] {"UNKNOWN", "VERBOSE", "INFO", "WARNING", "ERROR"};
 	private static final String[] TYPES = new String[] {"UNKNOWN", "GENERAL", "VALIDATION", "PERFORMANCE"};
 	
+	public static void mainTest(String[] args, Runnable start, Runnable loop, Runnable end)
+	{
+		TestProperties.init(args);
+		
+		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
+		
+		println("Render Engine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
+		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
+		
+		try
+		{
+			println("Start", start, TestProperties.PRINT_LOADING_TIMES);
+			if (!RenderEngine.isInitializated()) return;
+			
+			println("Loop", loop, TestProperties.PRINT_LOADING_TIMES);
+			if (!RenderEngine.isInitializated()) return;
+			
+			println("End", end, TestProperties.PRINT_LOADING_TIMES);
+		}
+		catch (Throwable t)
+		{
+			if (RenderEngine.isInitializated()) RenderEngine.terminate();
+			throw t;
+		}
+	}
+	
 	public static void initRenderEngine()
 	{
 		RenderEngine.Builder builder = RenderEngine.create("Test", new Version(0, 0, 1, 0));

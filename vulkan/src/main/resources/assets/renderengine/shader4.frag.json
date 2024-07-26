@@ -1,0 +1,33 @@
+{
+	"type": "frag",
+	"entryPoint": "main",
+	"layouts": [
+		{
+			"type": "uniformBuffer",
+			"binding": 1,
+			"variables": [
+				"vec3 LIGHT_POS",
+				"float LIGHT_INTENSITY",
+				"float SPACE_FOG_INTENSITY"
+			]
+		},
+		{
+			"type": "input",
+			"binding": 0,
+			"variables": [
+				{
+					"location": "0",
+					"declaration": "vec3 vertexPosition"
+				},
+				{
+					"location": "1",
+					"declaration": "vec4 color"
+				},
+				{
+					"location": "2",
+					"declaration": "vec3 originPosition"
+				}
+			]
+		}
+	]
+}
