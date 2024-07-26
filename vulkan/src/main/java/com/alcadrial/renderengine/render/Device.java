@@ -337,8 +337,8 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		return RenderEngine.getExecutor().submit(() -> {
 			waitForFences(fence);
 			useShortLivedCommandPool(pool -> VK10.vkFreeCommandBuffers(vk, pool, commandBuffer.getVk()));
-			destructionList.remove(commandBuffer);
 			destroyFence(fence);
+			commandBuffer.close();
 		});
 	}
 	

@@ -1,6 +1,5 @@
 package com.alcadrial.renderengine.render.test;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -61,7 +60,6 @@ import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
-import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.SphereDataCollector;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
@@ -78,20 +76,7 @@ public class ComputeTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		TestProperties.init(args);
-		
-		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
-		
-		println("Render Engine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		
-		println("Start", ComputeTest::start, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) return;
-		
-		println("Loop", ComputeTest::loop, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) return;
-		
-		println("End", ComputeTest::end, TestProperties.PRINT_LOADING_TIMES);
+		mainTest(args, ComputeTest::start, ComputeTest::loop, ComputeTest::end);
 	}
 	
 	private static final int DIM = 8;
@@ -413,9 +398,9 @@ public class ComputeTest extends RenderTest {
 		}
 		
 		indexBuffer = new IndexBuffer(2064);
-		renderer.addVertexBuffer(0, vertexBuffer);
-		renderer.addVertexBuffer(1, storageBuffer0);
-		renderer.setIndexBuffer(indexBuffer);
+		renderer.addVertexBuffer(0, vertexBuffer.getGpuBuffer());
+		renderer.addVertexBuffer(1, storageBuffer0.getGpuBuffer());
+		renderer.setIndexBuffer(indexBuffer.getGpuBuffer());
 		renderer.updateUniformBuffers((b, l) -> {
 			l.set(PROJECTION, b, buildProjectionMatrix(window));
 		});
@@ -660,10 +645,5 @@ public class ComputeTest extends RenderTest {
 			MONITOR.notify();
 		}
 		RenderEngine.terminate();
-	}
-	
-	public static File getFile(String path)
-	{
-		return new File(Properties.RESOURCE_PATH.getValue(), "assets/renderengine/" + path);
 	}
 }

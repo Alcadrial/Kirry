@@ -1,6 +1,5 @@
 package com.alcadrial.renderengine.render.test;
 
-import java.io.File;
 import java.io.IOException;
 import java.math.RoundingMode;
 
@@ -187,8 +186,8 @@ public class TestRendererRebuilding extends RenderTest {
 			
 			vertexBuffer = new VertexBuffer(device, 70);
 			indexBuffer = new IndexBuffer(device, 24);
-			renderer.addVertexBuffer(0, vertexBuffer);
-			renderer.setIndexBuffer(indexBuffer);
+			renderer.addVertexBuffer(0, vertexBuffer.getGpuBuffer());
+			renderer.setIndexBuffer(indexBuffer.getGpuBuffer());
 			renderer.updateUniformBuffers((b, l) -> l.set("TRANSFORMATION", b, new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
 			
 			VertexAccumulator vertexAccumulator = renderer.accumulate(vertexBuffer);
@@ -340,11 +339,6 @@ public class TestRendererRebuilding extends RenderTest {
 			{
 				MONITOR.notify();
 			}
-		}
-		
-		public static File getFile(String path)
-		{
-			return new File(Properties.RESOURCE_PATH.getValue(), "assets/renderengine/" + path);
 		}
 	}
 }

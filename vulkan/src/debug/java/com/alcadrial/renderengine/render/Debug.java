@@ -140,6 +140,7 @@ public class Debug {
 	
 	public static void debug(Object x)
 	{
+		debugOutput.print("[DEBUG] ");
 		debugOutput.println(x);
 	}
 	

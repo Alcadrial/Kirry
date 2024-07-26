@@ -1,6 +1,5 @@
 package com.alcadrial.renderengine.render.test;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -50,7 +49,6 @@ import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.SphereDataCollector;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
@@ -65,20 +63,7 @@ public class ComputerTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		TestProperties.init(args);
-		
-		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
-		
-		println("Render Engine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		
-		println("Start", ComputerTest::start, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) return;
-		
-		println("Loop", ComputerTest::loop, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) return;
-		
-		println("End", ComputerTest::end, TestProperties.PRINT_LOADING_TIMES);
+		mainTest(args, ComputerTest::start, ComputerTest::loop, ComputerTest::end);
 	}
 	
 	private static final int DIM = 8;
@@ -492,10 +477,5 @@ public class ComputerTest extends RenderTest {
 			MONITOR.notify();
 		}
 		RenderEngine.terminate();
-	}
-	
-	public static File getFile(String path)
-	{
-		return new File(Properties.RESOURCE_PATH.getValue(), "assets/renderengine/" + path);
 	}
 }

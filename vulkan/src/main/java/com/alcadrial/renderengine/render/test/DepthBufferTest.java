@@ -1,9 +1,7 @@
 package com.alcadrial.renderengine.render.test;
 
-import java.io.File;
 import java.io.IOException;
 import java.math.RoundingMode;
-import java.nio.IntBuffer;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
@@ -38,7 +36,6 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
-import com.alcadrial.renderengine.render.VertexAccumulator.VertexResult;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
@@ -46,8 +43,6 @@ import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.test.RenderingDataUtils.OrthoCubeVertexResult;
-import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class DepthBufferTest extends RenderTest {
@@ -61,20 +56,7 @@ public class DepthBufferTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		TestProperties.init(args);
-		
-		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
-		
-		println("Render Engine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		
-		println("Start", DepthBufferTest::start, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) return;
-		
-		println("Loop", DepthBufferTest::loop, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) return;
-		
-		println("End", DepthBufferTest::end, TestProperties.PRINT_LOADING_TIMES);
+		mainTest(args, DepthBufferTest::start, DepthBufferTest::loop, DepthBufferTest::end);
 	}
 	
 	private static RenderPass renderPass;
@@ -195,8 +177,8 @@ public class DepthBufferTest extends RenderTest {
 		
 		vertexBuffer = new VertexBuffer(240);
 		indexBuffer = new IndexBuffer(36);
-		renderer.addVertexBuffer(0, vertexBuffer);
-		renderer.setIndexBuffer(indexBuffer);
+		renderer.addVertexBuffer(0, vertexBuffer.getGpuBuffer());
+		renderer.setIndexBuffer(indexBuffer.getGpuBuffer());
 		renderer.updateUniformBuffers((b, l) -> {
 			l.set(PROJECTION, b, buildProjectionMatrix(window));
 			l.set(MODEL, b, buildModelMatrix());
@@ -214,20 +196,9 @@ public class DepthBufferTest extends RenderTest {
 			Color.VERY_LIGHT_BLUE
 		};
 		
-		OrthoCubeVertexResult result = RenderingDataUtils.loadOrthoCube(renderer, vertexBuffer, Vector3f.of(-1, -1, -1), Vector3f.of(1, 1, 1), (i, j) -> colors[i]);
+		RenderingDataUtils.loadOrthoCube(vertexBuffer, 0, indexBuffer, 0, 0, Vector3f.of(-1, -1, -1), Vector3f.of(1, 1, 1), (i, j) -> colors[i]);
 		
-		IntBuffer buffer = indexBuffer.asIntBuffer();
-		result.foreach(rResult -> {
-			VertexResult result0 = rResult.getR0();
-			VertexResult result1 = rResult.getR1();
-			VertexResult result2 = rResult.getR2();
-			VertexResult result3 = rResult.getR3();
-			
-			buffer.put(new int[] {
-				result0.getIndex(), result1.getIndex(), result3.getIndex(),
-				result1.getIndex(), result2.getIndex(), result3.getIndex(),
-			});
-		});
+		vertexBuffer.sendToPhysicalDevice();
 		indexBuffer.sendToPhysicalDevice();
 	}
 	
@@ -328,10 +299,5 @@ public class DepthBufferTest extends RenderTest {
 			MONITOR.notify();
 		}
 		RenderEngine.terminate();
-	}
-	
-	public static File getFile(String path)
-	{
-		return new File(Properties.RESOURCE_PATH.getValue(), "assets/renderengine/" + path);
 	}
 }

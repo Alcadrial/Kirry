@@ -3,7 +3,6 @@ package com.alcadrial.renderengine.render.test.buffer;
 import java.io.IOException;
 import java.math.RoundingMode;
 import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
@@ -37,7 +36,6 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
-import com.alcadrial.renderengine.render.VertexAccumulator.VertexResult;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.BigVulkanBuffer.PhysicalDeviceTranferState;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
@@ -48,11 +46,9 @@ import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.test.InstancingCustomGraphicsPipeline;
 import com.alcadrial.renderengine.render.test.RenderTest;
 import com.alcadrial.renderengine.render.test.RenderingDataUtils;
-import com.alcadrial.renderengine.render.test.RenderingDataUtils.OrthoCubeVertexResult;
 import com.alcadrial.renderengine.render.test.TestProperties;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.OutOfSpaceException;
-import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class StaticBigBufferTest extends RenderTest {
@@ -66,28 +62,7 @@ public class StaticBigBufferTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		TestProperties.init(args);
-		
-		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
-		
-		println("Render Engine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		
-		try
-		{
-			println("Start", StaticBigBufferTest::start, TestProperties.PRINT_LOADING_TIMES);
-			if (!RenderEngine.isInitializated()) return;
-			
-			println("Loop", StaticBigBufferTest::loop, TestProperties.PRINT_LOADING_TIMES);
-			if (!RenderEngine.isInitializated()) return;
-			
-			println("End", StaticBigBufferTest::end, TestProperties.PRINT_LOADING_TIMES);
-		}
-		catch (Throwable t)
-		{
-			if (RenderEngine.isInitializated()) RenderEngine.terminate();
-			throw t;
-		}
+		mainTest(args, StaticBigBufferTest::start, StaticBigBufferTest::loop, StaticBigBufferTest::end);
 	}
 	
 	private static RenderPass renderPass;
@@ -240,21 +215,7 @@ public class StaticBigBufferTest extends RenderTest {
 			VulkanBuffer localVertexBuffer0 = transfert.mapLocal(deviceVertexBuffer0);
 			VulkanBuffer localIndexBuffer = transfert.mapLocal(deviceIndexBuffer);
 			
-			OrthoCubeVertexResult result = RenderingDataUtils.loadOrthoCube(renderer, localVertexBuffer, Vector3f.of(-1, -1, -1), Vector3f.of(0, 0, 0), (i, j) -> colors[i]);
-			
-			IntBuffer buffer = localIndexBuffer.asIntBuffer();
-			result.foreach(rResult -> {
-				VertexResult result0 = rResult.getR0();
-				VertexResult result1 = rResult.getR1();
-				VertexResult result2 = rResult.getR2();
-				VertexResult result3 = rResult.getR3();
-				
-				buffer.put(new int[] {
-					result0.getIndex(), result1.getIndex(), result3.getIndex(),
-					result1.getIndex(), result2.getIndex(), result3.getIndex(),
-				});
-			});
-			buffer.rewind();
+			RenderingDataUtils.loadOrthoCube(localVertexBuffer, 0, localIndexBuffer, 0, 0, Vector3f.of(-1, -1, -1), Vector3f.of(0, 0, 0), (i, j) -> colors[i]);
 			
 			FloatBuffer buffer0 = localVertexBuffer0.asFloatBuffer();
 			for (int j = -size; j <= size; j += density) for (int k = -size; k <= size; k += density) buffer0.put(j).put(k).put(0);

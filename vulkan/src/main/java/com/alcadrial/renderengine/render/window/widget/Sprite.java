@@ -1,7 +1,5 @@
 package com.alcadrial.renderengine.render.window.widget;
 
-import java.nio.IntBuffer;
-
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
@@ -14,7 +12,6 @@ import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.test.RenderingDataUtils;
-import com.alcadrial.renderengine.render.test.RenderingDataUtils.RectangleVertexResult;
 import com.alcadrial.renderengine.render.texture.TextureRegion;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
@@ -52,15 +49,9 @@ public class Sprite extends AbstractWidget {
 		Vector3f pos = matrix.multiply(Vector4f.of(this.pos).xyz1()).xyz();
 		Vector2f end = matrix.multiply(Vector4f.of(this.pos.add(size)).xyz1()).xy();
 		
-		RectangleVertexResult result = RenderingDataUtils.sendRectangleXYZUV(renderer, buffer, pos.x(), pos.y(), end.x(), end.y(), 0, texture.getUvStart().x(), texture.getUvStart().y(), texture.getUvEnd().x(), texture.getUvEnd().y());
+		RenderingDataUtils.loadRectangleUv(buffer.asFloatBuffer(), indexBuffer.asIntBuffer(), 0, pos.x(), pos.y(), end.x(), end.y(), 0, texture.getUvStart().x(), texture.getUvStart().y(), texture.getUvEnd().x(), texture.getUvEnd().y());
 		
-		IntBuffer buffer = indexBuffer.asIntBuffer();
-		buffer.put(result.getR0().getIndex());
-		buffer.put(result.getR1().getIndex());
-		buffer.put(result.getR3().getIndex());
-		buffer.put(result.getR1().getIndex());
-		buffer.put(result.getR2().getIndex());
-		buffer.put(result.getR3().getIndex());
+		buffer.sendToPhysicalDevice();
 		indexBuffer.sendToPhysicalDevice();
 	}
 	
