@@ -36,36 +36,31 @@ public class ShaderUtils {
 						layoutBinding.setLayoutsVariables(new LinkedHashSet<>(combinedImageSamplerLayout.getVariables()));
 						layoutBinding.setDescriptorType(layout.getType());
 						
-						bindingFlags.merge(combinedImageSamplerLayout.getBinding(), layoutBinding, (v, w) -> {
-							v.getLayoutsVariables().addAll(w.getLayoutsVariables());
-							v.setStages(v.getStages() | w.getStages());
-							return v;
-						});
+						bindingFlags.merge(combinedImageSamplerLayout.getBinding(), layoutBinding, ShaderUtils::merge);
 					}
 					case UNIFORM_BUFFER -> {
 						ShaderUniformBufferLayout uniformBufferLayout = (ShaderUniformBufferLayout) layout;
 						layoutBinding.setLayoutsVariables(new LinkedHashSet<>(uniformBufferLayout.getVariables()));
 						layoutBinding.setDescriptorType(layout.getType());
-						bindingFlags.merge(uniformBufferLayout.getBinding(), layoutBinding, (v, w) -> {
-							v.getLayoutsVariables().addAll(w.getLayoutsVariables());
-							v.setStages(v.getStages() | w.getStages());
-							return v;
-						});
+						bindingFlags.merge(uniformBufferLayout.getBinding(), layoutBinding, ShaderUtils::merge);
 					}
 					case STORAGE_BUFFER -> {
 						ShaderStorageBufferLayout storageBufferLayout = (ShaderStorageBufferLayout) layout;
 						layoutBinding.setLayoutsVariables(new LinkedHashSet<>(storageBufferLayout.getVariables()));
 						layoutBinding.setDescriptorType(layout.getType());
 						
-						bindingFlags.merge(storageBufferLayout.getBinding(), layoutBinding, (v, w) -> {
-							v.getLayoutsVariables().addAll(w.getLayoutsVariables());
-							v.setStages(v.getStages() | w.getStages());
-							return v;
-						});
+						bindingFlags.merge(storageBufferLayout.getBinding(), layoutBinding, ShaderUtils::merge);
 					}
 				}
 			}
 		}
+	}
+	
+	private static ShaderLayoutBinding merge(ShaderLayoutBinding v, ShaderLayoutBinding w)
+	{
+		v.getLayoutsVariables().addAll(w.getLayoutsVariables());
+		v.setStages(v.getStages() | w.getStages());
+		return v;
 	}
 	
 	public static Buffer createDescriptorSetLayoutBindingBuffer(MemoryStack stack, Map<Integer, ShaderLayoutBinding> bindingFlags)

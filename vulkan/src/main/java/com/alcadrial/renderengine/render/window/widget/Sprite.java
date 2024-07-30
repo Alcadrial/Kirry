@@ -58,7 +58,7 @@ public class Sprite extends AbstractWidget {
 	@Override
 	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame)
 	{
-		renderer.updateUniformBuffers((b, l) -> {
+		renderer.updateUniforms((b, l) -> {
 			l.set("TRANSFORMATION", b, new Matrix4f());
 			l.set("TEXTURE_SAMPLER", texture.getTexture().getView(), new TextureSampler(buffer.getDevice()));
 		});

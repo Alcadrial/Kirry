@@ -5,6 +5,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -42,6 +43,7 @@ import com.alcadrial.renderengine.render.Swapchain;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBufferRange;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline.GraphicsPipelineBuildFunction;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
@@ -88,6 +90,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected DataElement<IndexBuffer> indexBuffer;
 	protected DataElement<VulkanBuffer> uniformBuffer;
 	protected DataElement<VulkanBuffer> storageBuffer;
+	protected DataElement<List<VulkanBufferRange>> bufferBindings;
 	protected DataElement<VkDescriptorSetLayoutBinding> descriptorSetLayoutBinding;
 	protected DataElement<Texture> depthTexture;
 	// VkPipelineColorBlendAttachmentState {
@@ -143,6 +146,8 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected DataElement<Float> minDepth;
 	protected DataElement<Float> maxDepth;
 	
+	private List<String> errors;
+	
 	protected DataAccumulator()
 	{
 		stack = MemoryStack.stackPush();
@@ -158,6 +163,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 				throw new IllegalStateException("The field \"" + field.getName() + "\" cannot be initialized, this cannot happen!", e);
 			}
 		}
+		errors = new LinkedList<>();
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -361,6 +367,17 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected SDA storageBuffer(@Nullable VulkanBuffer value)
 	{
 		storageBuffer.set(value);
+		return myself();
+	}
+	
+	protected SDA bufferBindings(@Nullable VulkanBufferRange... value)
+	{
+		return bufferBindings(Arrays.asList(value));
+	}
+	
+	protected SDA bufferBindings(@Nullable List<VulkanBufferRange> value)
+	{
+		bufferBindings.set(value);
 		return myself();
 	}
 	
@@ -751,6 +768,22 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		
 	}
 	
+	protected void addError(String error)
+	{
+		errors.add(error);
+	}
+	
+	protected void checkErrors()
+	{
+		if (!errors.isEmpty())
+		{
+			AccumulationException e = new AccumulationException(errors);
+			errors.clear();
+			e.setStackTrace(Arrays.copyOfRange(e.getStackTrace(), 2, e.getStackTrace().length));
+			throw e;
+		}
+	}
+	
 	@SuppressWarnings("unchecked")
 	protected SDA myself()
 	{
@@ -762,9 +795,33 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		stack.close();
 	}
 	
+	public static class AccumulationException extends RuntimeException {
+		
+		private List<String> errors;
+		
+		private static String message(List<String> errors)
+		{
+			int size = errors.size();
+			String message = size + " " + (size > 1 ? "errors" : "error") + " occurred while accumulating data:";
+			for (String error : errors) message += "\n\t\t" + error;
+			return message;
+		}
+		
+		public AccumulationException(List<String> errors)
+		{
+			super(message(errors));
+			this.errors = List.copyOf(errors);
+		}
+		
+		public List<String> getErrors()
+		{
+			return errors;
+		}
+	}
+	
 	protected class DataElement<T> {
 		
-		private static <E extends RuntimeException> E removeLastStackTrace(E e)
+		private static <E extends RuntimeException> E removeInternalStackTrace(E e)
 		{
 			StackTraceElement[] stackTrace = e.getStackTrace();
 			boolean flag = true;
@@ -802,7 +859,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 			}
 			catch (NullPointerException e)
 			{
-				throw removeLastStackTrace(e);
+				throw removeInternalStackTrace(e);
 			}
 		}
 		
@@ -814,7 +871,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 			}
 			catch (NullPointerException e)
 			{
-				throw removeLastStackTrace(e);
+				throw removeInternalStackTrace(e);
 			}
 		}
 		
@@ -842,7 +899,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 			}
 			catch (NullPointerException e)
 			{
-				throw removeLastStackTrace(e);
+				throw removeInternalStackTrace(e);
 			}
 			isModified = Objects.equals(data, this.data);
 			this.data = data;
@@ -856,7 +913,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 			}
 			catch (NullPointerException e)
 			{
-				throw removeLastStackTrace(e);
+				throw removeInternalStackTrace(e);
 			}
 			isModified = Objects.equals(data, this.data);
 			this.data = data;

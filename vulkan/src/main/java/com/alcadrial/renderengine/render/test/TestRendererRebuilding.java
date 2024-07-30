@@ -38,6 +38,7 @@ import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBufferRange;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
@@ -106,6 +107,7 @@ public class TestRendererRebuilding extends RenderTest {
 		private Renderer renderer;
 		private VertexBuffer vertexBuffer;
 		private IndexBuffer indexBuffer;
+		private VulkanBuffer uniformBuffer;
 		private float f;
 		private int i, j, k, l;
 		private int[] indices;
@@ -144,7 +146,7 @@ public class TestRendererRebuilding extends RenderTest {
 			});
 			window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 				System.out.println("Resized " + width + "x" + height);
-				renderer.updateUniformBuffers((b, l) -> l.set("TRANSFORMATION", b, new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
+				renderer.updateUniforms(uniformBuffer, l -> l.set("TRANSFORMATION", uniformBuffer, new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
 			});
 			window.setCallback((GLFWWindowRefreshCallbackI) w -> {
 				System.out.println("Refresh");
@@ -173,22 +175,24 @@ public class TestRendererRebuilding extends RenderTest {
 				}
 			});
 			
+			uniformBuffer = new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+			
 			Builder builder = Renderer.create();
 			builder.shaderProgram(shaderProgram);
 			builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 			builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
 			builder.lineWidth(2F);
-			builder.uniformBuffer(new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
+			builder.bufferBindings(new VulkanBufferRange(uniformBuffer, 0));
 			builder.dynamicViewport(false).dynamicScissor(false);
 			
 			renderPass = RenderPassTemplate.initColorTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
-			renderer = builder.build(device, window.getSurface().getSize(), renderPass, 3);
+			renderer = builder.build(device, window.getSurface().getSize(), renderPass);
 			
 			vertexBuffer = new VertexBuffer(device, 70);
 			indexBuffer = new IndexBuffer(device, 24);
 			renderer.addVertexBuffer(0, vertexBuffer.getGpuBuffer());
 			renderer.setIndexBuffer(indexBuffer.getGpuBuffer());
-			renderer.updateUniformBuffers((b, l) -> l.set("TRANSFORMATION", b, new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
+			renderer.updateUniforms(uniformBuffer, l -> l.set("TRANSFORMATION", uniformBuffer, new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
 			
 			VertexAccumulator vertexAccumulator = renderer.accumulate(vertexBuffer);
 			VertexResult result0 = vertexAccumulator.vertex(-200, 0, 0).color(0, 255, 0, 255).end();
@@ -223,8 +227,6 @@ public class TestRendererRebuilding extends RenderTest {
 			
 		}
 		
-		private long time;
-		
 		public void loop()
 		{
 			VulkanWindow window = RenderEngine.getVulkan().getWindow();
@@ -233,7 +235,7 @@ public class TestRendererRebuilding extends RenderTest {
 			long firstHighMilestone = 1000000000;
 			long firstMilestone = 1000000000 / maxfps;
 			
-			time = System.nanoTime();
+			long time = System.nanoTime();
 			long current;
 			long frame = 0;
 			long milestone = firstMilestone;
@@ -318,7 +320,6 @@ public class TestRendererRebuilding extends RenderTest {
 					renderPassBeginInfo.pClearValues(clearValues.rewind());
 					
 					commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
-					renderer.setUniformBufferIndex(window.getFrameIndex());
 					renderer.draw(commandBuffer);
 					commandBuffer.endRenderPass();
 					commandBuffer.endRecording();

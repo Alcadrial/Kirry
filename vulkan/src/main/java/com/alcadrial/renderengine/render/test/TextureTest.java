@@ -39,6 +39,7 @@ import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBufferRange;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
@@ -56,7 +57,7 @@ public class TextureTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, TextureTest::start, TextureTest::loop, TextureTest::end);
+		mainTest(args, TextureTest::start, () -> defaultLoop(TextureTest::loop), TextureTest::end);
 	}
 	
 	private static Renderer renderer;
@@ -64,7 +65,11 @@ public class TextureTest extends RenderTest {
 	private static Texture texture;
 	private static VertexBuffer vertexBuffer;
 	private static IndexBuffer indexBuffer;
+	private static VulkanBuffer uniformBuffer;
 	private static Vector2i panelPos;
+	
+	private static boolean isModifiedMatrix;
+	private static boolean isModified;
 	
 	public static void start()
 	{
@@ -183,13 +188,18 @@ public class TextureTest extends RenderTest {
 			return;
 		}
 		
+		uniformBuffer = new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		
 		Builder builder = Renderer.create();
 		builder.shaderProgram(shaderProgram);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-		builder.uniformBuffer(new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
+		builder.bufferBindings(
+				new VulkanBufferRange(uniformBuffer, 0),
+				new VulkanBufferRange(uniformBuffer, 0)//texture sampler
+		);
 		builder.dynamicViewport(false).dynamicScissor(false);
-		renderer = builder.build(device, window.getSurface().getSize(), renderPass, 3);
+		renderer = builder.build(device, window.getSurface().getSize(), renderPass);
 		
 		window.addSurfaceUpdateActions(surface -> renderer.startModificationPlan().size(surface.getSize()).submit());
 		
@@ -203,72 +213,22 @@ public class TextureTest extends RenderTest {
 		vertexBuffer.sendToPhysicalDevice();
 		indexBuffer.sendToPhysicalDevice();
 		
-		renderer.updateUniformBuffers((b, l) -> l.set(TEXTURE_SAMPLER_UNIFORM, texture.getView(), new TextureSampler(device)));
-	}
-	
-	private static long time;
-	private static boolean isModifiedMatrix;
-	private static boolean isModified;
-	
-	public static void loop()
-	{
-		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		renderer.updateUniforms(uniformBuffer, l -> l.set(TEXTURE_SAMPLER_UNIFORM, texture.getView(), new TextureSampler(device)));
 		
-		isModified = true;
 		isModifiedMatrix = true;
-		
-		int maxfps = 120;
-		long firstHighMilestone = 1000000000;
-		long firstMilestone = 1000000000 / maxfps;
-		
-		time = System.nanoTime();
-		long current;
-		long frame = 0;
-		long milestone = firstMilestone;
-		long highMilestone = firstHighMilestone;
-		
-		while (!window.shouldClose())
-		{
-			current = System.nanoTime();
-			long enlapsed = current - time;
-			long pauseTime = milestone - enlapsed;
-			if (pauseTime > 0)
-			{
-				try
-				{
-					synchronized (window)
-					{
-						window.wait(pauseTime / 1000000, (int) (pauseTime % 1000000));
-					}
-				}
-				catch (InterruptedException e)
-				{
-					e.printStackTrace(System.out);
-				}
-				continue;
-			}
-			milestone += (1 - pauseTime / firstMilestone) * firstMilestone;
-			if (enlapsed >= highMilestone)
-			{
-				window.setTitle("Test fps=" + frame);
-				frame = 0;
-				highMilestone += (enlapsed - highMilestone + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
-			}
-			println("Frame " + frame, TextureTest::frame, TestProperties.PRINT_FRAME_TIMES);
-			frame++;
-		}
+		isModified = true;
 	}
 	
-	public static void frame()
+	public static void loop(long time, long enlapsed)
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		if (isModifiedMatrix)
 		{
 			isModifiedMatrix = false;
-			renderer.updateUniformBuffers((b, l) -> {
+			renderer.updateUniforms(uniformBuffer, l -> {
 				Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
 				Matrix4f model = new Matrix4f().translateYTo(-10 * panelPos.y()).translateXTo(-10 * panelPos.x());
-				l.set(TRANSFORMATION_UNIFORM, b, orthographic.multiply(model).transpose());
+				l.set(TRANSFORMATION_UNIFORM, uniformBuffer, orthographic.multiply(model).transpose());
 			});
 		}
 		if (isModified)
@@ -298,7 +258,6 @@ public class TextureTest extends RenderTest {
 				renderPassBeginInfo.pClearValues(clearValues.rewind());
 				
 				commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
-				renderer.setUniformBufferIndex(window.getFrameIndex());
 				renderer.draw(commandBuffer);
 				commandBuffer.endRenderPass();
 				commandBuffer.endRecording();

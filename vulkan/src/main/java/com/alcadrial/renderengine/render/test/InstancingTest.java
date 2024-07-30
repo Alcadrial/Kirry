@@ -2,6 +2,7 @@ package com.alcadrial.renderengine.render.test;
 
 import java.io.IOException;
 import java.math.RoundingMode;
+import java.util.List;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
@@ -29,7 +30,6 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.axis.Axis;
 import com.alcadrial.renderengine.core.util.color.Color;
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -39,6 +39,7 @@ import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBufferRange;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
@@ -56,7 +57,7 @@ public class InstancingTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, InstancingTest::start, InstancingTest::loop, InstancingTest::end);
+		mainTest(args, InstancingTest::start, () -> defaultLoop(InstancingTest::loop), InstancingTest::end);
 	}
 	
 	private static RenderPass renderPass;
@@ -64,6 +65,7 @@ public class InstancingTest extends RenderTest {
 	private static VertexBuffer vertexBuffer;
 	private static VertexBuffer vertexBuffer0;
 	private static IndexBuffer indexBuffer;
+	private static VulkanBuffer uniformBuffer;
 	private static Texture depthTexture;
 	private static Vector3f lightPos;
 	private static double f;
@@ -128,7 +130,7 @@ public class InstancingTest extends RenderTest {
 		});
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			System.out.println("Resized " + width + "x" + height);
-			renderer.updateUniformBuffers((b, l) -> l.set(PROJECTION, b, buildProjectionMatrix(window)));
+			renderer.updateUniforms(uniformBuffer, l -> l.set(PROJECTION, uniformBuffer, buildProjectionMatrix(window)));
 		});
 		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
 			System.out.println("Refresh");
@@ -160,12 +162,12 @@ public class InstancingTest extends RenderTest {
 		window.setCallback((GLFWKeyCallbackI) (w, k, s, a, m) -> {
 			if (k == GLFW.GLFW_KEY_R)
 			{
-				renderer.updateUniformBuffers((b, l) -> {
-					l.set(PROJECTION, b, buildProjectionMatrix(window));
-					l.set(MODEL, b, buildModelMatrix());
-					l.set(LIGHT_POS, b, buildScaleMatrix().multiply(lightPos).xyz());
-					l.set(LIGHT_INTENSITY, b, 0.75F);
-					l.set(SPACE_FOG_INTENSITY, b, 0.1F);
+				renderer.updateUniforms(uniformBuffer, l -> {
+					l.set(PROJECTION, uniformBuffer, buildProjectionMatrix(window));
+					l.set(MODEL, uniformBuffer, buildModelMatrix());
+					l.set(LIGHT_POS, uniformBuffer, buildScaleMatrix().multiply(lightPos).xyz());
+					l.set(LIGHT_INTENSITY, uniformBuffer, 0.75F);
+					l.set(SPACE_FOG_INTENSITY, uniformBuffer, 0.1F);
 				});
 			}
 		});
@@ -175,13 +177,18 @@ public class InstancingTest extends RenderTest {
 		
 		renderPass = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
 		
+		uniformBuffer = new VulkanBuffer(device, Math.max(256 * 2, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		
 		Builder builder = Renderer.create();
 		builder.shaderProgram(shaderProgram);
 		builder.depthTestEnable(true);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-		builder.uniformBuffer(new VulkanBuffer(device, Math.max(256 * 2, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
-		renderer = builder.build(device, window.getSurface().getSize(), renderPass, 3, InstancingCustomGraphicsPipeline::new);
+		builder.bufferBindings(List.of(
+				new VulkanBufferRange(uniformBuffer, 0),
+				new VulkanBufferRange(uniformBuffer, 256)
+		));
+		renderer = builder.build(device, window.getSurface().getSize(), renderPass, InstancingCustomGraphicsPipeline::new);
 		
 		lightPos = Vector3f.of(5, 20, 0);
 		f = 0;
@@ -196,12 +203,12 @@ public class InstancingTest extends RenderTest {
 		renderer.addVertexBuffer(0, vertexBuffer.getGpuBuffer());
 		renderer.addVertexBuffer(1, vertexBuffer0.getGpuBuffer());
 		renderer.setIndexBuffer(indexBuffer.getGpuBuffer());
-		renderer.updateUniformBuffers((b, l) -> {
-			l.set(PROJECTION, b, buildProjectionMatrix(window));
-			l.set(MODEL, b, buildModelMatrix());
-			l.set(LIGHT_POS, b, buildScaleMatrix().multiply(lightPos).xyz());
-			l.set(LIGHT_INTENSITY, b, 0.75F);
-			l.set(SPACE_FOG_INTENSITY, b, 0.1F);
+		renderer.updateUniforms(uniformBuffer, l -> {
+			l.set(PROJECTION, uniformBuffer, buildProjectionMatrix(window));
+			l.set(MODEL, uniformBuffer, buildModelMatrix());
+			l.set(LIGHT_POS, uniformBuffer, buildScaleMatrix().multiply(lightPos).xyz());
+			l.set(LIGHT_INTENSITY, uniformBuffer, 0.75F);
+			l.set(SPACE_FOG_INTENSITY, uniformBuffer, 0.1F);
 		});
 		
 		Color[] colors = new Color[] {
@@ -221,92 +228,47 @@ public class InstancingTest extends RenderTest {
 		indexBuffer.sendToPhysicalDevice();
 	}
 	
-	private static long time;
-	
-	public static void loop()
+	public static void loop(long time, long enlapsed)
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		Device device = window.getDevice();
 		
-		int maxfps = TestProperties.MAX_FRAME_RATE.getValue();
-		long firstHighMilestone = 1000000000;
-		long firstMilestone = 1000000000 / maxfps;
-		
-		time = System.nanoTime();
-		long current;
-		long frame = 0;
-		long milestone = firstMilestone;
-		long highMilestone = firstHighMilestone;
-		
-		while (!window.shouldClose())
+		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			current = System.nanoTime();
-			long enlapsed = current - time;
-			long pauseTime = milestone - enlapsed;
-			if (pauseTime > 0)
-			{
-				try
-				{
-					synchronized (window)
-					{
-						window.wait(pauseTime / 1000000, (int) (pauseTime % 1000000));
-					}
-				}
-				catch (InterruptedException e)
-				{
-					e.printStackTrace(System.out);
-				}
-				continue;
-			}
-			milestone += (1 - pauseTime / firstMilestone) * firstMilestone;
-			if (enlapsed >= highMilestone)
-			{
-				window.setTitle("Test fps=" + frame);
-				frame = 0;
-				highMilestone += (enlapsed - highMilestone + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
-			}
-			println("Frame " + frame, () -> {
+			device.configureSingleUseCommandBuffer(stack, device.getGraphicsQueue(), commandBuffer -> {
 				
-				try (MemoryStack stack = MemoryStack.stackPush())
-				{
-					window.pollEvents();
-					
-					CommandBuffer commandBuffer = window.getDevice().createSingleUseCommandBuffer(stack);
-					
-					VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
-					renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
-					renderPassBeginInfo.pNext(0);
-					
-					renderPassBeginInfo.renderPass(renderPass.getVk());
-					
-					FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
-					renderPassBeginInfo.framebuffer(frameBuffer.getVk());
-					
-					VkRect2D renderArea = VkRect2D.calloc(stack);
-					renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
-					renderPassBeginInfo.renderArea(renderArea);
-					
-					VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
-					clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
-					clearValues.get().depthStencil().depth(1).stencil(0);
-					renderPassBeginInfo.pClearValues(clearValues.rewind());
-					
-					commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
-					commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), 0, 1);
-					commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
-					renderer.setUniformBufferIndex(window.getFrameIndex());
-					renderer.draw(commandBuffer, instanceCount);
-					commandBuffer.endRenderPass();
-					commandBuffer.endRecording();
-					
-					window.swapBuffers(commandBuffer);
-					window.pollEvents();
-					window.update();
-				}
-				renderer.updateUniformBuffers((b, l) -> l.set(MODEL, b, buildModelMatrix()));
-				f += (firstMilestone - pauseTime) / 1000000D;
-			}, TestProperties.PRINT_FRAME_TIMES);
-			frame++;
+				VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
+				renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
+				renderPassBeginInfo.pNext(0);
+				
+				renderPassBeginInfo.renderPass(renderPass.getVk());
+				
+				FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
+				renderPassBeginInfo.framebuffer(frameBuffer.getVk());
+				
+				VkRect2D renderArea = VkRect2D.calloc(stack);
+				renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
+				renderPassBeginInfo.renderArea(renderArea);
+				
+				VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
+				clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
+				clearValues.get().depthStencil().depth(1).stencil(0);
+				renderPassBeginInfo.pClearValues(clearValues.rewind());
+				
+				commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
+				commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), 0, 1);
+				commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
+				renderer.draw(commandBuffer, instanceCount);
+				commandBuffer.endRenderPass();
+				commandBuffer.endRecording();
+				
+				window.swapBuffers(commandBuffer);
+			});
 		}
+		window.pollEvents();
+		window.update();
+		renderer.updateUniforms(uniformBuffer, l -> l.set(MODEL, uniformBuffer, buildModelMatrix()));
+		f = time / 1000000D;
 	}
 	
 	public static void end()

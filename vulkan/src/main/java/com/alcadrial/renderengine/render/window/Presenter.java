@@ -385,8 +385,9 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 			
 			LongBuffer p1 = stack.longs(frame.getRenderFinished());
 			
-			VkSubmitInfo submitInfo = VkSubmitInfo.calloc(stack);
+			VkSubmitInfo submitInfo = VkSubmitInfo.malloc(stack);
 			submitInfo.sType(VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO);
+			submitInfo.pNext(0);
 			submitInfo.waitSemaphoreCount(1);
 			submitInfo.pWaitSemaphores(stack.longs(frame.getImageAvailable()));
 			submitInfo.pWaitDstStageMask(stack.ints(VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT));
@@ -411,6 +412,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 			presentInfo.swapchainCount(1);
 			presentInfo.pSwapchains(stack.longs(swapchain.getVk()));
 			presentInfo.pImageIndices(frame.getImageIndex());
+			presentInfo.pResults(null);
 			
 			int result = device.getPresentQueue().present(presentInfo);
 			if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR || result == KHRSwapchain.VK_SUBOPTIMAL_KHR)
@@ -444,7 +446,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 	@Override
 	public void close()
 	{
-		for (FrameData frame : frames) frame.close();
+		if (frames != null) for (FrameData frame : frames) frame.close();
 		swapchain.close();
 	}
 	

@@ -15,17 +15,21 @@ import org.lwjgl.util.vma.VmaAllocationCreateInfo;
 import org.lwjgl.util.vma.VmaAllocationInfo;
 import org.lwjgl.util.vma.VmaAllocatorCreateInfo;
 import org.lwjgl.util.vma.VmaVulkanFunctions;
+import org.lwjgl.vulkan.EXTDebugMarker;
+import org.lwjgl.vulkan.EXTDebugReport;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VK12;
 import org.lwjgl.vulkan.VkBufferCreateInfo;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandPoolCreateInfo;
+import org.lwjgl.vulkan.VkDebugMarkerObjectNameInfoEXT;
 import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkFenceCreateInfo;
 import org.lwjgl.vulkan.VkMemoryRequirements;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 
 import com.alcadrial.renderengine.core.util.WorkInProgress;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBufferData;
 import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
@@ -304,7 +308,16 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		return commandBuffers;
 	}
 	
-	public Future<?> configureSingleUseCommandBuffer(MemoryStack stack, Queue queue, Consumer<CommandBuffer> configure)
+	public void configureSingleUseCommandBuffer(MemoryStack stack, Queue queue, Consumer<CommandBuffer> configure)
+	{
+		PointerBuffer p = stack.callocPointer(1);
+		useShortLivedCommandPool(pool -> VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, pool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to create single use command buffer"));
+		CommandBuffer commandBuffer = new CommandBuffer(this, shortLivedCommandPool, new VkCommandBuffer(p.get(), vk));
+		VulkanErrorUtils.assertStatement(commandBuffer.startRecording(), "Failed to create single use command buffer");
+		useShortLivedCommandPool(pool -> configure.accept(commandBuffer));
+	}
+	
+	public Future<?> configureAndSubmitSingleUseCommandBuffer(MemoryStack stack, Queue queue, Consumer<CommandBuffer> configure)
 	{
 		PointerBuffer p = stack.callocPointer(1);
 		useShortLivedCommandPool(pool -> VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, pool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to create single use command buffer"));
@@ -331,7 +344,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	public Future<?> submitSingleUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer, Queue queue)
 	{
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
-		VulkanErrorUtils.assertStatement(commandBuffer.endRecording(), "Failed to submit single use command buffer");
+		VulkanErrorUtils.assertStatement(commandBuffer.endRecording(), "Command buffer is not recording");
 		long fence = createFence(stack, false);
 		queue.submit(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), fence);
 		return RenderEngine.getExecutor().submit(() -> {
@@ -432,5 +445,109 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		}
 		Debug.print("Single-use command pool: ", shortLivedCommandPool);
 		Debug.print("Multi-use command pool: ", resetCommandPool);
+	}
+	
+	public void setObjectDebugName(Vulkan object, String name)
+	{
+		if (RenderEngine.isDebug())
+		{
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
+				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT, object.getInstance().address(), stack.UTF8(name));
+				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
+			}
+		}
+	}
+	
+	public void setObjectDebugName(PhysicalDevice object, String name)
+	{
+		if (RenderEngine.isDebug())
+		{
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
+				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT, object.getVk().address(), stack.UTF8(name));
+				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
+			}
+		}
+	}
+	
+	public void setObjectDebugName(Device object, String name)
+	{
+		if (RenderEngine.isDebug())
+		{
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
+				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT, object.getVk().address(), stack.UTF8(name));
+				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
+			}
+		}
+	}
+	
+	public void setObjectDebugName(Queue object, String name)
+	{
+		if (RenderEngine.isDebug())
+		{
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
+				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT, object.getVk().address(), stack.UTF8(name));
+				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
+			}
+		}
+	}
+	
+	public void setObjectDebugName(VulkanBuffer object, String name)
+	{
+		if (RenderEngine.isDebug())
+		{
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
+				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, object.getVk(), stack.UTF8(name));
+				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
+			}
+		}
+	}
+	
+	public void setObjectDebugName(CommandBuffer object, String name)
+	{
+		if (RenderEngine.isDebug())
+		{
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
+				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT, object.getVk().address(), stack.UTF8(name));
+				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
+			}
+		}
+	}
+	
+	public void setObjectDebugName(CommandPool object, String name)
+	{
+		if (RenderEngine.isDebug())
+		{
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
+				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT, object.getVk(), stack.UTF8(name));
+				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
+			}
+		}
+	}
+	
+	public void setObjectDebugName(int objectType, long object, String name)
+	{
+		if (RenderEngine.isDebug())
+		{
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
+				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, objectType, object, stack.UTF8(name));
+				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
+			}
+		}
 	}
 }

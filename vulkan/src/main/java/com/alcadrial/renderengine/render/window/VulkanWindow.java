@@ -133,7 +133,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				presenter = new Presenter(device, this, renderPass, 3);
 				
 				uniformBuffer = new VulkanBuffer(device, 1024, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-				renderer = Renderer.create().uniformBuffer(uniformBuffer).shaderProgram(shaderProgram).build(device, surface.getSize(), presenter.getRenderPass(), 3);
+				renderer = Renderer.create().shaderProgram(shaderProgram).build(device, surface.getSize(), presenter.getRenderPass());
 				
 				commandBuffers = device.createMultiUseCommandBuffer(stack, 3);
 				for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.startRecording();
@@ -178,7 +178,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				
 				commandBuffer.setScissor(0, 0, getWidth(), getHeight());
 				commandBuffer.setViewport(0, getHeight(), getWidth(), -getHeight(), -1000, 1000);
-				renderer.setUniformBufferIndex(getFrameIndex());
+				
 				screen.draw(null, commandBuffer, renderer, 0);
 				commandBuffer.endRenderPass();
 			}

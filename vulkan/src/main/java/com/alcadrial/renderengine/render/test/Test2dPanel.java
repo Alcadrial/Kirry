@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.math.RoundingMode;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.List;
 import java.util.Random;
 
 import org.lwjgl.glfw.GLFW;
@@ -28,7 +29,6 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Test;
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -38,6 +38,7 @@ import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.IndexBuffer;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBufferRange;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
@@ -51,14 +52,18 @@ public class Test2dPanel extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, Test2dPanel::start, Test2dPanel::loop, Test2dPanel::end);
+		mainTest(args, Test2dPanel::start, () -> defaultLoop(Test2dPanel::loop), Test2dPanel::end);
 	}
 	
 	private static RenderPass renderPass;
 	private static Renderer renderer;
 	private static VertexBuffer vertexBuffer;
 	private static IndexBuffer indexBuffer;
+	private static VulkanBuffer uniformBuffer;
 	private static Vector2i panelPos;
+	
+	private static boolean isModifiedMatrix;
+	private static boolean isModified;
 	
 	public static void start()
 	{
@@ -152,13 +157,15 @@ public class Test2dPanel extends RenderTest {
 		
 		renderPass = RenderPassTemplate.initColorTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
 		
+		uniformBuffer = new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		
 		Builder builder = Renderer.create();
 		builder.shaderProgram(shaderProgram);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.lineWidth(2F);
-		builder.uniformBuffer(new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
-		renderer = builder.build(device, window.getSurface().getSize(), renderPass, 3);
+		builder.bufferBindings(List.of(new VulkanBufferRange(uniformBuffer)));
+		renderer = builder.build(device, window.getSurface().getSize(), renderPass);
 		
 		vertexBuffer = new VertexBuffer(7 * 4 * 512 * 512);
 		indexBuffer = new IndexBuffer(6 * 512 * 512);
@@ -179,72 +186,23 @@ public class Test2dPanel extends RenderTest {
 		}
 		vertexBuffer.sendToPhysicalDevice();
 		indexBuffer.sendToPhysicalDevice();
-	}
-	
-	private static long time;
-	private static boolean isModifiedMatrix;
-	private static boolean isModified;
-	
-	public static void loop()
-	{
-		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		
-		isModified = true;
 		isModifiedMatrix = true;
-		
-		int maxfps = 120;
-		long firstHighMilestone = 1000000000;
-		long firstMilestone = 1000000000 / maxfps;
-		
-		time = System.nanoTime();
-		long current;
-		long frame = 0;
-		long milestone = firstMilestone;
-		long highMilestone = firstHighMilestone;
-		
-		while (!window.shouldClose())
-		{
-			current = System.nanoTime();
-			long enlapsed = current - time;
-			long pauseTime = milestone - enlapsed;
-			if (pauseTime > 0)
-			{
-				try
-				{
-					synchronized (window)
-					{
-						window.wait(pauseTime / 1000000, (int) (pauseTime % 1000000));
-					}
-				}
-				catch (InterruptedException e)
-				{
-					e.printStackTrace(System.out);
-				}
-				continue;
-			}
-			milestone += (1 - pauseTime / firstMilestone) * firstMilestone;
-			if (enlapsed >= highMilestone)
-			{
-				window.setTitle("Test fps=" + frame);
-				frame = 0;
-				highMilestone += (enlapsed - highMilestone + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
-			}
-			
-			println("Frame " + frame, Test2dPanel::frame, TestProperties.PRINT_FRAME_TIMES);
-			frame++;
-		}
+		isModified = true;
 	}
 	
-	public static void frame()
+	public static void loop(long time, long enlapsed)
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		Device device = window.getDevice();
+		
 		if (isModifiedMatrix)
 		{
 			isModifiedMatrix = false;
-			renderer.updateUniformBuffers((b, l) -> {
+			renderer.updateUniforms(uniformBuffer, l -> {
 				Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
 				Matrix4f model = new Matrix4f().translateYTo(-panelPos.y()).translateXTo(-panelPos.x());
-				l.set(TRANSFORMATION_UNIFORM, b, orthographic.multiply(model));
+				l.set(TRANSFORMATION_UNIFORM, uniformBuffer, orthographic.multiply(model));
 			});
 		}
 		if (isModified)
@@ -253,37 +211,37 @@ public class Test2dPanel extends RenderTest {
 			
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
-				CommandBuffer commandBuffer = window.getDevice().createSingleUseCommandBuffer(stack);
-				
-				VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
-				renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
-				renderPassBeginInfo.pNext(0);
-				
-				renderPassBeginInfo.renderPass(renderPass.getVk());
-				
-				FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
-				renderPassBeginInfo.framebuffer(frameBuffer.getVk());
-				
-				VkRect2D renderArea = VkRect2D.calloc(stack);
-				renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
-				renderPassBeginInfo.renderArea(renderArea);
-				
-				VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
-				clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
-				clearValues.get().depthStencil().depth(1).stencil(0);
-				renderPassBeginInfo.pClearValues(clearValues.rewind());
-				
-				commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
-				commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), 0, 1);
-				commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
-				renderer.setUniformBufferIndex(window.getFrameIndex());
-				renderer.draw(commandBuffer);
-				commandBuffer.endRenderPass();
-				commandBuffer.endRecording();
-				
-				window.swapBuffers(commandBuffer);
-				window.update();
+				device.configureSingleUseCommandBuffer(stack, device.getGraphicsQueue(), commandBuffer -> {
+					
+					VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
+					renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
+					renderPassBeginInfo.pNext(0);
+					
+					renderPassBeginInfo.renderPass(renderPass.getVk());
+					
+					FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
+					renderPassBeginInfo.framebuffer(frameBuffer.getVk());
+					
+					VkRect2D renderArea = VkRect2D.calloc(stack);
+					renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
+					renderPassBeginInfo.renderArea(renderArea);
+					
+					VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
+					clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
+					clearValues.get().depthStencil().depth(1).stencil(0);
+					renderPassBeginInfo.pClearValues(clearValues.rewind());
+					
+					commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
+					commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), 0, 1);
+					commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
+					renderer.draw(commandBuffer);
+					commandBuffer.endRenderPass();
+					commandBuffer.endRecording();
+					
+					window.swapBuffers(commandBuffer);
+				});
 			}
+			window.update();
 		}
 		window.pollEvents();
 	}

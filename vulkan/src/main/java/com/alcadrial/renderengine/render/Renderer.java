@@ -1,10 +1,8 @@
 package com.alcadrial.renderengine.render;
 
 import java.nio.LongBuffer;
-import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -12,7 +10,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.lwjgl.system.MemoryStack;
@@ -21,6 +18,7 @@ import org.lwjgl.vulkan.VkDescriptorBufferInfo;
 import org.lwjgl.vulkan.VkDescriptorImageInfo;
 import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
+import org.lwjgl.vulkan.VkPhysicalDeviceLimits;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
@@ -30,6 +28,7 @@ import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.buffer.BufferLayout;
 import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBufferRange;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline.GraphicsPipelineBuildFunction;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
@@ -40,6 +39,7 @@ import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderUtils;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
+import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
 import com.alcadrial.renderengine.render.util.DataAccumulator;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
@@ -68,34 +68,25 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 	private GraphicsPipeline graphicsPipeline;
 	private Map<Integer, List<VulkanBuffer>> vertexBuffers;
 	private VulkanBuffer indexBuffer;
-	private long[] descriptorSetLayouts;
-	private long[][] descriptorSets;
+	private long descriptorSetLayout;
+	private long[] descriptorSet;
 	private long descriptorPool;
-	private List<Pair<VulkanBuffer, BufferLayout>> uniformBuffers;
-	private List<Deque<BiConsumer<VulkanBuffer, BufferLayout>>> uniformBuffersUpdates;
+	private Map<VulkanBuffer, Pair<BufferLayout, Deque<Consumer<BufferLayout>>>> uniforms;
 	private List<Consumer<CommandBuffer>> extraCommands;
-	private int uniformBufferIndex;
 	
-	private Renderer(Builder builder, Device device, GraphicsPipeline graphicsPipeline, long[] descriptorSetLayouts, long[][] descriptorSets, long descriptorPool, List<Pair<VulkanBuffer, BufferLayout>> uniformBuffers)
+	private Renderer(Builder builder, Device device, GraphicsPipeline graphicsPipeline, long descriptorSetLayout, long[] descriptorSet, long descriptorPool, Map<VulkanBuffer, Pair<BufferLayout, Deque<Consumer<BufferLayout>>>> uniforms)
 	{
 		modificationPlan = new ModificationPlan(builder);
 		this.device = device;
 		this.graphicsPipeline = graphicsPipeline;
-		this.descriptorSetLayouts = descriptorSetLayouts;
-		this.descriptorSets = descriptorSets;
+		this.descriptorSetLayout = descriptorSetLayout;
+		this.descriptorSet = descriptorSet;
 		this.descriptorPool = descriptorPool;
-		this.uniformBuffers = uniformBuffers;
-		uniformBuffersUpdates = new LinkedList<>();
+		this.uniforms = uniforms;
 		vertexBuffers = new HashMap<>();
 		extraCommands = new LinkedList<>();
-		uniformBufferIndex = -1;
 		
-		for (int i = 0; i < uniformBuffers.size(); i++)
-		{
-			LinkedList<BiConsumer<VulkanBuffer, BufferLayout>> list = new LinkedList<>();
-			list.add((b, l) -> {});
-			uniformBuffersUpdates.add(list);
-		}
+		for (Pair<BufferLayout, Deque<Consumer<BufferLayout>>> p : uniforms.values()) p.right.add(l -> {});
 	}
 	
 	public VertexAccumulator accumulate(VulkanBuffer vertexBuffer)
@@ -103,19 +94,14 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		return new VertexAccumulator(graphicsPipeline, vertexBuffer);
 	}
 	
-	public void updateUniformBuffers(BiConsumer<VulkanBuffer, BufferLayout> action)
+	public void updateUniforms(VulkanBuffer buffer, Consumer<BufferLayout> action)
 	{
-		for (Deque<BiConsumer<VulkanBuffer, BufferLayout>> queue : uniformBuffersUpdates) queue.add(action);
+		uniforms.get(buffer).right.add(action);
 	}
 	
 	public void addExtraCommand(Consumer<CommandBuffer> command)
 	{
 		extraCommands.add(command);
-	}
-	
-	public void setUniformBufferIndex(int uniformBufferIndex)
-	{
-		this.uniformBufferIndex = uniformBufferIndex;
 	}
 	
 	public void draw(CommandBuffer commandBuffer)
@@ -125,31 +111,38 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 	
 	public void draw(CommandBuffer commandBuffer, int instanceCount)
 	{
-		if (uniformBufferIndex >= 0)
+		draw(commandBuffer, instanceCount, indexBuffer != null ? (int) (indexBuffer.getSize() / 4) : 0);
+	}
+	
+	public void draw(CommandBuffer commandBuffer, int instanceCount, int count)
+	{
+		if (count == 0) throw new IllegalStateException("Cannot draw 0 vertices");
+		
+		List<BufferLayout> updates = new LinkedList<>();
+		for (Pair<BufferLayout, Deque<Consumer<BufferLayout>>> p : uniforms.values())
 		{
-			Deque<BiConsumer<VulkanBuffer, BufferLayout>> queue = uniformBuffersUpdates.get(uniformBufferIndex);
-			boolean update = queue.size() > 0;
-			
-			BiConsumer<VulkanBuffer, BufferLayout> action;
-			while ((action = queue.poll()) != null) for (Pair<VulkanBuffer, BufferLayout> p : uniformBuffers) action.accept(p.left, p.right);
-			
-			BufferLayout layout = uniformBuffers.get(uniformBufferIndex).right;
-			if (update) layout.updateDescriptorSets();
+			if (!p.right.isEmpty())
+			{
+				Consumer<BufferLayout> action;
+				while ((action = p.right.poll()) != null) action.accept(p.left);
+				updates.add(p.left);
+			}
 		}
+		for (BufferLayout l : updates) l.updateDescriptorSets();
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			commandBuffer.bindPipeline(graphicsPipeline);
 			for (Entry<Integer, List<VulkanBuffer>> p : vertexBuffers.entrySet()) commandBuffer.bindVertexBuffers(p.getKey(), p.getValue());
-			if (uniformBufferIndex >= 0) commandBuffer.bindDescriptorSets(graphicsPipeline, descriptorSets[uniformBufferIndex], new int[0]);
+			commandBuffer.bindDescriptorSets(graphicsPipeline, descriptorSet, new int[0]);
 			if (indexBuffer != null)
 			{
 				commandBuffer.bindIndexBuffer(indexBuffer, 0, VK10.VK_INDEX_TYPE_UINT32);
-				commandBuffer.drawIndexed((int) (indexBuffer.getSize() / 4), instanceCount, 0, 0, 0);
+				commandBuffer.drawIndexed(count, instanceCount, 0, 0, 0);
 			}
 			else
 			{
-				commandBuffer.draw(0, instanceCount, 0, 0);
+				commandBuffer.draw(count, instanceCount, 0, 0);
 			}
 			
 			for (Consumer<CommandBuffer> command : extraCommands) command.accept(commandBuffer);
@@ -192,7 +185,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 	{
 		device.waitIdle();
 		graphicsPipeline.close();
-		for (long l : descriptorSetLayouts) VK10.vkDestroyDescriptorSetLayout(device.getVk(), l, null);
+		VK10.vkDestroyDescriptorSetLayout(device.getVk(), descriptorSetLayout, null);
 		VK10.vkDestroyDescriptorPool(device.getVk(), descriptorPool, null);
 	}
 	
@@ -214,18 +207,18 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		}
 		Debug.deindent();
 		Debug.print("]");
-		Debug.print("UniformBuffers [");
+		Debug.print("DescriptorSetLayout: " + Debug.address(descriptorSetLayout));
+		Debug.print("DescriptorSet: " + Debug.address(descriptorSet[0]));
+		Debug.print("Other Buffers [");
 		Debug.indent();
-		for (int i = 0; i < uniformBuffers.size(); i++)
+		for (Entry<VulkanBuffer, Pair<BufferLayout, Deque<Consumer<BufferLayout>>>> e : uniforms.entrySet())
 		{
-			Debug.print((i == uniformBufferIndex ? "Current " : "Set ") + i + " {");
+			Debug.print("Buffer " + e.getKey() + " [");
 			Debug.indent();
-			Debug.print("DescriptorSetLayout: " + Debug.address(descriptorSetLayouts[i]));
-			Debug.print("DescriptorSet: " + Debug.address(descriptorSets[i][0]));
-			Debug.print("Buffer", uniformBuffers.get(i).l());
-			Debug.print("Layout", uniformBuffers.get(i).r());
+			Debug.print("Layout", e.getValue().left);
+			Debug.print("Actions: " + e.getValue().right.size());
 			Debug.deindent();
-			Debug.print("}");
+			Debug.print("]");
 		}
 		Debug.deindent();
 		Debug.print("]");
@@ -277,36 +270,27 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			
 			if (deviceModified || shaderProgram.isModified())
 			{
-				createUniformBuffers(Renderer.this.descriptorSetLayouts.length);
+				createDescriptorSet();
 				
 				VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
-				pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayouts));
+				pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayout));
 				
 				pipelineLayout.set(new PipelineLayout(device.get(), pipelineLayoutInfo));
 				
-				long[] descriptorSetLayouts0 = Renderer.this.descriptorSetLayouts;
+				long descriptorSetLayouts0 = Renderer.this.descriptorSetLayout;
 				long descriptorPool0 = Renderer.this.descriptorPool;
 				
 				device.get().waitAsyncIdle(device0 -> {
-					for (long l : descriptorSetLayouts0) VK10.vkDestroyDescriptorSetLayout(device0.getVk(), l, null);
+					VK10.vkDestroyDescriptorSetLayout(device0.getVk(), descriptorSetLayouts0, null);
 					VK10.vkDestroyDescriptorPool(device0.getVk(), descriptorPool0, null);
 				});
 				
-				Renderer.this.descriptorSetLayouts = descriptorSetLayouts;
-				Renderer.this.descriptorSets = descriptorSets;
+				for (Pair<BufferLayout, Deque<Consumer<BufferLayout>>> p : uniforms.values()) p.right.add(l -> {});
+				
+				Renderer.this.descriptorSetLayout = descriptorSetLayout;
+				Renderer.this.descriptorSet = descriptorSet;
 				Renderer.this.descriptorPool = descriptorPool;
-				
-				Iterator<Pair<VulkanBuffer, BufferLayout>> i = uniformBuffers.iterator();
-				Iterator<Pair<VulkanBuffer, BufferLayout>> j = Renderer.this.uniformBuffers.iterator();
-				
-				for (Pair<VulkanBuffer, BufferLayout> u0, u1; i.hasNext();)
-				{
-					u0 = i.next();
-					u1 = j.next();
-					u0.left.asByteBuffer().put(u1.left.asByteBuffer());
-					u0.right.updateDescriptorSets();
-				}
-				Renderer.this.uniformBuffers = uniformBuffers;
+				Renderer.this.uniforms = uniforms;
 			}
 			
 			Renderer.this.graphicsPipeline.getDevice().waitAsyncIdle(Renderer.this.graphicsPipeline::close);
@@ -325,12 +309,12 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		private Builder()
 		{}
 		
-		public Renderer build(Device device, Vector2i outputSize, RenderPass renderPass, int uniformBufferCount)
+		public Renderer build(Device device, Vector2i outputSize, RenderPass renderPass)
 		{
-			return build(device, outputSize, renderPass, uniformBufferCount, GraphicsPipeline::new);
+			return build(device, outputSize, renderPass, GraphicsPipeline::new);
 		}
 		
-		public Renderer build(Device device, Vector2i outputSize, RenderPass renderPass, int uniformBufferCount, GraphicsPipelineBuildFunction<?> builderFunction)
+		public Renderer build(Device device, Vector2i outputSize, RenderPass renderPass, GraphicsPipelineBuildFunction<?> builderFunction)
 		{
 			try
 			{
@@ -339,16 +323,16 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 				size.setNonNull(outputSize);
 				this.renderPass.setNonNull(renderPass);
 				
-				createUniformBuffers(uniformBufferCount);
+				createDescriptorSet();
 				
 				VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
-				pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayouts));
+				pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayout));
 				
 				pipelineLayout.set(new PipelineLayout(device, pipelineLayoutInfo));
 				
 				graphicsPipeline.set(createGraphicsPipeline(outputSize, builderFunction));
 				
-				return new Renderer(this, device, graphicsPipeline.get(), descriptorSetLayouts, descriptorSets, descriptorPool, uniformBuffers);
+				return new Renderer(this, device, graphicsPipeline.get(), descriptorSetLayout, descriptorSet, descriptorPool, uniforms);
 			}
 			finally
 			{
@@ -359,10 +343,10 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 	
 	private static class RendererDataAccumulator<RDA extends RendererDataAccumulator<RDA>> extends DataAccumulator<RDA> {
 		
-		protected long[] descriptorSetLayouts;
-		protected long[][] descriptorSets;
+		protected long descriptorSetLayout;
+		protected long[] descriptorSet;
 		protected long descriptorPool;
-		protected List<Pair<VulkanBuffer, BufferLayout>> uniformBuffers;
+		protected Map<VulkanBuffer, Pair<BufferLayout, Deque<Consumer<BufferLayout>>>> uniforms;
 		
 		protected RendererDataAccumulator()
 		{}
@@ -372,27 +356,15 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			super(defaultSource);
 		}
 		
-		@SuppressWarnings("null")
-		protected void createUniformBuffers(int count)
+		protected void createDescriptorSet()
 		{
-			Debug.debug("Creating uniform buffers");
 			device.require();
-			
-			VkDescriptorPoolCreateInfo poolInfo = VulkanUtils.descriptorPoolCreateInfo(stack, VulkanUtils.descriptorPoolSize(stack, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, count));// static
-			poolInfo.maxSets(count);
-			
-			long[] p0 = new long[1];
-			
-			VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorPool(device.get().getVk(), poolInfo, null, p0), "Failed to create descriptor pool!");
-			
-			descriptorPool = p0[0];
 			
 			Map<Integer, ShaderLayoutBinding> bindingFlags = new HashMap<>();
 			
 			for (PreparedShader prepared : shaderProgram.require().getshaders()) ShaderUtils.extractData(prepared, bindingFlags);
 			
-			boolean useUniform = false;
-			boolean useStorage = false;
+			List<VulkanBufferRange> bufferBindings = this.bufferBindings.orElse(List.of());
 			
 			VkDescriptorSetLayoutBinding.Buffer descriptorSetLayoutBindings = VkDescriptorSetLayoutBinding.malloc(bindingFlags.size(), stack);// static
 			for (Entry<Integer, ShaderLayoutBinding> e : bindingFlags.entrySet())
@@ -405,145 +377,133 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 				descriptorSetLayoutBinding.pImmutableSamplers(null);
 				descriptorSetLayoutBinding.stageFlags(e.getValue().getStages());
 				
-				switch (type)
-				{
-					case UNIFORM_BUFFER, UNIFORM_BUFFER_DYNAMIC, INLINE_UNIFORM_BLOCK -> useUniform = true;
-					case STORAGE_BUFFER, STORAGE_BUFFER_DYNAMIC -> useStorage = true;
-				}
+				if (bufferBindings.size() <= e.getKey() || bufferBindings.get(e.getKey()) == null) addError("Missing buffer for binding " + e.getKey());
 			}
 			descriptorSetLayoutBindings.rewind();
 			
-			LongBuffer p = stack.callocLong(count);
+			checkErrors();
 			
-			descriptorSetLayouts = new long[count];
-			for (int i = 0; i < count; i++)
-			{
-				VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorSetLayout(device.get().getVk(), VulkanUtils.descriptorSetLayoutInfo(stack, 0, descriptorSetLayoutBindings), null, p), "Failed to create descriptor set layout!");
-				descriptorSetLayouts[i] = p.get();
-			}
+			VkDescriptorPoolCreateInfo poolInfo = VulkanUtils.descriptorPoolCreateInfo(stack, VulkanUtils.descriptorPoolSize(stack, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1));
+			poolInfo.maxSets(1);
+			
+			long[] p0 = new long[1];
+			
+			VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorPool(device.get().getVk(), poolInfo, null, p0), "Failed to create descriptor pool!");
+			
+			descriptorPool = p0[0];//add to DataAccumulator
+			
+			LongBuffer p = stack.callocLong(1);
+			
+			VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorSetLayout(device.get().getVk(), VulkanUtils.descriptorSetLayoutInfo(stack, 0, descriptorSetLayoutBindings), null, p), "Failed to create descriptor set layout!");
+			descriptorSetLayout = p.get();
+			
 			p.rewind();
 			
-			long[] p1 = new long[count];
+			descriptorSet = new long[1];
+			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.get().getVk(), VulkanUtils.descriptorSetAllocateInfo(stack, descriptorPool, p), descriptorSet), "Failed to allocate descriptor sets!");
 			
-			descriptorSets = new long[count][1];
-			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.get().getVk(), VulkanUtils.descriptorSetAllocateInfo(stack, descriptorPool, p), p1), "Failed to allocate descriptor sets!");
+			uniforms = new HashMap<>();
 			
-			VulkanBuffer uniformBuffer = null;
-			VulkanBuffer storageBuffer = null;
-			if (useUniform)
+			VkPhysicalDeviceLimits limits = physicalDevice.get().getLimits();
+			int minStorageOffsetAlignment = (int) limits.minStorageBufferOffsetAlignment();
+			int minTexelBufferOffsetAlignment = (int) limits.minTexelBufferOffsetAlignment();
+			int minUniformOffsetAlignment = (int) limits.minUniformBufferOffsetAlignment();
+			
+			Lock lock = new ReentrantLock();
+			VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(bindingFlags.size());
+			
+			Map<VulkanBuffer, int[]> perBufferOffset = new HashMap<>();
+			for (VulkanBufferRange bufferRange : bufferBindings) if (bufferRange != null) perBufferOffset.put(bufferRange.getBuffer(), new int[] {0, 0});
+			
+			for (Entry<Integer, ShaderLayoutBinding> e : bindingFlags.entrySet())
 			{
-				uniformBuffers = new ArrayList<>(count);
-				uniformBuffer = this.uniformBuffer.require("Shaders require uniforms so a uniform buffer is required");
-			}
-			else uniformBuffers = List.of();
-			if (useStorage)
-			{
-				storageBuffer = this.storageBuffer.require("Shaders require storages so a storage buffer is required");
-			}
-			
-			int minUniformOffsetAlignment = (int) physicalDevice.get().getLimits().minUniformBufferOffsetAlignment();
-			int minStorageOffsetAlignment = (int) physicalDevice.get().getLimits().minStorageBufferOffsetAlignment();
-			
-			for (int i = 0; i < count; i++)
-			{
-				descriptorSets[i] = new long[] {p1[i]};
-				Lock lock = new ReentrantLock();
-				VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(bindingFlags.size());
-				BufferLayout uniformBufferLayout = new BufferLayout(device.get(), writeDescriptorSets, 0, lock);
-				BufferLayout storageBufferLayout = new BufferLayout(device.get(), writeDescriptorSets, 0, lock);
-				if (useUniform) uniformBuffers.add(new Pair<>(uniformBuffer, uniformBufferLayout));
+				Type descriptorType = e.getValue().getDescriptorType();
 				
-				int uniformOffset = 0;
-				int storageOffset = 0;
-				int partialOffset = 0;
-				for (Entry<Integer, ShaderLayoutBinding> e : bindingFlags.entrySet())
+				VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
+				writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
+				writeDescriptorSet.pNext(0);
+				writeDescriptorSet.dstSet(descriptorSet[0]);
+				writeDescriptorSet.dstBinding(e.getKey());
+				writeDescriptorSet.dstArrayElement(0);
+				writeDescriptorSet.descriptorCount(1);
+				writeDescriptorSet.descriptorType(descriptorType.getType());
+				
+				VulkanBufferRange bufferRange = bufferBindings.get(e.getKey());
+				VulkanBuffer buffer = bufferRange.getBuffer();
+				int[] offsets = perBufferOffset.get(buffer);
+				BufferLayout layout = uniforms.computeIfAbsent(buffer, b -> new Pair<>(new BufferLayout(device.get(), writeDescriptorSets, 4, lock), new LinkedList<>())).left;
+				
+				Set<ShaderVariable> variables = e.getValue().getLayoutsVariables();
+				switch (descriptorType)
 				{
-					if (uniformOffset % minUniformOffsetAlignment != 0)
-					{
-						uniformOffset += minUniformOffsetAlignment - uniformOffset % minUniformOffsetAlignment;
+					case UNIFORM_BUFFER, STORAGE_BUFFER -> {
+						
+						switch (descriptorType)
+						{
+							case UNIFORM_BUFFER -> {
+								if (offsets[0] % minUniformOffsetAlignment != 0) offsets[0] += minUniformOffsetAlignment - offsets[0] % minUniformOffsetAlignment;
+							}
+							case STORAGE_BUFFER -> {
+								if (offsets[0] % minStorageOffsetAlignment != 0) offsets[0] += minStorageOffsetAlignment - offsets[0] % minStorageOffsetAlignment;
+							}
+							case UNIFORM_TEXEL_BUFFER, STORAGE_TEXEL_BUFFER -> {
+								if (offsets[0] % minTexelBufferOffsetAlignment != 0) offsets[0] += minTexelBufferOffsetAlignment - offsets[0] % minTexelBufferOffsetAlignment;
+							}
+						}
+						
+						VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
+						descriptorBufferInfo.buffer(buffer.getVk());
+						descriptorBufferInfo.offset(offsets[0]);//use bufferRange.getOffset()
+						for (ShaderVariable variable : variables)
+						{
+							int size = variable.getType().getLength();
+							if (offsets[1] > 0 && offsets[1] + size > 16) offsets[0] += 16 - offsets[1];
+							layout.mark(variable, offsets[0] / 4);
+							offsets[0] += size;
+							offsets[1] = offsets[0] % 16;
+						}
+						descriptorBufferInfo.range(bufferRange.getSize());
+						writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
+						writeDescriptorSet.pImageInfo(null);
+						writeDescriptorSet.pTexelBufferView(null);
 					}
-					if (storageOffset % minStorageOffsetAlignment != 0)
-					{
-						storageOffset += minStorageOffsetAlignment - storageOffset % minStorageOffsetAlignment;
+					case COMBINED_IMAGE_SAMPLER -> {
+						VkDescriptorImageInfo.Buffer descriptorImageInfos = VkDescriptorImageInfo.calloc(variables.size());
+						for (ShaderVariable variable : variables)
+						{
+							layout.mark(variable, writeDescriptorSets.position() - 1);
+							VkDescriptorImageInfo descriptorImageInfo = descriptorImageInfos.get();
+							descriptorImageInfo.imageLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+							descriptorImageInfo.imageView(0);
+							descriptorImageInfo.sampler(0);
+						}
+						descriptorImageInfos.rewind();
+						writeDescriptorSet.pBufferInfo(null);
+						writeDescriptorSet.pImageInfo(descriptorImageInfos);
+						writeDescriptorSet.pTexelBufferView(null);
 					}
-					VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
-					writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
-					writeDescriptorSet.pNext(0);
-					writeDescriptorSet.dstSet(p1[i]);
-					writeDescriptorSet.dstBinding(e.getKey());
-					writeDescriptorSet.dstArrayElement(0);
-					writeDescriptorSet.descriptorCount(1);
-					writeDescriptorSet.descriptorType(e.getValue().getDescriptorType().getType());
-					
-					Set<ShaderVariable> variables = e.getValue().getLayoutsVariables();
-					switch (e.getValue().getDescriptorType())
-					{
-						case UNIFORM_BUFFER -> {
-							VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-							descriptorBufferInfo.buffer(uniformBuffer.getVk());
-							descriptorBufferInfo.offset(uniformOffset);
-							for (ShaderVariable variable : variables)
-							{
-								int size = variable.getType().getLength();
-								if (partialOffset > 0 && partialOffset + size > 16) uniformOffset += 16 - partialOffset;
-								uniformBufferLayout.mark(variable, uniformOffset / 4);
-								uniformOffset += size;
-								partialOffset = uniformOffset % 16;
-							}
-							descriptorBufferInfo.range(uniformOffset - descriptorBufferInfo.offset());
-							writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
-							writeDescriptorSet.pImageInfo(null);
-							writeDescriptorSet.pTexelBufferView(null);
-						}
-						case STORAGE_BUFFER -> {
-							VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-							descriptorBufferInfo.buffer(storageBuffer.getVk());
-							descriptorBufferInfo.offset(storageOffset);
-							for (ShaderVariable variable : variables)
-							{
-								storageBufferLayout.mark(variable, storageOffset / 4);
-								storageOffset += variable.getType().getLength();
-							}
-							descriptorBufferInfo.range(storageBuffer.getSize());
-							writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
-							writeDescriptorSet.pImageInfo(null);
-							writeDescriptorSet.pTexelBufferView(null);
-						}
-						case COMBINED_IMAGE_SAMPLER -> {
-							VkDescriptorImageInfo.Buffer descriptorImageInfos = VkDescriptorImageInfo.calloc(variables.size());
-							for (ShaderVariable variable : variables)
-							{
-								uniformBufferLayout.mark(variable, writeDescriptorSets.position() - 1);
-								VkDescriptorImageInfo descriptorImageInfo = descriptorImageInfos.get();
-								descriptorImageInfo.imageLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-								descriptorImageInfo.imageView(0);
-								descriptorImageInfo.sampler(0);
-							}
-							descriptorImageInfos.rewind();
-							writeDescriptorSet.pBufferInfo(null);
-							writeDescriptorSet.pImageInfo(descriptorImageInfos);
-							writeDescriptorSet.pTexelBufferView(null);
-						}
+					default -> {
+						Debug.debug("WARNING: Unsupported descriptor type " + descriptorType);
 					}
 				}
-				writeDescriptorSets.rewind();
 			}
+			writeDescriptorSets.rewind();
 		}
 		
 		@Override
-		public RDA uniformBuffer(@Nullable VulkanBuffer value)
+		public RDA bufferBindings(@Nullable VulkanBufferRange... value)
 		{
-			return super.uniformBuffer(value);
+			return super.bufferBindings(value);
 		}
 		
 		@Override
-		public RDA storageBuffer(VulkanBuffer value)
+		public RDA bufferBindings(@Nullable List<VulkanBufferRange> value)
 		{
-			return super.storageBuffer(value);
+			return super.bufferBindings(value);
 		}
 		
 		@Override
-		public RDA shaderProgram(ShaderProgram value)
+		public RDA shaderProgram(@Nullable ShaderProgram value)
 		{
 			return super.shaderProgram(value);
 		}
@@ -699,19 +659,19 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		}
 		
 		@Override
-		public RDA dynamicViewport(Boolean value)
+		public RDA dynamicViewport(@Nullable Boolean value)
 		{
 			return super.dynamicViewport(value);
 		}
 		
 		@Override
-		public RDA dynamicScissor(Boolean value)
+		public RDA dynamicScissor(@Nullable Boolean value)
 		{
 			return super.dynamicScissor(value);
 		}
 		
 		@Override
-		public RDA size(Vector2i value)
+		public RDA size(@Nullable Vector2i value)
 		{
 			return super.size(value);
 		}

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 import org.lwjgl.vulkan.EXTDebugReport;
 import org.lwjgl.vulkan.EXTDebugUtils;
@@ -11,6 +12,7 @@ import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
 
 import com.alcadrial.kroperties.Property;
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Vulkan;
@@ -55,6 +57,56 @@ public class RenderTest {
 		}
 	}
 	
+	public static void defaultLoop(BiConsumer<Long, Long> action)
+	{
+		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		String title = window.getTitle();
+		
+		int maxfps = TestProperties.MAX_FRAME_RATE.getValue();
+		long firstHighMilestone = 1000000000;
+		long firstMilestone = 1000000000 / maxfps;
+		
+		long time = System.nanoTime();
+		long current;
+		long lastCurrent = time;
+		long frame = 0;
+		long milestone = firstMilestone;
+		long highMilestone = firstHighMilestone;
+		
+		while (!window.shouldClose())
+		{
+			current = System.nanoTime();
+			long enlapsed = current - time;
+			long enlapsedFrame = current - lastCurrent;
+			long pauseTime = milestone - enlapsed;
+			if (pauseTime > 0)
+			{
+				try
+				{
+					synchronized (window)
+					{
+						window.wait(pauseTime / 1000000, (int) (pauseTime % 1000000));
+					}
+				}
+				catch (InterruptedException e)
+				{
+					e.printStackTrace(System.out);
+				}
+				continue;
+			}
+			milestone += (1 - pauseTime / firstMilestone) * firstMilestone;
+			if (enlapsed >= highMilestone)
+			{
+				window.setTitle(title + " fps=" + frame);
+				frame = 0;
+				highMilestone += (enlapsed - highMilestone + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
+			}
+			println("Frame " + frame, () -> action.accept(enlapsed, enlapsedFrame), TestProperties.PRINT_FRAME_TIMES);
+			frame++;
+			lastCurrent = current;
+		}
+	}
+	
 	public static void initRenderEngine()
 	{
 		RenderEngine.Builder builder = RenderEngine.create("Test", new Version(0, 0, 1, 0));
@@ -95,7 +147,7 @@ public class RenderTest {
 			default -> 0;
 		};
 		
-		System.out.println("[Vulkan debug/" + SEVERITIES[i] + " " + TYPES[j] + "] " + callbackData.pMessageString());
+		Debug.debug("[" + SEVERITIES[i] + " " + TYPES[j] + "] " + callbackData.pMessageString());
 		
 		return VK10.VK_FALSE;
 	}

@@ -151,7 +151,7 @@ public class VulkanBuffer extends RawDeviceResource {
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			VkBufferCopy.Buffer copy = VulkanUtils.bufferCopy(stack, srcOffset, dstOffset, size);
-			return device.configureSingleUseCommandBuffer(stack, device.getGraphicsQueue(), commandBuffer -> {
+			return device.configureAndSubmitSingleUseCommandBuffer(stack, device.getGraphicsQueue(), commandBuffer -> {
 				VK10.vkCmdCopyBuffer(commandBuffer.getVk(), vk, dstBuffer, copy);
 			});
 		}

@@ -38,6 +38,7 @@ public class BufferLayout implements VulkanDebug {
 	private ConcurrentHashMap<String, Pair<ShaderVariable, Integer>> marks;
 	private VkWriteDescriptorSet.Buffer writeDescriptorSets;
 	private int stride;
+	private boolean updated;
 	
 	public BufferLayout(Device device, VkWriteDescriptorSet.Buffer writeDescriptorSets, int stride, Lock lock)
 	{
@@ -46,6 +47,7 @@ public class BufferLayout implements VulkanDebug {
 		this.writeDescriptorSets = writeDescriptorSets;
 		this.stride = stride;
 		this.lock = lock;
+		updated = true;
 	}
 	
 	public BufferLayout(BufferLayout other)
@@ -55,6 +57,7 @@ public class BufferLayout implements VulkanDebug {
 		writeDescriptorSets = other.writeDescriptorSets;
 		stride = other.stride;
 		lock = other.lock;
+		updated = true;
 	}
 	
 	public void mark(ShaderVariable variable, int offset)
@@ -77,7 +80,11 @@ public class BufferLayout implements VulkanDebug {
 		lock.lock();
 		try
 		{
-			VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets, null);
+			if (updated)
+			{
+				VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets, null);
+				updated = false;
+			}
 		}
 		finally
 		{
@@ -92,6 +99,7 @@ public class BufferLayout implements VulkanDebug {
 		{
 			action.accept(writeDescriptorSets);
 			VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets, null);
+			updated = false;
 		}
 		finally
 		{
@@ -104,7 +112,11 @@ public class BufferLayout implements VulkanDebug {
 		lock.lock();
 		try
 		{
-			action.accept(writeDescriptorSets);
+			if (updated)
+			{
+				action.accept(writeDescriptorSets);
+				updated = false;
+			}
 		}
 		finally
 		{
@@ -124,6 +136,7 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.MATRIX_FLOAT_4X4, p.left.getType());
 			buffer.asFloatBuffer().put(index * stride + p.right, value.toArray());
+			updated = true;
 		}
 	}
 	
@@ -139,6 +152,7 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_2, p.left.getType());
 			buffer.asFloatBuffer().put(index * stride + p.right, value.getValuesArray());
+			updated = true;
 		}
 	}
 	
@@ -154,6 +168,7 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_3, p.left.getType());
 			buffer.asFloatBuffer().put(index * stride + p.right, value.getValuesArray());
+			updated = true;
 		}
 	}
 	
@@ -169,6 +184,7 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_4, p.left.getType());
 			buffer.asFloatBuffer().put(index * stride + p.right, value.getValuesArray());
+			updated = true;
 		}
 	}
 	
@@ -184,6 +200,7 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.VECTOR_INT_2, p.left.getType());
 			buffer.asIntBuffer().put(index * stride + p.right, value.getValuesArray());
+			updated = true;
 		}
 	}
 	
@@ -199,6 +216,7 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.VECTOR_INT_3, p.left.getType());
 			buffer.asIntBuffer().put(index * stride + p.right, value.getValuesArray());
+			updated = true;
 		}
 	}
 	
@@ -214,6 +232,7 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.VECTOR_INT_4, p.left.getType());
 			buffer.asIntBuffer().put(index * stride + p.right, value.getValuesArray());
+			updated = true;
 		}
 	}
 	
@@ -235,6 +254,7 @@ public class BufferLayout implements VulkanDebug {
 				VkDescriptorImageInfo.Buffer descriptorImageInfo = writeDescriptorSets.get(index * stride + p.right).pImageInfo();
 				descriptorImageInfo.imageView(value.getVk());
 				descriptorImageInfo.sampler(sampler.getVk());
+				updated = true;
 			}
 			finally
 			{
@@ -255,6 +275,7 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.INT, p.left.getType());
 			buffer.asIntBuffer().put(index * stride + p.right, value);
+			updated = true;
 		}
 	}
 	
@@ -270,6 +291,7 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.FLOAT, p.left.getType());
 			buffer.asFloatBuffer().put(index * stride + p.right, value);
+			updated = true;
 		}
 	}
 	
