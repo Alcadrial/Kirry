@@ -331,7 +331,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 		
 		swapchain = new Swapchain(device, surface, swapchainCreateInfo);
 		
-		oldDevice.waitAsyncIdle(() -> {
+		oldDevice.waitIdle().thenRun(() -> {
 			for (FrameData frame : oldFrames)
 			{
 				frame.frameBuffer.close();
@@ -362,7 +362,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 			if (result < 0) return Result.FAILED;
 			
 			graphicsQueueSemaphor.acquireUninterruptibly();
-			device.resetFence(frame.getFence());
+			device.resetFences(frame.getFence());
 			
 			return Result.SUCCESS;
 		}
@@ -395,7 +395,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 			submitInfo.pSignalSemaphores(p1);
 			
 			device.getGraphicsQueue().submit(submitInfo, frame.getFence());
-			device.waitAsyncForFences(() -> {
+			device.waitForFences(frame.getFence()).thenAccept(fences -> {
 				try
 				{
 					onCommandBufferEndAction.run();
@@ -404,7 +404,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 				{
 					graphicsQueueSemaphor.release();
 				}
-			}, frame.getFence());
+			});
 			
 			VkPresentInfoKHR presentInfo = VkPresentInfoKHR.calloc(stack);
 			presentInfo.sType(KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR);
@@ -415,6 +415,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 			presentInfo.pResults(null);
 			
 			int result = device.getPresentQueue().present(presentInfo);
+			
 			if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR || result == KHRSwapchain.VK_SUBOPTIMAL_KHR)
 			{
 				isSwapchainValid = false;

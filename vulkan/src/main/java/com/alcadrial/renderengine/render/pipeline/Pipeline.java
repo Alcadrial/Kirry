@@ -37,6 +37,13 @@ public abstract class Pipeline extends RawDeviceResource {
 		this.layout = layout;
 	}
 	
+	@Override
+	public void setName(String name)
+	{
+		device.setObjectDebugName(this, name);
+		this.name = name;
+	}
+	
 	public abstract int bindPoint();
 	
 	protected void fillShaderStageCreateInfo(MemoryStack stack, VkPipelineShaderStageCreateInfo shaderStageInfo, PreparedShader shader)

@@ -3,6 +3,7 @@ package com.alcadrial.renderengine.render;
 import java.math.RoundingMode;
 import java.nio.LongBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -16,8 +17,8 @@ import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
 import com.alcadrial.kector.Math;
 import com.alcadrial.kector.vector.Vector3i;
+import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.buffer.BufferLayout;
-import com.alcadrial.renderengine.render.buffer.VertexBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.pipeline.ComputePipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
@@ -29,6 +30,7 @@ import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLocalSizeLayout;
+import com.alcadrial.renderengine.render.shader.layouts.ShaderStorageBufferLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderUniformBufferLayout;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
@@ -45,12 +47,6 @@ public class Computer implements AutoCloseable, VulkanDebug {
 	private ComputePipeline computePipeline;
 	private Vector3i groupCount;
 	
-	private VertexBuffer inputBuffer;
-	private BufferLayout inputLayout;
-	private VertexBuffer outputBuffer;
-	private BufferLayout outputLayout;
-	private VulkanBuffer uniformBuffer;
-	
 	private long computeDescriptorPool;
 	private long computeDescriptorSetLayout;
 	private long[] computeDescriptorSet;
@@ -58,26 +54,31 @@ public class Computer implements AutoCloseable, VulkanDebug {
 	private BufferLayout computeStorageBufferLayout;
 	private ReentrantLock computeDescriptorSetLock;
 	private PreparedShader computeShader;
+	private Map<Integer, VulkanBuffer> bindings;
 	
 	public Computer(Device device, PreparedShader computeShader)
 	{
 		VulkanErrorUtils.match(computeShader.info().getType(), ShaderType.COMPUTE, "Only compute shader can be used");
 		this.device = device;
 		this.computeShader = computeShader;
-		for (ShaderLayout layout : computeShader.info().getLayouts()) if (layout.getType() == Type.LOCAL_SIZE) groupCount = ((ShaderLocalSizeLayout) layout).getLocalSize();
+		for (ShaderLayout layout : computeShader.info().getLayouts()) if (layout.getType() == Type.LOCAL_SIZE)
+		{
+			groupCount = ((ShaderLocalSizeLayout) layout).getLocalSize();
+		}
 		VulkanErrorUtils.nonNull(groupCount, "Missing localsize in shader info");
+		bindings = new HashMap<>();
 	}
-	
-	public void setInputBuffer(VertexBuffer inputBuffer, BufferLayout layout)
+	/*
+	public void setInputBuffer(VulkanBuffer inputBuffer, BufferLayout layout)
 	{
-		assert (inputBuffer.getGpuBuffer().getUsage() & VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0 : "Only Storage Buffers can be used in compute";
+		assert (inputBuffer.getUsage() & VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0 : "Only Storage Buffers can be used in compute";
 		this.inputBuffer = inputBuffer;
 		inputLayout = layout;
 	}
 	
-	public void setOutputBuffer(VertexBuffer outputBuffer, BufferLayout layout)
+	public void setOutputBuffer(VulkanBuffer outputBuffer, BufferLayout layout)
 	{
-		assert (outputBuffer.getGpuBuffer().getUsage() & VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0 : "Only Storage Buffers can be used in compute";
+		assert (outputBuffer.getUsage() & VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0 : "Only Storage Buffers can be used in compute";
 		this.outputBuffer = outputBuffer;
 		outputLayout = layout;
 	}
@@ -88,14 +89,20 @@ public class Computer implements AutoCloseable, VulkanDebug {
 		this.uniformBuffer = uniformBuffer;
 	}
 	
-	public VertexBuffer getOutputBuffer()
+	public VulkanBuffer getOutputBuffer()
 	{
 		return outputBuffer;
 	}
+	*/
 	
 	public BufferLayout getComputeUniformBufferLayout()
 	{
 		return computeUniformBufferLayout;
+	}
+	
+	public void setBinding(int binding, VulkanBuffer buffer)
+	{
+		bindings.put(binding, buffer);
 	}
 	
 	public void init()
@@ -127,96 +134,122 @@ public class Computer implements AutoCloseable, VulkanDebug {
 			pipelineLayoutInfo.pSetLayouts(p);
 			computePipeline = new ComputePipeline(device, new PipelineLayout(device, pipelineLayoutInfo), true, computeShader);
 			
-			VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(3);
+			List<ShaderLayout> layouts = computeShader.info().getLayouts();
 			
-			computeUniformBufferLayout = new BufferLayout(device, writeDescriptorSets.slice(0, 1), 0, computeDescriptorSetLock);
-			computeStorageBufferLayout = new BufferLayout(device, writeDescriptorSets.slice(1, 2), 0, computeDescriptorSetLock);
+			int uniformBufferCount = 0;
+			int storageBufferCount = 0;
 			
-			VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
-			writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
-			writeDescriptorSet.pNext(0);
-			writeDescriptorSet.dstSet(computeDescriptorSet[0]);
-			writeDescriptorSet.dstBinding(0);
-			writeDescriptorSet.dstArrayElement(0);
-			writeDescriptorSet.descriptorCount(1);
-			writeDescriptorSet.descriptorType(ShaderLayout.Type.UNIFORM_BUFFER.getType());
-			
-			int offset = 512;
-			int partialOffset = 0;
-			
-			VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-			descriptorBufferInfo.buffer(uniformBuffer.getVk());
-			descriptorBufferInfo.offset(offset);
-			
-			for (ShaderLayout shaderLayout : computeShader.info().getLayouts()) if (shaderLayout.getType() == Type.UNIFORM_BUFFER)
+			for (ShaderLayout layout : layouts)
 			{
-				ShaderUniformBufferLayout layout = (ShaderUniformBufferLayout) shaderLayout;
-				for (ShaderVariable variable : layout.getVariables())
+				switch (layout.getType())
 				{
-					int size = variable.getType().getLength();
-					if (partialOffset > 0 && partialOffset + size > 16) offset += 16 - partialOffset;
-					computeUniformBufferLayout.mark(variable, offset / 4);
-					offset += size;
-					partialOffset = offset % 16;
+					case UNIFORM_BUFFER -> uniformBufferCount++;
+					case STORAGE_BUFFER -> storageBufferCount++;
 				}
 			}
 			
-			descriptorBufferInfo.range(offset - descriptorBufferInfo.offset());
-			writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
-			writeDescriptorSet.pImageInfo(null);
-			writeDescriptorSet.pTexelBufferView(null);
+			VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(uniformBufferCount + storageBufferCount);
 			
-			writeDescriptorSet = writeDescriptorSets.get();
-			writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
-			writeDescriptorSet.pNext(0);
-			writeDescriptorSet.dstSet(computeDescriptorSet[0]);
-			writeDescriptorSet.dstBinding(1);
-			writeDescriptorSet.dstArrayElement(0);
-			writeDescriptorSet.descriptorCount(1);
-			writeDescriptorSet.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
-			descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-			descriptorBufferInfo.buffer(inputBuffer.getGpuBuffer().getVk());
-			descriptorBufferInfo.offset(0);
-			descriptorBufferInfo.range(inputBuffer.getSize());
-			writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
-			writeDescriptorSet.pImageInfo(null);
-			writeDescriptorSet.pTexelBufferView(null);
+			VkWriteDescriptorSet.Buffer uniformWriteDescriptorSets = writeDescriptorSets.slice(0, uniformBufferCount);
+			VkWriteDescriptorSet.Buffer storageWriteDescriptorSets = writeDescriptorSets.slice(uniformBufferCount, storageBufferCount);
 			
-			writeDescriptorSet = writeDescriptorSets.get();
-			writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
-			writeDescriptorSet.pNext(0);
-			writeDescriptorSet.dstSet(computeDescriptorSet[0]);
-			writeDescriptorSet.dstBinding(2);
-			writeDescriptorSet.dstArrayElement(0);
-			writeDescriptorSet.descriptorCount(1);
-			writeDescriptorSet.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
-			descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-			descriptorBufferInfo.buffer(outputBuffer.getGpuBuffer().getVk());
-			descriptorBufferInfo.offset(0);
-			descriptorBufferInfo.range(outputBuffer.getSize());
-			writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
-			writeDescriptorSet.pImageInfo(null);
-			writeDescriptorSet.pTexelBufferView(null);
+			computeUniformBufferLayout = new BufferLayout(device, computeDescriptorSetLock);
+			computeStorageBufferLayout = new BufferLayout(device, computeDescriptorSetLock);
 			
-			writeDescriptorSets.rewind();
+			Map<VulkanBuffer, Pair<Integer, Integer>> offsets = new HashMap<>();
 			
+			for (ShaderLayout shaderLayout : computeShader.info().getLayouts())
+			{
+				switch (shaderLayout.getType())
+				{
+					case UNIFORM_BUFFER -> {
+						ShaderUniformBufferLayout layout = (ShaderUniformBufferLayout) shaderLayout;
+						
+						VulkanBuffer uniformBuffer = bindings.get(layout.getBinding());
+						Pair<Integer, Integer> p1 = offsets.computeIfAbsent(uniformBuffer, k -> new Pair<Integer, Integer>(0, 0));
+						
+						int offset = p1.left;
+						int partialOffset = p1.right;
+						
+						VkWriteDescriptorSet writeDescriptorSet = uniformWriteDescriptorSets.get();
+						writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
+						writeDescriptorSet.pNext(0);
+						writeDescriptorSet.dstBinding(layout.getBinding());
+						writeDescriptorSet.dstSet(computeDescriptorSet[0]);
+						writeDescriptorSet.dstArrayElement(0);
+						writeDescriptorSet.descriptorCount(1);
+						writeDescriptorSet.descriptorType(Type.UNIFORM_BUFFER.getType());
+						
+						VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
+						descriptorBufferInfo.buffer(uniformBuffer.getVk());
+						descriptorBufferInfo.offset(offset);
+						
+						writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
+						writeDescriptorSet.pImageInfo(null);
+						writeDescriptorSet.pTexelBufferView(null);
+						
+						for (ShaderVariable variable : layout.getVariables())
+						{
+							int size = variable.getType().getLength();
+							if (partialOffset > 0 && partialOffset + size > 16)
+							{
+								offset += 16 - partialOffset;
+							}
+							computeUniformBufferLayout.mark(variable, offset / 4);
+							offset += size;
+							partialOffset = offset % 16;
+						}
+						descriptorBufferInfo.range(offset - descriptorBufferInfo.offset());
+					}
+					case STORAGE_BUFFER -> {
+						ShaderStorageBufferLayout layout = (ShaderStorageBufferLayout) shaderLayout;
+						
+						VulkanBuffer storageBuffer = bindings.get(layout.getBinding());
+						
+						VkWriteDescriptorSet writeDescriptorSet = storageWriteDescriptorSets.get();
+						writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
+						writeDescriptorSet.pNext(0);
+						writeDescriptorSet.dstSet(computeDescriptorSet[0]);
+						writeDescriptorSet.dstBinding(layout.getBinding());
+						writeDescriptorSet.dstArrayElement(0);
+						writeDescriptorSet.descriptorCount(1);
+						writeDescriptorSet.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
+						
+						VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
+						descriptorBufferInfo.buffer(storageBuffer.getVk());
+						descriptorBufferInfo.offset(0);
+						descriptorBufferInfo.range(storageBuffer.getSize());
+						
+						writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
+						writeDescriptorSet.pImageInfo(null);
+						writeDescriptorSet.pTexelBufferView(null);
+					}
+				}
+			}
+			
+			computeUniformBufferLayout.setWriteDescriptorSets(uniformWriteDescriptorSets.rewind());
 			computeUniformBufferLayout.updateDescriptorSets();
+			computeStorageBufferLayout.setWriteDescriptorSets(storageWriteDescriptorSets.rewind());
 			computeStorageBufferLayout.updateDescriptorSets();
 			
 			System.out.println("SUCCESS");
 		}
 	}
 	
-	@SuppressWarnings("null")
 	public void swapBuffers()
-	{
+	{/*
 		computeStorageBufferLayout.update(sets -> {
-			VertexBuffer t = inputBuffer;
+			VulkanBuffer t = inputBuffer;
 			inputBuffer = outputBuffer;
 			outputBuffer = t;
-			sets.get(0).pBufferInfo().buffer(inputBuffer.getGpuBuffer().getVk());
-			sets.get(1).pBufferInfo().buffer(outputBuffer.getGpuBuffer().getVk());
-		});
+			sets.get(0).pBufferInfo().buffer(inputBuffer.getVk());
+			sets.get(1).pBufferInfo().buffer(outputBuffer.getVk());
+		});*/
+	}
+	
+	public ComputePipeline getComputePipeline()
+	{
+		return computePipeline;
 	}
 	
 	public void setComputePipeline(ComputePipeline computePipeline)
@@ -249,10 +282,11 @@ public class Computer implements AutoCloseable, VulkanDebug {
 	@Override
 	public void close()
 	{
-		device.waitIdle();
-		computePipeline.close();
-		VK10.vkDestroyDescriptorSetLayout(device.getVk(), computeDescriptorSetLayout, null);
-		VK10.vkDestroyDescriptorPool(device.getVk(), computeDescriptorPool, null);
+		device.waitIdle().thenRun(() -> {
+			computePipeline.close();
+			VK10.vkDestroyDescriptorSetLayout(device.getVk(), computeDescriptorSetLayout, null);
+			VK10.vkDestroyDescriptorPool(device.getVk(), computeDescriptorPool, null);
+		});
 	}
 	
 	@Override
@@ -262,11 +296,11 @@ public class Computer implements AutoCloseable, VulkanDebug {
 		Debug.print("Pipeline ", computePipeline);
 		Debug.print("GroupCount: " + groupCount.x() + "x" + groupCount.y() + "x" + groupCount.z());
 		
-		Debug.print("InputBuffer", inputBuffer);
+		//	Debug.print("InputBuffer", inputBuffer);
 		//Debug.printState("InputLayout", inputLayout);
-		Debug.print("OutputBuffer", outputBuffer);
+		//	Debug.print("OutputBuffer", outputBuffer);
 		//Debug.printState("OutputLayout", outputLayout);
-		Debug.print("UniformBuffer", uniformBuffer);
+		//	Debug.print("UniformBuffer", uniformBuffer);
 		Debug.print("DescriptorPool: " + Debug.address(computeDescriptorPool));
 		Debug.print("DescriptorSetLayout: " + Debug.address(computeDescriptorSetLayout));
 		Debug.print("DescriptorSet: " + Debug.address(computeDescriptorSet[0]));

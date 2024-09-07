@@ -32,6 +32,13 @@ public class FrameBuffer extends RawDeviceResource {
 		layers = info.layers();
 	}
 	
+	@Override
+	public void setName(String name)
+	{
+		device.setObjectDebugName(this, name);
+		this.name = name;
+	}
+	
 	public int getType()
 	{
 		return type;

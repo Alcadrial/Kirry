@@ -22,6 +22,7 @@ public class DynamicBigBuffer extends BigVulkanBuffer {
 		slots = new TreeSet<>();
 	}
 	
+	@Override
 	public VulkanBuffer allocate(int size, int usage)
 	{
 		throw new UnsupportedOperationException("NYI");

@@ -51,7 +51,6 @@ import com.alcadrial.renderengine.render.QueueFamily;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Surface;
-import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.texture.Texture;
@@ -59,6 +58,8 @@ import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanResource;
 
 public class VulkanWindow extends Window implements VulkanResource<Long> {
+	
+	private static final int BUFFERED_FRAMES_COUNT = 3;
 	
 	static
 	{
@@ -81,8 +82,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private @Nullable Texture depthTexture;
 	private List<CommandBuffer> commandBuffers;
 	private int drawCount;
-	
-	private VulkanBuffer uniformBuffer;
 	
 	/**
 	 * <b>WARNING:</b> the window hint {@link GLFW#GLFW_CLIENT_API CLIENT_API} is set to {@link GLFW#GLFW_NO_API NO_API}
@@ -110,13 +109,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		drawCount = 0;
 	}
 	
-	/*
-	 * useDepthTexture ? (w, h) -> {
-			Texture depthTexture = Texture.create2dTexture(device, w, h, VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
-			depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-			return depthTexture;
-		} : null
-	 */
 	public void init(Device device)
 	{
 		if (this.device == null)
@@ -129,14 +121,14 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				device.setPresentQueue(device.getGraphicsQueue().getFamilyIndex() == presentationQueue.getIndex() ? device.getGraphicsQueue() : new Queue(device, presentationQueue.getIndex()));
 				
 				surface.init(device.getPhysicalDevice(), stack);
+				Debug.runOnDebug(() -> device.setObjectDebugName(surface, "Surface " + Debug.getIncrementalId()));
 				createRenderPass();
-				presenter = new Presenter(device, this, renderPass, 3);
+				presenter = new Presenter(device, this, renderPass, BUFFERED_FRAMES_COUNT);
 				
-				uniformBuffer = new VulkanBuffer(device, 1024, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 				renderer = Renderer.create().shaderProgram(shaderProgram).build(device, surface.getSize(), presenter.getRenderPass());
 				
-				commandBuffers = device.createMultiUseCommandBuffer(stack, 3);
-				for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.startRecording();
+				commandBuffers = device.createMultiUseCommandBuffer(BUFFERED_FRAMES_COUNT);
+				for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.beginRecording();
 				prepareFrameBuffers(stack);
 				presenter.startPresentation();
 			}
@@ -185,7 +177,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			
 			commandBuffer.endRecording();
 			swapBuffers(commandBuffer);
-			commandBuffer.startRecording();
+			commandBuffer.beginRecording();
 		}
 	}
 	
@@ -288,7 +280,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		{
 			VkExtent2D extent = surface.getExtent();
 			depthTexture = Texture.create2dTexture(device, extent.width(), extent.height(), VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
-			depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+			depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL).join();
 		}
 		presenter.initialize(depthTexture);
 		

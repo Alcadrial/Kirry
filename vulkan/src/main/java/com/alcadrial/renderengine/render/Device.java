@@ -5,20 +5,14 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.util.vma.Vma;
-import org.lwjgl.util.vma.VmaAllocationCreateInfo;
-import org.lwjgl.util.vma.VmaAllocationInfo;
-import org.lwjgl.util.vma.VmaAllocatorCreateInfo;
-import org.lwjgl.util.vma.VmaVulkanFunctions;
 import org.lwjgl.vulkan.EXTDebugMarker;
 import org.lwjgl.vulkan.EXTDebugReport;
 import org.lwjgl.vulkan.VK10;
-import org.lwjgl.vulkan.VK12;
 import org.lwjgl.vulkan.VkBufferCreateInfo;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandPoolCreateInfo;
@@ -28,9 +22,13 @@ import org.lwjgl.vulkan.VkFenceCreateInfo;
 import org.lwjgl.vulkan.VkMemoryRequirements;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 
-import com.alcadrial.renderengine.core.util.WorkInProgress;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
-import com.alcadrial.renderengine.render.buffer.VulkanBufferData;
+import com.alcadrial.renderengine.render.pipeline.Pipeline;
+import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
+import com.alcadrial.renderengine.render.renderpass.RenderPass;
+import com.alcadrial.renderengine.render.texture.Texture;
+import com.alcadrial.renderengine.render.texture.TextureSampler;
+import com.alcadrial.renderengine.render.texture.TextureView;
 import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
 import com.alcadrial.renderengine.render.util.OutOfSpaceException;
@@ -39,11 +37,14 @@ import com.alcadrial.renderengine.render.util.VulkanUtils;
 
 public class Device extends AbstractVulkanResource<VkDevice> {
 	
+	private static final int DESTRUCTION_LIST_THRESHOLD = 200;
+	
 	static
 	{
 		RenderEngine.assertLoaded();
 	}
 	
+	private boolean debugReportExtensionEnabled;
 	private Deque<AbstractDeviceResource<?>> destructionList;
 	private PhysicalDevice physicalDevice;
 	private Queue graphicsQueue;
@@ -52,11 +53,11 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	private Queue presentQueue;
 	private CommandPool resetCommandPool;
 	private CommandPool shortLivedCommandPool;
-	private long vmaAllocator;
 	
-	public Device(VkDevice device, PhysicalDevice physicalDevice)
+	public Device(VkDevice device, PhysicalDevice physicalDevice, boolean debugReportExtensionEnabled)
 	{
 		vk = VulkanErrorUtils.nonNull(device);
+		this.debugReportExtensionEnabled = debugReportExtensionEnabled;
 		this.physicalDevice = VulkanErrorUtils.nonNull(physicalDevice);
 		destructionList = new LinkedList<>();
 		
@@ -78,72 +79,9 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		}
 	}
 	
-	/**
-	 * Vma
-	 */
-	@WorkInProgress
-	public void initializeVma()
-	{
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			VmaVulkanFunctions functions = VmaVulkanFunctions.calloc(stack);
-			
-			functions.vkGetPhysicalDeviceProperties(VK10.vkGetInstanceProcAddr(RenderEngine.getVulkan().getInstance(), "vkGetPhysicalDeviceProperties"));
-			functions.vkGetPhysicalDeviceMemoryProperties(VK10.vkGetInstanceProcAddr(RenderEngine.getVulkan().getInstance(), "vkGetPhysicalDeviceMemoryProperties"));
-			functions.vkAllocateMemory(VK10.vkGetDeviceProcAddr(vk, "vkAllocateMemory"));
-			functions.vkFreeMemory(VK10.vkGetDeviceProcAddr(vk, "vkFreeMemory"));
-			functions.vkMapMemory(VK10.vkGetDeviceProcAddr(vk, "vkMapMemory"));
-			functions.vkUnmapMemory(VK10.vkGetDeviceProcAddr(vk, "vkUnmapMemory"));
-			functions.vkFlushMappedMemoryRanges(VK10.vkGetDeviceProcAddr(vk, "vkFlushMappedMemoryRanges"));
-			functions.vkInvalidateMappedMemoryRanges(VK10.vkGetDeviceProcAddr(vk, "vkInvalidateMappedMemoryRanges"));
-			functions.vkBindBufferMemory(VK10.vkGetDeviceProcAddr(vk, "vkBindBufferMemory"));
-			functions.vkBindImageMemory(VK10.vkGetDeviceProcAddr(vk, "vkBindImageMemory"));
-			functions.vkGetBufferMemoryRequirements(VK10.vkGetDeviceProcAddr(vk, "vkGetBufferMemoryRequirements"));
-			functions.vkGetImageMemoryRequirements(VK10.vkGetDeviceProcAddr(vk, "vkGetImageMemoryRequirements"));
-			functions.vkCreateBuffer(VK10.vkGetDeviceProcAddr(vk, "vkCreateBuffer"));
-			functions.vkDestroyBuffer(VK10.vkGetDeviceProcAddr(vk, "vkDestroyBuffer"));
-			functions.vkCreateImage(VK10.vkGetDeviceProcAddr(vk, "vkCreateImage"));
-			functions.vkDestroyImage(VK10.vkGetDeviceProcAddr(vk, "vkDestroyImage"));
-			functions.vkCmdCopyBuffer(VK10.vkGetDeviceProcAddr(vk, "vkCmdCopyBuffer"));
-			functions.vkGetInstanceProcAddr(VK10.vkGetInstanceProcAddr(RenderEngine.getVulkan().getInstance(), "vkGetInstanceProcAddr"));
-			functions.vkGetDeviceProcAddr(VK10.vkGetDeviceProcAddr(vk, "vkGetDeviceProcAddr"));
-			
-			VmaAllocatorCreateInfo allocatorInfo = VmaAllocatorCreateInfo.calloc(stack);
-			allocatorInfo.flags(Vma.VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT);
-			allocatorInfo.vulkanApiVersion(VK12.VK_API_VERSION_1_2);
-			allocatorInfo.physicalDevice(physicalDevice.getVk());
-			allocatorInfo.device(vk);
-			allocatorInfo.instance(RenderEngine.getVulkan().getInstance());
-			allocatorInfo.pVulkanFunctions(functions);
-			
-			PointerBuffer p = stack.callocPointer(1);
-			Vma.vmaCreateAllocator(allocatorInfo, p);
-			vmaAllocator = p.get();
-		}
-	}
-	
-	@WorkInProgress
-	public VulkanBufferData createBuffer(MemoryStack stack, VkBufferCreateInfo bufferCreateInfo, VmaAllocationCreateInfo allocationCreateInfo)
-	{
-		LongBuffer p = stack.callocLong(1);
-		PointerBuffer p0 = stack.callocPointer(1);
-		VmaAllocationInfo allocationInfo = VmaAllocationInfo.calloc();
-		VulkanErrorUtils.assertNoError(Vma.vmaCreateBuffer(vmaAllocator, bufferCreateInfo, allocationCreateInfo, p, p0, allocationInfo), "Failed to create buffer");
-		return new VulkanBufferData(p.get(), p0.get(), allocationInfo);
-	}
-	
-	@WorkInProgress
-	public VulkanBufferData createBuffer(VkBufferCreateInfo bufferCreateInfo, VmaAllocationCreateInfo allocationCreateInfo)
-	{
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			return createBuffer(stack, bufferCreateInfo, allocationCreateInfo);
-		}
-	}
-	
 	public void addToDestructionList(AbstractDeviceResource<?> resource)
 	{
-		if (resource.getDevice() == this) destructionList.add(resource);
+		if (resource.getDevice() == this) destructionList.push(resource);
 	}
 	
 	public void removeFromDestructionList(AbstractDeviceResource<?> resource)
@@ -162,70 +100,6 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		{
 			r.run();
 		}
-	}
-	
-	public void waitIdle()
-	{
-		sync(graphicsQueue, () -> {
-			Queue q = null;
-			if (computeQueue != graphicsQueue) q = computeQueue;
-			sync(q, () -> {
-				Queue q0 = null;
-				if (presentQueue != graphicsQueue && presentQueue != computeQueue) q0 = computeQueue;
-				sync(q0, () -> VK10.vkDeviceWaitIdle(vk));
-			});
-		});
-	}
-	
-	public Future<?> waitAsyncIdle(Runnable action)
-	{
-		return RenderEngine.getExecutor().submit(() -> {
-			waitIdle();
-			action.run();
-		});
-	}
-	
-	public Future<?> waitAsyncIdle(Consumer<Device> action)
-	{
-		return RenderEngine.getExecutor().submit(() -> {
-			waitIdle();
-			action.accept(this);
-		});
-	}
-	
-	/**
-	 * 
-	 * @param fences
-	 */
-	public void waitForFences(long... fences)
-	{
-		while (VK10.vkWaitForFences(vk, fences, true, 0xFFFFFFFF) == VK10.VK_TIMEOUT);
-	}
-	
-	/**
-	 * 
-	 * @param action
-	 * @param fences
-	 */
-	public Future<?> waitAsyncForFences(Runnable action, long... fences)
-	{
-		return RenderEngine.getExecutor().submit(() -> {
-			waitForFences(fences);
-			action.run();
-		});
-	}
-	
-	/**
-	 * 
-	 * @param action
-	 * @param fences
-	 */
-	public Future<?> waitAsyncForFences(Consumer<Device> action, long... fences)
-	{
-		return RenderEngine.getExecutor().submit(() -> {
-			waitForFences(fences);
-			action.accept(this);
-		});
 	}
 	
 	public PhysicalDevice getPhysicalDevice()
@@ -293,66 +167,120 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		}
 	}
 	
-	public CommandBuffer createMultiUseCommandBuffer(MemoryStack stack)
+	// COMMAND BUFFER
+	
+	public CommandBuffer createMultiUseCommandBuffer()
 	{
-		return createMultiUseCommandBuffer(stack, 1).get(0);
+		return createMultiUseCommandBuffer(1).get(0);
 	}
 	
-	public List<CommandBuffer> createMultiUseCommandBuffer(MemoryStack stack, int count)
+	public List<CommandBuffer> createMultiUseCommandBuffer(int count)
 	{
-		PointerBuffer p = stack.callocPointer(count);
-		useResetCommandPool(pool -> VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, pool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, count), p), "Failed to create multi use command buffer"));
-		List<CommandBuffer> commandBuffers = new ArrayList<>(count);
-		
-		for (int i = 0; i < count; i++) commandBuffers.add(new CommandBuffer(this, resetCommandPool, new VkCommandBuffer(p.get(), vk)));
-		return commandBuffers;
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			PointerBuffer p = stack.callocPointer(count);
+			useResetCommandPool(pool -> VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, pool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, count), p), "Failed to create multi use command buffer"));
+			List<CommandBuffer> commandBuffers = new ArrayList<>(count);
+			
+			for (int i = 0; i < count; i++) commandBuffers.add(new CommandBuffer(this, resetCommandPool, new VkCommandBuffer(p.get(), vk)));
+			return commandBuffers;
+		}
 	}
 	
-	public void configureSingleUseCommandBuffer(MemoryStack stack, Queue queue, Consumer<CommandBuffer> configure)
+	public void configureSingleUseCommandBuffer(Queue queue, Consumer<CommandBuffer> configure)
 	{
-		PointerBuffer p = stack.callocPointer(1);
-		useShortLivedCommandPool(pool -> VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, pool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to create single use command buffer"));
-		CommandBuffer commandBuffer = new CommandBuffer(this, shortLivedCommandPool, new VkCommandBuffer(p.get(), vk));
-		VulkanErrorUtils.assertStatement(commandBuffer.startRecording(), "Failed to create single use command buffer");
-		useShortLivedCommandPool(pool -> configure.accept(commandBuffer));
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			PointerBuffer p = stack.callocPointer(1);
+			useShortLivedCommandPool(pool -> VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, pool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to create single use command buffer"));
+			CommandBuffer commandBuffer = new CommandBuffer(this, shortLivedCommandPool, new VkCommandBuffer(p.get(), vk));
+			VulkanErrorUtils.assertStatement(commandBuffer.beginRecording(), "Failed to create single use command buffer");
+			useShortLivedCommandPool(pool -> configure.accept(commandBuffer));
+		}
 	}
 	
-	public Future<?> configureAndSubmitSingleUseCommandBuffer(MemoryStack stack, Queue queue, Consumer<CommandBuffer> configure)
+	public CompletableFuture<?> configureAndSubmitSingleUseCommandBuffer(Queue queue, Consumer<CommandBuffer> configure)
 	{
-		PointerBuffer p = stack.callocPointer(1);
-		useShortLivedCommandPool(pool -> VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, pool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to create single use command buffer"));
-		CommandBuffer commandBuffer = new CommandBuffer(this, shortLivedCommandPool, new VkCommandBuffer(p.get(), vk));
-		VulkanErrorUtils.assertStatement(commandBuffer.startRecording(), "Failed to create single use command buffer");
-		useShortLivedCommandPool(pool -> configure.accept(commandBuffer));
-		return submitSingleUseCommandBuffer(stack, commandBuffer, queue);
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			PointerBuffer p = stack.callocPointer(1);
+			useShortLivedCommandPool(pool -> VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, pool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to create single use command buffer"));
+			CommandBuffer commandBuffer = new CommandBuffer(this, shortLivedCommandPool, new VkCommandBuffer(p.get(), vk));
+			VulkanErrorUtils.assertStatement(commandBuffer.beginRecording(), "Failed to create single use command buffer");
+			useShortLivedCommandPool(pool -> configure.accept(commandBuffer));
+			return submitSingleUseCommandBuffer(stack, commandBuffer, queue);
+		}
 	}
 	
-	public CommandBuffer createSingleUseCommandBuffer(MemoryStack stack)
+	public CommandBuffer createSingleUseCommandBuffer()
 	{
-		PointerBuffer p = stack.callocPointer(1);
-		useShortLivedCommandPool(pool -> VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, pool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to create single use command buffer"));
-		CommandBuffer commandBuffer = new CommandBuffer(this, shortLivedCommandPool, new VkCommandBuffer(p.get(), vk));
-		VulkanErrorUtils.assertStatement(commandBuffer.startRecording(), "Failed to create single use command buffer");
-		return commandBuffer;
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			PointerBuffer p = stack.callocPointer(1);
+			useShortLivedCommandPool(pool -> VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, VulkanUtils.commandBufferAllocateInfo(stack, pool, VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1), p), "Failed to create single use command buffer"));
+			CommandBuffer commandBuffer = new CommandBuffer(this, shortLivedCommandPool, new VkCommandBuffer(p.get(), vk));
+			VulkanErrorUtils.assertStatement(commandBuffer.beginRecording(), "Failed to create single use command buffer");
+			return commandBuffer;
+		}
 	}
 	
-	public Future<?> submitSingleUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer)
+	public CompletableFuture<?> submitSingleUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer)
 	{
 		return submitSingleUseCommandBuffer(stack, commandBuffer, graphicsQueue);
 	}
 	
-	public Future<?> submitSingleUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer, Queue queue)
+	public CompletableFuture<?> submitSingleUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer, Queue queue)
 	{
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
 		VulkanErrorUtils.assertStatement(commandBuffer.endRecording(), "Command buffer is not recording");
 		long fence = createFence(stack, false);
 		queue.submit(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), fence);
-		return RenderEngine.getExecutor().submit(() -> {
-			waitForFences(fence);
-			useShortLivedCommandPool(pool -> VK10.vkFreeCommandBuffers(vk, pool, commandBuffer.getVk()));
-			destroyFence(fence);
+		return waitForFences(fence).thenAccept(fences -> {
+			destroyFences(fence);
 			commandBuffer.close();
 		});
+	}
+	
+	public CompletableFuture<?> submitMultiUseCommandBuffer(CommandBuffer commandBuffer, Queue queue)
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
+			VulkanErrorUtils.assertStatement(commandBuffer.endRecording(), "Command buffer is not recording");
+			long fence = createFence(stack, false);
+			queue.submit(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), fence);
+			return waitForFences(fence).thenAccept(this::destroyFences);
+		}
+	}
+	
+	public CompletableFuture<Device> waitIdle()
+	{
+		return CompletableFuture.supplyAsync(() -> {
+			sync(graphicsQueue, () -> {
+				Queue q = null;
+				if (computeQueue != graphicsQueue) q = computeQueue;
+				sync(q, () -> {
+					Queue q0 = null;
+					if (presentQueue != graphicsQueue && presentQueue != computeQueue) q0 = computeQueue;
+					sync(q0, () -> VK10.vkDeviceWaitIdle(vk));
+				});
+			});
+			return this;
+		}, RenderEngine.getExecutor()).copy();
+	}
+	
+	// FENCES
+	
+	/**
+	 *
+	 * @param fences
+	 */
+	public CompletableFuture<long[]> waitForFences(long... fences)
+	{
+		return CompletableFuture.supplyAsync(() -> {
+			while (VK10.vkWaitForFences(vk, fences, true, 0xFFFFFFFF) == VK10.VK_TIMEOUT);
+			return fences;
+		}, RenderEngine.getExecutor()).copy();
 	}
 	
 	public long createFence(MemoryStack stack, boolean signaled)
@@ -362,14 +290,14 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		return p[0];
 	}
 	
-	public void resetFence(long... fence)
+	public void resetFences(long... fences)
 	{
-		VulkanErrorUtils.assertNoError(VK10.vkResetFences(vk, fence), "Failed to reset fences");
+		VulkanErrorUtils.assertNoError(VK10.vkResetFences(vk, fences), "Failed to reset fences");
 	}
 	
-	public void destroyFence(long fence)
+	public void destroyFences(long... fences)
 	{
-		VK10.vkDestroyFence(vk, fence, null);
+		for (long fence : fences) VK10.vkDestroyFence(vk, fence, null);
 	}
 	
 	public long createBuffer(MemoryStack stack, long size, int usage)
@@ -382,52 +310,100 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		return p[0];
 	}
 	
-	public long allocateBufferMemory(MemoryStack stack, long vkBuffer, int properties)
+	// MEMORY
+	
+	public VkMemoryRequirements getMemoryRequirements(VulkanBuffer buffer)
 	{
-		VkMemoryRequirements memRequirements = VkMemoryRequirements.malloc(stack);
-		VK10.vkGetBufferMemoryRequirements(vk, vkBuffer, memRequirements);
-		long memory = allocateMemory(stack, memRequirements, properties);
-		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(vk, vkBuffer, memory, 0), "Failed to bind buffer memory");
+		VkMemoryRequirements memoryRequirements = VkMemoryRequirements.malloc();
+		VK10.vkGetBufferMemoryRequirements(vk, buffer.getVk(), memoryRequirements);
+		return memoryRequirements;
+	}
+	
+	public VkMemoryRequirements getBufferRequirements(MemoryStack stack, VulkanBuffer buffer)
+	{
+		VkMemoryRequirements memoryRequirements = VkMemoryRequirements.malloc(stack);
+		VK10.vkGetBufferMemoryRequirements(vk, buffer.getVk(), memoryRequirements);
+		return memoryRequirements;
+	}
+	
+	public VkMemoryRequirements getMemoryRequirements(Texture texture)
+	{
+		VkMemoryRequirements memoryRequirements = VkMemoryRequirements.malloc();
+		VK10.vkGetImageMemoryRequirements(vk, texture.getVk(), memoryRequirements);
+		return memoryRequirements;
+	}
+	
+	public VkMemoryRequirements getMemoryRequirements(MemoryStack stack, Texture texture)
+	{
+		VkMemoryRequirements memoryRequirements = VkMemoryRequirements.malloc(stack);
+		VK10.vkGetImageMemoryRequirements(vk, texture.getVk(), memoryRequirements);
+		return memoryRequirements;
+	}
+	
+	public long allocateMemory(MemoryStack stack, VulkanBuffer buffer, int requiredProperties, int optimalProperties)
+	{
+		long memory = allocateMemory(stack, getBufferRequirements(stack, buffer), requiredProperties, optimalProperties);
+		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(vk, buffer.getVk(), memory, 0), "Failed to bind buffer memory");
 		return memory;
 	}
 	
-	public long allocateImageMemory(MemoryStack stack, long vkBuffer, int properties)
+	public long allocateMemory(MemoryStack stack, Texture texture, int requiredProperties, int optimalProperties)
 	{
-		VkMemoryRequirements memRequirements = VkMemoryRequirements.malloc(stack);
-		VK10.vkGetImageMemoryRequirements(vk, vkBuffer, memRequirements);
-		long memory = allocateMemory(stack, memRequirements, properties);
-		VulkanErrorUtils.assertNoError(VK10.vkBindImageMemory(vk, vkBuffer, memory, 0), "Failed to bind image memory");
+		long memory = allocateMemory(stack, getMemoryRequirements(stack, texture), requiredProperties, optimalProperties);
+		VulkanErrorUtils.assertNoError(VK10.vkBindImageMemory(vk, texture.getVk(), memory, 0), "Failed to bind image memory");
 		return memory;
 	}
 	
-	private long allocateMemory(MemoryStack stack, VkMemoryRequirements memRequirements, int properties)
+	private long allocateMemory(MemoryStack stack, VkMemoryRequirements memoryRequirements, int requiredProperties, int optimalProperties)
 	{
-		if (memRequirements.size() == 0) throw new IllegalArgumentException("Cannot allocate 0 bytes memory");
-		int index;
-		VkPhysicalDeviceMemoryProperties memProperties = VkPhysicalDeviceMemoryProperties.malloc(stack);
-		VK10.vkGetPhysicalDeviceMemoryProperties(physicalDevice.getVk(), memProperties);
+		if (memoryRequirements.size() == 0) throw new IllegalArgumentException("Cannot allocate 0 bytes memory");
+		VkPhysicalDeviceMemoryProperties memoryProperties = VkPhysicalDeviceMemoryProperties.malloc(stack);
+		VK10.vkGetPhysicalDeviceMemoryProperties(physicalDevice.getVk(), memoryProperties);
 		
-		for (index = 0; index < memProperties.memoryTypeCount(); index++)
+		int minimal = requiredProperties;
+		int optimal = minimal | optimalProperties;
+		
+		int index;
+		for (index = 0; index < memoryProperties.memoryTypeCount(); index++)
 		{
-			if ((memRequirements.memoryTypeBits() & (1 << index)) != 0 && (memProperties.memoryTypes(index).propertyFlags() & properties) == properties)
+			if ((memoryRequirements.memoryTypeBits() & (1 << index)) != 0 && (memoryProperties.memoryTypes(index).propertyFlags() & optimal) == optimal)
 			{
 				break;
 			}
 		}
 		
-		if (index == memProperties.memoryTypeCount()) throw new OutOfSpaceException("Failed to find suitable memory type");
+		if (index == memoryProperties.memoryTypeCount())
+		{
+			for (index = 0; index < memoryProperties.memoryTypeCount(); index++)
+			{
+				if ((memoryRequirements.memoryTypeBits() & (1 << index)) != 0 && (memoryProperties.memoryTypes(index).propertyFlags() & minimal) == minimal)
+				{
+					break;
+				}
+			}
+			if (index == memoryProperties.memoryTypeCount()) throw new OutOfSpaceException("Failed to find suitable memory type");
+		}
 		
 		LongBuffer p = stack.mallocLong(1);
-		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(vk, VulkanUtils.memoryAllocateInfo(stack, memRequirements.size(), index), null, p), () -> "Failed to allocate image memory (" + memRequirements.size() + " bytes)");
+		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(vk, VulkanUtils.memoryAllocateInfo(stack, memoryRequirements.size(), index), null, p), () -> "Failed to allocate image memory (" + memoryRequirements.size() + " bytes)");
 		return p.get();
 	}
 	
 	@Override
 	public void close()
 	{
-		waitIdle();
-		while (destructionList.peek() != null) destructionList.poll().close();
-		VK10.vkDestroyDevice(vk, null);
+		waitIdle().thenRun(() -> {
+			if (destructionList.size() > DESTRUCTION_LIST_THRESHOLD)
+			{
+				Debug.debug("Warning: too much unclosed resources (" + destructionList.size() + "), logging the first " + DESTRUCTION_LIST_THRESHOLD);
+				
+				AbstractDeviceResource<?>[] resources = destructionList.stream().limit(DESTRUCTION_LIST_THRESHOLD).toArray(AbstractDeviceResource[]::new);
+				
+				for (int i = 0; i < resources.length; i++) Debug.print(i + " " + resources[i].getClass(), resources[i]);
+			}
+			while (destructionList.peek() != null) destructionList.pop().close();
+			VK10.vkDestroyDevice(vk, null);
+		});
 	}
 	
 	@Override
@@ -447,100 +423,91 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		Debug.print("Multi-use command pool: ", resetCommandPool);
 	}
 	
+	// DEBUG
+	
 	public void setObjectDebugName(Vulkan object, String name)
 	{
-		if (RenderEngine.isDebug())
-		{
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
-				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT, object.getInstance().address(), stack.UTF8(name));
-				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
-			}
-		}
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT, object.getInstance().address(), name);
+	}
+	
+	public void setObjectDebugName(Surface object, String name)
+	{
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT, object.getVk(), name);
+	}
+	
+	public void setObjectDebugName(Swapchain object, String name)
+	{
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(PhysicalDevice object, String name)
 	{
-		if (RenderEngine.isDebug())
-		{
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
-				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT, object.getVk().address(), stack.UTF8(name));
-				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
-			}
-		}
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT, object.getVk().address(), name);
 	}
 	
 	public void setObjectDebugName(Device object, String name)
 	{
-		if (RenderEngine.isDebug())
-		{
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
-				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT, object.getVk().address(), stack.UTF8(name));
-				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
-			}
-		}
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT, object.getVk().address(), name);
+	}
+	
+	public void setObjectDebugName(PipelineLayout object, String name)
+	{
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, object.getVk(), name);
+	}
+	
+	public void setObjectDebugName(Pipeline object, String name)
+	{
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, object.getVk(), name);
+	}
+	
+	public void setObjectDebugName(RenderPass object, String name)
+	{
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, object.getVk(), name);
+	}
+	
+	public void setObjectDebugName(TextureSampler object, String name)
+	{
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT, object.getVk(), name);
+	}
+	
+	public void setObjectDebugName(TextureView object, String name)
+	{
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, object.getVk(), name);
+	}
+	
+	public void setObjectDebugName(Texture object, String name)
+	{
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, object.getVk(), name);
+	}
+	
+	public void setObjectDebugName(FrameBuffer object, String name)
+	{
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(Queue object, String name)
 	{
-		if (RenderEngine.isDebug())
-		{
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
-				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT, object.getVk().address(), stack.UTF8(name));
-				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
-			}
-		}
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT, object.getVk().address(), name);
 	}
 	
 	public void setObjectDebugName(VulkanBuffer object, String name)
 	{
-		if (RenderEngine.isDebug())
-		{
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
-				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, object.getVk(), stack.UTF8(name));
-				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
-			}
-		}
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(CommandBuffer object, String name)
 	{
-		if (RenderEngine.isDebug())
-		{
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
-				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT, object.getVk().address(), stack.UTF8(name));
-				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
-			}
-		}
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT, object.getVk().address(), name);
 	}
 	
 	public void setObjectDebugName(CommandPool object, String name)
 	{
-		if (RenderEngine.isDebug())
-		{
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
-				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT, object.getVk(), stack.UTF8(name));
-				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
-			}
-		}
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(int objectType, long object, String name)
 	{
-		if (RenderEngine.isDebug())
+		if (RenderEngine.isDebug() && debugReportExtensionEnabled)
 		{
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{

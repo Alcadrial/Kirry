@@ -74,7 +74,10 @@ public class Surface extends AbstractVulkanResource<Long> {
 		VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
 		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.getVk(), vk, capabilities), "Failed to initialize surface");
 		
-		if (capabilities.currentExtent().width() != -1) extent = VulkanUtils.copy(capabilities.currentExtent(), VkExtent2D::create);
+		if (capabilities.currentExtent().width() != -1)
+		{
+			extent = VulkanUtils.copy(capabilities.currentExtent(), VkExtent2D::create);
+		}
 		else
 		{
 			extent = VulkanUtils.allocate(VkExtent2D.SIZEOF, VkExtent2D::create);
@@ -128,7 +131,10 @@ public class Surface extends AbstractVulkanResource<Long> {
 			VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
 			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.getVk(), vk, capabilities), "Failed to initialize surface");
 			
-			if (capabilities.currentExtent().width() != -1) extent = VulkanUtils.copy(capabilities.currentExtent(), VkExtent2D::create);
+			if (capabilities.currentExtent().width() != -1)
+			{
+				extent = VulkanUtils.copy(capabilities.currentExtent(), VkExtent2D::create);
+			}
 			else
 			{
 				extent = VulkanUtils.allocate(VkExtent2D.SIZEOF, VkExtent2D::create);

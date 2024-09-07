@@ -1,0 +1,28 @@
+#version 450
+
+struct Animation {
+	int index;
+	int size;
+};
+
+layout (std430, binding = 3) readonly buffer Input {
+	Animation animationIn[];
+};
+
+layout (std430, binding = 4) buffer Output {
+	Animation animationOut[];
+};
+
+layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+void main()
+{
+	uint i = gl_GlobalInvocationID.x;
+	
+	animationOut[i].index = animationIn[i].index + 1;
+	
+	if (animationOut[i].index >= animationIn[i].size)
+	{
+		animationOut[i].index = 0;
+	}
+}

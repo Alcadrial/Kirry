@@ -34,6 +34,13 @@ public class RenderPass extends RawDeviceResource {
 		this.device = device;
 	}
 	
+	@Override
+	public void setName(String name)
+	{
+		device.setObjectDebugName(this, name);
+		this.name = name;
+	}
+	
 	/**
 	 * Must be called after all submitted commands that refer to renderPass have completed execution
 	 */

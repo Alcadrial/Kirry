@@ -1,13 +1,11 @@
 package com.alcadrial.renderengine.render.util;
 
 import java.math.RoundingMode;
-import java.nio.IntBuffer;
 
 import com.alcadrial.kector.Math;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.buffer.IndexBuffer;
-import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.buffer.BufferWriter;
 
 public class SphereDataCollector {
 	
@@ -16,7 +14,7 @@ public class SphereDataCollector {
 		RenderEngine.assertLoaded();
 	}
 	
-	public static void collect(VertexBuffer vertexBuffer, IndexBuffer indexBuffer, Vector3f origin, float radius, int scan)
+	public static void collect(BufferWriter vertexBuffer, BufferWriter indexBuffer, Vector3f origin, float radius, int scan)
 	{
 		if (radius < 0) throw new IllegalArgumentException("Negative radius");
 		if (scan <= 0) throw new IllegalArgumentException("Non positive scan");
@@ -52,12 +50,16 @@ public class SphereDataCollector {
 		}
 		vertexMatrix[parallelCount + 1] = new Vector3f[] {Vector3f.ofImmutable(origin.x(), origin.y() + radius, origin.z())};
 		
-		for (Vector3f[] ring : vertexMatrix) for (Vector3f vertex : ring) vertexBuffer.put(vertex);
+		for (Vector3f[] ring : vertexMatrix) for (Vector3f vertex : ring)
+		{
+			vertexBuffer.put(vertex);
+		}
 		
-		IntBuffer cursor = indexBuffer.asIntBuffer();
-		
-		for (int i = 1; i < meridianCount; i++) cursor.put(new int[] {0, i, i + 1});
-		cursor.put(new int[] {0, meridianCount, 1});
+		for (int i = 1; i < meridianCount; i++)
+		{
+			indexBuffer.put(0, i, i + 1);
+		}
+		indexBuffer.put(0, meridianCount, 1);
 		
 		int offset = 1;
 		int offsetExtra = offset + meridianCount;
@@ -66,17 +68,20 @@ public class SphereDataCollector {
 		{
 			for (int j = 0; j < meridianCount - 1; j++)
 			{
-				cursor.put(new int[] {offset + j, offsetExtra + j, offsetExtra + j + 1});
-				cursor.put(new int[] {offset + j + 1, offset + j, offsetExtra + j + 1});
+				indexBuffer.put(offset + j, offsetExtra + j, offsetExtra + j + 1);
+				indexBuffer.put(offset + j + 1, offset + j, offsetExtra + j + 1);
 			}
-			cursor.put(new int[] {offsetExtra - 1, offsetExtra + meridianCount - 1, offsetExtra});
-			cursor.put(new int[] {offset, offsetExtra - 1, offsetExtra});
+			indexBuffer.put(offsetExtra - 1, offsetExtra + meridianCount - 1, offsetExtra);
+			indexBuffer.put(offset, offsetExtra - 1, offsetExtra);
 			offset = offsetExtra;
 			offsetExtra += meridianCount;
 		}
 		
-		for (int i = 1; i < meridianCount; i++) cursor.put(new int[] {offset + i, offsetExtra, offset + i - 1});
-		cursor.put(new int[] {offset, offsetExtra, offsetExtra - 1});
+		for (int i = 1; i < meridianCount; i++)
+		{
+			indexBuffer.put(offset + i, offsetExtra, offset + i - 1);
+		}
+		indexBuffer.put(offset, offsetExtra, offsetExtra - 1);
 	}
 	
 	private static Vector3f[] getRingVertices(Vector3f origin, float offset, float radius, int vertexCount, float y)

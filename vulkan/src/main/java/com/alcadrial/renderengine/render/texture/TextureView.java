@@ -24,8 +24,10 @@ public class TextureView extends RawDeviceResource {
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VkImageViewCreateInfo createInfo = VkImageViewCreateInfo.calloc(stack);
+			VkImageViewCreateInfo createInfo = VkImageViewCreateInfo.malloc(stack);
 			createInfo.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO);
+			createInfo.pNext(0);
+			createInfo.flags(0);
 			createInfo.image(texture.getVk());
 			createInfo.viewType(texture.getImageType());
 			createInfo.format(texture.getFormat());
@@ -47,6 +49,13 @@ public class TextureView extends RawDeviceResource {
 			VulkanErrorUtils.assertNoError(VK10.vkCreateImageView(device.getVk(), createInfo, null, p), "Failed to create image view");
 			vk = p[0];
 		}
+	}
+	
+	@Override
+	public void setName(String name)
+	{
+		device.setObjectDebugName(this, name);
+		this.name = name;
 	}
 	
 	@Override

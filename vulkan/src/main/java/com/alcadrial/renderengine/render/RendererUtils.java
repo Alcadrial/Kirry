@@ -16,7 +16,7 @@ public class RendererUtils {
 	
 	private static Renderer.Builder defaultRenderer(ShaderProgram shaderProgram, VulkanBuffer uniformBuffer)
 	{
-		return Renderer.create().shaderProgram(shaderProgram).dynamicScissor(true).dynamicViewport(true).uniformBuffer(uniformBuffer);
+		return Renderer.create().shaderProgram(shaderProgram).dynamicScissor(true).dynamicViewport(true);
 	}
 	
 	public static Renderer getTriangleRenderer(Device device, ShaderProgram shaderProgram, VulkanBuffer uniformBuffer, RenderPass renderPass, Vector2i size)

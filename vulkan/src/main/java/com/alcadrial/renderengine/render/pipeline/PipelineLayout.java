@@ -26,6 +26,13 @@ public class PipelineLayout extends RawDeviceResource {
 	}
 	
 	@Override
+	public void setName(String name)
+	{
+		device.setObjectDebugName(this, name);
+		this.name = name;
+	}
+	
+	@Override
 	public void close()
 	{
 		VK10.vkDestroyPipelineLayout(device.getVk(), vk, null);

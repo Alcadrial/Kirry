@@ -1,25 +1,16 @@
 package com.alcadrial.renderengine.render.buffer;
 
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.DoubleBuffer;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-import java.nio.LongBuffer;
-import java.nio.ShortBuffer;
-import java.util.concurrent.Future;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
-import org.lwjgl.vulkan.VkBufferCopy;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
-import com.alcadrial.renderengine.render.util.VulkanUtils;
 
 public class VulkanBuffer extends RawDeviceResource {
 	
@@ -38,7 +29,9 @@ public class VulkanBuffer extends RawDeviceResource {
 	private int usage;
 	
 	/**
-	 * 
+	 *
+	 * Create a device local buffer.
+	 *
 	 * @param device the device holding the new buffer
 	 * @param size in bytes
 	 * @param usage a bitmask of {@link VK10#VK_BUFFER_USAGE_TRANSFER_SRC_BIT VkBufferUsageFlagBits} specifying allowed usages of the buffer
@@ -53,11 +46,11 @@ public class VulkanBuffer extends RawDeviceResource {
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			vk = device.createBuffer(stack, size, usage);
-			memory = device.allocateBufferMemory(stack, vk, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			memory = device.allocateMemory(stack, this, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 		}
 	}
 	
-	protected VulkanBuffer(Device device, int size, int usage, int flags)
+	public VulkanBuffer(Device device, int size, int usage, int requiredProperties, int optimalProperties)
 	{
 		super(device);
 		offset = 0;
@@ -67,7 +60,7 @@ public class VulkanBuffer extends RawDeviceResource {
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			vk = device.createBuffer(stack, size, usage);
-			memory = device.allocateBufferMemory(stack, vk, flags);
+			memory = device.allocateMemory(stack, this, requiredProperties, optimalProperties);
 		}
 	}
 	
@@ -101,133 +94,58 @@ public class VulkanBuffer extends RawDeviceResource {
 		}
 	}
 	
-	public byte[] getAllBytes()
+	@Override
+	public void setName(String name)
 	{
-		byte[] array = new byte[size];
-		getByteBuffer().get(array).reset();
-		return array;
+		device.setObjectDebugName(this, name);
+		this.name = name;
 	}
 	
-	public int[] getAllInts()
-	{
-		IntBuffer buffer = asIntBuffer();
-		int[] array = new int[buffer.capacity()];
-		buffer.get(array);
-		return array;
-	}
-	
-	public float[] getAllFloats()
-	{
-		FloatBuffer buffer = asFloatBuffer();
-		float[] array = new float[buffer.capacity()];
-		buffer.get(array);
-		return array;
-	}
-	
-	public float[] getAllFloats(int offset, int size)
-	{
-		float[] array = new float[size];
-		asFloatBuffer().position(offset).get(array);
-		return array;
-	}
-	
-	public synchronized Future<?> copyToBuffer(VulkanBuffer dstBuffer)
-	{
-		return copyToBuffer(0, 0, size, dstBuffer.vk);
-	}
-	
-	public synchronized Future<?> copyToBuffer(long offset, int size, VulkanBuffer dstBuffer)
-	{
-		return copyToBuffer(offset, offset, size, dstBuffer.vk);
-	}
-	
-	public synchronized Future<?> copyToBuffer(long srcOffset, long dstOffset, int size, VulkanBuffer dstBuffer)
-	{
-		return copyToBuffer(srcOffset, dstOffset, size, dstBuffer.vk);
-	}
-	
-	protected synchronized Future<?> copyToBuffer(long srcOffset, long dstOffset, int size, long dstBuffer)
-	{
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			VkBufferCopy.Buffer copy = VulkanUtils.bufferCopy(stack, srcOffset, dstOffset, size);
-			return device.configureAndSubmitSingleUseCommandBuffer(stack, device.getGraphicsQueue(), commandBuffer -> {
-				VK10.vkCmdCopyBuffer(commandBuffer.getVk(), vk, dstBuffer, copy);
-			});
-		}
-	}
-	
-	private synchronized ByteBuffer getByteBuffer()
+	public ByteBuffer getByteBuffer(int offset, int size)
 	{
 		if (map == null)
 		{
-			if (parent != null) map = parent.getByteBuffer().position((int) offset);
+			if (parent != null)
+			{
+				map = parent.getByteBuffer((int) (this.offset + offset), size);
+			}
 			else
 			{
 				try (MemoryStack stack = MemoryStack.stackPush())
 				{
 					PointerBuffer gpuData = stack.mallocPointer(1);
-					VulkanErrorUtils.assertNoError(VK10.vkMapMemory(device.getVk(), memory, offset, size, 0, gpuData), "Failed to map buffer memory");
-					map = gpuData.getByteBuffer((int) size);
+					VulkanErrorUtils.assertNoError(VK10.vkMapMemory(device.getVk(), memory, this.offset, this.size, 0, gpuData), "Failed to map buffer memory");
+					map = gpuData.getByteBuffer(this.size);
 					mappings++;
 				}
 			}
 		}
-		return map;
-	}
-	
-	public ByteBuffer asByteBuffer()
-	{
-		return getByteBuffer().duplicate();
-	}
-	
-	public CharBuffer asCharBuffer()
-	{
-		return getByteBuffer().asCharBuffer();
-	}
-	
-	public ShortBuffer asShortBuffer()
-	{
-		return getByteBuffer().asShortBuffer();
-	}
-	
-	public IntBuffer asIntBuffer()
-	{
-		return getByteBuffer().asIntBuffer().duplicate();
-	}
-	
-	public LongBuffer asLongBuffer()
-	{
-		return getByteBuffer().asLongBuffer();
-	}
-	
-	public FloatBuffer asFloatBuffer()
-	{
-		return getByteBuffer().asFloatBuffer().duplicate();
-	}
-	
-	public DoubleBuffer asDoubleBuffer()
-	{
-		return getByteBuffer().asDoubleBuffer();
+		return map.slice(offset, size).order(map.order());
 	}
 	
 	public synchronized void unmapBuffer()
 	{
 		if (map != null)
 		{
-			if (parent != null) parent.unmapBuffer();
+			if (parent != null)
+			{
+				parent.unmapBuffer();
+			}
 			else if (mappings <= 1)
 			{
 				mappings = 0;
-				VK10.vkUnmapMemory(device.getVk(), memory);
+				VK10.vkUnmapMemory(device.getVk(), memory);//keep mapped if possible
 				map = null;
 			}
-			else mappings--;
+			else
+			{
+				mappings--;
+			}
 		}
 	}
 	
 	/**
-	 * 
+	 *
 	 * @return the offset from memory in bytes
 	 */
 	public long getOffset()
@@ -236,10 +154,10 @@ public class VulkanBuffer extends RawDeviceResource {
 	}
 	
 	/**
-	 * 
+	 *
 	 * @return the size of this buffer in bytes
 	 */
-	public long getSize()
+	public int getSize()
 	{
 		return size;
 	}

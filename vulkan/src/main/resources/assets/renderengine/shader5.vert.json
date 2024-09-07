@@ -1,0 +1,64 @@
+{
+	"type": "vert",
+	"entryPoint": "main",
+	"layouts": [
+		{
+			"type": "uniformBuffer",
+			"binding": 0,
+			"name": "U",
+			"variables": [
+				"mat4 PROJECTION",
+				"mat4 MODEL"
+			]
+		},
+		{
+			"type": "storageBuffer",
+			"binding": 2,
+			"usage": "input",
+			"variables": [
+				"vec3 positions"
+			]
+		},
+		{
+			"type": "storageBuffer",
+			"binding": 3,
+			"usage": "input",
+			"variables": [
+				"int index",
+				"int length"
+			]
+		},
+		{
+			"type": "input",
+			"binding": 0,
+			"variables": [
+				{
+					"location": "0",
+					"declaration": "vec3 vertexPosition"
+				},
+				{
+					"location": "1",
+					"declaration": "vec4 color"
+				},
+				{
+					"location": "2",
+					"declaration": "vec3 normalPosition"
+				}
+			]
+		},
+		{
+			"type": "input",
+			"binding": 1,
+			"variables": [
+				{
+					"location": "3",
+					"declaration": "vec3 instancePosition"
+				},
+				{
+					"location": "4",
+					"declaration": "int animationIndex"
+				}
+			]
+		}
+	]
+}

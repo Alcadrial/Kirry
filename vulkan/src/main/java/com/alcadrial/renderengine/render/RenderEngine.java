@@ -90,7 +90,7 @@ public class RenderEngine extends RenderEngineCore {
 	
 	private static boolean initialize(Builder builder)
 	{
-		if (!initializated) return GLFW.glfwInit() && initVulkan(builder);
+		if (!initializated) return (builder.useWindowSystem ? GLFW.glfwInit() : true) && initVulkan(builder);
 		return true;
 	}
 	
@@ -121,7 +121,7 @@ public class RenderEngine extends RenderEngineCore {
 			createInfo.pApplicationInfo(applicationInfo);
 			
 			{
-				PointerBuffer requiredInstances = GLFWVulkan.glfwGetRequiredInstanceExtensions();
+				PointerBuffer requiredInstances = builder.useWindowSystem ? GLFWVulkan.glfwGetRequiredInstanceExtensions() : null;
 				
 				int size = debug ? instanceExtensions.size() : instanceExtensions.size() - instanceExtensions.getList(0).size();
 				PointerBuffer enlargedBuffer;
@@ -466,6 +466,7 @@ public class RenderEngine extends RenderEngineCore {
 		private String applicationName;
 		private Version version;
 		private boolean multiThreading;
+		private boolean useWindowSystem;
 		private VkDebugUtilsMessengerCallbackEXTI messengerCallback;
 		private SequentialMultiList<String> instanceLayers;
 		private SequentialMultiList<String> instanceExtensions;
@@ -498,6 +499,12 @@ public class RenderEngine extends RenderEngineCore {
 		public Builder multiThreading(boolean multiThreading)
 		{
 			this.multiThreading = multiThreading;
+			return this;
+		}
+		
+		public Builder useWindowSystem(boolean useWindowSystem)
+		{
+			this.useWindowSystem = useWindowSystem;
 			return this;
 		}
 		

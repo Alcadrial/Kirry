@@ -36,6 +36,13 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 		}
 	}
 	
+	@Override
+	public void setName(String name)
+	{
+		device.setObjectDebugName(this, name);
+		this.name = name;
+	}
+	
 	public int getFamilyIndex()
 	{
 		return familyIndex;

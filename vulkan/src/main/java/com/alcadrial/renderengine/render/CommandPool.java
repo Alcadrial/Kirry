@@ -18,6 +18,13 @@ public class CommandPool extends RawDeviceResource {
 	}
 	
 	@Override
+	public void setName(String name)
+	{
+		device.setObjectDebugName(this, name);
+		this.name = name;
+	}
+	
+	@Override
 	public void close()
 	{
 		VK10.vkDestroyCommandPool(device.getVk(), vk, null);

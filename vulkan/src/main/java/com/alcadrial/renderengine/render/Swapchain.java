@@ -1,6 +1,5 @@
 package com.alcadrial.renderengine.render;
 
-import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 
@@ -24,20 +23,26 @@ public class Swapchain extends RawDeviceResource {
 	{
 		super(device);
 		
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			long[] p = new long[1];
-			VulkanErrorUtils.assertNoError(KHRSwapchain.vkCreateSwapchainKHR(device.getVk(), createInfo, null, p), "Failed to create swap chain");
-			vk = p[0];
-		}
+		long[] p = new long[1];
+		VulkanErrorUtils.assertNoError(KHRSwapchain.vkCreateSwapchainKHR(device.getVk(), createInfo, null, p), "Failed to create swap chain");
+		vk = p[0];
+		Debug.runOnDebug(() -> device.setObjectDebugName(this, "Swapchain " + Debug.getIncrementalId()));
+	}
+	
+	@Override
+	public void setName(String name)
+	{
+		device.setObjectDebugName(this, name);
+		this.name = name;
 	}
 	
 	@Override
 	public void close()
 	{
-		device.waitIdle();
-		KHRSwapchain.vkDestroySwapchainKHR(device.getVk(), vk, null);
-		super.close();
+		device.waitIdle().thenRun(() -> {
+			KHRSwapchain.vkDestroySwapchainKHR(device.getVk(), vk, null);
+			super.close();
+		});
 	}
 	
 	@Override

@@ -2,7 +2,10 @@ package com.alcadrial.renderengine.render;
 
 import java.io.PrintStream;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.lwjgl.system.MemoryUtil;
@@ -20,14 +23,36 @@ public class Debug {
 		RenderEngine.assertLoaded();
 	}
 	
-	private static volatile PrintStream debugOutput = System.out;
+	private static volatile PrintStream debugOutput;
+	private static volatile Map<String, Long> idMap;
+	private static String prefix;
+	
+	static
+	{
+		debugOutput = System.out;
+		idMap = new HashMap<>();
+		prefix = "";
+	}
+	
+	public static <T> T get(Supplier<T> debugRunnable, Supplier<T> releaseRunnable)
+	{
+		return debugRunnable.get();
+	}
+	
+	public static void runOnDebug(Runnable runnable)
+	{
+		runnable.run();
+	}
 	
 	public static void printStackTrace(Throwable t)
 	{
 		t.printStackTrace(debugOutput);
 	}
 	
-	private static String prefix = "";
+	public static long getIncrementalId()
+	{
+		return idMap.computeIfAbsent(Thread.currentThread().getStackTrace()[0].getClassName(), s -> 0L);
+	}
 	
 	public static void printState(String name, VulkanDebug vk)
 	{
@@ -73,6 +98,11 @@ public class Debug {
 	public static void deindent()
 	{
 		prefix = prefix.substring(0, prefix.length() - 1);
+	}
+	
+	public static void print(String name, Pointer vk)
+	{
+		print(name + ": " + address(vk));
 	}
 	
 	public static void print(String name, long vk)

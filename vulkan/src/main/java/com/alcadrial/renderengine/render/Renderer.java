@@ -1,7 +1,7 @@
 package com.alcadrial.renderengine.render;
 
 import java.nio.LongBuffer;
-import java.util.Deque;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -24,11 +24,9 @@ import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Nullable;
-import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.buffer.BufferLayout;
-import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
-import com.alcadrial.renderengine.render.buffer.VulkanBufferRange;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline.GraphicsPipelineBuildFunction;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
@@ -71,10 +69,10 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 	private long descriptorSetLayout;
 	private long[] descriptorSet;
 	private long descriptorPool;
-	private Map<VulkanBuffer, Pair<BufferLayout, Deque<Consumer<BufferLayout>>>> uniforms;
+	private Map<String, BufferLayout> uniforms;
 	private List<Consumer<CommandBuffer>> extraCommands;
 	
-	private Renderer(Builder builder, Device device, GraphicsPipeline graphicsPipeline, long descriptorSetLayout, long[] descriptorSet, long descriptorPool, Map<VulkanBuffer, Pair<BufferLayout, Deque<Consumer<BufferLayout>>>> uniforms)
+	private Renderer(Builder builder, Device device, GraphicsPipeline graphicsPipeline, long descriptorSetLayout, long[] descriptorSet, long descriptorPool, Map<String, BufferLayout> uniforms)
 	{
 		modificationPlan = new ModificationPlan(builder);
 		this.device = device;
@@ -83,20 +81,20 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		this.descriptorSet = descriptorSet;
 		this.descriptorPool = descriptorPool;
 		this.uniforms = uniforms;
+		
 		vertexBuffers = new HashMap<>();
 		extraCommands = new LinkedList<>();
-		
-		for (Pair<BufferLayout, Deque<Consumer<BufferLayout>>> p : uniforms.values()) p.right.add(l -> {});
 	}
 	
-	public VertexAccumulator accumulate(VulkanBuffer vertexBuffer)
+	public void updateUniform(String uniform, Consumer<BufferLayout> action)
 	{
-		return new VertexAccumulator(graphicsPipeline, vertexBuffer);
+		BufferLayout layout = uniforms.get(uniform);
+		if (layout != null) action.accept(layout);
 	}
 	
-	public void updateUniforms(VulkanBuffer buffer, Consumer<BufferLayout> action)
+	public void updateUniforms(Consumer<BufferLayout> action)
 	{
-		uniforms.get(buffer).right.add(action);
+		for (BufferLayout layout : uniforms.values()) action.accept(layout);
 	}
 	
 	public void addExtraCommand(Consumer<CommandBuffer> command)
@@ -118,17 +116,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 	{
 		if (count == 0) throw new IllegalStateException("Cannot draw 0 vertices");
 		
-		List<BufferLayout> updates = new LinkedList<>();
-		for (Pair<BufferLayout, Deque<Consumer<BufferLayout>>> p : uniforms.values())
-		{
-			if (!p.right.isEmpty())
-			{
-				Consumer<BufferLayout> action;
-				while ((action = p.right.poll()) != null) action.accept(p.left);
-				updates.add(p.left);
-			}
-		}
-		for (BufferLayout l : updates) l.updateDescriptorSets();
+		for (BufferLayout layout : uniforms.values()) layout.updateDescriptorSets();
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -160,19 +148,9 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		return modificationPlan;
 	}
 	
-	public void addVertexBuffer(int binding, VulkanBuffer vertexBuffer)
+	public void setVertexBuffers(int binding, VulkanBuffer... vertexBuffer)
 	{
-		vertexBuffers.computeIfAbsent(binding, k -> new LinkedList<>()).add(vertexBuffer);
-	}
-	
-	public void addVertexBuffer(int binding, VertexBuffer vertexBuffer)
-	{
-		vertexBuffers.computeIfAbsent(binding, k -> new LinkedList<>()).add(vertexBuffer.getGpuBuffer());
-	}
-	
-	public void resetVertexBuffer(int binding)
-	{
-		vertexBuffers.put(binding, new LinkedList<>());
+		vertexBuffers.put(binding, Arrays.asList(vertexBuffer));
 	}
 	
 	public void setIndexBuffer(VulkanBuffer indexBuffer)
@@ -183,7 +161,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 	@Override
 	public void close()
 	{
-		device.waitIdle();
+		device.waitIdle().join();
 		graphicsPipeline.close();
 		VK10.vkDestroyDescriptorSetLayout(device.getVk(), descriptorSetLayout, null);
 		VK10.vkDestroyDescriptorPool(device.getVk(), descriptorPool, null);
@@ -201,7 +179,10 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		{
 			Debug.print("Binding " + e.getKey() + " [");
 			Debug.indent();
-			for (VulkanBuffer vertexBuffer : e.getValue()) Debug.print("Buffer", vertexBuffer);
+			for (VulkanBuffer vertexBuffer : e.getValue())
+			{
+				Debug.print("Buffer", vertexBuffer);
+			}
 			Debug.deindent();
 			Debug.print("]");
 		}
@@ -211,14 +192,9 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		Debug.print("DescriptorSet: " + Debug.address(descriptorSet[0]));
 		Debug.print("Other Buffers [");
 		Debug.indent();
-		for (Entry<VulkanBuffer, Pair<BufferLayout, Deque<Consumer<BufferLayout>>>> e : uniforms.entrySet())
+		for (BufferLayout layout : uniforms.values())
 		{
-			Debug.print("Buffer " + e.getKey() + " [");
-			Debug.indent();
-			Debug.print("Layout", e.getValue().left);
-			Debug.print("Actions: " + e.getValue().right.size());
-			Debug.deindent();
-			Debug.print("]");
+			Debug.print("Buffer " + layout.getWriter().getDstBuffer());
 		}
 		Debug.deindent();
 		Debug.print("]");
@@ -266,7 +242,8 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		{
 			boolean deviceModified = device.isModified();
 			
-			physicalDevice.set(device.require().getPhysicalDevice());
+			Device device0 = device.require();
+			physicalDevice.set(device0.getPhysicalDevice());
 			
 			if (deviceModified || shaderProgram.isModified())
 			{
@@ -275,17 +252,15 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 				VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
 				pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayout));
 				
-				pipelineLayout.set(new PipelineLayout(device.get(), pipelineLayoutInfo));
+				pipelineLayout.set(new PipelineLayout(device0, pipelineLayoutInfo));
 				
 				long descriptorSetLayouts0 = Renderer.this.descriptorSetLayout;
 				long descriptorPool0 = Renderer.this.descriptorPool;
 				
-				device.get().waitAsyncIdle(device0 -> {
+				device0.waitIdle().thenRun(() -> {
 					VK10.vkDestroyDescriptorSetLayout(device0.getVk(), descriptorSetLayouts0, null);
 					VK10.vkDestroyDescriptorPool(device0.getVk(), descriptorPool0, null);
 				});
-				
-				for (Pair<BufferLayout, Deque<Consumer<BufferLayout>>> p : uniforms.values()) p.right.add(l -> {});
 				
 				Renderer.this.descriptorSetLayout = descriptorSetLayout;
 				Renderer.this.descriptorSet = descriptorSet;
@@ -293,10 +268,10 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 				Renderer.this.uniforms = uniforms;
 			}
 			
-			Renderer.this.graphicsPipeline.getDevice().waitAsyncIdle(Renderer.this.graphicsPipeline::close);
+			Renderer.this.graphicsPipeline.getDevice().waitIdle().thenRun(Renderer.this.graphicsPipeline::close);
 			graphicsPipeline.set(createGraphicsPipeline(size.require(), builderFunction));
 			
-			Renderer.this.device = device.get();
+			Renderer.this.device = device0;
 			Renderer.this.graphicsPipeline = graphicsPipeline.get();
 			
 			isActive = false;
@@ -346,7 +321,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		protected long descriptorSetLayout;
 		protected long[] descriptorSet;
 		protected long descriptorPool;
-		protected Map<VulkanBuffer, Pair<BufferLayout, Deque<Consumer<BufferLayout>>>> uniforms;
+		protected Map<String, BufferLayout> uniforms;
 		
 		protected RendererDataAccumulator()
 		{}
@@ -364,7 +339,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			
 			for (PreparedShader prepared : shaderProgram.require().getshaders()) ShaderUtils.extractData(prepared, bindingFlags);
 			
-			List<VulkanBufferRange> bufferBindings = this.bufferBindings.orElse(List.of());
+			List<BufferWriter> bufferBindings = this.bufferBindings.orElse(List.of());
 			
 			VkDescriptorSetLayoutBinding.Buffer descriptorSetLayoutBindings = VkDescriptorSetLayoutBinding.malloc(bindingFlags.size(), stack);// static
 			for (Entry<Integer, ShaderLayoutBinding> e : bindingFlags.entrySet())
@@ -412,12 +387,13 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			Lock lock = new ReentrantLock();
 			VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(bindingFlags.size());
 			
-			Map<VulkanBuffer, int[]> perBufferOffset = new HashMap<>();
-			for (VulkanBufferRange bufferRange : bufferBindings) if (bufferRange != null) perBufferOffset.put(bufferRange.getBuffer(), new int[] {0, 0});
+			Map<BufferWriter, int[]> perBufferOffset = new HashMap<>();
+			for (BufferWriter writer : bufferBindings) if (writer != null) perBufferOffset.put(writer, new int[] {0, 0});
 			
 			for (Entry<Integer, ShaderLayoutBinding> e : bindingFlags.entrySet())
 			{
-				Type descriptorType = e.getValue().getDescriptorType();
+				ShaderLayoutBinding binding = e.getValue();
+				Type descriptorType = binding.getDescriptorType();
 				
 				VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
 				writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
@@ -428,12 +404,16 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 				writeDescriptorSet.descriptorCount(1);
 				writeDescriptorSet.descriptorType(descriptorType.getType());
 				
-				VulkanBufferRange bufferRange = bufferBindings.get(e.getKey());
-				VulkanBuffer buffer = bufferRange.getBuffer();
-				int[] offsets = perBufferOffset.get(buffer);
-				BufferLayout layout = uniforms.computeIfAbsent(buffer, b -> new Pair<>(new BufferLayout(device.get(), writeDescriptorSets, 4, lock), new LinkedList<>())).left;
+				BufferWriter writer = bufferBindings.get(e.getKey());
+				int[] offsets = perBufferOffset.get(writer);
 				
-				Set<ShaderVariable> variables = e.getValue().getLayoutsVariables();
+				BufferLayout layout = new BufferLayout(device.get(), lock);
+				layout.setWriteDescriptorSets(writeDescriptorSets);
+				layout.setWriter(writer);
+				
+				Set<ShaderVariable> variables = binding.getLayoutsVariables();
+				for (ShaderVariable variable : variables) uniforms.putIfAbsent(variable.getName(), layout);
+				
 				switch (descriptorType)
 				{
 					case UNIFORM_BUFFER, STORAGE_BUFFER -> {
@@ -452,8 +432,8 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 						}
 						
 						VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-						descriptorBufferInfo.buffer(buffer.getVk());
-						descriptorBufferInfo.offset(offsets[0]);//use bufferRange.getOffset()
+						descriptorBufferInfo.buffer(writer.getDstBuffer().getVk());
+						descriptorBufferInfo.offset(offsets[0] + writer.getDstOffset());//use bufferRange.getOffset()
 						for (ShaderVariable variable : variables)
 						{
 							int size = variable.getType().getLength();
@@ -462,7 +442,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 							offsets[0] += size;
 							offsets[1] = offsets[0] % 16;
 						}
-						descriptorBufferInfo.range(bufferRange.getSize());
+						descriptorBufferInfo.range(writer.getSize());
 						writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
 						writeDescriptorSet.pImageInfo(null);
 						writeDescriptorSet.pTexelBufferView(null);
@@ -491,13 +471,13 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		}
 		
 		@Override
-		public RDA bufferBindings(@Nullable VulkanBufferRange... value)
+		public RDA bufferBindings(@Nullable BufferWriter... value)
 		{
 			return super.bufferBindings(value);
 		}
 		
 		@Override
-		public RDA bufferBindings(@Nullable List<VulkanBufferRange> value)
+		public RDA bufferBindings(@Nullable List<BufferWriter> value)
 		{
 			return super.bufferBindings(value);
 		}

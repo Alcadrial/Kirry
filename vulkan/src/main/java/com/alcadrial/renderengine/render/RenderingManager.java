@@ -16,15 +16,11 @@ public class RenderingManager {
 	public RenderingManager(VulkanWindow window)
 	{
 		//	defaultRenderer = RendererUtils.getTriangleRenderer(window.getDevice(), shaderProgram, uniformBuffer, renderpass, size);
-		window.addSurfaceUpdateActions(s -> {
-			
-			defaultRenderer.startModificationPlan().size(s.getSize()).submit();
-		});
+		window.addSurfaceUpdateActions(s -> defaultRenderer.startModificationPlan().size(s.getSize()).submit());
 	}
 	
 	public void drawTexture()
 	{
 		defaultRenderer.draw(commandBufferData);
 	}
-	
 }

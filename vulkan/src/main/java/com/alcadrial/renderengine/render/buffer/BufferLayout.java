@@ -17,6 +17,7 @@ import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.core.util.Pair;
+import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -37,15 +38,13 @@ public class BufferLayout implements VulkanDebug {
 	private Device device;
 	private ConcurrentHashMap<String, Pair<ShaderVariable, Integer>> marks;
 	private VkWriteDescriptorSet.Buffer writeDescriptorSets;
-	private int stride;
 	private boolean updated;
+	private BufferWriter writer;
 	
-	public BufferLayout(Device device, VkWriteDescriptorSet.Buffer writeDescriptorSets, int stride, Lock lock)
+	public BufferLayout(Device device, Lock lock)
 	{
 		this.device = device;
 		marks = new ConcurrentHashMap<>();
-		this.writeDescriptorSets = writeDescriptorSets;
-		this.stride = stride;
 		this.lock = lock;
 		updated = true;
 	}
@@ -55,9 +54,24 @@ public class BufferLayout implements VulkanDebug {
 		device = other.device;
 		marks = new ConcurrentHashMap<>(other.marks);
 		writeDescriptorSets = other.writeDescriptorSets;
-		stride = other.stride;
 		lock = other.lock;
+		writer = other.writer;
 		updated = true;
+	}
+	
+	public void setWriteDescriptorSets(VkWriteDescriptorSet.Buffer writeDescriptorSets)
+	{
+		this.writeDescriptorSets = writeDescriptorSets;
+	}
+	
+	public BufferWriter getWriter()
+	{
+		return writer;
+	}
+	
+	public void setWriter(BufferWriter writer)
+	{
+		this.writer = writer;
 	}
 	
 	public void mark(ShaderVariable variable, int offset)
@@ -124,125 +138,120 @@ public class BufferLayout implements VulkanDebug {
 		}
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, Matrix4f value)
+	public void set(String uniform, Matrix4f value)
 	{
-		set(uniform, buffer, 0, value);
+		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, int index, Matrix4f value)
+	public void set(String uniform, int index, Matrix4f value)
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
 			checkValue(ShaderInputType.MATRIX_FLOAT_4X4, p.left.getType());
-			buffer.asFloatBuffer().put(index * stride + p.right, value.toArray());
+			writer.setCursor(16 * index + p.right).put(value.toArray());
 			updated = true;
 		}
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, Vector2f value)
+	public void set(String uniform, Vector2f value)
 	{
-		set(uniform, buffer, 0, value);
+		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, int index, Vector2f value)
+	public void set(String uniform, int index, Vector2f value)
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_2, p.left.getType());
-			buffer.asFloatBuffer().put(index * stride + p.right, value.getValuesArray());
+			writer.setCursor(2 * index + p.right).put(value.getValuesArray());
 			updated = true;
 		}
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, Vector3f value)
+	public void set(String uniform, Vector3f value)
 	{
-		set(uniform, buffer, 0, value);
+		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, int index, Vector3f value)
+	public void set(String uniform, int index, Vector3f value)
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_3, p.left.getType());
-			buffer.asFloatBuffer().put(index * stride + p.right, value.getValuesArray());
+			writer.setCursor(4 * index + p.right).put(value.getValuesArray());
 			updated = true;
 		}
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, Vector4f value)
+	public void set(String uniform, Vector4f value)
 	{
-		set(uniform, buffer, 0, value);
+		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, int index, Vector4f value)
+	public void set(String uniform, int index, Vector4f value)
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_4, p.left.getType());
-			buffer.asFloatBuffer().put(index * stride + p.right, value.getValuesArray());
+			writer.setCursor(4 * index + p.right).put(value.getValuesArray());
 			updated = true;
 		}
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, Vector2i value)
+	public void set(String uniform, Vector2i value)
 	{
-		set(uniform, buffer, 0, value);
+		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, int index, Vector2i value)
+	public void set(String uniform, int index, Vector2i value)
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
 			checkValue(ShaderInputType.VECTOR_INT_2, p.left.getType());
-			buffer.asIntBuffer().put(index * stride + p.right, value.getValuesArray());
+			writer.setCursor(2 * index + p.right).put(value.getValuesArray());
 			updated = true;
 		}
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, Vector3i value)
+	public void set(String uniform, Vector3i value)
 	{
-		set(uniform, buffer, 0, value);
+		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, int index, Vector3i value)
+	public void set(String uniform, int index, Vector3i value)
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
 			checkValue(ShaderInputType.VECTOR_INT_3, p.left.getType());
-			buffer.asIntBuffer().put(index * stride + p.right, value.getValuesArray());
+			writer.setCursor(4 * index + p.right).put(value.getValuesArray());
 			updated = true;
 		}
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, Vector4i value)
+	public void set(String uniform, Vector4i value)
 	{
-		set(uniform, buffer, 0, value);
+		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, int index, Vector4i value)
+	public void set(String uniform, int index, Vector4i value)
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
 			checkValue(ShaderInputType.VECTOR_INT_4, p.left.getType());
-			buffer.asIntBuffer().put(index * stride + p.right, value.getValuesArray());
+			writer.setCursor(4 * index + p.right).put(value.getValuesArray());
 			updated = true;
 		}
 	}
 	
-	public void set(String uniform, TextureView value, TextureSampler sampler)
-	{
-		set(uniform, 0, value, sampler);
-	}
-	
 	@SuppressWarnings("null")
-	public void set(String uniform, int index, TextureView value, TextureSampler sampler)
+	public void set(String uniform, TextureView value, TextureSampler sampler)
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
@@ -251,7 +260,7 @@ public class BufferLayout implements VulkanDebug {
 			lock.lock();
 			try
 			{
-				VkDescriptorImageInfo.Buffer descriptorImageInfo = writeDescriptorSets.get(index * stride + p.right).pImageInfo();
+				VkDescriptorImageInfo.Buffer descriptorImageInfo = writeDescriptorSets.get(p.right).pImageInfo();
 				descriptorImageInfo.imageView(value.getVk());
 				descriptorImageInfo.sampler(sampler.getVk());
 				updated = true;
@@ -263,41 +272,49 @@ public class BufferLayout implements VulkanDebug {
 		}
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, int value)
+	public void set(String uniform, int value)
 	{
-		set(uniform, buffer, 0, value);
+		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, int index, int value)
+	public void set(String uniform, int index, int value)
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
 			checkValue(ShaderInputType.INT, p.left.getType());
-			buffer.asIntBuffer().put(index * stride + p.right, value);
+			writer.setCursor(index + p.right).put(value);
 			updated = true;
 		}
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, float value)
+	public void set(String uniform, float value)
 	{
-		set(uniform, buffer, 0, value);
+		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, VulkanBuffer buffer, int index, float value)
+	public void set(String uniform, int index, float value)
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
 		{
 			checkValue(ShaderInputType.FLOAT, p.left.getType());
-			buffer.asFloatBuffer().put(index * stride + p.right, value);
+			writer.setCursor(index + p.right).put(value);
 			updated = true;
 		}
 	}
 	
+	public void flush(CommandBuffer commandBuffer)
+	{
+		writer.flush(commandBuffer);
+	}
+	
 	private void checkValue(ShaderInputType required, ShaderInputType provided)
 	{
-		if (required != provided) throw new IllegalArgumentException("Provided a " + provided.getName() + " value for a " + required.getName());
+		if (required != provided)
+		{
+			throw new IllegalArgumentException("Provided a " + provided.getName() + " value for a " + required.getName());
+		}
 	}
 	
 	@Override

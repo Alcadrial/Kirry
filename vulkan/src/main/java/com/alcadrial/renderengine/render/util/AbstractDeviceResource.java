@@ -12,13 +12,16 @@ public abstract class AbstractDeviceResource<VK> extends AbstractVulkanResource<
 		RenderEngine.assertLoaded();
 	}
 	
-	protected Device device;
+	protected final Device device;
+	protected String name;
 	
 	public AbstractDeviceResource(Device device)
 	{
 		this.device = Objects.requireNonNull(device);
 		device.addToDestructionList(this);
 	}
+	
+	public abstract void setName(String name);
 	
 	//public abstract void recreate(Device device, Object... objects);
 	
