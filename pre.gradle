@@ -1,8 +1,10 @@
 
 group = "com.alcadrial.renderengine"
 base {
-	archivesName = "${rootProject.name}-$name"
+	archivesName = "${rootProject.name}-$id"
 }
+
+eclipse.project.name = "${rootProject.name} ${ext.name}"
 
 java {
 	toolchain.languageVersion.set(JavaLanguageVersion.of(21))

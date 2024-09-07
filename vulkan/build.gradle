@@ -5,10 +5,8 @@ plugins {
 	id("maven-publish")
 	id("eclipse")
 }
+
 apply from: rootProject.file("pre.gradle")
-
-eclipse.project.name = "RenderEngine Vulkan"
-
 
 dependencies {
 	implementation(project(":core"))

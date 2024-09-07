@@ -7,8 +7,6 @@ plugins {
 
 apply from: rootProject.file("pre.gradle")
 
-eclipse.project.name = "RenderEngine Core"
-
 javadoc.options.tags("apiNote::API Note:", "implSpec::Implementation Requirements:", "implNote::Implementation Note:")
 
 dependencies {

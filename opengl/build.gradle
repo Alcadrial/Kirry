@@ -3,11 +3,9 @@ plugins {
 	id("java-library")
 	id("maven-publish")
 	id("eclipse")
-//	id("com.alcadrial.klug") version "0.2.3"
 }
-apply from: rootProject.file("pre.gradle")
 
-eclipse.project.name = "RenderEngine Opengl"
+apply from: rootProject.file("pre.gradle")
 
 dependencies {
 	implementation(project(":core"))

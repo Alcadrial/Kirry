@@ -4,9 +4,8 @@ plugins {
 	id("maven-publish")
 	id("eclipse")
 }
-apply from: rootProject.file("pre.gradle")
 
-eclipse.project.name = "RenderEngine Audio"
+apply from: rootProject.file("pre.gradle")
 
 dependencies {
 	implementation(project(":core"))
