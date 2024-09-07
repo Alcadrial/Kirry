@@ -40,10 +40,8 @@ import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Surface;
 import com.alcadrial.renderengine.render.Swapchain;
-import com.alcadrial.renderengine.render.buffer.IndexBuffer;
-import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
-import com.alcadrial.renderengine.render.buffer.VulkanBufferRange;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline.GraphicsPipelineBuildFunction;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
@@ -86,11 +84,11 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected DataElement<Surface> surface;
 	protected DataElement<Vector2i> size;
 	protected DataElement<Swapchain> swapchain;
-	protected DataElement<VertexBuffer> vertexBuffer;
-	protected DataElement<IndexBuffer> indexBuffer;
+	protected DataElement<VulkanBuffer> vertexBuffer;
+	protected DataElement<VulkanBuffer> indexBuffer;
 	protected DataElement<VulkanBuffer> uniformBuffer;
 	protected DataElement<VulkanBuffer> storageBuffer;
-	protected DataElement<List<VulkanBufferRange>> bufferBindings;
+	protected DataElement<List<BufferWriter>> bufferBindings;
 	protected DataElement<VkDescriptorSetLayoutBinding> descriptorSetLayoutBinding;
 	protected DataElement<Texture> depthTexture;
 	// VkPipelineColorBlendAttachmentState {
@@ -346,13 +344,13 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		return myself();
 	}
 	
-	protected SDA vertexBuffer(@Nullable VertexBuffer value)
+	protected SDA vertexBuffer(@Nullable VulkanBuffer value)
 	{
 		vertexBuffer.set(value);
 		return myself();
 	}
 	
-	protected SDA indexBuffer(@Nullable IndexBuffer value)
+	protected SDA indexBuffer(@Nullable VulkanBuffer value)
 	{
 		indexBuffer.set(value);
 		return myself();
@@ -370,12 +368,12 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		return myself();
 	}
 	
-	protected SDA bufferBindings(@Nullable VulkanBufferRange... value)
+	protected SDA bufferBindings(@Nullable BufferWriter... value)
 	{
 		return bufferBindings(Arrays.asList(value));
 	}
 	
-	protected SDA bufferBindings(@Nullable List<VulkanBufferRange> value)
+	protected SDA bufferBindings(@Nullable List<BufferWriter> value)
 	{
 		bufferBindings.set(value);
 		return myself();

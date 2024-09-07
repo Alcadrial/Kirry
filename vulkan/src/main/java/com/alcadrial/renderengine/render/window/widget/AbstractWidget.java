@@ -8,6 +8,7 @@ import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.core.util.EmptyImplementation;
 import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Renderer;
+import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public abstract class AbstractWidget implements Widget {
@@ -46,7 +47,7 @@ public abstract class AbstractWidget implements Widget {
 	}
 	
 	@Override
-	public void initializeRendering()
+	public void initializeRendering(StaticBigBuffer staticBuffer)
 	{
 		setInternalStateBit(INITIALIZED_BIT, true);
 	}

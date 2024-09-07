@@ -11,6 +11,7 @@ import java.util.function.Predicate;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.windows.Kernel32;
+import org.lwjgl.vulkan.EXTDebugReport;
 import org.lwjgl.vulkan.EXTDebugUtils;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCreateInfoEXT;
@@ -214,8 +215,14 @@ public class Vulkan implements AutoCloseable {
 				}
 				queueCreateInfos.rewind();
 				
+				boolean debugReportExtensionEnabled = false;
+				
 				PointerBuffer deviceExtensionBuffer = stack.mallocPointer(deviceExtensions.length);
-				for (String extension : deviceExtensions) deviceExtensionBuffer.put(stack.UTF8(extension));
+				for (String extension : deviceExtensions)
+				{
+					if (extension.equals(EXTDebugReport.VK_EXT_DEBUG_REPORT_EXTENSION_NAME)) debugReportExtensionEnabled = true;
+					deviceExtensionBuffer.put(stack.UTF8(extension));
+				}
 				deviceExtensionBuffer.rewind();
 				
 				VkDeviceCreateInfo createInfo = VkDeviceCreateInfo.calloc(stack);
@@ -227,7 +234,7 @@ public class Vulkan implements AutoCloseable {
 				
 				PointerBuffer devicePointer = stack.pointers(VK10.VK_NULL_HANDLE);
 				VulkanErrorUtils.assertNoError(VK10.vkCreateDevice(threadData.physicalDevice.getVk(), createInfo, null, devicePointer), "Failed to create logical device");
-				threadData.device = new Device(new VkDevice(devicePointer.get(0), threadData.physicalDevice.getVk(), createInfo), threadData.physicalDevice);
+				threadData.device = new Device(new VkDevice(devicePointer.get(0), threadData.physicalDevice.getVk(), createInfo), threadData.physicalDevice, debugReportExtensionEnabled);
 				
 				Queue queue = new Queue(threadData.device, graphicsQueue.getIndex());
 				threadData.device.setGraphicsQueue(queue);

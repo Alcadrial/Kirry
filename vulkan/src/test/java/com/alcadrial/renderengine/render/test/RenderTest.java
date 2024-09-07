@@ -26,68 +26,53 @@ import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class RenderTest {
-
+	
 	protected static final Object MONITOR = new Object();
 	private static final String[] SEVERITIES = new String[] {"UNKNOWN", "VERBOSE", "INFO", "WARNING", "ERROR"};
 	private static final String[] TYPES = new String[] {"UNKNOWN", "GENERAL", "VALIDATION", "PERFORMANCE"};
-
+	
 	public static void mainTest(String[] args, Runnable start, Runnable loop, Runnable end)
 	{
 		TestProperties.init(args);
-
-		if (Properties.DEBUG.getValue())
-		{
-			RenderEngine.enableDebug();
-		}
-
+		
+		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
+		
 		println("RenderEngine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated())
-		{
-			throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		}
-
+		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
+		
 		try
 		{
 			println("Start", start, TestProperties.PRINT_LOADING_TIMES);
-			if (!RenderEngine.isInitializated())
-			{
-				return;
-			}
-
+			if (!RenderEngine.isInitializated()) return;
+			
 			println("Loop", loop, TestProperties.PRINT_LOADING_TIMES);
-			if (!RenderEngine.isInitializated())
-			{
-				return;
-			}
-
+			if (!RenderEngine.isInitializated()) return;
+			
 			println("End", end, TestProperties.PRINT_LOADING_TIMES);
 		}
 		catch (Throwable t)
 		{
-			if (RenderEngine.isInitializated())
-			{
-				RenderEngine.terminate();
-			}
+			if (RenderEngine.isInitializated()) RenderEngine.terminate();
 			throw t;
 		}
 	}
-
+	
 	public static void defaultLoop(BiConsumer<Long, Long> action)
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		String title = window.getTitle();
-
+		
 		int maxfps = TestProperties.MAX_FRAME_RATE.getValue();
 		long firstHighMilestone = 1000000000;
 		long firstMilestone = 1000000000 / maxfps;
-
+		
 		long time = System.nanoTime();
 		long current;
 		long lastCurrent = time;
 		long frame = 0;
 		long milestone = firstMilestone;
 		long highMilestone = firstHighMilestone;
-
+		
 		while (!window.shouldClose())
 		{
 			current = System.nanoTime();
@@ -121,7 +106,7 @@ public class RenderTest {
 			lastCurrent = current;
 		}
 	}
-
+	
 	public static void initRenderEngine()
 	{
 		RenderEngine.Builder builder = RenderEngine.create("Test", new Version(0, 0, 1, 0));
@@ -129,9 +114,10 @@ public class RenderTest {
 		builder.instanceLayersDebug("VK_LAYER_KHRONOS_validation");
 		builder.instanceExtensionsDebug(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME, EXTDebugReport.VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 		builder.multiThreading(false);
+		builder.useWindowSystem(true);
 		builder.initialize();
 	}
-
+	
 	public static void initMultiThreadRenderEngine()
 	{
 		RenderEngine.Builder builder = RenderEngine.create("Test", new Version(0, 0, 1, 0));
@@ -139,13 +125,14 @@ public class RenderTest {
 		builder.instanceLayersDebug("VK_LAYER_KHRONOS_validation");
 		builder.instanceExtensionsDebug(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME, EXTDebugReport.VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 		builder.multiThreading(true);
+		builder.useWindowSystem(true);
 		builder.initialize();
 	}
-
+	
 	public static int debugCallback(int messageSeverity, int messageType, long callbackDataId, long userDataId)
 	{
 		VkDebugUtilsMessengerCallbackDataEXT callbackData = VkDebugUtilsMessengerCallbackDataEXT.create(callbackDataId);
-
+		
 		int i = switch (messageSeverity)
 		{
 			case 0x0001 -> 1;
@@ -161,26 +148,20 @@ public class RenderTest {
 			case 0b100 -> 3;
 			default -> 0;
 		};
-
+		
 		Debug.debug("[" + SEVERITIES[i] + " " + TYPES[j] + "] " + callbackData.pMessageString());
-
+		
 		return VK10.VK_FALSE;
 	}
-
+	
 	public static boolean pickPhysicalDevice(VulkanWindow window)
 	{
 		try
 		{
 			Vulkan vulkan = RenderEngine.getVulkan();
 			vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT | VK10.VK_QUEUE_COMPUTE_BIT, window.getSurface()) != null);
-			if (TestProperties.DEVICE.isDefault())
-			{
-				vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
-			}
-			else
-			{
-				vulkan.pickPhysicalDevices(TestProperties.DEVICE.getValue());
-			}
+			if (TestProperties.DEVICE.isDefault()) vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
+			else vulkan.pickPhysicalDevices(TestProperties.DEVICE.getValue());
 			return true;
 		}
 		catch (PhysicalDeviceNotFoundException e)
@@ -190,63 +171,45 @@ public class RenderTest {
 			return false;
 		}
 	}
-
+	
 	public static Texture createDepthTexture(int width, int height)
 	{
 		Texture depthTexture = Texture.create2dTexture(RenderEngine.getVulkan().getDevice(), width, height, VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
 		depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL).join();
 		return depthTexture;
 	}
-
+	
 	public static File getFile(String path)
 	{
 		return new File(Properties.RESOURCE_PATH.getValue(), "assets/renderengine/" + path);
 	}
-
+	
 	public static PreparedShader loadShader(String path) throws IOException
 	{
 		Shader shader = new Shader(getFile(path));
 		ShaderInfo info = ShaderInfo.fromJson(getFile(path + ".json"));
-		if (TestProperties.FORCE_RECOMPILE_SHADERS.getValue())
-		{
-			shader.compile(info);
-		}
+		if (TestProperties.FORCE_RECOMPILE_SHADERS.getValue()) shader.compile(info);
 		else
 		{
 			File binFile = getFile(path + ".bin");
-			if (binFile.canRead())
-			{
-				shader.loadCompiled(binFile);
-			}
-			else
-			{
-				shader.compile(info);
-			}
+			if (binFile.canRead()) shader.loadCompiled(binFile);
+			else shader.compile(info);
 		}
-		if (!shader.isCompilationSuccessfull())
-		{
-			throw new IOException("Shader " + shader.getFile() + " has errors");
-		}
+		if (!shader.isCompilationSuccessfull()) throw new IOException("Shader " + shader.getFile() + " has errors");
 		return new PreparedShader(shader, info);
 	}
-
+	
 	public static void saveShaderBinary(Shader shader) throws IOException
 	{
 		Files.write(new File(shader.getFile().getPath() + ".bin").toPath(), shader.getLastCompilation().get().getBinary());
 	}
-
+	
 	public static void println(String s, Runnable action, Property<Boolean> printProperty)
 	{
-		if (printProperty.getValue())
-		{
-			System.out.println(s + " time = " + recordTime(action, TimeUnit.MICROSECONDS) / 1000D + "ms");
-		}
-		else
-		{
-			action.run();
-		}
+		if (printProperty.getValue()) System.out.println(s + " time = " + recordTime(action, TimeUnit.MICROSECONDS) / 1000D + "ms");
+		else action.run();
 	}
-
+	
 	public static long recordTime(Runnable runnable, TimeUnit unit)
 	{
 		long startTime;
@@ -261,22 +224,16 @@ public class RenderTest {
 			startTime = System.currentTimeMillis();
 			localUnit = TimeUnit.MILLISECONDS;
 		}
-
+		
 		runnable.run();
-
+		
 		long endTime;
-		if (localUnit == TimeUnit.NANOSECONDS)
-		{
-			endTime = System.nanoTime();
-		}
-		else
-		{
-			endTime = System.currentTimeMillis();
-		}
-
+		if (localUnit == TimeUnit.NANOSECONDS) endTime = System.nanoTime();
+		else endTime = System.currentTimeMillis();
+		
 		return unit.convert(endTime - startTime, localUnit);
 	}
-
+	
 	public static double recordTime(Runnable runnable, TimeUnit unit, TimeUnit resolution)
 	{
 		long startTime;
@@ -291,19 +248,13 @@ public class RenderTest {
 			startTime = System.currentTimeMillis();
 			localUnit = TimeUnit.MILLISECONDS;
 		}
-
+		
 		runnable.run();
-
+		
 		long endTime;
-		if (localUnit == TimeUnit.NANOSECONDS)
-		{
-			endTime = System.nanoTime();
-		}
-		else
-		{
-			endTime = System.currentTimeMillis();
-		}
-
+		if (localUnit == TimeUnit.NANOSECONDS) endTime = System.nanoTime();
+		else endTime = System.currentTimeMillis();
+		
 		return (double) resolution.convert(endTime - startTime, localUnit) / resolution.convert(1, unit);
 	}
 }

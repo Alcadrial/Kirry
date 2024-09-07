@@ -45,7 +45,7 @@ public class BasicScreen implements Screen {
 	}
 
 	@Override
-	public void initializeRendering()
+	public void initializeRendering(StaticBigBuffer staticBigBuffer)
 	{
 		for (Widget widget : widgets)
 		{

@@ -8,18 +8,20 @@ import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 
 public interface Widget {
 	
 	/**
-	 * Use to create objects like {@link FrameBuffer}s and {@link VertexBuffer}s to use in the {@link #render(Matrix4f, Renderer) render} method.
+	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, Renderer) render} method.
+	 * @param staticBuffer
 	 */
-	void initializeRendering();
+	void initializeRendering(StaticBigBuffer staticBuffer);
 	/**
 	 * Draws textures and collects vertices to use in the {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw} method.
 	 * <p>
-	 * This method is called after {@link #initializeRendering() initializeRendering}.
+	 * This method is called after {@link #initializeRendering(StaticBigBuffer) initializeRendering}.
 	 * 
 	 * @param matrix a custom matrix
 	 * @param renderer
@@ -38,7 +40,7 @@ public interface Widget {
 	 */
 	void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer manager, float partialFrame);
 	/**
-	 * Closes any resource previously allocated in {@link #initializeRendering() initializeRendering}.
+	 * Closes any resource previously allocated in {@link #initializeRendering(StaticBigBuffer) initializeRendering}.
 	 * <p>
 	 * The invokation this method will allow another invokation of initializeRendering.
 	 */

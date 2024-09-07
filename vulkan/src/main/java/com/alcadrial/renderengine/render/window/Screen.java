@@ -5,20 +5,22 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.buffer.VertexBuffer;
+import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.window.widget.ActionResult;
 
 public interface Screen {
 	
 	/**
-	 * Use to create objects like {@link FrameBuffer}s and {@link VertexBuffer}s to use in the {@link #render(Matrix4f, Renderer) render} method.
+	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, Renderer) render} method.
+	 * @param staticBigBuffer
 	 */
-	void initializeRendering();
+	void initializeRendering(StaticBigBuffer staticBigBuffer);
 	/**
 	 * Draws textures and collects vertices to use in the {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw} method.
 	 * <p>
-	 * This method is called after {@link #initializeRendering() initializeRendering}.
+	 * This method is called after {@link #initializeRendering(StaticBigBuffer) initializeRendering}.
 	 * 
 	 * @param matrix a custom matrix
 	 * @param renderer
@@ -33,13 +35,13 @@ public interface Screen {
 	 * This method is called after {@link #render(Matrix4f, Renderer) render}.
 	 * 
 	 * @param matrix the tranformation matrix
-	 * @param commandBuffer TODO
+	 * @param commandBuffer
 	 * @param renderer
 	 * @param partialFrame
 	 */
 	void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame);
 	/**
-	 * Closes any resource previously allocated in {@link #initializeRendering() initializeRendering}.
+	 * Closes any resource previously allocated in {@link #initializeRendering(StaticBigBuffer) initializeRendering}.
 	 * <p>
 	 * The invokation this method will allow another invokation of initializeRendering.
 	 */

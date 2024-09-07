@@ -141,7 +141,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		{
 			CommandBuffer commandBuffer = commandBuffers.get(getFrameIndex());
 			
-			if (!screen.isInitialized()) screen.initializeRendering();
+			if (!screen.isInitialized()) screen.initializeRendering(null);//TODO
 			if (!screen.isRendered()) screen.render(new Matrix4f().orthographicPositive(width, height), renderer);
 			if (drawCount++ < 3)
 			{

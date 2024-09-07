@@ -160,7 +160,7 @@ public class RenderEngine extends RenderEngineCore {
 			}
 			initializated = true;
 			vulkan = new Vulkan(createInfo);
-			executor = Executors.newCachedThreadPool();
+			executor = multiThreading ? Executors.newFixedThreadPool(16) : Executors.newSingleThreadExecutor();
 			return true;
 		}
 		catch (Exception e)
@@ -195,8 +195,8 @@ public class RenderEngine extends RenderEngineCore {
 		{
 			if (initializated)
 			{
-				if (executor != null) executor.shutdown();
 				vulkan.close();
+				if (executor != null) executor.shutdown();
 				vulkan = null;
 				Future<?> f = requestMainThread(() -> {
 					GLFW.glfwTerminate();

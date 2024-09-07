@@ -14,6 +14,7 @@ import org.lwjgl.vulkan.KHRVideoQueue;
 import org.lwjgl.vulkan.NVGLSLShader;
 import org.lwjgl.vulkan.VK13;
 
+import com.alcadrial.renderengine.core.util.DataIncosistenceException;
 import com.alcadrial.renderengine.render.RenderEngine;
 
 public class VulkanErrorUtils {

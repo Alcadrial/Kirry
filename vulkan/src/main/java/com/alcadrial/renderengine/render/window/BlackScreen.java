@@ -5,6 +5,7 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
+import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.window.widget.ActionResult;
 
@@ -23,7 +24,7 @@ public class BlackScreen implements Screen {
 	}
 	
 	@Override
-	public void initializeRendering()
+	public void initializeRendering(StaticBigBuffer staticBigBuffer)
 	{
 		
 	}
