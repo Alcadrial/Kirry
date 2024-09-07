@@ -3,151 +3,132 @@ plugins {
 	id("application")
 	id("java-library")
 	id("maven-publish")
-	id("com.alcadrial.klug") version "0.2.3"
+	id("eclipse")
 }
+apply from: rootProject.file("pre.gradle")
 
 eclipse.project.name = "RenderEngine Vulkan"
 
-klugDebug.enableDebug = true
-
-java.toolchain.languageVersion.set(JavaLanguageVersion.of(21))
-javadoc.options.tags("renderengine.vulkan:a:Vulkan API:", "renderengine.Requires:a:Requires:", "renderengine.Optional:a:Optional:")
 
 dependencies {
 	implementation(project(":core"))
 	
-	implementation("com.alcadrial.kector:Kector:${kectorVersion}")
-	implementation("com.alcadrial.kroperties:Kroperties:${kropertiesVersion}")
-	implementation("com.alcadrial.threads:Threads:${threadsVersion}")
-	implementation("com.alcadrial.kurvilinear:KurviLinear:${kurvilinearVersion}")
+	implementation(libs.kector)
+	implementation(libs.kroperties)
+	implementation(libs.kurvilinear)
 	
-	implementation("com.google.code.gson:gson:${gsonVersion}")
-	implementation("org.lwjgl:lwjgl:${lwjglVersion}")
-	implementation("org.lwjgl:lwjgl-glfw:${lwjglVersion}")
-	implementation("org.lwjgl:lwjgl-openal:${lwjglVersion}")
-	implementation("org.lwjgl:lwjgl-vma:${lwjglVersion}")
-	implementation("org.lwjgl:lwjgl-vulkan:${lwjglVersion}")
+	implementation(libs.gson)
+	implementation(libs.lwjgl)
+	implementation(libs.lwjgl.glfw)
+	implementation(libs.lwjgl.vulkan)
 	runtimeOnly("org.lwjgl:lwjgl::${lwjglNatives}")
 	runtimeOnly("org.lwjgl:lwjgl-glfw::${lwjglNatives}")
-	runtimeOnly("org.lwjgl:lwjgl-openal::${lwjglNatives}")
-	runtimeOnly("org.lwjgl:lwjgl-vma::${lwjglNatives}")
 	if (lwjglNatives == "natives-macos" || lwjglNatives == "natives-macos-arm64") runtimeOnly("org.lwjgl:lwjgl-vulkan::${lwjglNatives}")
 }
 
-boolean printExcludedFiles = true
-boolean printExportedFiles = true
-boolean excludeTestFiles = true
-boolean printOnlyOnce = true
-
 sourceSets {
+	debug {
+		java {
+		//	if (!debugOn) exclude("**")
+		}
+	}
+	release {
+		java {
+		//	if (debugOn) exclude("**")
+		}
+	}
 	main {
 		resources {
-			exclude("*")
+			
 		}
 		java {
-			File start = null
 			
-			exclude(e -> {
-				if (printOnlyOnce)
-				{
-					if (start == null) start = e.getFile()
-					else if (start.equals(e.getFile()))
-					{
-						printExportedFiles = false
-						printExcludedFiles = false
-					}
-				}
-				if (!excludeTestFiles || e.getFile().isDirectory()) {
-					File packageFile = new File(e.getFile().getPath() + "/package-info.java")
-					if (packageFile.isFile())
-					{
-						String text = packageFile.text
-						boolean b0 = text.contains("@Test")
-						boolean b1 = text.contains("import com.alcadrial.renderengine.core.util.Test")
-						boolean b2 = text.contains("package com.alcadrial.renderengine.core.util;")
-						boolean b3 = text.contains("@com.alcadrial.renderengine.core.util.Test")
-						boolean r = b3 || (b0 && b2) || (b0 && b1)
-						if (!r && printExportedFiles) println("P " + e.getFile())
-						if (r && printExcludedFiles) println("excluded P " + e.getFile())
-						return r
-					}
-					if (printExportedFiles) println("D " + e.getFile())
-					return false
-				}
-				boolean b = e.getFile().name.endsWith(".java")
-				String text = e.getFile().text
-				boolean b0 = text.contains("@Test")
-				boolean b1 = text.contains("import com.alcadrial.renderengine.core.util.Test")
-				boolean b2 = text.contains("package com.alcadrial.renderengine.core.util;")
-				boolean b3 = text.contains("@com.alcadrial.renderengine.core.util.Test")
-				boolean result = b && ((b0 && (b1 || b2)) || b3)
-				if (printExportedFiles && !result) println("F " + e.getFile())
-				if (printExcludedFiles && result) println("excluded F " + e.getFile())
-				return result
-			})
 		}
 	}
 }
 
-task applicationZip(type: Zip) {
-	archiveClassifier = "application"
-	duplicatesStrategy = "include"
-	
-	from(jar)
-	mkdir("${buildDir}/resources/zip/lib")
-	mkdir("${buildDir}/resources/zip/resources")
-	copy {
-		from(configurations.runtimeClasspath)
-		into("${buildDir}/resources/zip/lib")
-	}
-	copy {
-		from("src/main/resources")
-		into("${buildDir}/resources/zip/resources")
-	}
-	from("${buildDir}/resources/zip")
-	
-	doLast {
-		delete("${buildDir}/resources/zip")
-	}
+configurations {
+	debugImplementation.extendsFrom(implementation)
+	releaseImplementation.extendsFrom(implementation)
 }
 
-ext.applicationAttributes = { distributionName, mainClass, libsDirectory ->
-	return [
-			"Specification-Title"		: "${name} ${distributionName}",
-			"Specification-Version"		: version,
-			"Specification-Vendor"		: author,
-			"Implementation-Title"		: "${name} ${distributionName}",
-			"Implementation-Version"	: version,
-			"Implementation-Vendor"		: author,
-			"Implementation-Timestamp"	: new Date().format("dd/MM/yyyy HH:mm:ss"),
-			"Main-Class"				: "${mainClass}",
-			"Class-Path"				: "${fileTree(libsDirectory).filter{ it.isFile() }.files.name.toString().replace('[', 'lib/').replace(', ', ' lib/').replace(']', '')}"
-	]
+apply from: rootProject.file("post.gradle")
+
+javadoc.options.tags("renderengine.vulkan:a:Vulkan API:", "renderengine.Requires:a:Requires:", "renderengine.Optional:a:Optional:")
+
+task debugJavadoc(type: Javadoc) {
+    source(sourceSets.main.allJava)
+    source(sourceSets.debug.allJava)
+    classpath = sourceSets.debug.compileClasspath
+    destinationDir = reporting.file("debugJavadoc")
+    options.tags("renderengine.vulkan:a:Vulkan API:", "renderengine.Requires:a:Requires:", "renderengine.Optional:a:Optional:")
 }
-	
-tasks.jar {
-	def libBuildDir = mkdir("${buildDir}/resources/jar/lib")
-	copy {
-		from(configurations.runtimeClasspath)
-		into(libBuildDir)
-	}
-	manifest.attributes(applicationAttributes("app", "com.alcadrial.renderengine.render.test.DepthBufferTest", libBuildDir))
-	delete(libBuildDir)
-	dependsOn(":core:jar")
+
+task javadocDebugJar(type: Jar, dependsOn: debugJavadoc) {
+	archiveBaseName = "${archiveBaseName.get()}-debug"
+    archiveClassifier = "javadoc"
+	from(debugJavadoc.destinationDir)
+}
+
+task sourcesDebugJar(type: Jar, dependsOn: debugClasses) {
+	archiveBaseName = "${archiveBaseName.get()}-debug"
+    archiveClassifier = "sources"
+    from(compileDebugJava.source)
+}
+
+tasks.compileDebugJava {
+	source(sourceSets.main.java)
+}
+
+task debugJar(type: Jar)
+{
+	archiveBaseName = "${archiveBaseName.get()}-debug"
+	from(sourceSets.debug.output)
+}
+
+task releaseJavadoc(type: Javadoc) {
+    source(sourceSets.main.allJava)
+    source(sourceSets.release.allJava)
+    classpath = sourceSets.release.compileClasspath
+    destinationDir = reporting.file("releaseJavadoc")
+    options.tags("renderengine.vulkan:a:Vulkan API:", "renderengine.Requires:a:Requires:", "renderengine.Optional:a:Optional:")
+}
+
+task javadocReleaseJar(type: Jar, dependsOn: releaseJavadoc) {
+	archiveBaseName = "${archiveBaseName.get()}-release"
+    archiveClassifier = "javadoc"
+	from(releaseJavadoc.destinationDir)
+}
+
+task sourcesReleaseJar(type: Jar, dependsOn: releaseClasses) {
+	archiveBaseName = "${archiveBaseName.get()}-release"
+    archiveClassifier = "sources"
+    from(compileReleaseJava.source)
+}
+
+tasks.compileReleaseJava {
+	source(sourceSets.main.java)
+}
+
+task releaseJar(type: Jar)
+{
+	archiveBaseName = "${archiveBaseName.get()}-release"
+	from(sourceSets.release.output)
 }
 
 publishing {
 	publications {
-		mavenJava(MavenPublication) {
-			artifact jar
-			artifact applicationZip
-			artifact sourcesJar
-			artifact javadocJar
+		debug(MavenPublication) {
+			artifactId = "$project.name-debug"
+			artifact(debugJar)
+			artifact(javadocDebugJar)
+			artifact(sourcesDebugJar)
 		}
-	}
-	repositories {
-		maven {
-			url("file://D:/maven")
+		release(MavenPublication) {
+			artifactId = "$project.name-release"
+			artifact(releaseJar)
+			artifact(javadocReleaseJar)
+			artifact(sourcesReleaseJar)
 		}
 	}
 }

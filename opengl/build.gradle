@@ -2,23 +2,25 @@ plugins {
 	id("java")
 	id("java-library")
 	id("maven-publish")
-	id("com.alcadrial.klug") version "0.2.3"
+	id("eclipse")
+//	id("com.alcadrial.klug") version "0.2.3"
 }
+apply from: rootProject.file("pre.gradle")
 
 eclipse.project.name = "RenderEngine Opengl"
 
 dependencies {
 	implementation(project(":core"))
 	
-	implementation("com.alcadrial.kector:Kector:${kectorVersion}")
-	implementation("com.alcadrial.kroperties:Kroperties:${kropertiesVersion}")
-	implementation("com.alcadrial.threads:Threads:${threadsVersion}")
+	implementation(libs.kector)
+	implementation(libs.kroperties)
+	implementation(libs.threads)
 	implementation(":Tester")
 	
-    implementation("com.google.code.gson:gson:${gsonVersion}")
-    implementation("org.lwjgl:lwjgl:${lwjglVersion}")
-    implementation("org.lwjgl:lwjgl-glfw:${lwjglVersion}")
-    implementation("org.lwjgl:lwjgl-opengl:${lwjglVersion}")
+    implementation(libs.gson)
+    implementation(libs.lwjgl)
+    implementation(libs.lwjgl.glfw)
+    implementation(libs.lwjgl.opengl)
 	runtimeOnly("org.lwjgl:lwjgl::${lwjglNatives}")
 	runtimeOnly("org.lwjgl:lwjgl-glfw::${lwjglNatives}")
 	runtimeOnly("org.lwjgl:lwjgl-opengl::${lwjglNatives}")
@@ -78,19 +80,4 @@ sourceSets {
 			})
 		}
 	}
-}
-
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            artifact jar
-            artifact sourcesJar
-            artifact javadocJar
-        }
-    }
-    repositories {
-        maven {
-            url("file://D:/maven")
-        }
-    }
 }

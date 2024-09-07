@@ -1,0 +1,22 @@
+[versions]
+kector = "1.2.0"
+kroperties = "1.2.2"
+threads = "1.0.2"
+kurvilinear = "0.0.1"
+gson = "2.10.1"
+lwjgl = "3.3.3"
+
+[libraries]
+kector      = {module = "com.alcadrial.kector:Kector", version.ref = "kector"}
+kroperties  = {module = "com.alcadrial.kroperties:Kroperties", version.ref = "kroperties"}
+kurvilinear = {module = "com.alcadrial.kurvilinear:KurviLinear", version.ref = "kurvilinear"}
+threads     = {module = "com.alcadrial.threads:Threads", version.ref = "threads"}
+
+gson = {module = "com.google.code.gson:gson", version.ref = "gson"}
+
+lwjgl        = {module = "org.lwjgl:lwjgl", version.ref = "lwjgl"}
+lwjgl-glfw   = {module = "org.lwjgl:lwjgl-glfw", version.ref = "lwjgl"}
+lwjgl-opengl = {module = "org.lwjgl:lwjgl-opengl", version.ref = "lwjgl"}
+lwjgl-openal = {module = "org.lwjgl:lwjgl-openal", version.ref = "lwjgl"}
+lwjgl-fmod   = {module = "org.lwjgl:lwjgl-fmod", version.ref = "lwjgl"}
+lwjgl-vulkan = {module = "org.lwjgl:lwjgl-vulkan", version.ref = "lwjgl"}
