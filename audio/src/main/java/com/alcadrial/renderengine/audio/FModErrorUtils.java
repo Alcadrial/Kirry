@@ -10,104 +10,68 @@ public class FModErrorUtils {
 	
 	public static <O> void match(O obj, O other)
 	{
-		if (!obj.equals(other))
-		{
-			throw new DataIncosistenceException();
-		}
+		if (!obj.equals(other)) throw new DataIncosistenceException();
 	}
 	
 	public static <O> void match(O obj, O other, String error)
 	{
-		if (!obj.equals(other))
-		{
-			throw new DataIncosistenceException(error);
-		}
+		if (!obj.equals(other)) throw new DataIncosistenceException(error);
 	}
 	
 	public static <O> O nonNull(O obj)
 	{
-		if (obj == null)
-		{
-			throw new NullPointerException();
-		}
+		if (obj == null) throw new NullPointerException();
 		return obj;
 	}
 	
 	public static <O> O nonNull(O obj, String error)
 	{
-		if (obj == null)
-		{
-			throw new NullPointerException(error);
-		}
+		if (obj == null) throw new NullPointerException(error);
 		return obj;
 	}
 	
 	public static int nonNull(int id)
 	{
-		if (id == 0)
-		{
-			throw new NullPointerException();
-		}
+		if (id == 0) throw new NullPointerException();
 		return id;
 	}
 	
 	public static int nonNull(int id, String error)
 	{
-		if (id == 0)
-		{
-			throw new NullPointerException(error);
-		}
+		if (id == 0) throw new NullPointerException(error);
 		return id;
 	}
 	
 	public static long nonNull(long pointer)
 	{
-		if (pointer == 0)
-		{
-			throw new NullPointerException();
-		}
+		if (pointer == 0) throw new NullPointerException();
 		return pointer;
 	}
 	
 	public static long nonNull(long pointer, String error)
 	{
-		if (pointer == 0)
-		{
-			throw new NullPointerException(error);
-		}
+		if (pointer == 0) throw new NullPointerException(error);
 		return pointer;
 	}
 	
 	public static void assertStatement(boolean flag, String details)
 	{
-		if (!flag)
-		{
-			throw new AssertionError(details);
-		}
+		if (!flag) throw new AssertionError(details);
 	}
 	
 	public static void assertNoError(int error, Supplier<String> details)
 	{
-		if (error < 0)
-		{
-			throw new AssertionError(details.get() + ": " + getErrorString(error));
-		}
+		if (error != 0) throw new AssertionError(details.get() + ": " + getErrorString(error));
 	}
 	
 	public static void assertNoError(int error, String details)
 	{
-		if (error < 0)
-		{
-			throw new AssertionError(details + ": " + getErrorString(error));
-		}
+		if (error != 0) throw new AssertionError(details + ": " + getErrorString(error));
 	}
 	
 	public static void assertNoError(int error)
 	{
-		if (error < 0)
-		{
-			throw new AssertionError(getErrorString(error));
-		}
+		if (error != 0) throw new AssertionError(getErrorString(error));
 	}
 	
 	public static String getErrorString(int error)
@@ -198,6 +162,33 @@ public class FModErrorUtils {
 			case FMOD.FMOD_ERR_TOOMANYSAMPLES -> "ERR TOOMANYSAMPLES";
 		
 			default -> "UNKNOWN ERROR " + error;
+		};
+	}
+	
+	public static String getInstanceTypeString(int instanceType)
+	{
+		return switch (instanceType)
+		{
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_NONE -> "???";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_SYSTEM -> "System";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_CHANNEL -> "Channel";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_CHANNELGROUP -> "ChannelGroup";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_CHANNELCONTROL -> "ChannelControl";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_SOUND -> "Sound";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_SOUNDGROUP -> "SoundGroup";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_DSP -> "Dsp";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_DSPCONNECTION -> "DspConnection";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_GEOMETRY -> "Geometry";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_REVERB3D -> "Reverb3d";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_STUDIO_SYSTEM -> "StudioSystem";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_STUDIO_EVENTDESCRIPTION -> "StudioEventDescription ";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_STUDIO_EVENTINSTANCE -> "StudioeventInstance";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_STUDIO_PARAMETERINSTANCE -> "StudioParameterInstance";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_STUDIO_BUS -> "StudioBus";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_STUDIO_VCA -> "StudioVca";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_STUDIO_BANK -> "StudioBank";
+			case FMOD.FMOD_ERRORCALLBACK_INSTANCETYPE_STUDIO_COMMANDREPLAY -> "StudioCommandReplay";
+			default -> "???";
 		};
 	}
 }
