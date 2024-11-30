@@ -1,5 +1,13 @@
 package com.alcadrial.renderengine.audio;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.file.DirectoryStream;
@@ -10,7 +18,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -23,11 +33,85 @@ import org.lwjgl.fmod.FMOD_ERRORCALLBACK_INFO;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
+import com.alcadrial.renderengine.audio.StreamUtils.EchoInputStream;
+import com.alcadrial.renderengine.audio.StreamUtils.ForwardInputStream;
+import com.alcadrial.renderengine.audio.StreamUtils.SeekerInputStream;
+import com.alcadrial.renderengine.audio.StreamUtils.ShellStream;
 import com.alcadrial.renderengine.audio.bindings.FModChannel;
 import com.alcadrial.renderengine.audio.bindings.FModSound;
 import com.alcadrial.renderengine.audio.bindings.FModSystem;
 
 public class Testa {
+	
+	public static class InputStreamStream extends InputStream {
+		
+		private final BlockingQueue<InputStream> bufferedInputStream;
+		private InputStream stream;
+		private boolean ended;
+		
+		public InputStreamStream(BlockingQueue<InputStream> bufferedInputStream)
+		{
+			this.bufferedInputStream = bufferedInputStream;
+			stream = null;
+		}
+		
+		@Override
+		public int read() throws IOException
+		{
+			boolean interrupted = false;
+			try
+			{
+				
+				boolean taken = false;
+				while (stream == null && !taken)
+				{
+					try
+					{
+						stream = bufferedInputStream.take();
+						taken = true;
+					}
+					catch (InterruptedException e)
+					{
+						interrupted = true;
+					}
+				}
+				while (stream != null)
+				{
+					int i = stream.read();
+					if (i != -1)
+					{
+						ended = false;
+						return i;
+					}
+					if (ended)
+					{
+						taken = false;
+						stream.close();
+						while (!taken)
+						{
+							try
+							{
+								stream = bufferedInputStream.take();
+								taken = true;
+							}
+							catch (InterruptedException e)
+							{
+								interrupted = true;
+							}
+						}
+						continue;
+					}
+					ended = true;
+					return -1;
+				}
+				return -1;
+			}
+			finally
+			{
+				if (interrupted) Thread.currentThread().interrupt();
+			}
+		}
+	}
 	
 	private static class NodeList {
 		
@@ -76,6 +160,11 @@ public class Testa {
 			{
 				return channel;
 			}
+			
+			public void setChannel(long channel)
+			{
+				this.channel = channel;
+			}
 		}
 		
 		private class Cursor extends Node {
@@ -91,13 +180,77 @@ public class Testa {
 			{
 				return next.getChannel();
 			}
+			
+			@Override
+			public void setChannel(long channel)
+			{
+				next.setChannel(channel);
+			}
 		}
 	}
 	
-	/**
-	 * 
-	 * @param args
-	 */
+	public static final InputStream[] SYSTEM_INPUT = new InputStream[1];
+	
+	public static void handleInput()
+	{
+		try (ServerSocket server = new ServerSocket(11712))
+		{
+			BlockingQueue<InputStream> serverInputStream = new LinkedBlockingQueue<>(1);
+			SYSTEM_INPUT[0] = new InputStreamStream(serverInputStream);
+			BlockingQueue<InputStream> clientInputStream = new LinkedBlockingQueue<>();
+			serverInputStream.add(new InputStreamStream(clientInputStream));
+			
+			while (!Thread.currentThread().isInterrupted())
+			{
+				try
+				{
+					Socket client = server.accept();
+					Thread.startVirtualThread(() -> {
+						try (Socket s = client)
+						{
+							ByteArrayOutputStream bufferedOutputStream = new ByteArrayOutputStream();
+							ShellStream shell = new ShellStream(new SeekerInputStream(new EchoInputStream(client.getInputStream(), bufferedOutputStream)), new PrintStream(client.getOutputStream()));
+							
+							shell.println("Available commands:");
+							shell.println("  next");
+							shell.println("  previous");
+							shell.println("  pause");
+							shell.println("  resume");
+							shell.println("  loop");
+							shell.println("  stop");
+							
+							while (!client.isClosed() && !shell.isEnded())
+							{
+								shell.print("> ");
+								shell.readLine();
+								bufferedOutputStream.write('\r');
+								bufferedOutputStream.write('\n');
+								ByteArrayInputStream stream = new ByteArrayInputStream(bufferedOutputStream.toByteArray());
+								synchronized (clientInputStream)
+								{
+									clientInputStream.add(stream);
+								}
+								bufferedOutputStream.reset();
+							}
+						}
+						catch (SocketException e)
+						{}
+						catch (IOException e)
+						{
+							System.out.println("Something when wrong during connection with " + client);
+						}
+					});
+				}
+				catch (SocketException e)
+				{}
+			}
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace(System.out);
+		}
+	}
+	
 	public static void main(String[] args)
 	{
 		if (args.length != 1)
@@ -106,11 +259,19 @@ public class Testa {
 			return;
 		}
 		
+		try
+		{
+			System.in.close();
+		}
+		catch (IOException e)
+		{}
+		System.setIn(new ForwardInputStream(() -> SYSTEM_INPUT[0]));
+		Thread inputThread = Thread.startVirtualThread(Testa::handleInput);
+		
 		ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(4);
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			PointerBuffer pp = stack.mallocPointer(10);
-			IntBuffer ip = stack.mallocInt(10);
 			
 			FModErrorUtils.assertNoError(FModSystem.create(pp, FMOD.FMOD_VERSION), "Failed to create system");
 			long system = pp.get(0);
@@ -119,24 +280,6 @@ public class Testa {
 				
 				switch (type)
 				{
-					case FMOD.FMOD_SYSTEM_CALLBACK_DEVICELOST -> {
-						System.out.println("DeviceLost");
-					}
-					case FMOD.FMOD_SYSTEM_CALLBACK_MEMORYALLOCATIONFAILED -> {
-						System.out.println("MemoryAllocationFailed");
-					}
-					case FMOD.FMOD_SYSTEM_CALLBACK_THREADCREATED -> {
-						System.out.println("ThreadCreated");
-					}
-					case FMOD.FMOD_SYSTEM_CALLBACK_BADDSPCONNECTION -> {
-						System.out.println("BadDspConnection");
-					}
-					case FMOD.FMOD_SYSTEM_CALLBACK_PREMIX -> {
-						//	System.out.println("PreMix");
-					}
-					case FMOD.FMOD_SYSTEM_CALLBACK_POSTMIX -> {
-						//	System.out.println("PostMix");
-					}
 					case FMOD.FMOD_SYSTEM_CALLBACK_ERROR -> {
 						FMOD_ERRORCALLBACK_INFO error = FMOD_ERRORCALLBACK_INFO.create(commandData0);
 						if (error.result() != 0)
@@ -144,38 +287,11 @@ public class Testa {
 							System.err.println("FMod" + error.functionnameString().replace("::", ".") + "(" + error.functionparamsString() + ") returned " + FModErrorUtils.getErrorString(error.result()) + " (" + error.result() + ")");
 						}
 					}
-					case FMOD.FMOD_SYSTEM_CALLBACK_MIDMIX -> {
-						//	System.out.println("MidMix");
-					}
-					case FMOD.FMOD_SYSTEM_CALLBACK_THREADDESTROYED -> {
-						System.out.println("ThreadDestroyed");
-					}
-					case FMOD.FMOD_SYSTEM_CALLBACK_PREUPDATE -> {
-						//System.out.println("PreUpdate");
-					}
-					case FMOD.FMOD_SYSTEM_CALLBACK_RECORDLISTCHANGED -> {
-						System.out.println("RecordListChanged");
-					}
-					case FMOD.FMOD_SYSTEM_CALLBACK_BUFFEREDNOMIX -> {
-						System.out.println("BufferedMix");
-					}
-					case FMOD.FMOD_SYSTEM_CALLBACK_DEVICEREINITIALIZE -> {
-						System.out.println("RecordPositionChanged");
-					}
-					case FMOD.FMOD_SYSTEM_CALLBACK_OUTPUTUNDERRUN -> {
-						System.out.println("OutputUnderRun");
-					}
-					case FMOD.FMOD_SYSTEM_CALLBACK_RECORDPOSITIONCHANGED -> {
-						System.out.println("RecordPositionChanged");
-					}
 				}
 				return FMOD.FMOD_OK;
-			}, FMOD.FMOD_SYSTEM_CALLBACK_ALL ^ (FMOD.FMOD_SYSTEM_CALLBACK_DEVICELISTCHANGED)), "Failed to register callback");
-			
-			FModSystem.close(34);
+			}, FMOD.FMOD_SYSTEM_CALLBACK_ERROR), "Failed to register callback");
 			
 			List<Long> sounds = new LinkedList<>();
-			int max = 5;
 			
 			Path directory = Path.of(args[0]);
 			try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory, p -> !Files.isHidden(p)))
@@ -184,17 +300,16 @@ public class Testa {
 				
 				FMOD_CREATESOUNDEXINFO createSoundInfo = FMOD_CREATESOUNDEXINFO.calloc(stack);
 				createSoundInfo.cbsize(FMOD_CREATESOUNDEXINFO.SIZEOF);
-				
 				int i = 0;
 				for (Path path : stream)
 				{
-					if (i++ >= max) break;
+					if (i++ >= 5) break;
 					int error = FModSystem.createSound(system, stack.UTF8(path.toString()), FMOD.FMOD_LOOP_NORMAL | FMOD.FMOD_3D, createSoundInfo, pp);
-					
 					switch (error)
 					{
 						case FMOD.FMOD_OK -> {
 							sounds.add(pp.get(0));
+							FModSound.setLoopCount(pp.get(0), 0);
 							System.out.println("Loaded \"" + path + "\"");
 						}
 						case FMOD.FMOD_ERR_FILE_BAD -> System.out.println("Failed to load \"" + path + "\": Corrupted file");
@@ -221,20 +336,29 @@ public class Testa {
 			long channelGroup = pp.get(0);
 			NodeList channels = new NodeList();
 			
+			NodeList.Node[] cursorP = new NodeList.Node[1];
+			
 			for (long sound : sounds)
 			{
-				FModSound.getLength(sound, ip, FMOD.FMOD_TIMEUNIT_MS);
-				int soundLength = ip.get(0);
-				//	FModSound.setLoopPoints(sound, 0, FMOD.FMOD_TIMEUNIT_MS, soundLength, FMOD.FMOD_TIMEUNIT_MS);
-				FModSystem.playSound(system, sound, 0, 1, pp);
+				FModSystem.playSound(system, sound, channelGroup, 1, pp);
 				channels.add(pp.get(0));
 				
 				FModChannel.setCallback(pp.get(0), (channelControl, controlType, callbackType, commandData1, commandData2) -> {
 					if (controlType == FMOD.FMOD_CHANNELCONTROL_CHANNEL && callbackType == FMOD.FMOD_CHANNELCONTROL_CALLBACK_END)
 					{
-						System.err.println("Ends");
+						try (MemoryStack stack0 = MemoryStack.stackPush())
+						{
+							PointerBuffer pp0 = stack0.mallocPointer(1);
+							
+							NodeList.Node cursor = cursorP[0];
+							FModSystem.playSound(system, sound, channelGroup, 1, pp0);
+							cursor.setChannel(pp0.get());
+							
+							cursor.next = cursor.next.next;
+							if (cursor.next == null) cursor.next = channels.head();
+							FModChannel.setPaused(cursor.getChannel(), 0);
+						}
 					}
-					System.err.println("Mah");
 					return FMOD.FMOD_OK;
 				});
 				
@@ -246,13 +370,15 @@ public class Testa {
 				}
 			}
 			
-			NodeList.Node cursor = channels.cursor();
-			
+			NodeList.Node cursor = cursorP[0] = channels.cursor();
 			FModChannel.setPaused(cursor.getChannel(), 0);
+			
+			System.out.println();
+			System.out.println();
 			
 			ScheduledFuture<?> printFractionFuture = scheduledExecutor.scheduleAtFixedRate(() -> {
 				
-				//	printFraction(cursor.getChannel());
+				printFraction(cursor);
 				FModSystem.update(system);
 				
 			}, 0, 100, TimeUnit.MILLISECONDS);
@@ -282,6 +408,17 @@ public class Testa {
 						},
 						"resume", input0 -> {
 							FModChannel.setPaused(cursor.getChannel(), 0);
+						},
+						"loop", input0 -> {
+							
+							try (MemoryStack stack0 = MemoryStack.stackPush())
+							{
+								IntBuffer ip = stack0.mallocInt(10);
+								
+								long channel = cursor.getChannel();
+								FModChannel.getLoopCount(channel, ip);
+								FModChannel.setLoopCount(channel, ip.get() == -1 ? 0 : -1);
+							}
 						}
 				);
 						
@@ -294,7 +431,7 @@ public class Testa {
 			
 			thread.join();
 			
-			FModSystem.close(system);
+			FModSystem.release(system);
 		}
 		catch (Exception e)
 		{
@@ -302,11 +439,18 @@ public class Testa {
 		}
 		finally
 		{
+			inputThread.interrupt();
 			scheduledExecutor.shutdownNow();
+			try
+			{
+				inputThread.join();
+			}
+			catch (InterruptedException e)
+			{}
 		}
 	}
 	
-	public static void printFraction(long channel)
+	public static void printFraction(NodeList.Node node)
 	{
 		final int max = 30;
 		try (MemoryStack stack = MemoryStack.stackPush())
@@ -315,10 +459,17 @@ public class Testa {
 			IntBuffer ip = stack.mallocInt(1);
 			ByteBuffer sp = stack.calloc(100);
 			
+			long channel = node.getChannel();
+			
+			FModChannel.isPlaying(channel, ip);
+			if (ip.get(0) == 0) return;
+			
 			FModChannel.getCurrentSound(channel, pp);
 			long sound = pp.get(0);
 			FModChannel.getPosition(channel, ip, FMOD.FMOD_TIMEUNIT_MS);
 			int position = ip.get(0);
+			FModChannel.getLoopCount(channel, ip);
+			int loopCount = ip.get(0);
 			FModSound.getLength(sound, ip, FMOD.FMOD_TIMEUNIT_MS);
 			int length = ip.get(0);
 			FModSound.getName(sound, sp);
@@ -334,14 +485,15 @@ public class Testa {
 			int pre = position * max / length;
 			int post = max - pre;
 			
-			System.out.print("\r");
+			System.out.print("\r\u001B[K\u001B[93m");
 			for (char c : name.toCharArray())
 			{
 				if (c == 0) break;
 				System.out.print(c);
 			}
-			System.out.print(" <");
+			System.out.print("\u001B[m <\u001B[92m");
 			System.out.print("=".repeat(pre));
+			System.out.print("\u001B[m");
 			System.out.print("-".repeat(post));
 			System.out.print("> ");
 			
@@ -365,6 +517,8 @@ public class Testa {
 			System.out.print(sm);
 			System.out.print(":");
 			System.out.print(ss);
+			
+			if (loopCount == -1) System.out.print(" (loop)");
 		}
 	}
 }

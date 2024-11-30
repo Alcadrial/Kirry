@@ -20,3 +20,12 @@ dependencies {
 
 
 apply from: rootProject.file("post.gradle")
+
+publishing {
+	publications {
+		release(MavenPublication) {
+			artifactId = "$project.name"
+			artifact(jar)
+		}
+	}
+}

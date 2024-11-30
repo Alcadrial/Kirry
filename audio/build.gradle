@@ -22,3 +22,14 @@ dependencies {
 	runtimeOnly("org.lwjgl:lwjgl::${lwjglNatives}")
 	runtimeOnly("org.lwjgl:lwjgl-glfw::${lwjglNatives}")
 }
+
+apply from: rootProject.file("post.gradle")
+
+publishing {
+	publications {
+		release(MavenPublication) {
+			artifactId = "$project.name"
+			artifact(jar)
+		}
+	}
+}
