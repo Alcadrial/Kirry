@@ -3,6 +3,8 @@ package com.alcadrial.renderengine.render;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -34,6 +36,8 @@ import org.lwjgl.vulkan.VkInstanceCreateInfo;
 
 import com.alcadrial.kurvilinear.SequentialMultiList;
 import com.alcadrial.renderengine.core.RenderEngineCore;
+import com.alcadrial.renderengine.render.util.DebugMessengerSeverity;
+import com.alcadrial.renderengine.render.util.DebugMessengerType;
 import com.alcadrial.renderengine.render.util.Version;
 
 public class RenderEngine extends RenderEngineCore {
@@ -146,10 +150,14 @@ public class RenderEngine extends RenderEngineCore {
 				{
 					VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo = VkDebugUtilsMessengerCreateInfoEXT.calloc(stack);
 					VkDebugUtilsMessengerCallbackEXTI callback = builder.messengerCallback;
+					int severity = 0;
+					int type = 0;
+					for (DebugMessengerSeverity s : builder.messengerSeverities) severity |= s.getBit();
+					for (DebugMessengerType t : builder.messengerTypes) type |= t.getBit();
 					
 					messengerCreateInfo.sType(EXTDebugUtils.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT);
-					messengerCreateInfo.messageSeverity(EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT);
-					messengerCreateInfo.messageType(EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT);
+					messengerCreateInfo.messageSeverity(severity);
+					messengerCreateInfo.messageType(type);
 					messengerCreateInfo.pfnUserCallback((VkDebugUtilsMessengerCallbackEXTI) (messageSeverity, messageType, callbackDataId, userDataId) -> {
 						if (debug) return callback.invoke(messageSeverity, messageType, callbackDataId, userDataId);
 						return VK10.VK_FALSE;
@@ -468,6 +476,8 @@ public class RenderEngine extends RenderEngineCore {
 		private boolean multiThreading;
 		private boolean useWindowSystem;
 		private VkDebugUtilsMessengerCallbackEXTI messengerCallback;
+		private EnumSet<DebugMessengerSeverity> messengerSeverities;
+		private EnumSet<DebugMessengerType> messengerTypes;
 		private SequentialMultiList<String> instanceLayers;
 		private SequentialMultiList<String> instanceExtensions;
 		
@@ -482,6 +492,8 @@ public class RenderEngine extends RenderEngineCore {
 			instanceExtensions = new SequentialMultiList<>();
 			instanceExtensions.addList();
 			instanceExtensions.addList();
+			messengerSeverities = EnumSet.range(DebugMessengerSeverity.ERROR, DebugMessengerSeverity.INFO);
+			messengerTypes = EnumSet.range(DebugMessengerType.PERFORMANCE, DebugMessengerType.VALIDATION);
 		}
 		
 		public Builder applicationName(String applicationName)
@@ -529,7 +541,8 @@ public class RenderEngine extends RenderEngineCore {
 		
 		public Builder instanceExtensionsDebug(String... extensions)
 		{
-			return instanceExtensionsDebug(Arrays.asList(extensions));
+			if (debug) instanceExtensionsDebug(Arrays.asList(extensions));
+			return this;
 		}
 		
 		public Builder instanceExtensionsDebug(Collection<String> extensions)
@@ -569,6 +582,18 @@ public class RenderEngine extends RenderEngineCore {
 				list.clear();
 				list.addAll(extensions);
 			}
+			return this;
+		}
+		
+		public Builder messengerSeverities(DebugMessengerSeverity... severities)
+		{
+			if (debug) Collections.addAll(messengerSeverities, severities);
+			return this;
+		}
+		
+		public Builder messengerTypes(DebugMessengerType... types)
+		{
+			if (debug) Collections.addAll(messengerTypes, types);
 			return this;
 		}
 		
