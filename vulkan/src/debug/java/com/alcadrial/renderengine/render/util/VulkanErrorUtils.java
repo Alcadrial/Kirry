@@ -16,6 +16,7 @@ import org.lwjgl.vulkan.VK13;
 
 import com.alcadrial.renderengine.core.util.DataIncosistenceException;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class VulkanErrorUtils {
 	
@@ -70,24 +71,24 @@ public class VulkanErrorUtils {
 		return pointer;
 	}
 	
-	public static void assertStatement(boolean flag, String details)
+	public static void assertStatement(boolean flag, String details) throws VulkanException
 	{
-		if (!flag) throw new AssertionError(details);
+		if (!flag) throw new VulkanException(details);
 	}
 	
-	public static void assertNoError(int error, Supplier<String> details)
+	public static void assertNoError(int error, Supplier<String> details) throws VulkanException
 	{
-		if (error < 0) throw new AssertionError(details.get() + ": " + getErrorString(error));
+		if (error < 0) throw new VulkanException(details.get() + ": " + getErrorString(error));
 	}
 	
-	public static void assertNoError(int error, String details)
+	public static void assertNoError(int error, String details) throws VulkanException
 	{
-		if (error < 0) throw new AssertionError(details + ": " + getErrorString(error));
+		if (error < 0) throw new VulkanException(details + ": " + getErrorString(error));
 	}
 	
-	public static void assertNoError(int error)
+	public static void assertNoError(int error) throws VulkanException
 	{
-		if (error < 0) throw new AssertionError(getErrorString(error));
+		if (error < 0) throw new VulkanException(getErrorString(error));
 	}
 	
 	public static String getErrorString(int error)

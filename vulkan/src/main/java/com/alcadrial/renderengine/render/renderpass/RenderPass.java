@@ -8,6 +8,7 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 /**
  * An Object that knows the src and dest images in 1 pipeline execution (enough for now)
@@ -25,7 +26,7 @@ public class RenderPass extends RawDeviceResource {
 	
 	private Device device;
 	
-	public RenderPass(Device device, VkRenderPassCreateInfo renderPassInfo)
+	public RenderPass(Device device, VkRenderPassCreateInfo renderPassInfo) throws VulkanException
 	{
 		super(device);
 		long[] p = new long[1];
@@ -44,7 +45,7 @@ public class RenderPass extends RawDeviceResource {
 	/**
 	 * Must be called after all submitted commands that refer to renderPass have completed execution
 	 */
-	public void recreate(Device device, VkRenderPassCreateInfo renderPassInfo)
+	public void recreate(Device device, VkRenderPassCreateInfo renderPassInfo) throws VulkanException
 	{
 		close();
 		this.device = device;
@@ -59,7 +60,7 @@ public class RenderPass extends RawDeviceResource {
 	@Override
 	public void close()
 	{
-		VK10.vkDestroyRenderPass(device.getVk(), getVk(), null);
+		VK10.vkDestroyRenderPass(device.getVk(), vk, null);
 		super.close();
 	}
 	

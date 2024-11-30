@@ -8,6 +8,7 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class PipelineLayout extends RawDeviceResource {
 	
@@ -16,7 +17,7 @@ public class PipelineLayout extends RawDeviceResource {
 		RenderEngine.assertLoaded();
 	}
 	
-	public PipelineLayout(Device device, VkPipelineLayoutCreateInfo createInfo)
+	public PipelineLayout(Device device, VkPipelineLayoutCreateInfo createInfo) throws VulkanException
 	{
 		super(device);
 		long[] p = new long[1];

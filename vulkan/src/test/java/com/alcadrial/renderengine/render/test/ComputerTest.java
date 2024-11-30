@@ -46,6 +46,7 @@ import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class ComputerTest extends RenderTest {
@@ -101,7 +102,7 @@ public class ComputerTest extends RenderTest {
 		return matrix.transpose();
 	}
 	
-	public static void start()
+	public static void start() throws VulkanException
 	{
 		ShaderProgram shaderProgram;
 		PreparedShader computeShader;
@@ -366,7 +367,7 @@ public class ComputerTest extends RenderTest {
 		}
 	}
 	
-	public static void loop(long time, long enlapsed)
+	public static void loop(long time, long enlapsed) throws VulkanException
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		
@@ -444,8 +445,17 @@ public class ComputerTest extends RenderTest {
 				
 				window.swapBuffers(commandBuffer, () -> {
 					computer.swapBuffers();
-					computer.getComputeUniformBufferLayout().set(ENLAPSED_TIME, enlapsed / 1000000000F);
-					computer.getComputeUniformBufferLayout().updateDescriptorSets();
+					try
+					{
+						computer.getComputeUniformBufferLayout().set(ENLAPSED_TIME, enlapsed / 1000000000F);
+						computer.getComputeUniformBufferLayout().updateDescriptorSets();
+					}
+					catch (VulkanException e)
+					{
+						e.printStackTrace(System.out);
+						RenderEngine.terminate();
+						return;
+					}
 				});
 			}
 		}

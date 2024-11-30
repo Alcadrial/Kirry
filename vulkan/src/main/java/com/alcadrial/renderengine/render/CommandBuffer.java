@@ -27,6 +27,7 @@ import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	
@@ -412,7 +413,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		}
 	}
 	
-	public synchronized boolean endRecording()
+	public synchronized boolean endRecording() throws VulkanException
 	{
 		if (!isRecording)
 		{

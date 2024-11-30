@@ -35,6 +35,7 @@ import com.alcadrial.renderengine.render.shader.layouts.ShaderUniformBufferLayou
 import com.alcadrial.renderengine.render.util.VulkanDebug;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class Computer implements AutoCloseable, VulkanDebug {
 	
@@ -105,7 +106,7 @@ public class Computer implements AutoCloseable, VulkanDebug {
 		bindings.put(binding, buffer);
 	}
 	
-	public void init()
+	public void init() throws VulkanException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{

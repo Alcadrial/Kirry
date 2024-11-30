@@ -29,6 +29,7 @@ public abstract class AbstractDeviceResource<VK> extends AbstractVulkanResource<
 	public void close()
 	{
 		device.removeFromDestructionList(this);
+		super.close();
 		vk = null;
 	}
 	

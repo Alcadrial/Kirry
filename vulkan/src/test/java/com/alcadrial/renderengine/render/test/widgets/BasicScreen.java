@@ -11,41 +11,42 @@ import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.Screen;
 import com.alcadrial.renderengine.render.window.widget.ActionResult;
 import com.alcadrial.renderengine.render.window.widget.Widget;
 
 public class BasicScreen implements Screen {
-
+	
 	static
 	{
 		RenderEngine.assertLoaded();
 	}
-
+	
 	private List<Widget> widgets;
 	private RenderPass renderPass;
 	private StaticBigBuffer staticBigBuffer;
-
-	public BasicScreen(StaticBigBuffer staticBigBuffer)
+	
+	public BasicScreen(StaticBigBuffer staticBigBuffer) throws VulkanException
 	{
 		widgets = new LinkedList<>();
 		renderPass = RenderPassTemplate.colorDepthTextureTemplate(RenderEngine.getVulkan().getWindow().getSurface().getFormat().format()).createRenderPass(RenderEngine.getVulkan().getDevice());
 		this.staticBigBuffer = staticBigBuffer;
 	}
-
+	
 	public void add(Widget e)
 	{
 		widgets.add(e);
 	}
-
+	
 	@Override
 	public RenderPass getRenderPass()
 	{
 		return renderPass;
 	}
-
+	
 	@Override
-	public void initializeRendering(StaticBigBuffer staticBigBuffer)
+	public void initializeRendering(StaticBigBuffer staticBigBuffer) throws VulkanException
 	{
 		for (Widget widget : widgets)
 		{
@@ -55,7 +56,7 @@ public class BasicScreen implements Screen {
 			}
 		}
 	}
-
+	
 	@Override
 	public void render(Matrix4f matrix, Renderer renderer)
 	{
@@ -67,94 +68,94 @@ public class BasicScreen implements Screen {
 			}
 		}
 	}
-
+	
 	@Override
-	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame)
+	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame) throws VulkanException
 	{
 		for (Widget widget : widgets)
 		{
 			widget.draw(matrix, commandBuffer, renderer, partialFrame);
 		}
 	}
-
+	
 	@Override
 	public void clearRenderingData()
 	{
-
+		
 	}
-
+	
 	@Override
 	public boolean isOnScreen()
 	{
 		return false;
 	}
-
+	
 	@Override
 	public boolean isRendered()
 	{
 		return false;
 	}
-
+	
 	@Override
 	public boolean isInitialized()
 	{
 		return false;
 	}
-
+	
 	@Override
 	public void requestRender()
 	{
-
+		
 	}
-
+	
 	@Override
 	public void requestDraw()
 	{
-
+		
 	}
-
+	
 	@Override
 	public boolean isDragging()
 	{
 		return false;
 	}
-
+	
 	@Override
 	public ActionResult onClick(int button, int count, Vector2i mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
-
+	
 	@Override
 	public ActionResult onPress(int button, Vector2i mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
-
+	
 	@Override
 	public ActionResult onRelease(int button, Vector2i mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
-
+	
 	@Override
 	public void onMouseMove(Vector2i oldPos, Vector2i newPos)
 	{
-
+		
 	}
-
+	
 	@Override
 	public ActionResult onDragStart(Vector2i mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
-
+	
 	@Override
 	public ActionResult onDragEnd(Vector2i startPos, Vector2i endPos)
 	{
 		return ActionResult.CONSUME;
 	}
-
+	
 	@Override
 	public ActionResult onScroll(double xScroll, double yScroll, Vector2i mousePos)
 	{

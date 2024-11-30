@@ -42,6 +42,7 @@ import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.test.RenderTest;
 import com.alcadrial.renderengine.render.texture.Texture;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class GpuAutoAnimationTest extends RenderTest {
@@ -93,7 +94,7 @@ public class GpuAutoAnimationTest extends RenderTest {
 		return new Matrix4f().scale(Vector3f.of(1, 1, 1).divideAll(16));
 	}
 	
-	public static void start()
+	public static void start() throws VulkanException
 	{
 		ShaderProgram shaderProgram;
 		PreparedShader computeShader;

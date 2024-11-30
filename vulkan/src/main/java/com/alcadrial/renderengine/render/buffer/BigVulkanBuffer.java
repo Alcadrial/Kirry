@@ -11,6 +11,7 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.OutOfSpaceException;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoCloseable {
 	
@@ -22,7 +23,7 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 	protected VulkanBuffer remoteBigBuffer;
 	protected VulkanBuffer localBigBuffer;
 	
-	protected BigVulkanBuffer(Device device, int size, int flags)
+	protected BigVulkanBuffer(Device device, int size, int flags) throws VulkanException
 	{
 		super(device);
 		remoteBigBuffer = new VulkanBuffer(device, size, VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
@@ -42,10 +43,11 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 	 * @param usage the vulkan usage flags
 	 * @return the newly allocated buffer
 	 * @throws OutOfSpaceException 
+	 * @throws VulkanException 
 	 */
-	public abstract VulkanBuffer allocate(int size, int usage) throws OutOfSpaceException;
+	public abstract VulkanBuffer allocate(int size, int usage) throws OutOfSpaceException, VulkanException;
 	
-	public synchronized PhysicalDeviceTranferState startLocalBuffering()
+	public synchronized PhysicalDeviceTranferState startLocalBuffering() throws VulkanException
 	{
 		if (localBigBuffer == null)
 		{
@@ -55,7 +57,7 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 		throw new IllegalStateException("Local buffering already started");
 	}
 	
-	public void startLocalBuffering(Consumer<PhysicalDeviceTranferState> action)
+	public void startLocalBuffering(Consumer<PhysicalDeviceTranferState> action) throws VulkanException
 	{
 		try (PhysicalDeviceTranferState tranferState = startLocalBuffering())
 		{
@@ -84,6 +86,7 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 		clear();
 		if (isLocalBufferingActive()) localBigBuffer.close();
 		remoteBigBuffer.close();
+		super.close();
 	}
 	
 	public class PhysicalDeviceTranferState implements AutoCloseable {
@@ -96,7 +99,7 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 			writers = new LinkedList<>();
 		}
 		
-		public BufferWriter beginTransfer(VulkanBuffer remoteBuffer)
+		public BufferWriter beginTransfer(VulkanBuffer remoteBuffer) throws VulkanException
 		{
 			return beginTransfer(remoteBuffer, 0, remoteBuffer.getSize());
 		}
@@ -108,7 +111,7 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 		 * @param size the capacity of the buffer in bytes
 		 * @return the newly allocated buffer
 		 */
-		public BufferWriter beginTransfer(VulkanBuffer remoteBuffer, int offset, int size)
+		public BufferWriter beginTransfer(VulkanBuffer remoteBuffer, int offset, int size) throws VulkanException
 		{
 			BufferWriter writer = new BufferWriter(allocate(remoteBuffer.size, remoteBuffer.getUsage()), 0, remoteBuffer, offset, size, commandBuffer);
 			writers.add(writer);
@@ -126,13 +129,13 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 			return commandBuffer;
 		}
 		
-		public void flush()
+		public void flush() throws VulkanException
 		{
 			for (BufferWriter writer : writers) writer.flush();
 		}
 		
 		@Override
-		public void close()
+		public void close() throws VulkanException
 		{
 			synchronized (BigVulkanBuffer.this)
 			{

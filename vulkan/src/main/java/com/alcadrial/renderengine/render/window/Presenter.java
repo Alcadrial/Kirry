@@ -34,6 +34,7 @@ import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class Presenter implements AutoCloseable, VulkanDebug {
 	
@@ -159,7 +160,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 	
 	private int frameIndex;
 	
-	public Presenter(Device device, VulkanWindow window, RenderPass renderPass, int swappingBuffers)
+	public Presenter(Device device, VulkanWindow window, RenderPass renderPass, int swappingBuffers) throws VulkanException
 	{
 		this.device = device;
 		surface = window.getSurface();
@@ -205,7 +206,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 		});
 	}
 	
-	public void initialize(@Nullable Texture depthTexture)
+	public void initialize(@Nullable Texture depthTexture) throws VulkanException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -290,7 +291,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 		}
 	}
 	
-	private boolean recreateSwapchain(MemoryStack stack, @Nullable Texture depthTexture)
+	private boolean recreateSwapchain(MemoryStack stack, @Nullable Texture depthTexture) throws VulkanException
 	{
 		if (isSwapchainValid) return false;
 		
@@ -345,7 +346,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 		return true;
 	}
 	
-	public Result startPresentation()
+	public Result startPresentation() throws VulkanException
 	{
 		swapchainRecreationLock.lock();
 		if (!isSwapchainValid) return Result.SWAPCHAIN_OUT_OF_DATE;
@@ -372,12 +373,12 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 		}
 	}
 	
-	public Result endPresentation(CommandBuffer commandBuffer)
+	public Result endPresentation(CommandBuffer commandBuffer) throws VulkanException
 	{
 		return endPresentation(commandBuffer, () -> {});
 	}
 	
-	public Result endPresentation(CommandBuffer commandBuffer, Runnable onCommandBufferEndAction)
+	public Result endPresentation(CommandBuffer commandBuffer, Runnable onCommandBufferEndAction) throws VulkanException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{

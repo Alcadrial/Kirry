@@ -15,6 +15,7 @@ import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.texture.TextureRegion;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class Sprite extends AbstractWidget {
@@ -35,7 +36,7 @@ public class Sprite extends AbstractWidget {
 	}
 	
 	@Override
-	public void initializeRendering(StaticBigBuffer staticBigBuffer)
+	public void initializeRendering(StaticBigBuffer staticBigBuffer) throws VulkanException
 	{
 		super.initializeRendering(staticBigBuffer);
 		vertexBuffer = staticBigBuffer.allocate((3 + 4) * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
@@ -54,7 +55,7 @@ public class Sprite extends AbstractWidget {
 	}
 	
 	@Override
-	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame)
+	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame) throws VulkanException
 	{
 		renderer.setVertexBuffers(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);

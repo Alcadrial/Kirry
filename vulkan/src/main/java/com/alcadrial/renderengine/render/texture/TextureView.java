@@ -10,6 +10,7 @@ import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class TextureView extends RawDeviceResource {
 	
@@ -18,7 +19,7 @@ public class TextureView extends RawDeviceResource {
 		RenderEngine.assertLoaded();
 	}
 	
-	TextureView(Texture texture)
+	TextureView(Texture texture) throws VulkanException
 	{
 		super(texture.getDevice());
 		

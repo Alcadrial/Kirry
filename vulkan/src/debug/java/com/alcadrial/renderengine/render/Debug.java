@@ -1,11 +1,12 @@
 package com.alcadrial.renderengine.render;
 
 import java.io.PrintStream;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.function.Supplier;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.lwjgl.system.MemoryUtil;
@@ -15,6 +16,8 @@ import org.lwjgl.system.StructBuffer;
 
 import com.alcadrial.renderengine.render.Vulkan.ThreadData;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.functional.VulkanSupplier;
 
 public class Debug {
 	
@@ -34,7 +37,7 @@ public class Debug {
 		prefix = "";
 	}
 	
-	public static <T> T get(Supplier<T> debugRunnable, Supplier<T> releaseRunnable)
+	public static <T> T get(VulkanSupplier<T> debugRunnable, VulkanSupplier<T> releaseRunnable) throws VulkanException
 	{
 		return debugRunnable.get();
 	}
@@ -170,8 +173,32 @@ public class Debug {
 	
 	public static void debug(Object x)
 	{
+		debugOutput.print(time());
 		debugOutput.print("[DEBUG] ");
 		debugOutput.println(x);
+	}
+	
+	private static String time()
+	{
+		LocalDateTime now = LocalDateTime.now();
+		int h = now.getHour();
+		int m = now.getMinute();
+		int s = now.getSecond();
+		int n = now.getNano() / 1000000;
+		StringBuilder time = new StringBuilder(15);
+		time.append('[');
+		if (h < 10) time.append('0');
+		time.append(h).append(':');
+		if (m < 10) time.append('0');
+		time.append(m).append(':');
+		if (s < 10) time.append('0');
+		time.append(s).append('.');
+		if (n < 10) time.append('0');
+		if (n < 100) time.append('0');
+		time.append(n);
+		time.append(']');
+		time.append(' ');
+		return time.toString();
 	}
 	
 	public static void debugIf(boolean condition)
@@ -192,5 +219,10 @@ public class Debug {
 	public static void setDebugOutput(PrintStream debugOutput)
 	{
 		Debug.debugOutput = debugOutput;
+	}
+	
+	public static Set<VulkanObject> getAvailableVulkanObjects()
+	{
+		return VulkanObject.VULKAN_INSTANCE_IMMUTABLE_SET;
 	}
 }

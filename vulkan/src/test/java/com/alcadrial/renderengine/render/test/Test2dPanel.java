@@ -43,6 +43,7 @@ import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
@@ -68,7 +69,7 @@ public class Test2dPanel extends RenderTest {
 	private static StaticBigBuffer staticBigBuffer;
 	private static List<CommandBuffer> commandBuffers;
 	
-	public static void start()
+	public static void start() throws VulkanException
 	{
 		Vulkan vulkan = RenderEngine.getVulkan();
 		
@@ -205,7 +206,7 @@ public class Test2dPanel extends RenderTest {
 		isModified = true;
 	}
 	
-	public static void loop(long time, long enlapsed)
+	public static void loop(long time, long enlapsed) throws VulkanException
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		Device device = window.getDevice();

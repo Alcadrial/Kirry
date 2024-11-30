@@ -264,6 +264,7 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	public void close()
 	{
 		properties.close();
+		super.close();
 	}
 	
 	@Override

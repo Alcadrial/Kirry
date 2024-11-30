@@ -1,5 +1,6 @@
 package com.alcadrial.renderengine.render;
 
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class RenderingManager {
@@ -19,7 +20,7 @@ public class RenderingManager {
 		window.addSurfaceUpdateActions(s -> defaultRenderer.startModificationPlan().size(s.getSize()).submit());
 	}
 	
-	public void drawTexture()
+	public void drawTexture() throws VulkanException
 	{
 		defaultRenderer.draw(commandBufferData);
 	}

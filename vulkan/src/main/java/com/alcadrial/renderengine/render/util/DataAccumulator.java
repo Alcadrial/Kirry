@@ -49,6 +49,7 @@ import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.texture.Texture;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
@@ -148,7 +149,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	
 	protected DataAccumulator()
 	{
-		stack = MemoryStack.stackPush();
+		stack = MemoryStack.create(4096).push();
 		blendConstants = new Float[4];
 		for (Field field : ELEMENTS)
 		{
@@ -574,7 +575,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	 * 		{@link #renderPass}<br>
 	 * 		{@link #pipelineLayout}
 	 */
-	protected <GP extends GraphicsPipeline> GP createGraphicsPipeline(Vector2i outputSize, GraphicsPipelineBuildFunction<GP> buildFunction)
+	protected <GP extends GraphicsPipeline> GP createGraphicsPipeline(Vector2i outputSize, GraphicsPipelineBuildFunction<GP> buildFunction) throws VulkanException
 	{
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly = VulkanUtils.pipelineInputAssemblyStateInfo(stack, topology.orElse(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST), primitiveRestartEnable.orElse(false));
 		
@@ -790,7 +791,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	
 	protected void close()
 	{
-		stack.close();
+		stack.pop();
 	}
 	
 	public static class AccumulationException extends RuntimeException {

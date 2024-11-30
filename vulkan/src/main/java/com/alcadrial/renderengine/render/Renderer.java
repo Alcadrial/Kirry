@@ -10,7 +10,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
 
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -42,6 +41,8 @@ import com.alcadrial.renderengine.render.util.DataAccumulator;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.functional.VulkanConsumer;
 
 public class Renderer implements AutoCloseable, VulkanDebug {
 	
@@ -70,7 +71,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 	private long[] descriptorSet;
 	private long descriptorPool;
 	private Map<String, BufferLayout> uniforms;
-	private List<Consumer<CommandBuffer>> extraCommands;
+	private List<VulkanConsumer<CommandBuffer>> extraCommands;
 	
 	private Renderer(Builder builder, Device device, GraphicsPipeline graphicsPipeline, long descriptorSetLayout, long[] descriptorSet, long descriptorPool, Map<String, BufferLayout> uniforms)
 	{
@@ -86,33 +87,33 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		extraCommands = new LinkedList<>();
 	}
 	
-	public void updateUniform(String uniform, Consumer<BufferLayout> action)
+	public void updateUniform(String uniform, VulkanConsumer<BufferLayout> action) throws VulkanException
 	{
 		BufferLayout layout = uniforms.get(uniform);
 		if (layout != null) action.accept(layout);
 	}
 	
-	public void updateUniforms(Consumer<BufferLayout> action)
+	public void updateUniforms(VulkanConsumer<BufferLayout> action) throws VulkanException
 	{
 		for (BufferLayout layout : uniforms.values()) action.accept(layout);
 	}
 	
-	public void addExtraCommand(Consumer<CommandBuffer> command)
+	public void addExtraCommand(VulkanConsumer<CommandBuffer> command)
 	{
 		extraCommands.add(command);
 	}
 	
-	public void draw(CommandBuffer commandBuffer)
+	public void draw(CommandBuffer commandBuffer) throws VulkanException
 	{
 		draw(commandBuffer, 1);
 	}
 	
-	public void draw(CommandBuffer commandBuffer, int instanceCount)
+	public void draw(CommandBuffer commandBuffer, int instanceCount) throws VulkanException
 	{
 		draw(commandBuffer, instanceCount, indexBuffer != null ? (int) (indexBuffer.getSize() / 4) : 0);
 	}
 	
-	public void draw(CommandBuffer commandBuffer, int instanceCount, int count)
+	public void draw(CommandBuffer commandBuffer, int instanceCount, int count) throws VulkanException
 	{
 		if (count == 0) throw new IllegalStateException("Cannot draw 0 vertices");
 		
@@ -133,7 +134,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 				commandBuffer.draw(count, instanceCount, 0, 0);
 			}
 			
-			for (Consumer<CommandBuffer> command : extraCommands) command.accept(commandBuffer);
+			for (VulkanConsumer<CommandBuffer> command : extraCommands) command.accept(commandBuffer);
 		}
 	}
 	
@@ -194,7 +195,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		Debug.indent();
 		for (BufferLayout layout : uniforms.values())
 		{
-			Debug.print("Buffer " + layout.getWriter().getDstBuffer());
+			Debug.print("Buffer ", layout.getWriter().getDstBuffer());
 		}
 		Debug.deindent();
 		Debug.print("]");
@@ -216,12 +217,12 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			return super.device(device);
 		}
 		
-		public void submit()
+		public void submit() throws VulkanException
 		{
 			submit(GraphicsPipeline::new);
 		}
 		
-		public void submit(GraphicsPipelineBuildFunction<?> builderFunction)
+		public void submit(GraphicsPipelineBuildFunction<?> builderFunction) throws VulkanException
 		{
 			if (isActive)
 			{
@@ -238,7 +239,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			isActive = true;
 		}
 		
-		private void submit0(GraphicsPipelineBuildFunction<?> builderFunction)
+		private void submit0(GraphicsPipelineBuildFunction<?> builderFunction) throws VulkanException
 		{
 			boolean deviceModified = device.isModified();
 			
@@ -284,12 +285,12 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		private Builder()
 		{}
 		
-		public Renderer build(Device device, Vector2i outputSize, RenderPass renderPass)
+		public Renderer build(Device device, Vector2i outputSize, RenderPass renderPass) throws VulkanException
 		{
 			return build(device, outputSize, renderPass, GraphicsPipeline::new);
 		}
 		
-		public Renderer build(Device device, Vector2i outputSize, RenderPass renderPass, GraphicsPipelineBuildFunction<?> builderFunction)
+		public Renderer build(Device device, Vector2i outputSize, RenderPass renderPass, GraphicsPipelineBuildFunction<?> builderFunction) throws VulkanException
 		{
 			try
 			{
@@ -331,7 +332,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			super(defaultSource);
 		}
 		
-		protected void createDescriptorSet()
+		protected void createDescriptorSet() throws VulkanException
 		{
 			device.require();
 			

@@ -17,6 +17,7 @@ import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderStorageBufferLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderStorageBufferLayout.Usage;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 /**
  * A {@link Pipeline} used for rendering.
@@ -35,7 +36,7 @@ public class ComputePipeline extends Pipeline {
 	private PreparedShader computeShader;
 	private List<ShaderVariable> inputs;
 	
-	public ComputePipeline(Device device, PipelineLayout layout, boolean autoCloseLayout, PreparedShader computeShader)
+	public ComputePipeline(Device device, PipelineLayout layout, boolean autoCloseLayout, PreparedShader computeShader) throws VulkanException
 	{
 		super(device, layout);
 		this.autoCloseLayout = autoCloseLayout;

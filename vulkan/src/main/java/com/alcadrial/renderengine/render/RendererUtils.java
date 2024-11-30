@@ -6,6 +6,7 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class RendererUtils {
 	
@@ -19,12 +20,12 @@ public class RendererUtils {
 		return Renderer.create().shaderProgram(shaderProgram).dynamicScissor(true).dynamicViewport(true);
 	}
 	
-	public static Renderer getTriangleRenderer(Device device, ShaderProgram shaderProgram, VulkanBuffer uniformBuffer, RenderPass renderPass, Vector2i size)
+	public static Renderer getTriangleRenderer(Device device, ShaderProgram shaderProgram, VulkanBuffer uniformBuffer, RenderPass renderPass, Vector2i size) throws VulkanException
 	{
 		return defaultRenderer(shaderProgram, uniformBuffer).build(device, size, renderPass);
 	}
 	
-	public static Renderer getLineRenderer(Device device, ShaderProgram shaderProgram, VulkanBuffer uniformBuffer, RenderPass renderPass, Vector2i size)
+	public static Renderer getLineRenderer(Device device, ShaderProgram shaderProgram, VulkanBuffer uniformBuffer, RenderPass renderPass, Vector2i size) throws VulkanException
 	{
 		return defaultRenderer(shaderProgram, uniformBuffer).polygonMode(VK10.VK_POLYGON_MODE_LINE).build(device, size, renderPass);
 	}

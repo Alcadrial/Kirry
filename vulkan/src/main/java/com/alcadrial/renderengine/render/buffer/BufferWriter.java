@@ -17,6 +17,7 @@ import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class BufferWriter implements AutoCloseable {
 	
@@ -57,12 +58,12 @@ public class BufferWriter implements AutoCloseable {
 	private Work firstWork;
 	private Work lastWork;
 	
-	public BufferWriter(VulkanBuffer srcBuffer, int srcOffset, VulkanBuffer dstBuffer, int dstOffset, int size)
+	public BufferWriter(VulkanBuffer srcBuffer, int srcOffset, VulkanBuffer dstBuffer, int dstOffset, int size) throws VulkanException
 	{
 		this(srcBuffer, srcOffset, dstBuffer, dstOffset, size, null);
 	}
 	
-	public BufferWriter(VulkanBuffer srcBuffer, int srcOffset, VulkanBuffer dstBuffer, int dstOffset, int size, @Nullable CommandBuffer flushCommandBuffer)
+	public BufferWriter(VulkanBuffer srcBuffer, int srcOffset, VulkanBuffer dstBuffer, int dstOffset, int size, @Nullable CommandBuffer flushCommandBuffer) throws VulkanException
 	{
 		this.srcBuffer = srcBuffer;
 		this.srcOffset = srcOffset;
@@ -78,7 +79,7 @@ public class BufferWriter implements AutoCloseable {
 		isModified = false;
 	}
 	
-	public BufferWriter resetCursor()
+	public BufferWriter resetCursor() throws VulkanException
 	{
 		registerCopy();
 		cursor = lastSetCursor = 0;
@@ -86,7 +87,7 @@ public class BufferWriter implements AutoCloseable {
 		return this;
 	}
 	
-	public BufferWriter setCursor(int index)
+	public BufferWriter setCursor(int index) throws VulkanException
 	{
 		if (index < 0 || index >= size) throw new IndexOutOfBoundsException(index);
 		registerCopy();
@@ -228,7 +229,7 @@ public class BufferWriter implements AutoCloseable {
 		return this;
 	}
 	
-	public void flush()
+	public void flush() throws VulkanException
 	{
 		if (isModified)
 		{
@@ -306,7 +307,7 @@ public class BufferWriter implements AutoCloseable {
 	}
 	
 	@Override
-	public void close()
+	public void close() throws VulkanException
 	{
 		flush();
 		if (firstWork != null) for (Work work = firstWork, work0 = work.next; work0 != null; work = work0, work0 = work0.next) work.next = null;

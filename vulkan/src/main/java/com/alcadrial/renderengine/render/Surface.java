@@ -16,6 +16,7 @@ import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class Surface extends AbstractVulkanResource<Long> {
@@ -34,7 +35,7 @@ public class Surface extends AbstractVulkanResource<Long> {
 	private Vector2i minSize;
 	private Vector2i size;
 	
-	public Surface(VulkanWindow window)
+	public Surface(VulkanWindow window) throws VulkanException
 	{
 		this.window = window;
 		long[] p = new long[1];
@@ -42,7 +43,7 @@ public class Surface extends AbstractVulkanResource<Long> {
 		vk = p[0];
 	}
 	
-	public synchronized void init(PhysicalDevice physicalDevice, MemoryStack stack)
+	public synchronized void init(PhysicalDevice physicalDevice, MemoryStack stack) throws VulkanException
 	{
 		this.physicalDevice = physicalDevice;
 		int[] p = new int[1];
@@ -98,7 +99,7 @@ public class Surface extends AbstractVulkanResource<Long> {
 		size = Vector2i.ofImmutable(extent.l().width(), extent.l().height());
 	}
 	
-	public synchronized void reinit(MemoryStack stack)
+	public synchronized void reinit(MemoryStack stack) throws VulkanException
 	{
 		if (physicalDevice != null)
 		{
@@ -219,6 +220,7 @@ public class Surface extends AbstractVulkanResource<Long> {
 		}
 		KHRSurface.vkDestroySurfaceKHR(RenderEngine.getVulkan().getInstance(), vk, null);
 		vk = 0L;
+		super.close();
 	}
 	
 	@Override

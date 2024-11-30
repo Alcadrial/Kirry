@@ -13,6 +13,7 @@ import org.lwjgl.vulkan.VkSubmitInfo;
 
 import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class Queue extends AbstractDeviceResource<VkQueue> {
 	
@@ -48,7 +49,7 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 		return familyIndex;
 	}
 	
-	public synchronized void submit(VkSubmitInfo submitInfo, long fence)
+	public synchronized void submit(VkSubmitInfo submitInfo, long fence) throws VulkanException
 	{
 		VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(vk, submitInfo, fence), "Failed to submit queue");
 	}

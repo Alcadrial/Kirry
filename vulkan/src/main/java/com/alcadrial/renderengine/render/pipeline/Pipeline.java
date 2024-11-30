@@ -16,6 +16,7 @@ import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 /**
  * A sequence of operation that must be executed in order.
@@ -46,7 +47,7 @@ public abstract class Pipeline extends RawDeviceResource {
 	
 	public abstract int bindPoint();
 	
-	protected void fillShaderStageCreateInfo(MemoryStack stack, VkPipelineShaderStageCreateInfo shaderStageInfo, PreparedShader shader)
+	protected void fillShaderStageCreateInfo(MemoryStack stack, VkPipelineShaderStageCreateInfo shaderStageInfo, PreparedShader shader) throws VulkanException
 	{
 		long[] p = new long[1];
 		VulkanErrorUtils.assertNoError(VK10.vkCreateShaderModule(device.getVk(), VulkanUtils.shaderModuleInfo(stack, shader.shader().getLastCompilation().orElseThrow().getBinary()), null, p), "Failed to create shader module");

@@ -3,7 +3,7 @@ package com.alcadrial.renderengine.render.window;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCharCallbackI;
@@ -56,6 +56,8 @@ import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanResource;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.functional.VulkanConsumer;
 
 public class VulkanWindow extends Window implements VulkanResource<Long> {
 	
@@ -72,7 +74,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private int height;
 	private String title;
 	private boolean isIconified;
-	private List<Consumer<Surface>> surfaceUpdateActions;
+	private List<VulkanConsumer<Surface>> surfaceUpdateActions;
 	private Screen screen;
 	private Presenter presenter;
 	private Renderer renderer;
@@ -80,6 +82,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private ShaderProgram shaderProgram;
 	private RenderPass renderPass;
 	private @Nullable Texture depthTexture;
+	private @Nullable Function<VulkanException, Boolean> exceptionHandler;
 	private List<CommandBuffer> commandBuffers;
 	private int drawCount;
 	
@@ -92,7 +95,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	 * @param height the height int pixels of the window
 	 * @param title the string in the upper left corner of the window if not {@link GLFW#GLFW_DECORATED decorated}
 	 */
-	public VulkanWindow(int width, int height, String title)
+	public VulkanWindow(int width, int height, String title) throws VulkanException
 	{
 		RenderEngine.setWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API);
 		
@@ -109,7 +112,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		drawCount = 0;
 	}
 	
-	public void init(Device device)
+	public void init(Device device) throws VulkanException
 	{
 		if (this.device == null)
 		{
@@ -135,7 +138,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		}
 	}
 	
-	public void update()
+	public void update() throws VulkanException
 	{
 		if (screen != null)
 		{
@@ -181,29 +184,29 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		}
 	}
 	
-	public void swapBuffers(CommandBuffer commandBuffer)
+	public void swapBuffers(CommandBuffer commandBuffer) throws VulkanException
 	{
 		presenter.endPresentation(commandBuffer);
 		presenter.startPresentation();
 	}
 	
-	public void swapBuffers(CommandBuffer commandBuffer, Runnable onCommandBufferEndAction)
+	public void swapBuffers(CommandBuffer commandBuffer, Runnable onCommandBufferEndAction) throws VulkanException
 	{
 		presenter.endPresentation(commandBuffer, onCommandBufferEndAction);
 		presenter.startPresentation();
 	}
 	
-	public void addSurfaceUpdateActions(Consumer<Surface> action)
+	public void addSurfaceUpdateActions(VulkanConsumer<Surface> action)
 	{
 		surfaceUpdateActions.add(action);
 	}
 	
-	public void removeSurfaceUpdateActions(Consumer<Surface> action)
+	public void removeSurfaceUpdateActions(VulkanConsumer<Surface> action)
 	{
 		surfaceUpdateActions.remove(action);
 	}
 	
-	private void createRenderPass()
+	private void createRenderPass() throws VulkanException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -274,7 +277,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		}
 	}
 	
-	private void prepareFrameBuffers(MemoryStack stack)
+	private void prepareFrameBuffers(MemoryStack stack) throws VulkanException
 	{
 		if (useDepthTexture)
 		{
@@ -354,8 +357,30 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 						surface.reinit(stack);
 						prepareFrameBuffers(stack);
 					}
+					catch (VulkanException e)
+					{
+						if (exceptionHandler != null && exceptionHandler.apply(e))
+						{
+							RenderEngine.terminate();
+							return;
+						}
+					}
 				}
-				for (Consumer<Surface> action : surfaceUpdateActions) action.accept(surface);
+				for (VulkanConsumer<Surface> action : surfaceUpdateActions)
+				{
+					try
+					{
+						action.accept(surface);
+					}
+					catch (VulkanException e)
+					{
+						if (exceptionHandler != null && exceptionHandler.apply(e))
+						{
+							RenderEngine.terminate();
+							return;
+						}
+					}
+				}
 			});
 		});
 	}
@@ -403,10 +428,37 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				{
 					surface.reinit(stack);
 				}
-				for (Consumer<Surface> action : surfaceUpdateActions) action.accept(surface);
+				catch (VulkanException e)
+				{
+					if (exceptionHandler != null && exceptionHandler.apply(e))
+					{
+						RenderEngine.terminate();
+						return;
+					}
+				}
+				for (VulkanConsumer<Surface> action : surfaceUpdateActions)
+				{
+					try
+					{
+						action.accept(surface);
+					}
+					catch (VulkanException e)
+					{
+						if (exceptionHandler != null && exceptionHandler.apply(e))
+						{
+							RenderEngine.terminate();
+							return;
+						}
+					}
+				}
 				i.invoke(p, w, h);
 			});
 		});
+	}
+	
+	public void setExceptionHandler(Function<VulkanException, Boolean> exceptionHandler)
+	{
+		this.exceptionHandler = exceptionHandler;
 	}
 	
 	public void setScreen(Screen screen)

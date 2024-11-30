@@ -45,6 +45,7 @@ import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.texture.ImageWriter;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
@@ -71,7 +72,7 @@ public class TextureTest extends RenderTest {
 	private static boolean isModifiedMatrix;
 	private static boolean isModified;
 	
-	public static void start()
+	public static void start() throws VulkanException
 	{
 		ShaderProgram shaderProgram;
 		try
@@ -238,7 +239,7 @@ public class TextureTest extends RenderTest {
 		isModified = true;
 	}
 	
-	public static void loop(long time, long enlapsed)
+	public static void loop(long time, long enlapsed) throws VulkanException
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		if (isModified)

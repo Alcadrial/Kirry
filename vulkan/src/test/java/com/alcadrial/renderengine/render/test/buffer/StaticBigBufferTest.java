@@ -48,6 +48,7 @@ import com.alcadrial.renderengine.render.test.RenderTest;
 import com.alcadrial.renderengine.render.test.RenderingDataUtils;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.OutOfSpaceException;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class StaticBigBufferTest extends RenderTest {
@@ -96,7 +97,7 @@ public class StaticBigBufferTest extends RenderTest {
 		return new Matrix4f().scale(Vector3f.of(1, 1, 1).divideAll(16));
 	}
 	
-	public static void start()
+	public static void start() throws VulkanException
 	{
 		ShaderProgram shaderProgram;
 		try
@@ -290,7 +291,7 @@ public class StaticBigBufferTest extends RenderTest {
 		});*/
 	}
 	
-	public static void loop(long time, long enlapsed)
+	public static void loop(long time, long enlapsed) throws VulkanException
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		

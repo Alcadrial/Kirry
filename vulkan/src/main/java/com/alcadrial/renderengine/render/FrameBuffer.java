@@ -5,6 +5,7 @@ import org.lwjgl.vulkan.VkFramebufferCreateInfo;
 
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class FrameBuffer extends RawDeviceResource {
 	
@@ -19,7 +20,7 @@ public class FrameBuffer extends RawDeviceResource {
 	private final int height;
 	private final int layers;
 	
-	public FrameBuffer(Device device, VkFramebufferCreateInfo info)
+	public FrameBuffer(Device device, VkFramebufferCreateInfo info) throws VulkanException
 	{
 		super(device);
 		long[] p = new long[1];
@@ -42,11 +43,6 @@ public class FrameBuffer extends RawDeviceResource {
 	public int getType()
 	{
 		return type;
-	}
-	
-	public long getRenderPass()
-	{
-		return renderPass;
 	}
 	
 	public int getWidth()

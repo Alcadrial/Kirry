@@ -18,7 +18,7 @@ public abstract class RawDeviceResource extends AbstractDeviceResource<Long> {
 	@Override
 	public void close()
 	{
-		device.removeFromDestructionList(this);
+		super.close();
 		vk = 0L;
 	}
 }

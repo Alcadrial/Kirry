@@ -1,8 +1,10 @@
 package com.alcadrial.renderengine.render.util;
 
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.VulkanObject;
 
-public abstract class AbstractVulkanResource<VK> implements VulkanResource<VK> {
+public abstract class AbstractVulkanResource<VK> extends VulkanObject {
 	
 	static
 	{
@@ -16,9 +18,14 @@ public abstract class AbstractVulkanResource<VK> implements VulkanResource<VK> {
 	
 	// public abstract void recreate(Object... objects);
 	
-	@Override
 	public VK getVk()
 	{
 		return vk;
+	}
+	
+	@Override
+	public String toString()
+	{
+		return super.toString() + "(" + (vk instanceof Long l ? Debug.address(l) : vk) + ")";
 	}
 }

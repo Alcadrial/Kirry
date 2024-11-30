@@ -11,6 +11,7 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class VulkanBuffer extends RawDeviceResource {
 	
@@ -36,7 +37,7 @@ public class VulkanBuffer extends RawDeviceResource {
 	 * @param size in bytes
 	 * @param usage a bitmask of {@link VK10#VK_BUFFER_USAGE_TRANSFER_SRC_BIT VkBufferUsageFlagBits} specifying allowed usages of the buffer
 	 */
-	public VulkanBuffer(Device device, int size, int usage)
+	public VulkanBuffer(Device device, int size, int usage) throws VulkanException
 	{
 		super(device);
 		offset = 0;
@@ -50,7 +51,7 @@ public class VulkanBuffer extends RawDeviceResource {
 		}
 	}
 	
-	public VulkanBuffer(Device device, int size, int usage, int requiredProperties, int optimalProperties)
+	public VulkanBuffer(Device device, int size, int usage, int requiredProperties, int optimalProperties) throws VulkanException
 	{
 		super(device);
 		offset = 0;
@@ -64,7 +65,7 @@ public class VulkanBuffer extends RawDeviceResource {
 		}
 	}
 	
-	public VulkanBuffer(VulkanBuffer buffer, long offset, int usage, int size)
+	public VulkanBuffer(VulkanBuffer buffer, long offset, int usage, int size) throws VulkanException
 	{
 		super(buffer.device);
 		this.offset = offset;
@@ -79,7 +80,7 @@ public class VulkanBuffer extends RawDeviceResource {
 		}
 	}
 	
-	public VulkanBuffer(VulkanBuffer buffer, long offset, int size)
+	public VulkanBuffer(VulkanBuffer buffer, long offset, int size) throws VulkanException
 	{
 		super(buffer.device);
 		this.offset = offset;
@@ -101,7 +102,7 @@ public class VulkanBuffer extends RawDeviceResource {
 		this.name = name;
 	}
 	
-	public ByteBuffer getByteBuffer(int offset, int size)
+	public ByteBuffer getByteBuffer(int offset, int size) throws VulkanException
 	{
 		if (map == null)
 		{

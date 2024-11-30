@@ -2,6 +2,7 @@ package com.alcadrial.renderengine.render;
 
 import java.io.PrintStream;
 import java.util.Collection;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -179,5 +180,10 @@ public class Debug {
 	public static void setDebugOutput(PrintStream debugOutput)
 	{
 		Debug.debugOutput = debugOutput;
+	}
+	
+	public static Set<VulkanObject> getAvailableVulkanObjects()
+	{
+		return Set.of();
 	}
 }

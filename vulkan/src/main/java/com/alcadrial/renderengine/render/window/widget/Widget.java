@@ -10,14 +10,16 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public interface Widget {
 	
 	/**
 	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, Renderer) render} method.
 	 * @param staticBuffer
+	 * @throws VulkanException 
 	 */
-	void initializeRendering(StaticBigBuffer staticBuffer);
+	void initializeRendering(StaticBigBuffer staticBuffer) throws VulkanException;
 	/**
 	 * Draws textures and collects vertices to use in the {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw} method.
 	 * <p>
@@ -37,8 +39,9 @@ public interface Widget {
 	 * @param commandBuffer 
 	 * @param manager
 	 * @param partialFrame
+	 * @throws VulkanException 
 	 */
-	void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer manager, float partialFrame);
+	void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer manager, float partialFrame) throws VulkanException;
 	/**
 	 * Closes any resource previously allocated in {@link #initializeRendering(StaticBigBuffer) initializeRendering}.
 	 * <p>

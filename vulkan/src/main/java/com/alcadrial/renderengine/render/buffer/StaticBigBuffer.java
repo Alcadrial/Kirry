@@ -9,6 +9,7 @@ import org.lwjgl.vulkan.VkMemoryRequirements;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.OutOfSpaceException;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class StaticBigBuffer extends BigVulkanBuffer {
 	
@@ -22,7 +23,7 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 	protected LinkedList<Slot<?>> localSlots;
 	protected LinkedList<Slot<?>> remoteSlots;
 	
-	public StaticBigBuffer(Device device, int size)
+	public StaticBigBuffer(Device device, int size) throws VulkanException
 	{
 		super(device, size, 0);
 		remoteAllocationOffset = 0;
@@ -31,7 +32,7 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 	}
 	
 	@Override
-	public VulkanBuffer allocate(int size, int usage) throws OutOfSpaceException
+	public VulkanBuffer allocate(int size, int usage) throws OutOfSpaceException, VulkanException
 	{
 		if (size == 0) throw new IllegalStateException("Size must be positive");
 		
@@ -76,7 +77,7 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 	}
 	
 	@Override
-	public synchronized PhysicalDeviceTranferState startLocalBuffering()
+	public synchronized PhysicalDeviceTranferState startLocalBuffering() throws VulkanException
 	{
 		PhysicalDeviceTranferState t = super.startLocalBuffering();
 		localAllocationOffset = 0;

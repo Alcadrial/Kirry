@@ -27,6 +27,7 @@ import com.alcadrial.renderengine.render.shader.ShaderType;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.util.DataAccumulator;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 /**
  * A {@link Pipeline} used for rendering.
@@ -60,7 +61,7 @@ public class GraphicsPipeline extends Pipeline {
 			return super.shaderProgram(value);
 		}
 		
-		public GraphicsPipeline build(Device device, PipelineLayout layout, RenderPass renderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo)
+		public GraphicsPipeline build(Device device, PipelineLayout layout, RenderPass renderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo) throws VulkanException
 		{
 			try
 			{
@@ -72,7 +73,7 @@ public class GraphicsPipeline extends Pipeline {
 			}
 		}
 		
-		public <GP extends GraphicsPipeline> GP build(GraphicsPipelineBuildFunction<GP> buildFunction, Device device, PipelineLayout layout, RenderPass renderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo)
+		public <GP extends GraphicsPipeline> GP build(GraphicsPipelineBuildFunction<GP> buildFunction, Device device, PipelineLayout layout, RenderPass renderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo) throws VulkanException
 		{
 			GP graphicsPipeline = buildFunction.build(device, layout, autoCloseLayout.orElse(true), renderPass, autoCloseRenderPass.orElse(true), createInfo, shaderProgram.require());
 			close();
@@ -83,7 +84,7 @@ public class GraphicsPipeline extends Pipeline {
 	@FunctionalInterface
 	public interface GraphicsPipelineBuildFunction<GP extends GraphicsPipeline> {
 		
-		GP build(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo, ShaderProgram program);
+		GP build(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo, ShaderProgram program) throws VulkanException;
 	}
 	
 	public static Builder create()
@@ -99,7 +100,7 @@ public class GraphicsPipeline extends Pipeline {
 	
 	protected List<ShaderVariable> inputs;
 	
-	public GraphicsPipeline(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo, ShaderProgram program)
+	public GraphicsPipeline(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, VkGraphicsPipelineCreateInfo.Buffer createInfo, ShaderProgram program) throws VulkanException
 	{
 		super(device, layout);
 		this.autoCloseLayout = autoCloseLayout;
@@ -111,7 +112,7 @@ public class GraphicsPipeline extends Pipeline {
 		createVk(createInfo);
 	}
 	
-	protected void createVk(VkGraphicsPipelineCreateInfo.Buffer createInfo)
+	protected void createVk(VkGraphicsPipelineCreateInfo.Buffer createInfo) throws VulkanException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{

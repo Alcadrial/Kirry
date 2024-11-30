@@ -9,6 +9,7 @@ import com.alcadrial.renderengine.core.util.EmptyImplementation;
 import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public abstract class AbstractWidget implements Widget {
@@ -47,7 +48,7 @@ public abstract class AbstractWidget implements Widget {
 	}
 	
 	@Override
-	public void initializeRendering(StaticBigBuffer staticBuffer)
+	public void initializeRendering(StaticBigBuffer staticBuffer) throws VulkanException
 	{
 		setInternalStateBit(INITIALIZED_BIT, true);
 	}
@@ -59,7 +60,7 @@ public abstract class AbstractWidget implements Widget {
 	}
 	
 	@Override
-	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer manager, float partialFrame)
+	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer manager, float partialFrame) throws VulkanException
 	{
 		
 	}

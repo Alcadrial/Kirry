@@ -41,6 +41,7 @@ import com.alcadrial.renderengine.render.pipeline.ComputePipeline;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class ComputeTest extends RenderTest {
@@ -104,7 +105,7 @@ public class ComputeTest extends RenderTest {
 		return matrix.transpose();
 	}
 	
-	public static void start()
+	public static void start() throws VulkanException
 	{
 		ShaderProgram shaderProgram;
 		PreparedShader computeShader;
@@ -215,10 +216,19 @@ public class ComputeTest extends RenderTest {
 				switch (k)
 				{
 					case GLFW.GLFW_KEY_R -> {
-						renderer.updateUniforms(l -> {
-							l.set(PARTICLE_RADIUS, 0.01F);
-							//flush
-						});
+						try
+						{
+							renderer.updateUniforms(l -> {
+								l.set(PARTICLE_RADIUS, 0.01F);
+								//flush
+							});
+						}
+						catch (VulkanException e)
+						{
+							e.printStackTrace(System.out);
+							RenderEngine.terminate();
+							return;
+						}
 					}
 					case GLFW.GLFW_KEY_U -> {
 						isCameraUnlocked = !isCameraUnlocked;
@@ -505,7 +515,7 @@ public class ComputeTest extends RenderTest {
 	}
 	
 	@SuppressWarnings("null")
-	public static void loop(long time, long enlapsed)
+	public static void loop(long time, long enlapsed) throws VulkanException
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		
@@ -588,8 +598,17 @@ public class ComputeTest extends RenderTest {
 						sets.get(I++ % 2).pBufferInfo().buffer(storageBuffer0.getVk());
 						sets.get(I % 2).pBufferInfo().buffer(storageBuffer1.getVk());
 					});
-					computeUniformBufferLayout.set(ENLAPSED_TIME, enlapsed / 1000000000F);
-					computeUniformBufferLayout.updateDescriptorSets();
+					try
+					{
+						computeUniformBufferLayout.set(ENLAPSED_TIME, enlapsed / 1000000000F);
+						computeUniformBufferLayout.updateDescriptorSets();
+					}
+					catch (VulkanException e)
+					{
+						e.printStackTrace(System.out);
+						RenderEngine.terminate();
+						return;
+					}
 				});
 				window.pollEvents();
 				window.update();

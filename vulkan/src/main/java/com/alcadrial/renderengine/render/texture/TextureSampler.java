@@ -9,6 +9,7 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class TextureSampler extends RawDeviceResource {
 	
@@ -17,7 +18,7 @@ public class TextureSampler extends RawDeviceResource {
 		RenderEngine.assertLoaded();
 	}
 	
-	public TextureSampler(Device device)
+	public TextureSampler(Device device) throws VulkanException
 	{
 		super(device);
 		

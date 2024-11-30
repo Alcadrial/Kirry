@@ -4,6 +4,7 @@ import java.util.TreeSet;
 
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class DynamicBigBuffer extends BigVulkanBuffer {
 	
@@ -15,7 +16,7 @@ public class DynamicBigBuffer extends BigVulkanBuffer {
 	protected int maxAllocableBufferSize;
 	protected TreeSet<Slot<?>> slots;
 	
-	public DynamicBigBuffer(Device device, int size)
+	public DynamicBigBuffer(Device device, int size) throws VulkanException
 	{
 		super(device, size, 0);
 		maxAllocableBufferSize = size;

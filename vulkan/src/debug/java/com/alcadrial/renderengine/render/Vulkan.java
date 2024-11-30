@@ -23,8 +23,10 @@ import org.lwjgl.vulkan.VkInstanceCreateInfo;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 
+import com.alcadrial.renderengine.core.util.OperativeSystem;
 import com.alcadrial.renderengine.render.util.PhysicalDeviceNotFoundException;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class Vulkan implements AutoCloseable {
@@ -47,7 +49,11 @@ public class Vulkan implements AutoCloseable {
 		{
 			window = defaultWindow;
 			physicalDeviceFilter = defaultPhysicalDeviceFilter;
-			threadId = Kernel32.GetCurrentThreadId();
+			threadId = switch (OperativeSystem.OS)
+			{
+				case WINDOWS -> Kernel32.GetCurrentThreadId();
+				default -> -1;
+			};
 		}
 	}
 	
@@ -66,7 +72,7 @@ public class Vulkan implements AutoCloseable {
 	
 	private Device closingDevice;
 	
-	public Vulkan(VkInstanceCreateInfo createInfo)
+	public Vulkan(VkInstanceCreateInfo createInfo) throws VulkanException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -118,7 +124,7 @@ public class Vulkan implements AutoCloseable {
 		threadData.validPhysicalDevices = null;
 	}
 	
-	public void pickPhysicalDevices(Comparator<PhysicalDevice> bestMatcher) throws PhysicalDeviceNotFoundException
+	public void pickPhysicalDevices(Comparator<PhysicalDevice> bestMatcher) throws PhysicalDeviceNotFoundException, VulkanException
 	{
 		ThreadData threadData = getData();
 		if (threadData.physicalDevice == null)
@@ -128,7 +134,7 @@ public class Vulkan implements AutoCloseable {
 		}
 	}
 	
-	public void pickPhysicalDevices(int index) throws PhysicalDeviceNotFoundException
+	public void pickPhysicalDevices(int index) throws PhysicalDeviceNotFoundException, VulkanException
 	{
 		ThreadData threadData = getData();
 		if (threadData.physicalDevice == null)
@@ -139,7 +145,7 @@ public class Vulkan implements AutoCloseable {
 		}
 	}
 	
-	public List<PhysicalDevice> getValidPhysicalDevices()
+	public List<PhysicalDevice> getValidPhysicalDevices() throws VulkanException
 	{
 		ThreadData threadData = getData();
 		if (threadData.validPhysicalDevices == null)
@@ -155,7 +161,7 @@ public class Vulkan implements AutoCloseable {
 	 * 
 	 * @return A list of all the available Physical Devices
 	 */
-	public List<PhysicalDevice> getAvailablePhysicalDevices()
+	public List<PhysicalDevice> getAvailablePhysicalDevices() throws VulkanException
 	{
 		synchronized (physicalDevicesMonitor)
 		{
@@ -180,7 +186,7 @@ public class Vulkan implements AutoCloseable {
 		return physicalDevices;
 	}
 	
-	public void createDevice()
+	public void createDevice() throws VulkanException
 	{
 		createDevice(VkPhysicalDeviceFeatures.calloc());
 	}
@@ -192,7 +198,7 @@ public class Vulkan implements AutoCloseable {
 	 * 
 	 * @param deviceFeatures
 	 */
-	public Device createDevice(VkPhysicalDeviceFeatures deviceFeatures, String... deviceExtensions)
+	public Device createDevice(VkPhysicalDeviceFeatures deviceFeatures, String... deviceExtensions) throws VulkanException
 	{
 		ThreadData threadData = getData();
 		if (threadData.device == null)
@@ -308,6 +314,8 @@ public class Vulkan implements AutoCloseable {
 		});
 		if (debugMessengerId != 0) EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(instance, debugMessengerId, null);
 		if (physicalDevices != null) for (PhysicalDevice physicalDevice : physicalDevices) physicalDevice.close();
+		Debug.debug("Released vulkan " + this);
+		if (RenderEngine.isDebug()) for (VulkanObject vulkanObject : Debug.getAvailableVulkanObjects()) Debug.debug("Warning object not released: " + vulkanObject);
 		VK10.vkDestroyInstance(instance, null);
 	}
 }

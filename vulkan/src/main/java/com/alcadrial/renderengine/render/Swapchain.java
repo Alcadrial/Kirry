@@ -5,6 +5,7 @@ import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 /**
  * Describes all the data and how is used during the entire rendering process
@@ -19,7 +20,7 @@ public class Swapchain extends RawDeviceResource {
 		RenderEngine.assertLoaded();
 	}
 	
-	public Swapchain(Device device, Surface surface, VkSwapchainCreateInfoKHR createInfo)
+	public Swapchain(Device device, Surface surface, VkSwapchainCreateInfoKHR createInfo) throws VulkanException
 	{
 		super(device);
 		
@@ -39,10 +40,9 @@ public class Swapchain extends RawDeviceResource {
 	@Override
 	public void close()
 	{
-		device.waitIdle().thenRun(() -> {
-			KHRSwapchain.vkDestroySwapchainKHR(device.getVk(), vk, null);
-			super.close();
-		});
+		device.waitIdle().join();
+		KHRSwapchain.vkDestroySwapchainKHR(device.getVk(), vk, null);
+		super.close();
 	}
 	
 	@Override

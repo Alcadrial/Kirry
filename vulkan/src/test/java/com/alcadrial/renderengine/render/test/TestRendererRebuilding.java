@@ -45,6 +45,7 @@ import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.util.OutOfSpaceException;
 import com.alcadrial.renderengine.render.util.Properties;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
@@ -59,23 +60,35 @@ public class TestRendererRebuilding extends RenderTest {
 		
 		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
 		
-		println("Render Engine initialization", RenderTest::initMultiThreadRenderEngine, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
+		try
+		{
+			println("Render Engine initialization", RenderTest::initMultiThreadRenderEngine, TestProperties.PRINT_LOADING_TIMES);
+			if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
+		}
+		catch (VulkanException e)
+		{
+			e.printStackTrace(System.out);
+			return;
+		}
 		
-		Thread t = new Thread(() -> {
-			Logic logic = new Logic();
-			logic.start();
-			logic.loop();
-			logic.end();
-		});
+		Runnable task = () -> {
+			try
+			{
+				Logic logic = new Logic();
+				logic.start();
+				logic.loop();
+				logic.end();
+			}
+			catch (VulkanException e)
+			{
+				e.printStackTrace(System.out);
+			}
+		};
+		
+		Thread t = new Thread(task);
+		Thread t0 = new Thread(task);
+		
 		t.start();
-		
-		Thread t0 = new Thread(() -> {
-			Logic logic = new Logic();
-			logic.start();
-			logic.loop();
-			logic.end();
-		});
 		t0.start();
 		
 		new Thread(() -> {
@@ -116,7 +129,7 @@ public class TestRendererRebuilding extends RenderTest {
 		private int i, j, k, l;
 		private int[] indices;
 		
-		public void start()
+		public void start() throws VulkanException
 		{
 			ShaderProgram shaderProgram;
 			try
@@ -255,7 +268,7 @@ public class TestRendererRebuilding extends RenderTest {
 			
 		}
 		
-		public void loop()
+		public void loop() throws VulkanException
 		{
 			VulkanWindow window = RenderEngine.getVulkan().getWindow();
 			
@@ -365,7 +378,7 @@ public class TestRendererRebuilding extends RenderTest {
 			}
 		}
 		
-		public void end()
+		public void end() throws VulkanException
 		{
 			renderer.close();
 			RenderEngine.getVulkan().getWindow().close();

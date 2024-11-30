@@ -18,51 +18,52 @@ import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class ImageWriter implements AutoCloseable {
-
+	
 	static
 	{
 		RenderEngine.assertLoaded();
 	}
-
+	
 	private class Work {
-
+		
 		private Future<?> work;
 		private Work next;
-
+		
 		public Work(Future<?> work)
 		{
 			this.work = work;
 			next = null;
 		}
 	}
-
+	
 	private static final int MAX_COPY_COUNT = 16;
-
+	
 	private VulkanBuffer srcBuffer;
 	private int srcOffset;
 	private Texture dstTexture;
 	private int xOffset, yOffset, zOffset;
-
+	
 	private ByteBuffer buffer;
 	private int lastSetCursor;
 	private int cursor;
 	private int xExtent, yExtent, zExtent;
-
+	
 	private VkBufferImageCopy.Buffer vkBufferCopy;
 	private int bufferCopyCount;
-
+	
 	private @Nullable CommandBuffer flushCommandBuffer;
 	private Work firstWork;
 	private Work lastWork;
-
-	public ImageWriter(VulkanBuffer srcBuffer, int srcOffset, Texture dstTexture, Vector3i imageOffset, Vector3i imageExtent, @Nullable CommandBuffer flushCommandBuffer)
+	
+	public ImageWriter(VulkanBuffer srcBuffer, int srcOffset, Texture dstTexture, Vector3i imageOffset, Vector3i imageExtent, @Nullable CommandBuffer flushCommandBuffer) throws VulkanException
 	{
 		this(srcBuffer, srcOffset, dstTexture, imageOffset.x(), imageOffset.y(), imageOffset.z(), imageExtent.x(), imageExtent.y(), imageExtent.z(), flushCommandBuffer);
 	}
-
-	public ImageWriter(VulkanBuffer srcBuffer, int srcOffset, Texture dstTexture, int xOffset, int yOffset, int zOffset, int xExtent, int yExtent, int zExtent, @Nullable CommandBuffer flushCommandBuffer)
+	
+	public ImageWriter(VulkanBuffer srcBuffer, int srcOffset, Texture dstTexture, int xOffset, int yOffset, int zOffset, int xExtent, int yExtent, int zExtent, @Nullable CommandBuffer flushCommandBuffer) throws VulkanException
 	{
 		this.srcBuffer = srcBuffer;
 		this.srcOffset = srcOffset;
@@ -80,27 +81,18 @@ public class ImageWriter implements AutoCloseable {
 		firstWork = lastWork = null;
 		lastSetCursor = -1;
 	}
-
+	
 	public ImageWriter setCursor(int x, int y, int z)
 	{
-		if (x < 0 || x >= xExtent)
-		{
-			throw new IndexOutOfBoundsException(x);
-		}
-		if (y < 0 || y >= yExtent)
-		{
-			throw new IndexOutOfBoundsException(y);
-		}
-		if (z < 0 || z >= zExtent)
-		{
-			throw new IndexOutOfBoundsException(z);
-		}
+		if (x < 0 || x >= xExtent) throw new IndexOutOfBoundsException(x);
+		if (y < 0 || y >= yExtent) throw new IndexOutOfBoundsException(y);
+		if (z < 0 || z >= zExtent) throw new IndexOutOfBoundsException(z);
 		cursor = x + y * xExtent + z * xExtent * yExtent;
 		lastSetCursor = cursor;
 		return this;
 	}
-
-	private void registerCopy()
+	
+	private void registerCopy() throws VulkanException
 	{
 		if (lastSetCursor != -1 && lastSetCursor != cursor)
 		{
@@ -114,93 +106,90 @@ public class ImageWriter implements AutoCloseable {
 			region.imageSubresource().layerCount(1);
 			region.imageOffset().set(xOffset, yOffset, zOffset);
 			region.imageExtent().set(xExtent, yExtent, zExtent);
-
+			
 			bufferCopyCount++;
-			if (bufferCopyCount == MAX_COPY_COUNT)
-			{
-				flush();
-			}
+			if (bufferCopyCount == MAX_COPY_COUNT) flush();
 		}
 	}
-
+	
 	public ImageWriter put(int value)
 	{
 		buffer.asIntBuffer().put(cursor, value);
 		cursor += 1;
 		return this;
 	}
-
+	
 	public ImageWriter put(int... value)
 	{
 		buffer.asIntBuffer().put(cursor, value);
 		cursor += value.length;
 		return this;
 	}
-
+	
 	public ImageWriter put(float value)
 	{
 		buffer.asFloatBuffer().put(cursor, value);
 		cursor += 1;
 		return this;
 	}
-
+	
 	public ImageWriter put(float... value)
 	{
 		buffer.asFloatBuffer().put(cursor, value);
 		cursor += value.length;
 		return this;
 	}
-
+	
 	public ImageWriter put(Vector2f value)
 	{
 		buffer.asFloatBuffer().put(cursor, value.getValuesArray());
 		cursor += 2;
 		return this;
 	}
-
+	
 	public ImageWriter put(Vector3f value)
 	{
 		buffer.asFloatBuffer().put(cursor, value.getValuesArray());
 		cursor += 3;
 		return this;
 	}
-
+	
 	public ImageWriter put(Vector4f value)
 	{
 		buffer.asFloatBuffer().put(cursor, value.getValuesArray());
 		cursor += 4;
 		return this;
 	}
-
+	
 	public ImageWriter put(Vector2i value)
 	{
 		buffer.asIntBuffer().put(cursor, value.getValuesArray());
 		cursor += 2;
 		return this;
 	}
-
+	
 	public ImageWriter put(Vector3i value)
 	{
 		buffer.asIntBuffer().put(cursor, value.getValuesArray());
 		cursor += 3;
 		return this;
 	}
-
+	
 	public ImageWriter put(Vector4i value)
 	{
 		buffer.asIntBuffer().put(cursor, value.getValuesArray());
 		cursor += 4;
 		return this;
 	}
-
+	
 	public ImageWriter put(Matrix4f value)
 	{
 		buffer.asFloatBuffer().put(cursor, value.toArray());
 		cursor += 16;
 		return this;
 	}
-
-	public void flush()
+	
+	public void flush() throws VulkanException
 	{
 		if (lastSetCursor != -1 && lastSetCursor != cursor)
 		{
@@ -212,7 +201,7 @@ public class ImageWriter implements AutoCloseable {
 			registerCopy();
 			Device device = srcBuffer.getDevice();
 			Work work = new Work(device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), this::flush));
-
+			
 			if (firstWork == null)
 			{
 				firstWork = lastWork = work;
@@ -224,8 +213,8 @@ public class ImageWriter implements AutoCloseable {
 			}
 		}
 	}
-
-	public void flush(CommandBuffer commandBuffer)
+	
+	public void flush(CommandBuffer commandBuffer) throws VulkanException
 	{
 		if (lastSetCursor != -1 && lastSetCursor != cursor)
 		{
@@ -236,55 +225,49 @@ public class ImageWriter implements AutoCloseable {
 			lastSetCursor = cursor;
 		}
 	}
-
+	
 	public Future<?> getLoad()
 	{
 		return RenderEngine.getExecutor().submit(() -> {
-
+			
 			for (Work work = firstWork; work != null; work = work.next)
 			{
-				if (Thread.interrupted())
-				{
-					throw new CancellationException();
-				}
+				if (Thread.interrupted()) throw new CancellationException();
 				work.work.get();
 				firstWork = work;
 			}
 			return null;
 		});
 	}
-
+	
 	public int getSrcOffset()
 	{
 		return srcOffset;
 	}
-
+	
 	public VulkanBuffer getSrcBuffer()
 	{
 		return srcBuffer;
 	}
-
+	
 	public Texture getDstBuffer()
 	{
 		return dstTexture;
 	}
-
+	
 	public void setCommandBuffer(CommandBuffer commandBuffer)
 	{
 		flushCommandBuffer = commandBuffer;
 	}
-
+	
 	@Override
-	public void close()
+	public void close() throws VulkanException
 	{
 		flush:
 		{
 			if (lastSetCursor == -1)
 			{
-				if (cursor == 0)
-				{
-					break flush;
-				}
+				if (cursor == 0) break flush;
 				lastSetCursor = 0;
 			}
 			//	registerCopy();
@@ -292,10 +275,7 @@ public class ImageWriter implements AutoCloseable {
 		}
 		if (firstWork != null)
 		{
-			for (Work work = firstWork, work0 = work.next; work0 != null; work = work0, work0 = work0.next)
-			{
-				work.next = null;
-			}
+			for (Work work = firstWork, work0 = work.next; work0 != null; work = work0, work0 = work0.next) work.next = null;
 		}
 		vkBufferCopy.free();
 		srcBuffer.unmapBuffer();

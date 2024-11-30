@@ -26,6 +26,7 @@ import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
 import com.alcadrial.renderengine.render.texture.TextureView;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class BufferLayout implements VulkanDebug {
 	
@@ -138,12 +139,12 @@ public class BufferLayout implements VulkanDebug {
 		}
 	}
 	
-	public void set(String uniform, Matrix4f value)
+	public void set(String uniform, Matrix4f value) throws VulkanException
 	{
 		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, int index, Matrix4f value)
+	public void set(String uniform, int index, Matrix4f value) throws VulkanException
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
@@ -154,12 +155,12 @@ public class BufferLayout implements VulkanDebug {
 		}
 	}
 	
-	public void set(String uniform, Vector2f value)
+	public void set(String uniform, Vector2f value) throws VulkanException
 	{
 		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, int index, Vector2f value)
+	public void set(String uniform, int index, Vector2f value) throws VulkanException
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
@@ -170,12 +171,12 @@ public class BufferLayout implements VulkanDebug {
 		}
 	}
 	
-	public void set(String uniform, Vector3f value)
+	public void set(String uniform, Vector3f value) throws VulkanException
 	{
 		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, int index, Vector3f value)
+	public void set(String uniform, int index, Vector3f value) throws VulkanException
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
@@ -186,12 +187,12 @@ public class BufferLayout implements VulkanDebug {
 		}
 	}
 	
-	public void set(String uniform, Vector4f value)
+	public void set(String uniform, Vector4f value) throws VulkanException
 	{
 		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, int index, Vector4f value)
+	public void set(String uniform, int index, Vector4f value) throws VulkanException
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
@@ -202,12 +203,12 @@ public class BufferLayout implements VulkanDebug {
 		}
 	}
 	
-	public void set(String uniform, Vector2i value)
+	public void set(String uniform, Vector2i value) throws VulkanException
 	{
 		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, int index, Vector2i value)
+	public void set(String uniform, int index, Vector2i value) throws VulkanException
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
@@ -218,12 +219,12 @@ public class BufferLayout implements VulkanDebug {
 		}
 	}
 	
-	public void set(String uniform, Vector3i value)
+	public void set(String uniform, Vector3i value) throws VulkanException
 	{
 		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, int index, Vector3i value)
+	public void set(String uniform, int index, Vector3i value) throws VulkanException
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
@@ -234,12 +235,12 @@ public class BufferLayout implements VulkanDebug {
 		}
 	}
 	
-	public void set(String uniform, Vector4i value)
+	public void set(String uniform, Vector4i value) throws VulkanException
 	{
 		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, int index, Vector4i value)
+	public void set(String uniform, int index, Vector4i value) throws VulkanException
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
@@ -272,12 +273,12 @@ public class BufferLayout implements VulkanDebug {
 		}
 	}
 	
-	public void set(String uniform, int value)
+	public void set(String uniform, int value) throws VulkanException
 	{
 		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, int index, int value)
+	public void set(String uniform, int index, int value) throws VulkanException
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)
@@ -288,12 +289,12 @@ public class BufferLayout implements VulkanDebug {
 		}
 	}
 	
-	public void set(String uniform, float value)
+	public void set(String uniform, float value) throws VulkanException
 	{
 		set(uniform, 0, value);
 	}
 	
-	public void set(String uniform, int index, float value)
+	public void set(String uniform, int index, float value) throws VulkanException
 	{
 		Pair<ShaderVariable, Integer> p = getOffset(uniform);
 		if (p != null)

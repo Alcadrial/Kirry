@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 
 import org.lwjgl.vulkan.EXTDebugReport;
 import org.lwjgl.vulkan.EXTDebugUtils;
@@ -23,6 +22,9 @@ import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.PhysicalDeviceNotFoundException;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.Version;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.functional.VulkanBiConsumer;
+import com.alcadrial.renderengine.render.util.functional.VulkanRunnable;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class RenderTest {
@@ -31,33 +33,40 @@ public class RenderTest {
 	private static final String[] SEVERITIES = new String[] {"UNKNOWN", "VERBOSE", "INFO", "WARNING", "ERROR"};
 	private static final String[] TYPES = new String[] {"UNKNOWN", "GENERAL", "VALIDATION", "PERFORMANCE"};
 	
-	public static void mainTest(String[] args, Runnable start, Runnable loop, Runnable end)
+	public static void mainTest(String[] args, VulkanRunnable start, VulkanRunnable loop, VulkanRunnable end)
 	{
-		TestProperties.init(args);
-		
-		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
-		
-		println("RenderEngine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
-		if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-		
 		try
 		{
-			println("Start", start, TestProperties.PRINT_LOADING_TIMES);
-			if (!RenderEngine.isInitializated()) return;
+			TestProperties.init(args);
 			
-			println("Loop", loop, TestProperties.PRINT_LOADING_TIMES);
-			if (!RenderEngine.isInitializated()) return;
+			if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
 			
-			println("End", end, TestProperties.PRINT_LOADING_TIMES);
+			println("RenderEngine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
+			if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
+			
+			try
+			{
+				println("Start", start, TestProperties.PRINT_LOADING_TIMES);
+				if (!RenderEngine.isInitializated()) return;
+				
+				println("Loop", loop, TestProperties.PRINT_LOADING_TIMES);
+				if (!RenderEngine.isInitializated()) return;
+				
+				println("End", end, TestProperties.PRINT_LOADING_TIMES);
+			}
+			catch (Throwable t)
+			{
+				if (RenderEngine.isInitializated()) RenderEngine.terminate();
+				throw t;
+			}
 		}
 		catch (Throwable t)
 		{
-			if (RenderEngine.isInitializated()) RenderEngine.terminate();
-			throw t;
+			t.printStackTrace(System.out);
 		}
 	}
 	
-	public static void defaultLoop(BiConsumer<Long, Long> action)
+	public static void defaultLoop(VulkanBiConsumer<Long, Long> action) throws VulkanException
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		String title = window.getTitle();
@@ -154,7 +163,7 @@ public class RenderTest {
 		return VK10.VK_FALSE;
 	}
 	
-	public static boolean pickPhysicalDevice(VulkanWindow window)
+	public static boolean pickPhysicalDevice(VulkanWindow window) throws VulkanException
 	{
 		try
 		{
@@ -172,7 +181,7 @@ public class RenderTest {
 		}
 	}
 	
-	public static Texture createDepthTexture(int width, int height)
+	public static Texture createDepthTexture(int width, int height) throws VulkanException
 	{
 		Texture depthTexture = Texture.create2dTexture(RenderEngine.getVulkan().getDevice(), width, height, VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
 		depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL).join();
@@ -204,13 +213,13 @@ public class RenderTest {
 		Files.write(new File(shader.getFile().getPath() + ".bin").toPath(), shader.getLastCompilation().get().getBinary());
 	}
 	
-	public static void println(String s, Runnable action, Property<Boolean> printProperty)
+	public static void println(String s, VulkanRunnable action, Property<Boolean> printProperty) throws VulkanException
 	{
 		if (printProperty.getValue()) System.out.println(s + " time = " + recordTime(action, TimeUnit.MICROSECONDS) / 1000D + "ms");
 		else action.run();
 	}
 	
-	public static long recordTime(Runnable runnable, TimeUnit unit)
+	public static long recordTime(VulkanRunnable runnable, TimeUnit unit) throws VulkanException
 	{
 		long startTime;
 		TimeUnit localUnit;
@@ -234,7 +243,7 @@ public class RenderTest {
 		return unit.convert(endTime - startTime, localUnit);
 	}
 	
-	public static double recordTime(Runnable runnable, TimeUnit unit, TimeUnit resolution)
+	public static double recordTime(VulkanRunnable runnable, TimeUnit unit, TimeUnit resolution) throws VulkanException
 	{
 		long startTime;
 		TimeUnit localUnit;

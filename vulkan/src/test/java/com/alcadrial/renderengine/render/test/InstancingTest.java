@@ -48,6 +48,7 @@ import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.OutOfSpaceException;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class InstancingTest extends RenderTest {
@@ -100,7 +101,7 @@ public class InstancingTest extends RenderTest {
 		return new Matrix4f().scale(Vector3f.of(1, 1, 1).divideAll(16));
 	}
 	
-	public static void start()
+	public static void start() throws VulkanException
 	{
 		ShaderProgram shaderProgram;
 		try
@@ -138,7 +139,19 @@ public class InstancingTest extends RenderTest {
 		});
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			System.out.println("Resized " + width + "x" + height);
-			for (Renderer renderer : renderers) renderer.updateUniforms(l -> l.set(PROJECTION, buildProjectionMatrix(window)));
+			for (Renderer renderer : renderers)
+			{
+				try
+				{
+					renderer.updateUniforms(l -> l.set(PROJECTION, buildProjectionMatrix(window)));
+				}
+				catch (VulkanException e)
+				{
+					e.printStackTrace(System.out);
+					RenderEngine.terminate();
+					return;
+				}
+			}
 		});
 		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
 			System.out.println("Refresh");
@@ -178,13 +191,22 @@ public class InstancingTest extends RenderTest {
 			{
 				for (Renderer renderer : renderers)
 				{
-					renderer.updateUniforms(l -> {
-						l.set(PROJECTION, buildProjectionMatrix(window));
-						l.set(MODEL, buildModelMatrix());
-						l.set(LIGHT_POS, buildScaleMatrix().multiply(lightPos).xyz());
-						l.set(LIGHT_INTENSITY, 0.75F);
-						l.set(SPACE_FOG_INTENSITY, 0.1F);
-					});
+					try
+					{
+						renderer.updateUniforms(l -> {
+							l.set(PROJECTION, buildProjectionMatrix(window));
+							l.set(MODEL, buildModelMatrix());
+							l.set(LIGHT_POS, buildScaleMatrix().multiply(lightPos).xyz());
+							l.set(LIGHT_INTENSITY, 0.75F);
+							l.set(SPACE_FOG_INTENSITY, 0.1F);
+						});
+					}
+					catch (VulkanException e)
+					{
+						e.printStackTrace(System.out);
+						RenderEngine.terminate();
+						return;
+					}
 				}
 			}
 		});
@@ -277,7 +299,7 @@ public class InstancingTest extends RenderTest {
 		
 	}
 	
-	public static void loop(long time, long enlapsed)
+	public static void loop(long time, long enlapsed) throws VulkanException
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		

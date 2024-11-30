@@ -22,43 +22,44 @@ import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderType;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class AnimationInstancingGraphicsPipeline extends GraphicsPipeline {
-
+	
 	static
 	{
 		RenderEngine.assertLoaded();
 	}
-
-	public AnimationInstancingGraphicsPipeline(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, Buffer createInfo, ShaderProgram shaderProgram)
+	
+	public AnimationInstancingGraphicsPipeline(Device device, PipelineLayout layout, boolean autoCloseLayout, RenderPass renderPass, boolean autoCloseRenderPass, Buffer createInfo, ShaderProgram shaderProgram) throws VulkanException
 	{
 		super(device, layout, autoCloseLayout, renderPass, autoCloseRenderPass, createInfo, shaderProgram);
 	}
-
+	
 	@Override
-	protected void createVk(Buffer createInfo)
+	protected void createVk(Buffer createInfo) throws VulkanException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo = VkPipelineVertexInputStateCreateInfo.calloc(stack);
 			vertexInputInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
-
+			
 			VkVertexInputBindingDescription.Buffer bindingDescription = VkVertexInputBindingDescription.calloc(2, stack);
 			bindingDescription.get().set(0, 40, VK10.VK_VERTEX_INPUT_RATE_VERTEX);
 			bindingDescription.get().set(1, 16, VK10.VK_VERTEX_INPUT_RATE_INSTANCE);
-
+			
 			VkVertexInputAttributeDescription.Buffer attributeDescriptions = VkVertexInputAttributeDescription.calloc(5, stack);
 			attributeDescriptions.get().set(0, 0, ShaderInputType.VECTOR_FLOAT_3.getType(), 0);
 			attributeDescriptions.get().set(1, 0, ShaderInputType.VECTOR_FLOAT_4.getType(), 12);
 			attributeDescriptions.get().set(2, 0, ShaderInputType.VECTOR_FLOAT_3.getType(), 28);
 			attributeDescriptions.get().set(3, 1, ShaderInputType.VECTOR_FLOAT_3.getType(), 0);
 			attributeDescriptions.get().set(4, 1, ShaderInputType.INT.getType(), 12);
-
+			
 			vertexInputInfo.pVertexBindingDescriptions(bindingDescription.rewind());
 			vertexInputInfo.pVertexAttributeDescriptions(attributeDescriptions.rewind());
-
+			
 			inputs = Arrays.asList(ShaderVariable.VERTEX_POSITION, ShaderVariable.COLOR, ShaderVariable.NORMAL_POSITION);
-
+			
 			VkPipelineShaderStageCreateInfo.Buffer shaderStages = VkPipelineShaderStageCreateInfo.calloc(2, stack);
 			{
 				List<PreparedShader> vertexShaders = shaderProgram.getshaders().stream().filter(ps -> ps.info().getType() == ShaderType.VERTEX).toList();
@@ -74,16 +75,16 @@ public class AnimationInstancingGraphicsPipeline extends GraphicsPipeline {
 					fillShaderStageCreateInfo(stack, stage, prepared);
 				}
 			}
-
+			
 			createInfo.pVertexInputState(vertexInputInfo);
 			createInfo.pStages(shaderStages.rewind());
 			createInfo.layout(layout.getVk());
 			createInfo.renderPass(renderPass.getVk());
-
+			
 			long[] p = new long[1];
 			VulkanErrorUtils.assertNoError(VK10.vkCreateGraphicsPipelines(device.getVk(), 0, createInfo, null, p), "Failed to create graphics pipeline");
 			vk = p[0];
-
+			
 			for (VkPipelineShaderStageCreateInfo stage : shaderStages)
 			{
 				VK10.vkDestroyShaderModule(device.getVk(), stage.module(), null);

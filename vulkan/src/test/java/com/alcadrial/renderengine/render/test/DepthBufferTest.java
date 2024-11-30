@@ -41,6 +41,7 @@ import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class DepthBufferTest extends RenderTest {
@@ -83,7 +84,7 @@ public class DepthBufferTest extends RenderTest {
 		return matrix;
 	}
 	
-	public static void start()
+	public static void start() throws VulkanException
 	{
 		ShaderProgram shaderProgram;
 		try
@@ -160,14 +161,23 @@ public class DepthBufferTest extends RenderTest {
 		window.setCallback((GLFWKeyCallbackI) (w, k, s, a, m) -> {
 			if (k == GLFW.GLFW_KEY_R)
 			{
-				renderer.updateUniforms(l -> {
-					l.set(PROJECTION, buildProjectionMatrix(window));
-					l.set(MODEL, buildModelMatrix());
-					l.set(LIGHT_POS, lightPos);
-					l.set(LIGHT_INTENSITY, 0.8F);
-					l.set(SPACE_FOG_INTENSITY, 0.4F);
-					l.flush(null);//TODO
-				});
+				try
+				{
+					renderer.updateUniforms(l -> {
+						l.set(PROJECTION, buildProjectionMatrix(window));
+						l.set(MODEL, buildModelMatrix());
+						l.set(LIGHT_POS, lightPos);
+						l.set(LIGHT_INTENSITY, 0.8F);
+						l.set(SPACE_FOG_INTENSITY, 0.4F);
+						l.flush(null);//TODO
+					});
+				}
+				catch (VulkanException e)
+				{
+					e.printStackTrace(System.out);
+					RenderEngine.terminate();
+					return;
+				}
 			}
 		});
 		
@@ -216,7 +226,7 @@ public class DepthBufferTest extends RenderTest {
 			indexBuffer.sendToPhysicalDevice();*/
 	}
 	
-	public static void loop(long time, long enlapsed)
+	public static void loop(long time, long enlapsed) throws VulkanException
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		
