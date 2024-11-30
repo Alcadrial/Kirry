@@ -1,8 +1,14 @@
 package com.alcadrial.renderengine.render.test;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.math.RoundingMode;
+import java.nio.LongBuffer;
+import java.util.List;
+import java.util.Random;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
@@ -14,10 +20,15 @@ import org.lwjgl.vulkan.EXTDepthRangeUnrestricted;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkClearValue;
+import org.lwjgl.vulkan.VkDescriptorBufferInfo;
+import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
+import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
 import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
+import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
+import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
 import com.alcadrial.kector.Math;
 import com.alcadrial.kector.angle.Angle;
@@ -28,6 +39,7 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.axis.Axis;
 import com.alcadrial.renderengine.core.cursor.CursorInputMode;
+import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
@@ -35,12 +47,24 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Vulkan;
+import com.alcadrial.renderengine.render.buffer.BigVulkanBuffer.PhysicalDeviceTranferState;
 import com.alcadrial.renderengine.render.buffer.BufferLayout;
+import com.alcadrial.renderengine.render.buffer.BufferWriter;
+import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.pipeline.ComputePipeline;
+import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
+import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
+import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.shader.ShaderVariable;
+import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
+import com.alcadrial.renderengine.render.util.OutOfSpaceException;
+import com.alcadrial.renderengine.render.util.SphereDataCollector;
+import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.VulkanUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
@@ -96,6 +120,7 @@ public class ComputeTest extends RenderTest {
 	private static boolean isCameraUnlocked;
 	
 	private static boolean rebuildProjectionMatrix;
+	private static StaticBigBuffer staticBigBuffer;
 	
 	private static Matrix4f buildProjectionMatrix(VulkanWindow window)
 	{
@@ -131,11 +156,7 @@ public class ComputeTest extends RenderTest {
 		
 		VulkanWindow window = new VulkanWindow(1080, 720, "Test");
 		vulkan.setWindow(window);
-		
-		if (!pickPhysicalDevice(window))
-		{
-			return;
-		}
+		if (!pickPhysicalDevice(window)) return;
 		
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.wideLines(true);
@@ -244,274 +265,282 @@ public class ComputeTest extends RenderTest {
 		
 		int minOffsetAlignment = (int) device.getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment();
 		System.out.println("MinOffset = " + minOffsetAlignment);
-		/*
-				{
-					int size = PARTICLE_COUNT * 12 * 4;
-					vertexBuffer = new VertexBuffer(242 * 3);
-					vertexStorageBuffer = new VertexBuffer(2 * size, VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true);
-					storageBuffer0 = new VertexBuffer(vertexStorageBuffer, 0, size);
-					storageBuffer1 = new VertexBuffer(vertexStorageBuffer, size, size);
-					uniformBuffer = new VulkanBuffer(device, Math.max(minOffsetAlignment * 3, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-				}
-				renderPass = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
 		
-				Renderer.Builder builder = Renderer.create();
-				builder.shaderProgram(shaderProgram);
-				builder.depthTestEnable(true);
-				builder.cullMode(VK10.VK_CULL_MODE_NONE);
-				builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-				builder.bufferBindings(List.of(
-						new VulkanBufferRange(uniformBuffer, 0),
-						new VulkanBufferRange(uniformBuffer, 256)
-				));
+		{
+			int size = PARTICLE_COUNT * 12 * 4 * 4;
+			staticBigBuffer = new StaticBigBuffer(device, 1 << 19);
+			vertexBuffer = staticBigBuffer.allocate(242 * 3 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+			indexBuffer = staticBigBuffer.allocate(2064 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+			uniformBuffer = staticBigBuffer.allocate(Math.max(minOffsetAlignment * 3, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+			vertexStorageBuffer = staticBigBuffer.allocate(2 * size, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+			storageBuffer0 = new VulkanBuffer(vertexStorageBuffer, 0, size);
+			storageBuffer1 = new VulkanBuffer(vertexStorageBuffer, size, size);
+		}
 		
-				renderer = builder.build(device, window.getSurface().getSize(), renderPass, ComputeCustomGraphicsPipeline::new);
+		Color[] colors = new Color[] {
+			Color.VERY_LIGHT_YELLOW,
+			Color.VERY_LIGHT_RED,
+			Color.VERY_LIGHT_MAGENTA,
+			Color.VERY_LIGHT_GREEN,
+			Color.VERY_LIGHT_CYAN,
+			Color.VERY_LIGHT_BLUE,
+			Color.LIGHT_YELLOW,
+			Color.LIGHT_RED,
+			Color.LIGHT_MAGENTA,
+			Color.LIGHT_GREEN,
+			Color.LIGHT_CYAN,
+			Color.LIGHT_BLUE,
+			Color.YELLOW,
+			Color.RED,
+			Color.MAGENTA,
+			Color.GREEN,
+			Color.CYAN,
+			Color.BLUE,
+			Color.DARK_YELLOW,
+			Color.DARK_RED,
+			Color.DARK_MAGENTA,
+			Color.DARK_GREEN,
+			Color.DARK_CYAN,
+			Color.DARK_BLUE,
+			Color.VERY_DARK_YELLOW,
+			Color.VERY_DARK_RED,
+			Color.VERY_DARK_MAGENTA,
+			Color.VERY_DARK_GREEN,
+			Color.VERY_DARK_CYAN,
+			Color.VERY_DARK_BLUE
+		};
 		
-				try (MemoryStack stack = MemoryStack.stackPush())
-				{
-					VkDescriptorPoolCreateInfo poolInfo = VulkanUtils.descriptorPoolCreateInfo(stack, VulkanUtils.descriptorPoolSize(stack, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4));// static
-					poolInfo.maxSets(3);
-		
-					long[] p0 = new long[1];
-					VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorPool(device.getVk(), poolInfo, null, p0), "Failed to create descriptor pool!");
-					computeDescriptorPool = p0[0];
-		
-					VkDescriptorSetLayoutBinding.Buffer descriptorSetLayoutBindings = VkDescriptorSetLayoutBinding.malloc(3, stack);// static
-		
-					VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = descriptorSetLayoutBindings.get();
-					descriptorSetLayoutBinding.binding(0);
-					descriptorSetLayoutBinding.descriptorCount(1);
-					descriptorSetLayoutBinding.descriptorType(ShaderLayout.Type.UNIFORM_BUFFER.getType());
-					descriptorSetLayoutBinding.pImmutableSamplers(null);
-					descriptorSetLayoutBinding.stageFlags(VK10.VK_SHADER_STAGE_COMPUTE_BIT);
-		
-					descriptorSetLayoutBinding = descriptorSetLayoutBindings.get();
-					descriptorSetLayoutBinding.binding(1);
-					descriptorSetLayoutBinding.descriptorCount(1);
-					descriptorSetLayoutBinding.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
-					descriptorSetLayoutBinding.pImmutableSamplers(null);
-					descriptorSetLayoutBinding.stageFlags(VK10.VK_SHADER_STAGE_COMPUTE_BIT);
-		
-					descriptorSetLayoutBinding = descriptorSetLayoutBindings.get();
-					descriptorSetLayoutBinding.binding(2);
-					descriptorSetLayoutBinding.descriptorCount(1);
-					descriptorSetLayoutBinding.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
-					descriptorSetLayoutBinding.pImmutableSamplers(null);
-					descriptorSetLayoutBinding.stageFlags(VK10.VK_SHADER_STAGE_COMPUTE_BIT);
-		
-					descriptorSetLayoutBindings.rewind();
-		
-					LongBuffer p = stack.callocLong(1);
-		
-					VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorSetLayout(device.getVk(), VulkanUtils.descriptorSetLayoutInfo(stack, 0, descriptorSetLayoutBindings), null, p), "Failed to create descriptor set layout!");
-		
-					p.rewind();
-		
-					computeDescriptorSetLayout = p.get(0);
-		
-					long[] p1 = new long[1];
-		
-					VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), VulkanUtils.descriptorSetAllocateInfo(stack, computeDescriptorPool, p), p1), "Failed to allocate descriptor sets!");
-		
-					computeDescriptorSet = p1[0];
-					computeDescriptorSetLock = new ReentrantLock();
-		
-					VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
-					pipelineLayoutInfo.pSetLayouts(p);
-					computePipeline = new ComputePipeline(device, new PipelineLayout(device, pipelineLayoutInfo), true, computeShader);
-		
-					VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(3);
-		
-					computeUniformBufferLayout = new BufferLayout(device, writeDescriptorSets.slice(0, 1), 0, computeDescriptorSetLock);
-					computeStorageBufferLayout = new BufferLayout(device, writeDescriptorSets.slice(1, 2), 0, computeDescriptorSetLock);
-		
-					VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
-					writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
-					writeDescriptorSet.pNext(0);
-					writeDescriptorSet.dstSet(p1[0]);
-					writeDescriptorSet.dstBinding(0);
-					writeDescriptorSet.dstArrayElement(0);
-					writeDescriptorSet.descriptorCount(1);
-					writeDescriptorSet.descriptorType(ShaderLayout.Type.UNIFORM_BUFFER.getType());
-		
-					int offset = 512;
-					int partialOffset = 0;
-		
-					VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-					descriptorBufferInfo.buffer(uniformBuffer.getVk());
-					descriptorBufferInfo.offset(offset);
-					for (ShaderVariable variable : new ShaderVariable[] {
-						ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, MIN_BOUND),
-						ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, MAX_BOUND),
-						ShaderVariable.of(ShaderInputType.FLOAT, ENLAPSED_TIME),
-					})
-					{
-						int size = variable.getType().getLength();
-						if (partialOffset > 0 && partialOffset + size > 16)
-						{
-							offset += 16 - partialOffset;
-						}
-						computeUniformBufferLayout.mark(variable, offset / 4);
-						offset += size;
-						partialOffset = offset % 16;
-					}
-					descriptorBufferInfo.range(offset - descriptorBufferInfo.offset());
-		
-					writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
-					writeDescriptorSet.pImageInfo(null);
-					writeDescriptorSet.pTexelBufferView(null);
-		
-					writeDescriptorSet = writeDescriptorSets.get();
-					writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
-					writeDescriptorSet.pNext(0);
-					writeDescriptorSet.dstSet(p1[0]);
-					writeDescriptorSet.dstBinding(1);
-					writeDescriptorSet.dstArrayElement(0);
-					writeDescriptorSet.descriptorCount(1);
-					writeDescriptorSet.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
-					descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-					descriptorBufferInfo.buffer(storageBuffer0.getGpuBuffer().getVk());
-					descriptorBufferInfo.offset(0);
-					descriptorBufferInfo.range(4 * 12 * PARTICLE_COUNT);
-					writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
-					writeDescriptorSet.pImageInfo(null);
-					writeDescriptorSet.pTexelBufferView(null);
-		
-					writeDescriptorSet = writeDescriptorSets.get();
-					writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
-					writeDescriptorSet.pNext(0);
-					writeDescriptorSet.dstSet(p1[0]);
-					writeDescriptorSet.dstBinding(2);
-					writeDescriptorSet.dstArrayElement(0);
-					writeDescriptorSet.descriptorCount(1);
-					writeDescriptorSet.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
-					descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-					descriptorBufferInfo.buffer(storageBuffer1.getGpuBuffer().getVk());
-					descriptorBufferInfo.offset(0);
-					descriptorBufferInfo.range(4 * 12 * PARTICLE_COUNT);
-					writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
-					writeDescriptorSet.pImageInfo(null);
-					writeDescriptorSet.pTexelBufferView(null);
-		
-					writeDescriptorSets.rewind();
-		
-					computeUniformBufferLayout.set(MIN_BOUND, uniformBuffer, MIN_BOUND_VALUE);
-					computeUniformBufferLayout.set(MAX_BOUND, uniformBuffer, MAX_BOUND_VALUE);
-					computeUniformBufferLayout.set(ENLAPSED_TIME, uniformBuffer, 0F);
-		
-					computeUniformBufferLayout.updateDescriptorSets();
-					computeStorageBufferLayout.updateDescriptorSets();
-		
-					System.out.println("SUCCESS");
-				}
-		
-				indexBuffer = new IndexBuffer(2064);
-				renderer.addVertexBuffer(0, vertexBuffer.getGpuBuffer());
-				renderer.addVertexBuffer(1, storageBuffer0.getGpuBuffer());
-				renderer.setIndexBuffer(indexBuffer.getGpuBuffer());
-				renderer.updateUniforms(uniformBuffer, l -> {
-					l.set(PROJECTION, uniformBuffer, buildProjectionMatrix(window));
-				});
-		
-				SphereDataCollector.collect(vertexBuffer, indexBuffer, Vector3f.origin(), 0.06F, 8);
-		
-				Color[] colors = new Color[] {
-					Color.VERY_LIGHT_YELLOW,
-					Color.VERY_LIGHT_RED,
-					Color.VERY_LIGHT_MAGENTA,
-					Color.VERY_LIGHT_GREEN,
-					Color.VERY_LIGHT_CYAN,
-					Color.VERY_LIGHT_BLUE,
-					Color.LIGHT_YELLOW,
-					Color.LIGHT_RED,
-					Color.LIGHT_MAGENTA,
-					Color.LIGHT_GREEN,
-					Color.LIGHT_CYAN,
-					Color.LIGHT_BLUE,
-					Color.YELLOW,
-					Color.RED,
-					Color.MAGENTA,
-					Color.GREEN,
-					Color.CYAN,
-					Color.BLUE,
-					Color.DARK_YELLOW,
-					Color.DARK_RED,
-					Color.DARK_MAGENTA,
-					Color.DARK_GREEN,
-					Color.DARK_CYAN,
-					Color.DARK_BLUE,
-					Color.VERY_DARK_YELLOW,
-					Color.VERY_DARK_RED,
-					Color.VERY_DARK_MAGENTA,
-					Color.VERY_DARK_GREEN,
-					Color.VERY_DARK_CYAN,
-					Color.VERY_DARK_BLUE
-				};
-		
-				Random random = new Random();
-		
-				FloatBuffer cursor = storageBuffer0.asFloatBuffer();
-				for (float i = -DIM; i < DIM; i++)
-				{
-					for (float j = -DIM; j < DIM; j++)
-					{
-						for (float k = -DIM; k < DIM; k++)
-						{
-							Color c = colors[random.nextInt(colors.length)];
-							cursor.put(i / 10).put(j / 10).put(k / 10).put(0);
-							cursor.put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(0);
-							cursor.put(c.r() / 255).put(c.g() / 255).put(c.b() / 255).put(c.a() / 255);
-						}
-					}
-				}
-		
-				try
-				{
-					vertexBuffer.sendToPhysicalDevice().get();
-					indexBuffer.sendToPhysicalDevice().get();
-					storageBuffer0.sendToPhysicalDevice().get();
-					storageBuffer0.sendToPhysicalDevice(storageBuffer1.getGpuBuffer()).get();
-				}
-				catch (Exception e)
-				{
-					e.printStackTrace(System.out);
-					RenderEngine.terminate();
-					return;
-				}
-				printState();
-			}
-		
-			private static int stateIndex = 1000;
-		
-			private static void printState()
+		try (PhysicalDeviceTranferState transfert = staticBigBuffer.startLocalBuffering())
+		{
+			BufferWriter vertexBufferWriter = transfert.beginTransfer(vertexBuffer);
+			BufferWriter storageBuffer0Writer = transfert.beginTransfer(storageBuffer0);
+			BufferWriter indexBufferWriter = transfert.beginTransfer(indexBuffer);
+			
+			Random random = new Random();
+			
+			SphereDataCollector.collect(vertexBufferWriter, indexBufferWriter, Vector3f.origin(), 0.06F, 8);
+			
+			for (float i = -DIM; i < DIM; i++)
 			{
-				System.out.println("PrintState" + stateIndex);
-				try (PrintStream stream = new PrintStream("state/state" + stateIndex++ + ".txt");)
+				for (float j = -DIM; j < DIM; j++)
 				{
-					Debug.setDebugOutput(stream);
-					Debug.printState();
-					Debug.printState("RenderPass", renderPass);
-					Debug.printState("Renderer", renderer);
-		
-					Debug.print("ComputePipeline ", computePipeline);
-					Debug.print("GroupCount: " + 256 + "x" + 1 + "x" + 1);
-		
-					Debug.print("InputBuffer", storageBuffer0);
-					//Debug.printState("InputLayout", inputLayout);
-					Debug.print("OutputBuffer", storageBuffer1);
-					//Debug.printState("OutputLayout", outputLayout);
-					Debug.print("UniformBuffer", uniformBuffer);
-					Debug.print("DescriptorPool: " + Debug.address(computeDescriptorPool));
-					Debug.print("DescriptorSetLayout: " + Debug.address(computeDescriptorSetLayout));
-					Debug.print("DescriptorSet: " + Debug.address(computeDescriptorSet));
-					Debug.printState("ComputeUniformLayout", computeUniformBufferLayout);
-					Debug.printState("ComputeStorageLayout", computeStorageBufferLayout);
-					Debug.setDebugOutput(System.out);
+					for (float k = -DIM; k < DIM; k++)
+					{
+						Color c = colors[random.nextInt(colors.length)];
+						storageBuffer0Writer.put(i / 10).put(j / 10).put(k / 10).put(0);
+						storageBuffer0Writer.put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(0);
+						storageBuffer0Writer.put(c.r() / 255).put(c.g() / 255).put(c.b() / 255).put(c.a() / 255);
+					}
 				}
-				catch (FileNotFoundException e)
+			}
+		}
+		catch (OutOfSpaceException e)
+		{
+			e.printStackTrace(System.out);
+			RenderEngine.terminate();
+			return;
+		}
+		{
+			VulkanBuffer srcBuffer = new VulkanBuffer(storageBuffer0, 0, storageBuffer0.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+			VulkanBuffer dstBuffer = new VulkanBuffer(storageBuffer1, storageBuffer0.getSize(), storageBuffer0.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+			device.configureSingleUseCommandBuffer(device.getGraphicsQueue(), buffer -> buffer.copyBuffer(srcBuffer, 0, dstBuffer, 0, storageBuffer0.getSize()));
+		}
+		renderPass = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
+		
+		PhysicalDeviceTranferState bigBufferTransfert = staticBigBuffer.startLocalBuffering();
+		
+		Renderer.Builder builder = Renderer.create();
+		builder.shaderProgram(shaderProgram);
+		builder.depthTestEnable(true);
+		builder.cullMode(VK10.VK_CULL_MODE_NONE);
+		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+		builder.bufferBindings(List.of(bigBufferTransfert.beginTransfer(uniformBuffer, 0, 256), bigBufferTransfert.beginTransfer(uniformBuffer, 256, 256)));
+		
+		renderer = builder.build(device, window.getSurface().getSize(), renderPass, ComputeCustomGraphicsPipeline::new);
+		
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VkDescriptorPoolCreateInfo poolInfo = VulkanUtils.descriptorPoolCreateInfo(stack, VulkanUtils.descriptorPoolSize(stack, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4));// static
+			poolInfo.maxSets(3);
+			
+			long[] p0 = new long[1];
+			VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorPool(device.getVk(), poolInfo, null, p0), "Failed to create descriptor pool!");
+			computeDescriptorPool = p0[0];
+			
+			VkDescriptorSetLayoutBinding.Buffer descriptorSetLayoutBindings = VkDescriptorSetLayoutBinding.malloc(3, stack);// static
+			
+			VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = descriptorSetLayoutBindings.get();
+			descriptorSetLayoutBinding.binding(0);
+			descriptorSetLayoutBinding.descriptorCount(1);
+			descriptorSetLayoutBinding.descriptorType(ShaderLayout.Type.UNIFORM_BUFFER.getType());
+			descriptorSetLayoutBinding.pImmutableSamplers(null);
+			descriptorSetLayoutBinding.stageFlags(VK10.VK_SHADER_STAGE_COMPUTE_BIT);
+			
+			descriptorSetLayoutBinding = descriptorSetLayoutBindings.get();
+			descriptorSetLayoutBinding.binding(1);
+			descriptorSetLayoutBinding.descriptorCount(1);
+			descriptorSetLayoutBinding.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
+			descriptorSetLayoutBinding.pImmutableSamplers(null);
+			descriptorSetLayoutBinding.stageFlags(VK10.VK_SHADER_STAGE_COMPUTE_BIT);
+			
+			descriptorSetLayoutBinding = descriptorSetLayoutBindings.get();
+			descriptorSetLayoutBinding.binding(2);
+			descriptorSetLayoutBinding.descriptorCount(1);
+			descriptorSetLayoutBinding.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
+			descriptorSetLayoutBinding.pImmutableSamplers(null);
+			descriptorSetLayoutBinding.stageFlags(VK10.VK_SHADER_STAGE_COMPUTE_BIT);
+			
+			descriptorSetLayoutBindings.rewind();
+			
+			LongBuffer p = stack.callocLong(1);
+			
+			VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorSetLayout(device.getVk(), VulkanUtils.descriptorSetLayoutInfo(stack, 0, descriptorSetLayoutBindings), null, p), "Failed to create descriptor set layout!");
+			
+			p.rewind();
+			
+			computeDescriptorSetLayout = p.get(0);
+			
+			long[] p1 = new long[1];
+			
+			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), VulkanUtils.descriptorSetAllocateInfo(stack, computeDescriptorPool, p), p1), "Failed to allocate descriptor sets!");
+			
+			computeDescriptorSet = p1[0];
+			computeDescriptorSetLock = new ReentrantLock();
+			
+			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
+			pipelineLayoutInfo.pSetLayouts(p);
+			computePipeline = new ComputePipeline(device, new PipelineLayout(device, pipelineLayoutInfo), true, computeShader);
+			
+			VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(3);
+			
+			computeUniformBufferLayout = new BufferLayout(device, computeDescriptorSetLock);
+			computeUniformBufferLayout.setWriteDescriptorSets(writeDescriptorSets.slice(0, 1));
+			computeUniformBufferLayout.setWriter(bigBufferTransfert.beginTransfer(uniformBuffer, 0, 512 * 4));
+			computeStorageBufferLayout = new BufferLayout(device, computeDescriptorSetLock);
+			computeStorageBufferLayout.setWriteDescriptorSets(writeDescriptorSets.slice(1, 2));
+			
+			VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
+			writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
+			writeDescriptorSet.pNext(0);
+			writeDescriptorSet.dstSet(p1[0]);
+			writeDescriptorSet.dstBinding(0);
+			writeDescriptorSet.dstArrayElement(0);
+			writeDescriptorSet.descriptorCount(1);
+			writeDescriptorSet.descriptorType(ShaderLayout.Type.UNIFORM_BUFFER.getType());
+			
+			int offset = 512;
+			int partialOffset = 0;
+			
+			VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
+			descriptorBufferInfo.buffer(uniformBuffer.getVk());
+			descriptorBufferInfo.offset(offset);
+			for (ShaderVariable variable : new ShaderVariable[] {
+				ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, MIN_BOUND),
+				ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, MAX_BOUND),
+				ShaderVariable.of(ShaderInputType.FLOAT, ENLAPSED_TIME),
+			})
+			{
+				int size = variable.getType().getLength();
+				if (partialOffset > 0 && partialOffset + size > 16)
 				{
-					e.printStackTrace(System.out);
-				}*/
+					offset += 16 - partialOffset;
+				}
+				computeUniformBufferLayout.mark(variable, offset / 4);
+				offset += size;
+				partialOffset = offset % 16;
+			}
+			descriptorBufferInfo.range(offset - descriptorBufferInfo.offset());
+			
+			writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
+			writeDescriptorSet.pImageInfo(null);
+			writeDescriptorSet.pTexelBufferView(null);
+			
+			writeDescriptorSet = writeDescriptorSets.get();
+			writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
+			writeDescriptorSet.pNext(0);
+			writeDescriptorSet.dstSet(p1[0]);
+			writeDescriptorSet.dstBinding(1);
+			writeDescriptorSet.dstArrayElement(0);
+			writeDescriptorSet.descriptorCount(1);
+			writeDescriptorSet.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
+			descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
+			descriptorBufferInfo.buffer(storageBuffer0.getVk());
+			descriptorBufferInfo.offset(0);
+			descriptorBufferInfo.range(4 * 12 * PARTICLE_COUNT);
+			writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
+			writeDescriptorSet.pImageInfo(null);
+			writeDescriptorSet.pTexelBufferView(null);
+			
+			writeDescriptorSet = writeDescriptorSets.get();
+			writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
+			writeDescriptorSet.pNext(0);
+			writeDescriptorSet.dstSet(p1[0]);
+			writeDescriptorSet.dstBinding(2);
+			writeDescriptorSet.dstArrayElement(0);
+			writeDescriptorSet.descriptorCount(1);
+			writeDescriptorSet.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
+			descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
+			descriptorBufferInfo.buffer(storageBuffer1.getVk());
+			descriptorBufferInfo.offset(0);
+			descriptorBufferInfo.range(4 * 12 * PARTICLE_COUNT);
+			writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
+			writeDescriptorSet.pImageInfo(null);
+			writeDescriptorSet.pTexelBufferView(null);
+			
+			writeDescriptorSets.rewind();
+			
+			computeUniformBufferLayout.set(MIN_BOUND, MIN_BOUND_VALUE);
+			computeUniformBufferLayout.set(MAX_BOUND, MAX_BOUND_VALUE);
+			computeUniformBufferLayout.set(ENLAPSED_TIME, 0F);
+			
+			computeUniformBufferLayout.updateDescriptorSets();
+			computeStorageBufferLayout.updateDescriptorSets();
+			
+			System.out.println("SUCCESS");
+		}
+		
+		renderer.setVertexBuffers(0, vertexBuffer);
+		renderer.setVertexBuffers(1, storageBuffer0);
+		renderer.setIndexBuffer(indexBuffer);
+		renderer.updateUniforms(l -> {
+			l.set(PROJECTION, buildProjectionMatrix(window));
+			//flush
+		});
+		
+		printState();
+	}
+	
+	private static int stateIndex = 1000;
+	
+	private static void printState()
+	{
+		System.out.println("PrintState" + stateIndex);
+		try (PrintStream stream = new PrintStream("state/state" + stateIndex++ + ".txt");)
+		{
+			Debug.setDebugOutput(stream);
+			Debug.printState();
+			Debug.printState("RenderPass", renderPass);
+			Debug.printState("Renderer", renderer);
+			
+			Debug.print("ComputePipeline ", computePipeline);
+			Debug.print("GroupCount: " + 256 + "x" + 1 + "x" + 1);
+			
+			Debug.print("InputBuffer", storageBuffer0);
+			//Debug.printState("InputLayout", inputLayout);
+			Debug.print("OutputBuffer", storageBuffer1);
+			//Debug.printState("OutputLayout", outputLayout);
+			Debug.print("UniformBuffer", uniformBuffer);
+			Debug.print("DescriptorPool: " + Debug.address(computeDescriptorPool));
+			Debug.print("DescriptorSetLayout: " + Debug.address(computeDescriptorSetLayout));
+			Debug.print("DescriptorSet: " + Debug.address(computeDescriptorSet));
+			Debug.printState("ComputeUniformLayout", computeUniformBufferLayout);
+			Debug.printState("ComputeStorageLayout", computeStorageBufferLayout);
+			Debug.setDebugOutput(System.out);
+		}
+		catch (FileNotFoundException e)
+		{
+			e.printStackTrace(System.out);
+		}
 	}
 	
 	@SuppressWarnings("null")
@@ -525,40 +554,23 @@ public class ComputeTest extends RenderTest {
 			float sin = Math.sin(angle);
 			float cos = Math.cos(angle);
 			Vector3f movement = Vector3f.of(0, 0, 0);
-			if (cameraMovement.z() == 1)
-			{
-				movement.add(sin, 0, -cos);
-			}
-			if (cameraMovement.x() == -1)
-			{
-				movement.add(cos, 0, sin);
-			}
-			if (cameraMovement.z() == -1)
-			{
-				movement.add(-sin, 0, cos);
-			}
-			if (cameraMovement.x() == 1)
-			{
-				movement.add(-cos, 0, -sin);
-			}
+			if (cameraMovement.z() == 1) movement.add(sin, 0, -cos);
+			if (cameraMovement.x() == -1) movement.add(cos, 0, sin);
+			if (cameraMovement.z() == -1) movement.add(-sin, 0, cos);
+			if (cameraMovement.x() == 1) movement.add(-cos, 0, -sin);
 			movement.add(0, cameraMovement.y(), 0);
 			
 			cameraPosition.add(movement.multiplyAll(enlapsed / 1000000000F));
 			rebuildProjectionMatrix = true;
 		}
 		String title = "Test fps=" + fps;
-		if (isCameraUnlocked)
-		{
-			title += ", pos=" + cameraPosition + ", vel=" + cameraMovement + ", angles={" + cameraXRotation.asFloatBounded(AngleUnit.DEGREES) + ", " + cameraYRotation.asFloatBounded(AngleUnit.DEGREES) + "}";
-		}
+		if (isCameraUnlocked) title += ", pos=" + cameraPosition + ", vel=" + cameraMovement + ", angles={" + cameraXRotation.asFloatBounded(AngleUnit.DEGREES) + ", " + cameraYRotation.asFloatBounded(AngleUnit.DEGREES) + "}";
 		window.setTitle(title);
 		
 		if (rebuildProjectionMatrix)
-		{
 			//renderer.updateUniforms(uniformBuffer, l -> l.set(PROJECTION, uniformBuffer, buildProjectionMatrix(window)));
-		}
-		
-		window.pollEvents();
+			
+			window.pollEvents();
 		if (!window.isIconified())
 		{
 			try (MemoryStack stack = MemoryStack.stackPush())

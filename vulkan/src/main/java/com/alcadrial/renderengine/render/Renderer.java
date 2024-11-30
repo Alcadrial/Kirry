@@ -93,9 +93,28 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		if (layout != null) action.accept(layout);
 	}
 	
+	public void updateUniform(String uniform, VulkanConsumer<BufferLayout> action, CommandBuffer target) throws VulkanException
+	{
+		BufferLayout layout = uniforms.get(uniform);
+		if (layout != null)
+		{
+			action.accept(layout);
+			layout.flush(target);
+		}
+	}
+	
 	public void updateUniforms(VulkanConsumer<BufferLayout> action) throws VulkanException
 	{
 		for (BufferLayout layout : uniforms.values()) action.accept(layout);
+	}
+	
+	public void updateUniforms(VulkanConsumer<BufferLayout> action, CommandBuffer target) throws VulkanException
+	{
+		for (BufferLayout layout : uniforms.values())
+		{
+			action.accept(layout);
+			layout.flush(target);
+		}
 	}
 	
 	public void addExtraCommand(VulkanConsumer<CommandBuffer> command)
@@ -292,28 +311,21 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		
 		public Renderer build(Device device, Vector2i outputSize, RenderPass renderPass, GraphicsPipelineBuildFunction<?> builderFunction) throws VulkanException
 		{
-			try
-			{
-				this.device.setNonNull(device);
-				physicalDevice.set(device.getPhysicalDevice());
-				size.setNonNull(outputSize);
-				this.renderPass.setNonNull(renderPass);
-				
-				createDescriptorSet();
-				
-				VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
-				pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayout));
-				
-				pipelineLayout.set(new PipelineLayout(device, pipelineLayoutInfo));
-				
-				graphicsPipeline.set(createGraphicsPipeline(outputSize, builderFunction));
-				
-				return new Renderer(this, device, graphicsPipeline.get(), descriptorSetLayout, descriptorSet, descriptorPool, uniforms);
-			}
-			finally
-			{
-				close();
-			}
+			this.device.setNonNull(device);
+			physicalDevice.set(device.getPhysicalDevice());
+			size.setNonNull(outputSize);
+			this.renderPass.setNonNull(renderPass);
+			
+			createDescriptorSet();
+			
+			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
+			pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayout));
+			
+			pipelineLayout.set(new PipelineLayout(device, pipelineLayoutInfo));
+			
+			graphicsPipeline.set(createGraphicsPipeline(outputSize, builderFunction));
+			
+			return new Renderer(this, device, graphicsPipeline.get(), descriptorSetLayout, descriptorSet, descriptorPool, uniforms);
 		}
 	}
 	

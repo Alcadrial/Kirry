@@ -66,7 +66,7 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 			}
 			usage |= isLocalBufferingActive() ? VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT : VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 			
-			VulkanBuffer buffer = new VulkanBuffer(bigBuffer, offset, usage, size);
+			VulkanBuffer buffer = new VulkanBuffer(bigBuffer, offset, size, usage);
 			slots.addLast(new Slot<>(buffer));
 			
 			if (isLocalBufferingActive()) localAllocationOffset = allocationOffset;

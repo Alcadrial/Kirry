@@ -31,16 +31,21 @@ import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.axis.Axis;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.CommandBuffer;
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.Vulkan;
+import com.alcadrial.renderengine.render.buffer.BigVulkanBuffer.PhysicalDeviceTranferState;
+import com.alcadrial.renderengine.render.buffer.BufferWriter;
+import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.util.OutOfSpaceException;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
@@ -60,6 +65,7 @@ public class DepthBufferTest extends RenderTest {
 	
 	private static RenderPass renderPass;
 	private static Renderer renderer;
+	private static StaticBigBuffer staticBigBuffer;
 	private static VulkanBuffer vertexBuffer;
 	private static VulkanBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
@@ -183,34 +189,11 @@ public class DepthBufferTest extends RenderTest {
 		
 		renderPass = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
 		
-		uniformBuffer = new VulkanBuffer(device, Math.max(256 * 2, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		staticBigBuffer = new StaticBigBuffer(device, 65536);
+		vertexBuffer = staticBigBuffer.allocate(36 * 10 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		indexBuffer = staticBigBuffer.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+		uniformBuffer = staticBigBuffer.allocate(256 * 2 * 4, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 		
-		Builder builder = Renderer.create();
-		builder.shaderProgram(shaderProgram);
-		builder.depthTestEnable(true);
-		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
-		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);/*
-																	builder.bufferBindings(List.of(
-																	new VulkanBufferRange(uniformBuffer, 0),
-																	new VulkanBufferRange(uniformBuffer, 256)
-																	));*/
-		renderer = builder.build(device, window.getSurface().getSize(), renderPass);
-		
-		lightPos = Vector3f.of(0.3F, 1, 0);
-		f = 0;
-		/*
-				vertexBuffer = new VertexBuffer(240);
-				indexBuffer = new IndexBuffer(36);
-				renderer.addVertexBuffer(0, vertexBuffer.getGpuBuffer());
-				renderer.setIndexBuffer(indexBuffer.getGpuBuffer());
-				renderer.updateUniforms(uniformBuffer, l -> {
-					l.set(PROJECTION, uniformBuffer, buildProjectionMatrix(window));
-					l.set(MODEL, uniformBuffer, buildModelMatrix());
-					l.set(LIGHT_POS, uniformBuffer, lightPos);
-					l.set(LIGHT_INTENSITY, uniformBuffer, 0.8F);
-					l.set(SPACE_FOG_INTENSITY, uniformBuffer, 0.4F);
-				});
-		*/
 		Color[] colors = new Color[] {
 			Color.VERY_LIGHT_YELLOW,
 			Color.VERY_LIGHT_RED,
@@ -218,12 +201,54 @@ public class DepthBufferTest extends RenderTest {
 			Color.VERY_LIGHT_GREEN,
 			Color.VERY_LIGHT_CYAN,
 			Color.VERY_LIGHT_BLUE
-		};/*
+		};
+		
+		try (PhysicalDeviceTranferState transfert = staticBigBuffer.startLocalBuffering())
+		{
+			BufferWriter vertexBufferWriter = transfert.beginTransfer(vertexBuffer);
+			BufferWriter indexBufferWriter = transfert.beginTransfer(indexBuffer);
 			
-			RenderingDataUtils.loadOrthoCube(vertexBuffer, 0, indexBuffer, 0, 0, Vector3f.of(-1, -1, -1), Vector3f.of(1, 1, 1), (i, j) -> colors[i]);
-			
-			vertexBuffer.sendToPhysicalDevice();
-			indexBuffer.sendToPhysicalDevice();*/
+			RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3f.of(-1, -1, -1), Vector3f.of(1, 1, 1), (i, j) -> colors[i]);
+		}
+		catch (OutOfSpaceException e)
+		{
+			e.printStackTrace(System.out);
+			RenderEngine.terminate();
+			return;
+		}
+		lightPos = Vector3f.of(0.3F, 1, 0);
+		f = 0;
+		
+		PhysicalDeviceTranferState bigBufferTransfert = staticBigBuffer.startLocalBuffering();
+		
+		Builder builder = Renderer.create();
+		builder.shaderProgram(shaderProgram);
+		builder.depthTestEnable(true);
+		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
+		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+		builder.bufferBindings(
+				bigBufferTransfert.beginTransfer(uniformBuffer, 0, 256),
+				bigBufferTransfert.beginTransfer(uniformBuffer, 256, 256)
+		);
+		renderer = builder.build(device, window.getSurface().getSize(), renderPass);
+		renderer.setVertexBuffers(0, vertexBuffer);
+		renderer.setIndexBuffer(indexBuffer);
+		renderer.updateUniforms(l -> {
+			l.set(PROJECTION, buildProjectionMatrix(window));
+			l.set(MODEL, buildModelMatrix());
+			l.set(LIGHT_POS, lightPos);
+			l.set(LIGHT_INTENSITY, 0.8F);
+			l.set(SPACE_FOG_INTENSITY, 0.4F);
+		});
+		
+		Debug.onDebug(() -> {
+			device.setObjectDebugName(device, "Device");
+			renderPass.setName("Renderpass");
+			staticBigBuffer.setName("Big buffer");
+			vertexBuffer.setName("Vertex buffer");
+			indexBuffer.setName("Index buffer");
+			uniformBuffer.setName("Uniform buffer");
+		});
 	}
 	
 	public static void loop(long time, long enlapsed) throws VulkanException
@@ -232,8 +257,6 @@ public class DepthBufferTest extends RenderTest {
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			window.pollEvents();
-			
 			CommandBuffer commandBuffer = window.getDevice().createSingleUseCommandBuffer();
 			
 			VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
@@ -254,6 +277,10 @@ public class DepthBufferTest extends RenderTest {
 			clearValues.get().depthStencil().depth(1).stencil(0);
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
 			
+			renderer.updateUniforms(l -> {
+				l.set(MODEL, buildModelMatrix());
+				l.flush(commandBuffer);
+			}, commandBuffer);
 			commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
 			commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), 0, 1);
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
@@ -261,11 +288,10 @@ public class DepthBufferTest extends RenderTest {
 			commandBuffer.endRenderPass();
 			commandBuffer.endRecording();
 			
-			window.swapBuffers(commandBuffer);
-			window.pollEvents();
-			window.update();
+			window.swapBuffers(commandBuffer, () -> commandBuffer.close());
 		}
-		renderer.updateUniforms(l -> l.set(MODEL, buildModelMatrix()));
+		window.pollEvents();
+		window.update();
 		f = time / 1000000D;
 	}
 	

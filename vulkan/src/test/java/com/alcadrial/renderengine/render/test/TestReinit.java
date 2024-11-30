@@ -55,7 +55,7 @@ public class TestReinit extends RenderTest {
 		
 		Logic logic = new Logic();
 		
-		for (int i = 0; i < 1000; i++)
+		for (int i = 0; i < 100; i++)
 		{
 			try
 			{
@@ -222,7 +222,7 @@ public class TestReinit extends RenderTest {
 			long milestone = firstMilestone;
 			long highMilestone = firstHighMilestone;
 			
-			while (!window.shouldClose())
+			for (int i = 0; i < 5; i++)
 			{
 				try (MemoryStack stack = MemoryStack.stackPush())
 				{

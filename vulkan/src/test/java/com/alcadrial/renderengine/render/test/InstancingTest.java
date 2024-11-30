@@ -329,7 +329,7 @@ public class InstancingTest extends RenderTest {
 			println("Update Uniforms", () -> renderer.updateUniform(MODEL, l -> {
 				l.set(MODEL, buildModelMatrix());
 				l.flush(commandBuffer);
-			}), TestProperties.PRINT_FRAME_TIMES);
+			}, commandBuffer), TestProperties.PRINT_FRAME_TIMES);
 			
 			commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
 			commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), 0, 1);

@@ -65,7 +65,7 @@ public class VulkanBuffer extends RawDeviceResource {
 		}
 	}
 	
-	public VulkanBuffer(VulkanBuffer buffer, long offset, int usage, int size) throws VulkanException
+	public VulkanBuffer(VulkanBuffer buffer, long offset, int size, int usage) throws VulkanException
 	{
 		super(buffer.device);
 		this.offset = offset;

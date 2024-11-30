@@ -19,10 +19,7 @@ public class RenderingDataUtils {
 	
 	public static void loadOrthoCube(BufferWriter vertexBufferWriter, int vertexBufferOffset, @Nullable BufferWriter indexBufferWriter, int indexBufferOffset, int startIndex, Vector3f start, Vector3f end, BiFunction<Integer, Integer, Color> color) throws VulkanException
 	{
-		if (indexBufferWriter != null)
-		{
-			indexBufferWriter.setCursor(indexBufferOffset);
-		}
+		if (indexBufferWriter != null) indexBufferWriter.setCursor(indexBufferOffset);
 		
 		float sX = start.x();
 		float sY = start.y();
@@ -35,55 +32,37 @@ public class RenderingDataUtils {
 		loadVertex(vertexBufferWriter, eX, eY, sZ, color.apply(0, 1), 0, 0, -1);
 		loadVertex(vertexBufferWriter, eX, sY, sZ, color.apply(0, 2), 0, 0, -1);
 		loadVertex(vertexBufferWriter, sX, sY, sZ, color.apply(0, 3), 0, 0, -1);
-		if (indexBufferWriter != null)
-		{
-			loadRectangleIndices(indexBufferWriter, startIndex);
-		}
+		if (indexBufferWriter != null) loadRectangleIndices(indexBufferWriter, startIndex);
 		
 		loadVertex(vertexBufferWriter, sX, eY, eZ, color.apply(1, 0), -1, 0, 0);
 		loadVertex(vertexBufferWriter, sX, eY, sZ, color.apply(1, 1), -1, 0, 0);
 		loadVertex(vertexBufferWriter, sX, sY, sZ, color.apply(1, 2), -1, 0, 0);
 		loadVertex(vertexBufferWriter, sX, sY, eZ, color.apply(1, 3), -1, 0, 0);
-		if (indexBufferWriter != null)
-		{
-			loadRectangleIndices(indexBufferWriter, startIndex += 4);
-		}
+		if (indexBufferWriter != null) loadRectangleIndices(indexBufferWriter, startIndex += 4);
 		
 		loadVertex(vertexBufferWriter, eX, eY, eZ, color.apply(2, 0), 0, 0, 1);
 		loadVertex(vertexBufferWriter, sX, eY, eZ, color.apply(2, 1), 0, 0, 1);
 		loadVertex(vertexBufferWriter, sX, sY, eZ, color.apply(2, 2), 0, 0, 1);
 		loadVertex(vertexBufferWriter, eX, sY, eZ, color.apply(2, 3), 0, 0, 1);
-		if (indexBufferWriter != null)
-		{
-			loadRectangleIndices(indexBufferWriter, startIndex += 4);
-		}
+		if (indexBufferWriter != null) loadRectangleIndices(indexBufferWriter, startIndex += 4);
 		
 		loadVertex(vertexBufferWriter, eX, eY, sZ, color.apply(3, 0), 1, 0, 0);
 		loadVertex(vertexBufferWriter, eX, eY, eZ, color.apply(3, 1), 1, 0, 0);
 		loadVertex(vertexBufferWriter, eX, sY, eZ, color.apply(3, 2), 1, 0, 0);
 		loadVertex(vertexBufferWriter, eX, sY, sZ, color.apply(3, 3), 1, 0, 0);
-		if (indexBufferWriter != null)
-		{
-			loadRectangleIndices(indexBufferWriter, startIndex += 4);
-		}
+		if (indexBufferWriter != null) loadRectangleIndices(indexBufferWriter, startIndex += 4);
 		
 		loadVertex(vertexBufferWriter, sX, eY, eZ, color.apply(4, 0), 0, 1, 0);
 		loadVertex(vertexBufferWriter, eX, eY, eZ, color.apply(4, 1), 0, 1, 0);
 		loadVertex(vertexBufferWriter, eX, eY, sZ, color.apply(4, 2), 0, 1, 0);
 		loadVertex(vertexBufferWriter, sX, eY, sZ, color.apply(4, 3), 0, 1, 0);
-		if (indexBufferWriter != null)
-		{
-			loadRectangleIndices(indexBufferWriter, startIndex += 4);
-		}
+		if (indexBufferWriter != null) loadRectangleIndices(indexBufferWriter, startIndex += 4);
 		
 		loadVertex(vertexBufferWriter, sX, sY, sZ, color.apply(5, 0), 0, -1, 0);
 		loadVertex(vertexBufferWriter, eX, sY, sZ, color.apply(5, 1), 0, -1, 0);
 		loadVertex(vertexBufferWriter, eX, sY, eZ, color.apply(5, 2), 0, -1, 0);
 		loadVertex(vertexBufferWriter, sX, sY, eZ, color.apply(5, 3), 0, -1, 0);
-		if (indexBufferWriter != null)
-		{
-			loadRectangleIndices(indexBufferWriter, startIndex += 4);
-		}
+		if (indexBufferWriter != null) loadRectangleIndices(indexBufferWriter, startIndex += 4);
 	}
 	
 	public static void loadRectangleIndices(BufferWriter buffer, int startIndex)
