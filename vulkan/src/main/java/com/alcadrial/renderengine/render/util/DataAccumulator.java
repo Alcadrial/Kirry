@@ -818,7 +818,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		}
 	}
 	
-	protected class DataElement<T> {
+	protected static class DataElement<T> {
 		
 		private static <E extends RuntimeException> E removeInternalStackTrace(E e)
 		{

@@ -1,5 +1,7 @@
 package com.alcadrial.renderengine.render.util;
 
+import java.util.function.Supplier;
+
 import org.lwjgl.vulkan.EXTDebugReport;
 import org.lwjgl.vulkan.EXTFullScreenExclusive;
 import org.lwjgl.vulkan.EXTImageCompressionControl;

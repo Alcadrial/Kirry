@@ -10,9 +10,7 @@ import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.system.Pointer;
 import org.lwjgl.system.Struct;
 import org.lwjgl.system.StructBuffer;
-import org.lwjgl.system.windows.Kernel32;
 
-import com.alcadrial.renderengine.render.Vulkan.ThreadData;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
 
 public class Debug {
@@ -21,7 +19,6 @@ public class Debug {
 	{
 		RenderEngine.assertLoaded();
 	}
-	
 	
 	public static <T> T get(Supplier<T> debugRunnable, Supplier<T> releaseRunnable)
 	{
