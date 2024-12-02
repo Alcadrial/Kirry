@@ -446,7 +446,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 						
 						VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
 						descriptorBufferInfo.buffer(writer.getDstBuffer().getVk());
-						descriptorBufferInfo.offset(offsets[0] + writer.getDstOffset());//use bufferRange.getOffset()
+						descriptorBufferInfo.offset(offsets[0] + writer.getDstOffset());
 						for (ShaderVariable variable : variables)
 						{
 							int size = variable.getType().getLength();

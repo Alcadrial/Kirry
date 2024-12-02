@@ -1,14 +1,12 @@
 package com.alcadrial.renderengine.render.buffer;
 
-import java.nio.ByteBuffer;
-
-import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.util.DataUtils;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -20,14 +18,12 @@ public class VulkanBuffer extends RawDeviceResource {
 		RenderEngine.assertLoaded();
 	}
 	
-	protected long memory;
-	private ByteBuffer map;
-	private int mappings;
-	
-	protected long offset;
-	protected int size;
+	protected Memory memory;
 	private VulkanBuffer parent;
-	private int usage;
+	
+	protected final long offset;
+	protected final int size;
+	private final int usage;
 	
 	/**
 	 *
@@ -43,12 +39,12 @@ public class VulkanBuffer extends RawDeviceResource {
 		offset = 0;
 		this.size = size;
 		this.usage = usage;
-		parent = null;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			vk = device.createBuffer(stack, size, usage);
 			memory = device.allocateMemory(stack, this, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 		}
+		Debug.debugAllocation(() -> "Allocated " + this);
 	}
 	
 	public VulkanBuffer(Device device, int size, int usage, int requiredProperties, int optimalProperties) throws VulkanException
@@ -57,18 +53,18 @@ public class VulkanBuffer extends RawDeviceResource {
 		offset = 0;
 		this.size = size;
 		this.usage = usage;
-		parent = null;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			vk = device.createBuffer(stack, size, usage);
 			memory = device.allocateMemory(stack, this, requiredProperties, optimalProperties);
 		}
+		Debug.debugAllocation(() -> "Allocated " + this);
 	}
 	
 	public VulkanBuffer(VulkanBuffer buffer, long offset, int size, int usage) throws VulkanException
 	{
 		super(buffer.device);
-		this.offset = offset;
+		this.offset = buffer.offset + offset;
 		this.size = size;
 		this.usage = usage;
 		parent = buffer;
@@ -76,14 +72,14 @@ public class VulkanBuffer extends RawDeviceResource {
 		{
 			vk = device.createBuffer(stack, size, usage);
 			memory = buffer.memory;
-			VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), vk, memory, offset), "Failed to bind buffer memory");
+			VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), vk, memory.getVk(), buffer.offset + offset), "Failed to bind buffer memory");
 		}
 	}
 	
 	public VulkanBuffer(VulkanBuffer buffer, long offset, int size) throws VulkanException
 	{
 		super(buffer.device);
-		this.offset = offset;
+		this.offset = buffer.offset + offset;
 		this.size = size;
 		usage = buffer.usage;
 		parent = buffer;
@@ -91,58 +87,13 @@ public class VulkanBuffer extends RawDeviceResource {
 		{
 			vk = device.createBuffer(stack, size, usage);
 			memory = buffer.memory;
-			VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), vk, memory, offset), "Failed to bind buffer memory");
+			VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), vk, memory.getVk(), buffer.offset + offset), "Failed to bind buffer memory");
 		}
 	}
 	
-	@Override
-	public void setName(String name)
+	public Memory getMemory()
 	{
-		device.setObjectDebugName(this, name);
-		this.name = name;
-	}
-	
-	public ByteBuffer getByteBuffer(int offset, int size) throws VulkanException
-	{
-		if (map == null)
-		{
-			if (parent != null)
-			{
-				map = parent.getByteBuffer((int) (this.offset + offset), size);
-			}
-			else
-			{
-				try (MemoryStack stack = MemoryStack.stackPush())
-				{
-					PointerBuffer gpuData = stack.mallocPointer(1);
-					VulkanErrorUtils.assertNoError(VK10.vkMapMemory(device.getVk(), memory, this.offset, this.size, 0, gpuData), "Failed to map buffer memory");
-					map = gpuData.getByteBuffer(this.size);
-					mappings++;
-				}
-			}
-		}
-		return map.slice(offset, size).order(map.order());
-	}
-	
-	public synchronized void unmapBuffer()
-	{
-		if (map != null)
-		{
-			if (parent != null)
-			{
-				parent.unmapBuffer();
-			}
-			else if (mappings <= 1)
-			{
-				mappings = 0;
-				VK10.vkUnmapMemory(device.getVk(), memory);//keep mapped if possible
-				map = null;
-			}
-			else
-			{
-				mappings--;
-			}
-		}
+		return memory;
 	}
 	
 	/**
@@ -168,27 +119,22 @@ public class VulkanBuffer extends RawDeviceResource {
 		return usage;
 	}
 	
-	protected void closeCopy()
+	@Override
+	public void close()
 	{
+		if (parent == null)
+		{
+			Debug.debugAllocation(() -> "Deallocated " + this);
+			memory.close();
+		}
 		VK10.vkDestroyBuffer(device.getVk(), vk, null);
-		memory = 0;
-		super.close();
-	}
-	
-	protected void closeOriginal()
-	{
-		VK10.vkDestroyBuffer(device.getVk(), vk, null);
-		VK10.vkFreeMemory(device.getVk(), memory, null);
-		memory = 0;
 		super.close();
 	}
 	
 	@Override
-	public void close()
+	public String toString()
 	{
-		if (map != null) unmapBuffer();
-		if (parent != null) closeCopy();
-		else closeOriginal();
+		return (name != null ? name + "{" : "VulkanBuffer{") + Debug.address(vk) + ", " + (offset != 0 ? "offset=" + offset + ", " : "") + size + " bytes, (" + DataUtils.getBufferUsage(usage) + "), mem=" + Debug.address(memory.getVk()) + "}";
 	}
 	
 	@Override
@@ -196,7 +142,14 @@ public class VulkanBuffer extends RawDeviceResource {
 	{
 		Debug.print("Vk: " + Debug.address(vk));
 		Debug.print("Offset: " + offset);
-		Debug.print("Memory: " + Debug.address(memory));
+		Debug.print("Memory: ", memory);
 		Debug.print("Size: " + size);
+	}
+	
+	@Override
+	public void setName(String name)
+	{
+		device.setObjectDebugName(this, name);
+		this.name = name;
 	}
 }

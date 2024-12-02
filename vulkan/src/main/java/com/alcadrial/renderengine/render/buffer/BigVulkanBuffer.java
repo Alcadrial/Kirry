@@ -2,11 +2,13 @@ package com.alcadrial.renderengine.render.buffer;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
 import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.renderengine.render.CommandBuffer;
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.OutOfSpaceException;
@@ -26,14 +28,15 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 	protected BigVulkanBuffer(Device device, int size, int flags) throws VulkanException
 	{
 		super(device);
-		remoteBigBuffer = new VulkanBuffer(device, size, VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+		remoteBigBuffer = new VulkanBuffer(device, size, VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+		Debug.debugAllocation(() -> "Created BigBuffer " + (isLocalBufferingActive() ? "Local" : "Remote") + " " + remoteBigBuffer);
 		vk = remoteBigBuffer.getVk();
 	}
 	
 	@Override
 	public void setName(String name)
 	{
-		device.setObjectDebugName(remoteBigBuffer, name);
+		remoteBigBuffer.setName(name);
 		this.name = name;
 	}
 	
@@ -52,6 +55,7 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 		if (localBigBuffer == null)
 		{
 			localBigBuffer = new VulkanBuffer(remoteBigBuffer.getDevice(), remoteBigBuffer.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK10.VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+			localBigBuffer.getMemory().mapMemory();
 			return new PhysicalDeviceTranferState();
 		}
 		throw new IllegalStateException("Local buffering already started");
@@ -83,8 +87,13 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 	@Override
 	public void close()
 	{
+		if (isLocalBufferingActive())
+		{
+			clear();
+			localBigBuffer.close();
+			localBigBuffer = null;
+		}
 		clear();
-		if (isLocalBufferingActive()) localBigBuffer.close();
 		remoteBigBuffer.close();
 		super.close();
 	}
@@ -113,7 +122,7 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 		 */
 		public BufferWriter beginTransfer(VulkanBuffer remoteBuffer, int offset, int size) throws VulkanException
 		{
-			BufferWriter writer = new BufferWriter(allocate(remoteBuffer.size, remoteBuffer.getUsage()), 0, remoteBuffer, offset, size, commandBuffer);
+			BufferWriter writer = new BufferWriter(allocate(size, remoteBuffer.getUsage()), 0, remoteBuffer, offset, size, commandBuffer);
 			writers.add(writer);
 			return writer;
 		}
@@ -139,9 +148,22 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 		{
 			synchronized (BigVulkanBuffer.this)
 			{
-				for (BufferWriter writer : writers) writer.close();
+				for (BufferWriter writer : writers)
+				{
+					try
+					{
+						writer.getLoad().get();
+					}
+					catch (InterruptedException | ExecutionException e)
+					{
+						// TODO Auto-generated catch block
+						e.printStackTrace(System.out);
+					}
+					writer.close();
+				}
 				writers.clear();
 				clear();
+				localBigBuffer.getMemory().unmapMemory();
 				localBigBuffer.close();
 				localBigBuffer = null;
 			}

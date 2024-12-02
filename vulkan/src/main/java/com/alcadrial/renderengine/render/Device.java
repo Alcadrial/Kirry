@@ -22,6 +22,7 @@ import org.lwjgl.vulkan.VkFenceCreateInfo;
 import org.lwjgl.vulkan.VkMemoryRequirements;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 
+import com.alcadrial.renderengine.render.buffer.Memory;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.pipeline.Pipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
@@ -342,13 +343,6 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	// MEMORY
 	
-	public VkMemoryRequirements getMemoryRequirements(VulkanBuffer buffer)
-	{
-		VkMemoryRequirements memoryRequirements = VkMemoryRequirements.malloc();
-		VK10.vkGetBufferMemoryRequirements(vk, buffer.getVk(), memoryRequirements);
-		return memoryRequirements;
-	}
-	
 	public VkMemoryRequirements getBufferRequirements(MemoryStack stack, VulkanBuffer buffer)
 	{
 		VkMemoryRequirements memoryRequirements = VkMemoryRequirements.malloc(stack);
@@ -356,35 +350,28 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		return memoryRequirements;
 	}
 	
-	public VkMemoryRequirements getMemoryRequirements(Texture texture)
-	{
-		VkMemoryRequirements memoryRequirements = VkMemoryRequirements.malloc();
-		VK10.vkGetImageMemoryRequirements(vk, texture.getVk(), memoryRequirements);
-		return memoryRequirements;
-	}
-	
-	public VkMemoryRequirements getMemoryRequirements(MemoryStack stack, Texture texture)
+	public VkMemoryRequirements getImageRequirements(MemoryStack stack, Texture texture)
 	{
 		VkMemoryRequirements memoryRequirements = VkMemoryRequirements.malloc(stack);
 		VK10.vkGetImageMemoryRequirements(vk, texture.getVk(), memoryRequirements);
 		return memoryRequirements;
 	}
 	
-	public long allocateMemory(MemoryStack stack, VulkanBuffer buffer, int requiredProperties, int optimalProperties) throws VulkanException
+	public Memory allocateMemory(MemoryStack stack, VulkanBuffer buffer, int requiredProperties, int optimalProperties) throws VulkanException
 	{
-		long memory = allocateMemory(stack, getBufferRequirements(stack, buffer), requiredProperties, optimalProperties);
-		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(vk, buffer.getVk(), memory, 0), "Failed to bind buffer memory");
+		Memory memory = allocateMemory(stack, getBufferRequirements(stack, buffer), requiredProperties, optimalProperties);
+		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(vk, buffer.getVk(), memory.getVk(), 0), "Failed to bind buffer memory");
 		return memory;
 	}
 	
-	public long allocateMemory(MemoryStack stack, Texture texture, int requiredProperties, int optimalProperties) throws VulkanException
+	public Memory allocateMemory(MemoryStack stack, Texture texture, int requiredProperties, int optimalProperties) throws VulkanException
 	{
-		long memory = allocateMemory(stack, getMemoryRequirements(stack, texture), requiredProperties, optimalProperties);
-		VulkanErrorUtils.assertNoError(VK10.vkBindImageMemory(vk, texture.getVk(), memory, 0), "Failed to bind image memory");
+		Memory memory = allocateMemory(stack, getImageRequirements(stack, texture), requiredProperties, optimalProperties);
+		VulkanErrorUtils.assertNoError(VK10.vkBindImageMemory(vk, texture.getVk(), memory.getVk(), 0), "Failed to bind image memory");
 		return memory;
 	}
 	
-	private long allocateMemory(MemoryStack stack, VkMemoryRequirements memoryRequirements, int requiredProperties, int optimalProperties) throws VulkanException
+	private Memory allocateMemory(MemoryStack stack, VkMemoryRequirements memoryRequirements, int requiredProperties, int optimalProperties) throws VulkanException
 	{
 		if (memoryRequirements.size() == 0) throw new IllegalArgumentException("Cannot allocate 0 bytes memory");
 		VkPhysicalDeviceMemoryProperties memoryProperties = VkPhysicalDeviceMemoryProperties.malloc(stack);
@@ -416,7 +403,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		
 		LongBuffer p = stack.mallocLong(1);
 		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(vk, VulkanUtils.memoryAllocateInfo(stack, memoryRequirements.size(), index), null, p), () -> "Failed to allocate image memory (" + memoryRequirements.size() + " bytes)");
-		return p.get();
+		return new Memory(this, p.get(), (int) memoryRequirements.size());
 	}
 	
 	@Override
@@ -519,6 +506,11 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	public void setObjectDebugName(Queue object, String name)
 	{
 		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT, object.getVk().address(), name);
+	}
+	
+	public void setObjectDebugName(Memory object, String name)
+	{
+		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(VulkanBuffer object, String name)

@@ -146,7 +146,7 @@ public class ComputeTest extends RenderTest {
 			return;
 		}
 		
-		Debug.onDebug(() -> System.out.println("Debug active"));
+		Debug.runOnDebug(() -> System.out.println("Debug active"));
 		
 		Vulkan vulkan = RenderEngine.getVulkan();
 		
@@ -197,14 +197,8 @@ public class ComputeTest extends RenderTest {
 			if (isCameraUnlocked)
 			{
 				cameraXRotation.add(Angle.of(y - oldMousePos[0].y(), AngleUnit.DEGREES));
-				if (cameraXRotation.asDouble(AngleUnit.DEGREES) > 90)
-				{
-					cameraXRotation.setValue(AngleUnit.DEGREES, 90);
-				}
-				else if (cameraXRotation.asDouble(AngleUnit.DEGREES) < -90)
-				{
-					cameraXRotation.setValue(AngleUnit.DEGREES, -90);
-				}
+				if (cameraXRotation.asDouble(AngleUnit.DEGREES) > 90) cameraXRotation.setValue(AngleUnit.DEGREES, 90);
+				else if (cameraXRotation.asDouble(AngleUnit.DEGREES) < -90) cameraXRotation.setValue(AngleUnit.DEGREES, -90);
 				cameraYRotation.add(Angle.of(x - oldMousePos[0].x(), AngleUnit.DEGREES));
 				rebuildProjectionMatrix = true;
 			}
@@ -241,7 +235,7 @@ public class ComputeTest extends RenderTest {
 						{
 							renderer.updateUniforms(l -> {
 								l.set(PARTICLE_RADIUS, 0.01F);
-								//flush
+								device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), l::flush);
 							});
 						}
 						catch (VulkanException e)
@@ -343,8 +337,9 @@ public class ComputeTest extends RenderTest {
 		{
 			VulkanBuffer srcBuffer = new VulkanBuffer(storageBuffer0, 0, storageBuffer0.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 			VulkanBuffer dstBuffer = new VulkanBuffer(storageBuffer1, storageBuffer0.getSize(), storageBuffer0.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-			device.configureSingleUseCommandBuffer(device.getGraphicsQueue(), buffer -> buffer.copyBuffer(srcBuffer, 0, dstBuffer, 0, storageBuffer0.getSize()));
+			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), buffer -> buffer.copyBuffer(srcBuffer, 0, dstBuffer, 0, storageBuffer0.getSize())).join();
 		}
+		
 		renderPass = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
 		
 		PhysicalDeviceTranferState bigBufferTransfert = staticBigBuffer.startLocalBuffering();
@@ -415,7 +410,7 @@ public class ComputeTest extends RenderTest {
 			
 			computeUniformBufferLayout = new BufferLayout(device, computeDescriptorSetLock);
 			computeUniformBufferLayout.setWriteDescriptorSets(writeDescriptorSets.slice(0, 1));
-			computeUniformBufferLayout.setWriter(bigBufferTransfert.beginTransfer(uniformBuffer, 0, 512 * 4));
+			computeUniformBufferLayout.setWriter(bigBufferTransfert.beginTransfer(uniformBuffer));
 			computeStorageBufferLayout = new BufferLayout(device, computeDescriptorSetLock);
 			computeStorageBufferLayout.setWriteDescriptorSets(writeDescriptorSets.slice(1, 2));
 			
@@ -504,7 +499,7 @@ public class ComputeTest extends RenderTest {
 		renderer.setIndexBuffer(indexBuffer);
 		renderer.updateUniforms(l -> {
 			l.set(PROJECTION, buildProjectionMatrix(window));
-			//flush
+			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), l::flush).join();
 		});
 		
 		printState();
@@ -543,7 +538,6 @@ public class ComputeTest extends RenderTest {
 		}
 	}
 	
-	@SuppressWarnings("null")
 	public static void loop(long time, long enlapsed) throws VulkanException
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
@@ -568,9 +562,13 @@ public class ComputeTest extends RenderTest {
 		window.setTitle(title);
 		
 		if (rebuildProjectionMatrix)
-			//renderer.updateUniforms(uniformBuffer, l -> l.set(PROJECTION, uniformBuffer, buildProjectionMatrix(window)));
-			
-			window.pollEvents();
+		{
+			renderer.updateUniforms(l -> {
+				l.set(PROJECTION, buildProjectionMatrix(window));
+				window.getDevice().configureAndSubmitSingleUseCommandBuffer(window.getDevice().getGraphicsQueue(), l::flush).join();
+			});
+		}
+		
 		if (!window.isIconified())
 		{
 			try (MemoryStack stack = MemoryStack.stackPush())
@@ -604,7 +602,7 @@ public class ComputeTest extends RenderTest {
 				commandBuffer.bindDescriptorSets(computePipeline, new long[] {computeDescriptorSet}, new int[0]);
 				commandBuffer.dispatch(PARTICLE_COUNT / 256, 1, 1);
 				commandBuffer.endRecording();
-				
+				/*
 				window.swapBuffers(commandBuffer, () -> {
 					computeStorageBufferLayout.update(sets -> {
 						sets.get(I++ % 2).pBufferInfo().buffer(storageBuffer0.getVk());
@@ -621,9 +619,9 @@ public class ComputeTest extends RenderTest {
 						RenderEngine.terminate();
 						return;
 					}
-				});
+				});*/
+				window.swapBuffers(commandBuffer, commandBuffer::close);
 				window.pollEvents();
-				window.update();
 			}
 		}
 		window.update();

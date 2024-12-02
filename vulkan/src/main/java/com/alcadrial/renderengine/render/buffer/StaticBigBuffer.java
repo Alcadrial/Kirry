@@ -6,6 +6,7 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkMemoryRequirements;
 
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.OutOfSpaceException;
@@ -20,8 +21,8 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 	
 	private int remoteAllocationOffset;
 	private int localAllocationOffset;
-	protected LinkedList<Slot<?>> localSlots;
-	protected LinkedList<Slot<?>> remoteSlots;
+	protected LinkedList<Slot<? extends VulkanBuffer>> localSlots;
+	protected LinkedList<Slot<? extends VulkanBuffer>> remoteSlots;
 	
 	public StaticBigBuffer(Device device, int size) throws VulkanException
 	{
@@ -67,6 +68,7 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 			usage |= isLocalBufferingActive() ? VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT : VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 			
 			VulkanBuffer buffer = new VulkanBuffer(bigBuffer, offset, size, usage);
+			Debug.debugAllocation(() -> "Allocate " + (isLocalBufferingActive() ? "Local" : "Remote") + " " + buffer);
 			slots.addLast(new Slot<>(buffer));
 			
 			if (isLocalBufferingActive()) localAllocationOffset = allocationOffset;
@@ -74,6 +76,11 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 			return buffer;
 		}
 		throw new OutOfSpaceException("Missing " + (allocationOffset + size - bigBuffer.size) + " bytes of " + size + " requested (" + allocationOffset + "/" + bigBuffer.size + ")");
+	}
+	
+	public VulkanBuffer getRemoteBuffer()
+	{
+		return remoteBigBuffer;
 	}
 	
 	@Override
@@ -103,13 +110,23 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 		if (isLocalBufferingActive())
 		{
 			localAllocationOffset = 0;
-			for (Slot<?> slot : localSlots) slot.getBuffer().close();
+			for (Slot<? extends VulkanBuffer> slot : localSlots)
+			{
+				VulkanBuffer buffer = slot.getBuffer();
+				Debug.debugAllocation(() -> "Deallocated Local " + buffer);
+				buffer.close();
+			}
 			localSlots.clear();
 		}
 		else
 		{
 			remoteAllocationOffset = 0;
-			for (Slot<?> slot : remoteSlots) slot.getBuffer().close();
+			for (Slot<? extends VulkanBuffer> slot : remoteSlots)
+			{
+				VulkanBuffer buffer = slot.getBuffer();
+				Debug.debugAllocation(() -> "Deallocated Remote " + buffer);
+				buffer.close();
+			}
 			remoteSlots.clear();
 		}
 	}

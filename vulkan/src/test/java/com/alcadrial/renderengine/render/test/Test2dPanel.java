@@ -24,6 +24,7 @@ import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
+import com.alcadrial.kector.Math;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
@@ -51,6 +52,7 @@ public class Test2dPanel extends RenderTest {
 	
 	private static final String SHADER = "shader";
 	private static final String TRANSFORMATION_UNIFORM = "TRANSFORMATION";
+	private static final int SIZE = 256;
 	
 	public static void main(String[] args)
 	{
@@ -169,26 +171,30 @@ public class Test2dPanel extends RenderTest {
 		
 		renderPass = RenderPassTemplate.initColorTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
 		
-		staticBigBuffer = new StaticBigBuffer(device, 67108864);
+		staticBigBuffer = new StaticBigBuffer(device, ((7 * 4 + 6) * SIZE * SIZE * 4 + 64) * 4);
+		staticBigBuffer.setName("BigBuffer");
 		
-		vertexBuffer = staticBigBuffer.allocate(7 * 4 * 512 * 512 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		indexBuffer = staticBigBuffer.allocate(6 * 512 * 512 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-		uniformBuffer = staticBigBuffer.allocate(64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		vertexBuffer = staticBigBuffer.allocate(7 * 4 * SIZE * SIZE * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		vertexBuffer.setName("VertexBuffer");
+		indexBuffer = staticBigBuffer.allocate(6 * SIZE * SIZE * 4 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+		indexBuffer.setName("IndexBuffer");
+		uniformBuffer = staticBigBuffer.allocate(64 * 4, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		uniformBuffer.setName("UniformBuffer");
 		
 		PhysicalDeviceTranferState bigBufferTransfert = staticBigBuffer.startLocalBuffering();
 		
-		BufferWriter vertexBufferWriter = bigBufferTransfert.beginTransfer(vertexBuffer);
-		BufferWriter indexBufferWriter = bigBufferTransfert.beginTransfer(indexBuffer);
+		long seed = Double.doubleToRawLongBits(Math.random());
 		
-		Random random = new Random();
-		int k = 0;
-		for (int i = -256; i < 256; i++) for (int j = -256; j < 256; j++)
+		try (BufferWriter vertexBufferWriter = bigBufferTransfert.beginTransfer(vertexBuffer); BufferWriter indexBufferWriter = bigBufferTransfert.beginTransfer(indexBuffer))
 		{
-			RenderingDataUtils.loadRectangleColor(vertexBufferWriter, indexBufferWriter, k, j, i, j + 1, i + 1, 0, random.nextFloat(), random.nextFloat(), random.nextFloat(), random.nextFloat());
-			k += 4;
+			Random random = new Random(seed);
+			int k = 0;
+			for (int i = -SIZE; i < SIZE; i++) for (int j = -SIZE; j < SIZE; j++)
+			{
+				RenderingDataUtils.loadRectangleColor(vertexBufferWriter, indexBufferWriter, k, j, i, j + 1, i + 1, 0, random.nextFloat(), random.nextFloat(), random.nextFloat(), random.nextFloat());
+				k += 4;
+			}
 		}
-		vertexBufferWriter.close();
-		indexBufferWriter.close();
 		
 		Builder builder = Renderer.create();
 		builder.shaderProgram(shaderProgram);
@@ -199,6 +205,12 @@ public class Test2dPanel extends RenderTest {
 		renderer = builder.build(device, window.getSurface().getSize(), renderPass);
 		renderer.setVertexBuffers(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
+		renderer.updateUniforms(l -> {
+			Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
+			Matrix4f model = new Matrix4f().translateYTo(-panelPos.y()).translateXTo(-panelPos.x());
+			l.set(TRANSFORMATION_UNIFORM, orthographic.multiply(model));
+			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), l::flush).join();
+		});
 		
 		commandBuffers = device.createMultiUseCommandBuffer(3);
 		
@@ -209,7 +221,6 @@ public class Test2dPanel extends RenderTest {
 	public static void loop(long time, long enlapsed) throws VulkanException
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
-		Device device = window.getDevice();
 		
 		if (isModifiedMatrix)
 		{

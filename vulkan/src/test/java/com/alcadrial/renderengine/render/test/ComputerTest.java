@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.math.RoundingMode;
+import java.util.List;
 import java.util.Random;
 
 import org.lwjgl.glfw.GLFW;
@@ -40,12 +41,17 @@ import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.Vulkan;
+import com.alcadrial.renderengine.render.buffer.BigVulkanBuffer.PhysicalDeviceTranferState;
 import com.alcadrial.renderengine.render.buffer.BufferLayout;
+import com.alcadrial.renderengine.render.buffer.BufferWriter;
+import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.util.OutOfSpaceException;
+import com.alcadrial.renderengine.render.util.SphereDataCollector;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
@@ -93,6 +99,7 @@ public class ComputerTest extends RenderTest {
 	private static boolean isCameraUnlocked;
 	
 	private static boolean rebuildProjectionMatrix;
+	private static StaticBigBuffer staticBigBuffer;
 	
 	private static Matrix4f buildProjectionMatrix(VulkanWindow window)
 	{
@@ -231,55 +238,18 @@ public class ComputerTest extends RenderTest {
 		
 		int minOffsetAlignment = (int) device.getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment();
 		System.out.println("MinOffset = " + minOffsetAlignment);
-		/*
-				{
-					int size = PARTICLE_COUNT * 12 * 4;
-					vertexBuffer = new VertexBuffer(242 * 3);
 		
-					vertexStorageBuffer = new VertexBuffer(2 * size, VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true);
-					storageBuffer0 = new VertexBuffer(vertexStorageBuffer, 0, size);
-					storageBuffer1 = new VertexBuffer(vertexStorageBuffer, size, size);
-		
-					uniformBuffer = new VulkanBuffer(device, Math.max(minOffsetAlignment * 3, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-				}*/
-		renderPass = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
-		
-		Builder builder = Renderer.create();
-		builder.shaderProgram(shaderProgram);
-		builder.depthTestEnable(true);
-		builder.cullMode(VK10.VK_CULL_MODE_NONE);
-		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);/*
-																	builder.bufferBindings(List.of(
-																	new VulkanBufferRange(uniformBuffer, 0),
-																	new VulkanBufferRange(uniformBuffer, 256)
-																	));*/
-		builder.minDepth(-1000F).maxDepth(1000F);
-		
-		renderer = builder.build(device, window.getSurface().getSize(), renderPass, ComputeCustomGraphicsPipeline::new);
-		
-		computer = new Computer(device, computeShader);
-		//	computer.setInputBuffer(storageBuffer0, null);
-		//	computer.setOutputBuffer(storageBuffer1, null);
-		//	computer.setUniformBuffer(uniformBuffer);
-		computer.init();
 		{
-			BufferLayout uniformBufferLayout = computer.getComputeUniformBufferLayout();
-			//	uniformBufferLayout.set(MIN_BOUND, uniformBuffer, MIN_BOUND_VALUE);
-			//	uniformBufferLayout.set(MAX_BOUND, uniformBuffer, MAX_BOUND_VALUE);
-			//	uniformBufferLayout.set(ENLAPSED_TIME, uniformBuffer, 0F);
-			uniformBufferLayout.updateDescriptorSets();
+			int size = PARTICLE_COUNT * 12 * 4 * 4;
+			staticBigBuffer = new StaticBigBuffer(device, 1 << 19);
+			vertexBuffer = staticBigBuffer.allocate(242 * 3 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+			indexBuffer = staticBigBuffer.allocate(2064 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+			uniformBuffer = staticBigBuffer.allocate(Math.max(minOffsetAlignment * 3, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+			vertexStorageBuffer = staticBigBuffer.allocate(2 * size, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+			storageBuffer0 = new VulkanBuffer(vertexStorageBuffer, 0, size);
+			storageBuffer1 = new VulkanBuffer(vertexStorageBuffer, size, size);
 		}
-		/*
-				indexBuffer = new IndexBuffer(2064);
-				renderer.addVertexBuffer(0, vertexBuffer.getGpuBuffer());
-				renderer.addVertexBuffer(1, storageBuffer0.getGpuBuffer());
-				renderer.setIndexBuffer(indexBuffer.getGpuBuffer());
-				renderer.updateUniforms(uniformBuffer, l -> {
-					l.set(PROJECTION, uniformBuffer, buildProjectionMatrix(window));
-				});
 		
-				SphereDataCollector.collect(vertexBuffer, indexBuffer, Vector3f.origin(), 0.06F, 8);
-		*/
 		Color[] colors = new Color[] {
 			Color.VERY_LIGHT_YELLOW,
 			Color.VERY_LIGHT_RED,
@@ -313,37 +283,80 @@ public class ComputerTest extends RenderTest {
 			Color.VERY_DARK_BLUE
 		};
 		
-		Random random = new Random();
-		/*
-				FloatBuffer cursor = storageBuffer0.asFloatBuffer();
-		
-				for (float i = -DIM; i < DIM; i++)
+		try (PhysicalDeviceTranferState transfert = staticBigBuffer.startLocalBuffering())
+		{
+			BufferWriter vertexBufferWriter = transfert.beginTransfer(vertexBuffer);
+			BufferWriter storageBuffer0Writer = transfert.beginTransfer(storageBuffer0);
+			BufferWriter indexBufferWriter = transfert.beginTransfer(indexBuffer);
+			
+			Random random = new Random();
+			
+			SphereDataCollector.collect(vertexBufferWriter, indexBufferWriter, Vector3f.origin(), 0.06F, 8);
+			
+			for (float i = -DIM; i < DIM; i++)
+			{
+				for (float j = -DIM; j < DIM; j++)
 				{
-					for (float j = -DIM; j < DIM; j++)
+					for (float k = -DIM; k < DIM; k++)
 					{
-						for (float k = -DIM; k < DIM; k++)
-						{
-							Color c = colors[random.nextInt(colors.length)];
-							cursor.put(i / 10).put(j / 10).put(k / 10).put(0F);
-							cursor.put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(0);
-							cursor.put(c.r() / 255).put(c.g() / 255).put(c.b() / 255).put(c.a() / 255);
-						}
+						Color c = colors[random.nextInt(colors.length)];
+						storageBuffer0Writer.put(i / 10).put(j / 10).put(k / 10).put(0);
+						storageBuffer0Writer.put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(0);
+						storageBuffer0Writer.put(c.r() / 255).put(c.g() / 255).put(c.b() / 255).put(c.a() / 255);
 					}
-				}*/
-		/*
-				try
-				{
-					vertexBuffer.sendToPhysicalDevice().get();
-					indexBuffer.sendToPhysicalDevice().get();
-					storageBuffer0.sendToPhysicalDevice().get();
-					storageBuffer0.sendToPhysicalDevice(storageBuffer1.getGpuBuffer()).get();
 				}
-				catch (Exception e)
-				{
-					e.printStackTrace(System.out);
-					RenderEngine.terminate();
-					return;
-				}*/
+			}
+		}
+		catch (OutOfSpaceException e)
+		{
+			e.printStackTrace(System.out);
+			RenderEngine.terminate();
+			return;
+		}
+		{
+			VulkanBuffer srcBuffer = new VulkanBuffer(storageBuffer0, 0, storageBuffer0.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+			VulkanBuffer dstBuffer = new VulkanBuffer(storageBuffer1, storageBuffer0.getSize(), storageBuffer0.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), buffer -> buffer.copyBuffer(srcBuffer, 0, dstBuffer, 0, storageBuffer0.getSize()));
+		}
+		
+		renderPass = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
+		
+		PhysicalDeviceTranferState bigBufferTransfert = staticBigBuffer.startLocalBuffering();
+		
+		Builder builder = Renderer.create();
+		builder.shaderProgram(shaderProgram);
+		builder.depthTestEnable(true);
+		builder.cullMode(VK10.VK_CULL_MODE_NONE);
+		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+		builder.bufferBindings(List.of(
+				bigBufferTransfert.beginTransfer(uniformBuffer, 0, 256),
+				bigBufferTransfert.beginTransfer(uniformBuffer, 256, 256)
+		));
+		builder.minDepth(-1000F).maxDepth(1000F);
+		
+		renderer = builder.build(device, window.getSurface().getSize(), renderPass, ComputeCustomGraphicsPipeline::new);
+		renderer.setVertexBuffers(0, vertexBuffer);
+		renderer.setVertexBuffers(1, storageBuffer0);
+		renderer.setIndexBuffer(indexBuffer);
+		renderer.updateUniforms(l -> {
+			l.set(PROJECTION, buildProjectionMatrix(window));
+			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), l::flush);
+		});
+		
+		computer = new Computer(device, computeShader);
+		computer.setBinding(0, uniformBuffer);
+		computer.setBinding(1, storageBuffer0);
+		computer.setBinding(2, storageBuffer1);
+		computer.init();
+		{
+			BufferLayout uniformBufferLayout = computer.getComputeUniformBufferLayout();
+			uniformBufferLayout.setWriter(bigBufferTransfert.beginTransfer(uniformBuffer));
+			uniformBufferLayout.set(MIN_BOUND, MIN_BOUND_VALUE);
+			uniformBufferLayout.set(MAX_BOUND, MAX_BOUND_VALUE);
+			uniformBufferLayout.set(ENLAPSED_TIME, 0F);
+			uniformBufferLayout.updateDescriptorSets();
+		}
+		
 		printState();
 	}
 	
@@ -377,22 +390,10 @@ public class ComputerTest extends RenderTest {
 			float sin = Math.sin(angle);
 			float cos = Math.cos(angle);
 			Vector3f movement = Vector3f.of(0, 0, 0);
-			if (cameraMovement.z() == 1)
-			{
-				movement.add(sin, 0, -cos);
-			}
-			if (cameraMovement.x() == -1)
-			{
-				movement.add(cos, 0, sin);
-			}
-			if (cameraMovement.z() == -1)
-			{
-				movement.add(-sin, 0, cos);
-			}
-			if (cameraMovement.x() == 1)
-			{
-				movement.add(-cos, 0, -sin);
-			}
+			if (cameraMovement.z() == 1) movement.add(sin, 0, -cos);
+			if (cameraMovement.x() == -1) movement.add(cos, 0, sin);
+			if (cameraMovement.z() == -1) movement.add(-sin, 0, cos);
+			if (cameraMovement.x() == 1) movement.add(-cos, 0, -sin);
 			movement.add(0, cameraMovement.y(), 0);
 			
 			cameraPosition.add(movement.multiplyAll(time / 1000000000F));

@@ -56,20 +56,14 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	
 	public synchronized boolean beginRecording()
 	{
-		if (isRecording)
-		{
-			return false;
-		}
+		if (isRecording) return false;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.calloc(stack);
 			beginInfo.sType(VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
 			synchronized (pool)
 			{
-				if (VK10.vkBeginCommandBuffer(vk, beginInfo) < 0)
-				{
-					return false;
-				}
+				if (VK10.vkBeginCommandBuffer(vk, beginInfo) < 0) return false;
 			}
 		}
 		isRecording = true;
@@ -415,10 +409,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	
 	public synchronized boolean endRecording() throws VulkanException
 	{
-		if (!isRecording)
-		{
-			return false;
-		}
+		if (!isRecording) return false;
 		synchronized (pool)
 		{
 			VulkanErrorUtils.assertNoError(VK10.vkEndCommandBuffer(vk), "Error during command buffer registration (" + Debug.address(vk) + ")");

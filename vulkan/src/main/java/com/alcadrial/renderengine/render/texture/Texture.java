@@ -13,6 +13,7 @@ import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.buffer.Memory;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -55,7 +56,7 @@ public class Texture extends RawDeviceResource {
 	}
 	
 	private TextureView view;
-	private long memory;
+	private Memory memory;
 	private int length;
 	private int width;
 	private int height;
@@ -114,7 +115,7 @@ public class Texture extends RawDeviceResource {
 		this.name = name;
 	}
 	
-	public long getMemory()
+	public Memory getMemory()
 	{
 		return memory;
 	}
@@ -253,7 +254,7 @@ public class Texture extends RawDeviceResource {
 	{
 		if (view != null) view.close();
 		if (vk != null) VK10.vkDestroyImage(device.getVk(), vk, null);
-		VK10.vkFreeMemory(device.getVk(), memory, null);
+		memory.close();
 		super.close();
 	}
 	
@@ -262,5 +263,6 @@ public class Texture extends RawDeviceResource {
 	{
 		Debug.print("Vk: " + Debug.address(vk));
 		Debug.print("ImageView", view);
+		Debug.print("Memory", memory);
 	}
 }

@@ -241,8 +241,7 @@ public class DepthBufferTest extends RenderTest {
 			l.set(SPACE_FOG_INTENSITY, 0.4F);
 		});
 		
-		Debug.onDebug(() -> {
-			device.setObjectDebugName(device, "Device");
+		Debug.runOnDebug(() -> {
 			renderPass.setName("Renderpass");
 			staticBigBuffer.setName("Big buffer");
 			vertexBuffer.setName("Vertex buffer");

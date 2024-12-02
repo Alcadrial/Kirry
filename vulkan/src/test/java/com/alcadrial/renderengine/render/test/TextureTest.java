@@ -177,6 +177,7 @@ public class TextureTest extends RenderTest {
 		indexBuffer = new VulkanBuffer(device, 6 * 4 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		uniformBuffer = new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		localUniformBuffer = new VulkanBuffer(device, uniformBuffer.getSize(), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0);
+		localUniformBuffer.getMemory().mapMemory();
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -184,6 +185,9 @@ public class TextureTest extends RenderTest {
 			
 			VulkanBuffer localVertexBuffer = new VulkanBuffer(device, vertexBuffer.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0);
 			VulkanBuffer localIndexBuffer = new VulkanBuffer(device, indexBuffer.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0);
+			
+			localVertexBuffer.getMemory().mapMemory();
+			localIndexBuffer.getMemory().mapMemory();
 			
 			BufferWriter vertexBufferWriter = new BufferWriter(localVertexBuffer, 0, vertexBuffer, 0, vertexBuffer.getSize(), null);
 			BufferWriter indexBufferWriter = new BufferWriter(localIndexBuffer, 0, indexBuffer, 0, indexBuffer.getSize(), null);
@@ -201,17 +205,20 @@ public class TextureTest extends RenderTest {
 			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 			
 			VulkanBuffer localTextureBuffer = new VulkanBuffer(device, texture.getLength() * 4, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0);
+			localTextureBuffer.getMemory().mapMemory();
 			ImageWriter textureBufferwriter = new ImageWriter(localTextureBuffer, 0, texture, 0, 0, 0, texture.getWidth(), texture.getHeight(), texture.getDepth(), commandBuffer);
 			textureBufferwriter.put(image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth()));
 			textureBufferwriter.close();
 			
 			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			
-			device.submitSingleUseCommandBuffer(stack, commandBuffer).thenRun(() -> {
-				localTextureBuffer.close();
-				localVertexBuffer.close();
-				localIndexBuffer.close();
-			});
+			device.submitSingleUseCommandBuffer(stack, commandBuffer)
+				.thenRunAsync(localTextureBuffer::close)
+				.thenRunAsync(localVertexBuffer::close)
+				.thenRunAsync(localIndexBuffer::close);
+			localVertexBuffer.getMemory().unmapMemory();
+			localIndexBuffer.getMemory().unmapMemory();
+			localTextureBuffer.getMemory().unmapMemory();
 		}
 		catch (Exception e)
 		{

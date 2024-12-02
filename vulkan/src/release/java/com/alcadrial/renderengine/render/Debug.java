@@ -22,8 +22,6 @@ public class Debug {
 		RenderEngine.assertLoaded();
 	}
 	
-	private static volatile PrintStream debugOutput = System.out;
-	private static String prefix = "";
 	
 	public static <T> T get(Supplier<T> debugRunnable, Supplier<T> releaseRunnable)
 	{
@@ -37,7 +35,7 @@ public class Debug {
 	
 	public static void printStackTrace(Throwable t)
 	{
-		t.printStackTrace(debugOutput);
+		
 	}
 	
 	public static long getIncrementalId()
@@ -47,88 +45,47 @@ public class Debug {
 	
 	public static void printState(String name, VulkanDebug vk)
 	{
-		if (vk == null)
-		{
-			print(name + ": null");
-			return;
-		}
-		print(name + " {");
-		indent();
-		vk.debug();
-		deindent();
-		print("}");
+		
 	}
 	
 	public static void printState()
 	{
-		Vulkan vulkan = RenderEngine.getVulkan();
 		
-		print("Current vulkan state:");
-		print("{");
-		indent();
-		print("Thread: \"" + Thread.currentThread() + "\", id: " + Kernel32.GetCurrentThreadId() + " {");
-		indent();
-		ThreadData data = vulkan.getData();
-		print("Physical Device", data.physicalDevice);
-		print("Logical Device", data.device);
-		print("Window", data.window);
-		deindent();
-		print("}");
-		deindent();
-		print("}");
 	}
 	
 	public static void indent()
 	{
-		prefix += "\t";
+		
 	}
 	
 	public static void deindent()
 	{
-		prefix = prefix.substring(0, prefix.length() - 1);
+		
 	}
 	
 	public static void print(String name, Pointer vk)
 	{
-		print(name + ": " + address(vk));
+		
 	}
 	
 	public static void print(String name, long vk)
 	{
-		print(name + ": " + address(vk));
+		
 	}
 	
 	public static void print(String name, VulkanDebug vk)
 	{
-		if (vk == null)
-		{
-			print(name + ": null");
-			return;
-		}
-		print(name + " {");
-		indent();
-		vk.debug();
-		deindent();
-		print("}");
+		
 	}
 	
 	public static void print(String name, Collection<?> collection)
 	{
-		if (collection == null)
-		{
-			print(name + ": null");
-			return;
-		}
-		print(name + " {");
-		indent();
-		for (Object obj : collection) print(obj);
-		deindent();
-		print("}");
+		
 	}
 	
 	public static void print(Object obj)
 	{
-		debugOutput.println(prefix + obj);
+		
 	}
 	
 	public static String validity(Struct<?> p, int type)
@@ -153,33 +110,47 @@ public class Debug {
 	
 	public static void debug()
 	{
-		debugOutput.println();
+		
 	}
 	
 	public static void debug(Object x)
 	{
-		debugOutput.print("[DEBUG] ");
-		debugOutput.println(x);
+		
 	}
 	
 	public static void debugIf(boolean condition)
 	{
-		if (condition) debug();
+		
 	}
 	
 	public static void debugIf(boolean condition, Object x)
 	{
-		if (condition) debug(x);
+		
 	}
 	
-	public static void onDebug(Runnable action)
+	public static void debugIf(boolean condition, Supplier<Object> x)
 	{
-		action.run();
+		
+	}
+	
+	public static void debugAllocation(Supplier<Object> x)
+	{
+		
+	}
+	
+	public static void setEnableAllocationDebug(boolean enableAllocationDebug)
+	{
+		
+	}
+	
+	public static boolean isEnableAllocationDebug()
+	{
+		return false;
 	}
 	
 	public static void setDebugOutput(PrintStream debugOutput)
 	{
-		Debug.debugOutput = debugOutput;
+		
 	}
 	
 	public static Set<VulkanObject> getAvailableVulkanObjects()

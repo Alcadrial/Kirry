@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.lwjgl.system.MemoryUtil;
@@ -29,17 +30,19 @@ public class Debug {
 	private static volatile PrintStream debugOutput;
 	private static volatile Map<String, Long> idMap;
 	private static String prefix;
+	private static boolean enableAllocationDebug;
 	
 	static
 	{
 		debugOutput = System.out;
 		idMap = new HashMap<>();
 		prefix = "";
+		enableAllocationDebug = false;
 	}
 	
-	public static <T> T get(VulkanSupplier<T> debugRunnable, VulkanSupplier<T> releaseRunnable) throws VulkanException
+	public static <T> T get(VulkanSupplier<T> debugSupplier, VulkanSupplier<T> releaseSupplier) throws VulkanException
 	{
-		return debugRunnable.get();
+		return debugSupplier.get();
 	}
 	
 	public static void runOnDebug(Runnable runnable)
@@ -211,9 +214,24 @@ public class Debug {
 		if (condition) debug(x);
 	}
 	
-	public static void onDebug(Runnable action)
+	public static void debugIf(boolean condition, Supplier<Object> x)
 	{
-		action.run();
+		if (condition) debug(x.get());
+	}
+	
+	public static void debugAllocation(Supplier<Object> x)
+	{
+		if (enableAllocationDebug) debug(x.get());
+	}
+	
+	public static void setEnableAllocationDebug(boolean enableAllocationDebug)
+	{
+		Debug.enableAllocationDebug = enableAllocationDebug;
+	}
+	
+	public static boolean isEnableAllocationDebug()
+	{
+		return enableAllocationDebug;
 	}
 	
 	public static void setDebugOutput(PrintStream debugOutput)

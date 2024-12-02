@@ -46,7 +46,6 @@ import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.OutOfSpaceException;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
@@ -73,7 +72,6 @@ public class InstancingTest extends RenderTest {
 	private static VulkanBuffer vertexBuffer0;
 	private static VulkanBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
-	private static Texture depthTexture;
 	private static Vector3f lightPos;
 	private static double f;
 	private static int instanceCount;
@@ -211,8 +209,6 @@ public class InstancingTest extends RenderTest {
 			}
 		});
 		
-		depthTexture = createDepthTexture(window.getWidth(), window.getHeight());
-		
 		renderPass = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
 		
 		int size = 20;
@@ -290,8 +286,7 @@ public class InstancingTest extends RenderTest {
 				l.set(LIGHT_POS, buildScaleMatrix().multiply(lightPos).xyz());
 				l.set(LIGHT_INTENSITY, 0.75F);
 				l.set(SPACE_FOG_INTENSITY, 0.1F);
-				l.flush(commandBuffer);
-			});
+			}, commandBuffer);
 			device.submitMultiUseCommandBuffer(commandBuffer, device.getGraphicsQueue()).thenRun(commandBuffer::reset);
 			
 			renderers[i] = renderer;

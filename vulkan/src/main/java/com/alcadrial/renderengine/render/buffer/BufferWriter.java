@@ -15,6 +15,7 @@ import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.CommandBuffer;
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -24,6 +25,11 @@ public class BufferWriter implements AutoCloseable {
 	static
 	{
 		RenderEngine.assertLoaded();
+	}
+	
+	public static BufferWriter nullWriter()
+	{
+		return NullBufferWriter.INSTANCE;
 	}
 	
 	private class Work {
@@ -72,11 +78,17 @@ public class BufferWriter implements AutoCloseable {
 		this.flushCommandBuffer = flushCommandBuffer;
 		this.size = size;
 		cursor = 0;
-		buffer = srcBuffer.getByteBuffer(srcOffset, size);
+		buffer = srcBuffer.getMemory().getMapping().getBuffer();
+		buffer = buffer.slice((int) srcBuffer.getOffset(), size).order(buffer.order());
 		vkBufferCopy = VkBufferCopy.malloc(MAX_COPY_COUNT);
 		firstWork = lastWork = null;
 		lastSetCursor = 0;
 		isModified = false;
+	}
+	
+	BufferWriter()
+	{
+		
 	}
 	
 	public BufferWriter resetCursor() throws VulkanException
@@ -90,9 +102,12 @@ public class BufferWriter implements AutoCloseable {
 	public BufferWriter setCursor(int index) throws VulkanException
 	{
 		if (index < 0 || index >= size) throw new IndexOutOfBoundsException(index);
-		registerCopy();
-		cursor = lastSetCursor = index;
-		if (bufferCopyCount == MAX_COPY_COUNT) flush();
+		if (index != cursor)
+		{
+			registerCopy();
+			cursor = lastSetCursor = index;
+			if (bufferCopyCount == MAX_COPY_COUNT) flush();
+		}
 		return this;
 	}
 	
@@ -101,9 +116,10 @@ public class BufferWriter implements AutoCloseable {
 		if (lastSetCursor != cursor)
 		{
 			VkBufferCopy copy = vkBufferCopy.get();
-			copy.srcOffset(lastSetCursor * 4L);
+			copy.srcOffset(srcOffset + lastSetCursor * 4L);
 			copy.dstOffset(dstOffset + lastSetCursor * 4L);
 			copy.size((cursor - lastSetCursor) * 4L);
+			Debug.debug("Copy (" + bufferCopyCount + ") from " + srcBuffer + " to " + dstBuffer + " {" + lastSetCursor * 4L + ", " + lastSetCursor * 4 + ", " + (cursor - lastSetCursor) * 4L + "}");
 			bufferCopyCount++;
 			lastSetCursor = cursor;
 		}
@@ -312,6 +328,5 @@ public class BufferWriter implements AutoCloseable {
 		flush();
 		if (firstWork != null) for (Work work = firstWork, work0 = work.next; work0 != null; work = work0, work0 = work0.next) work.next = null;
 		vkBufferCopy.free();
-		srcBuffer.unmapBuffer();
 	}
 }

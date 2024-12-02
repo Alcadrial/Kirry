@@ -69,32 +69,6 @@ public class Computer implements AutoCloseable, VulkanDebug {
 		VulkanErrorUtils.nonNull(groupCount, "Missing localsize in shader info");
 		bindings = new HashMap<>();
 	}
-	/*
-	public void setInputBuffer(VulkanBuffer inputBuffer, BufferLayout layout)
-	{
-		assert (inputBuffer.getUsage() & VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0 : "Only Storage Buffers can be used in compute";
-		this.inputBuffer = inputBuffer;
-		inputLayout = layout;
-	}
-	
-	public void setOutputBuffer(VulkanBuffer outputBuffer, BufferLayout layout)
-	{
-		assert (outputBuffer.getUsage() & VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0 : "Only Storage Buffers can be used in compute";
-		this.outputBuffer = outputBuffer;
-		outputLayout = layout;
-	}
-	
-	public void setUniformBuffer(VulkanBuffer uniformBuffer)
-	{
-		assert (uniformBuffer.getUsage() & VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0 : "Not a Uniform Buffer";
-		this.uniformBuffer = uniformBuffer;
-	}
-	
-	public VulkanBuffer getOutputBuffer()
-	{
-		return outputBuffer;
-	}
-	*/
 	
 	public BufferLayout getComputeUniformBufferLayout()
 	{
@@ -297,11 +271,6 @@ public class Computer implements AutoCloseable, VulkanDebug {
 		Debug.print("Pipeline ", computePipeline);
 		Debug.print("GroupCount: " + groupCount.x() + "x" + groupCount.y() + "x" + groupCount.z());
 		
-		//	Debug.print("InputBuffer", inputBuffer);
-		//Debug.printState("InputLayout", inputLayout);
-		//	Debug.print("OutputBuffer", outputBuffer);
-		//Debug.printState("OutputLayout", outputLayout);
-		//	Debug.print("UniformBuffer", uniformBuffer);
 		Debug.print("DescriptorPool: " + Debug.address(computeDescriptorPool));
 		Debug.print("DescriptorSetLayout: " + Debug.address(computeDescriptorSetLayout));
 		Debug.print("DescriptorSet: " + Debug.address(computeDescriptorSet[0]));

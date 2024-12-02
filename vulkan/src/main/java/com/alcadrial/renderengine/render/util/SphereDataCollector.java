@@ -50,15 +50,9 @@ public class SphereDataCollector {
 		}
 		vertexMatrix[parallelCount + 1] = new Vector3f[] {Vector3f.ofImmutable(origin.x(), origin.y() + radius, origin.z())};
 		
-		for (Vector3f[] ring : vertexMatrix) for (Vector3f vertex : ring)
-		{
-			vertexBuffer.put(vertex);
-		}
+		for (Vector3f[] ring : vertexMatrix) for (Vector3f vertex : ring) vertexBuffer.put(vertex);
 		
-		for (int i = 1; i < meridianCount; i++)
-		{
-			indexBuffer.put(0, i, i + 1);
-		}
+		for (int i = 1; i < meridianCount; i++) indexBuffer.put(0, i, i + 1);
 		indexBuffer.put(0, meridianCount, 1);
 		
 		int offset = 1;
@@ -77,10 +71,7 @@ public class SphereDataCollector {
 			offsetExtra += meridianCount;
 		}
 		
-		for (int i = 1; i < meridianCount; i++)
-		{
-			indexBuffer.put(offset + i, offsetExtra, offset + i - 1);
-		}
+		for (int i = 1; i < meridianCount; i++) indexBuffer.put(offset + i, offsetExtra, offset + i - 1);
 		indexBuffer.put(offset, offsetExtra, offsetExtra - 1);
 	}
 	

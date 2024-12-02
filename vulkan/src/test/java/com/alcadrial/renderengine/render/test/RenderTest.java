@@ -49,6 +49,8 @@ public class RenderTest {
 			println("RenderEngine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
 			if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
 			
+			if (Properties.DEBUG.getValue()) Debug.setEnableAllocationDebug(true);
+			
 			try
 			{
 				println("Start", start, TestProperties.PRINT_LOADING_TIMES);

@@ -76,7 +76,8 @@ public class ImageWriter implements AutoCloseable {
 		this.zExtent = zExtent;
 		this.flushCommandBuffer = flushCommandBuffer;
 		cursor = 0;
-		buffer = srcBuffer.getByteBuffer(srcOffset, xExtent * yExtent * zExtent * 4);
+		buffer = srcBuffer.getMemory().getMapping().getBuffer();
+		buffer = buffer.slice(srcOffset, xExtent * yExtent * zExtent * 4).order(buffer.order());
 		vkBufferCopy = VkBufferImageCopy.malloc(MAX_COPY_COUNT);
 		firstWork = lastWork = null;
 		lastSetCursor = -1;
@@ -273,11 +274,7 @@ public class ImageWriter implements AutoCloseable {
 			//	registerCopy();
 			flush();
 		}
-		if (firstWork != null)
-		{
-			for (Work work = firstWork, work0 = work.next; work0 != null; work = work0, work0 = work0.next) work.next = null;
-		}
+		if (firstWork != null) for (Work work = firstWork, work0 = work.next; work0 != null; work = work0, work0 = work0.next) work.next = null;
 		vkBufferCopy.free();
-		srcBuffer.unmapBuffer();
 	}
 }
