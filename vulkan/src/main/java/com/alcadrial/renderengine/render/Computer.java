@@ -75,6 +75,11 @@ public class Computer implements AutoCloseable, VulkanDebug {
 		return computeUniformBufferLayout;
 	}
 	
+	public BufferLayout getComputeStorageBufferLayout()
+	{
+		return computeStorageBufferLayout;
+	}
+	
 	public void setBinding(int binding, VulkanBuffer buffer)
 	{
 		bindings.put(binding, buffer);
@@ -209,17 +214,6 @@ public class Computer implements AutoCloseable, VulkanDebug {
 			
 			System.out.println("SUCCESS");
 		}
-	}
-	
-	public void swapBuffers()
-	{/*
-		computeStorageBufferLayout.update(sets -> {
-			VulkanBuffer t = inputBuffer;
-			inputBuffer = outputBuffer;
-			outputBuffer = t;
-			sets.get(0).pBufferInfo().buffer(inputBuffer.getVk());
-			sets.get(1).pBufferInfo().buffer(outputBuffer.getVk());
-		});*/
 	}
 	
 	public ComputePipeline getComputePipeline()

@@ -336,7 +336,7 @@ public class ComputeTest extends RenderTest {
 		}
 		{
 			VulkanBuffer srcBuffer = new VulkanBuffer(storageBuffer0, 0, storageBuffer0.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-			VulkanBuffer dstBuffer = new VulkanBuffer(storageBuffer1, storageBuffer0.getSize(), storageBuffer0.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+			VulkanBuffer dstBuffer = new VulkanBuffer(storageBuffer1, 0, storageBuffer1.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), buffer -> buffer.copyBuffer(srcBuffer, 0, dstBuffer, 0, storageBuffer0.getSize())).join();
 		}
 		
@@ -346,7 +346,7 @@ public class ComputeTest extends RenderTest {
 		
 		Renderer.Builder builder = Renderer.create();
 		builder.shaderProgram(shaderProgram);
-		builder.depthTestEnable(true);
+		builder.depthTestEnable(false);
 		builder.cullMode(VK10.VK_CULL_MODE_NONE);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.bufferBindings(List.of(bigBufferTransfert.beginTransfer(uniformBuffer, 0, 256), bigBufferTransfert.beginTransfer(uniformBuffer, 256, 256)));
@@ -538,6 +538,7 @@ public class ComputeTest extends RenderTest {
 		}
 	}
 	
+	@SuppressWarnings("null")
 	public static void loop(long time, long enlapsed) throws VulkanException
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
@@ -602,12 +603,13 @@ public class ComputeTest extends RenderTest {
 				commandBuffer.bindDescriptorSets(computePipeline, new long[] {computeDescriptorSet}, new int[0]);
 				commandBuffer.dispatch(PARTICLE_COUNT / 256, 1, 1);
 				commandBuffer.endRecording();
-				/*
+				
 				window.swapBuffers(commandBuffer, () -> {
 					computeStorageBufferLayout.update(sets -> {
 						sets.get(I++ % 2).pBufferInfo().buffer(storageBuffer0.getVk());
 						sets.get(I % 2).pBufferInfo().buffer(storageBuffer1.getVk());
 					});
+					commandBuffer.close();
 					try
 					{
 						computeUniformBufferLayout.set(ENLAPSED_TIME, enlapsed / 1000000000F);
@@ -619,8 +621,7 @@ public class ComputeTest extends RenderTest {
 						RenderEngine.terminate();
 						return;
 					}
-				});*/
-				window.swapBuffers(commandBuffer, commandBuffer::close);
+				});
 				window.pollEvents();
 			}
 		}

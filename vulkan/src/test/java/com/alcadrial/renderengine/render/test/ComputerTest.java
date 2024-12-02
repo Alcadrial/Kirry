@@ -136,10 +136,7 @@ public class ComputerTest extends RenderTest {
 		VulkanWindow window = new VulkanWindow(1080, 720, "Test");
 		vulkan.setWindow(window);
 		
-		if (!pickPhysicalDevice(window))
-		{
-			return;
-		}
+		if (!pickPhysicalDevice(window)) return;
 		
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.wideLines(true);
@@ -180,14 +177,8 @@ public class ComputerTest extends RenderTest {
 			if (isCameraUnlocked)
 			{
 				cameraXRotation.add(Angle.of(y - oldMousePos[0].y(), AngleUnit.DEGREES));
-				if (cameraXRotation.asDouble(AngleUnit.DEGREES) > 90)
-				{
-					cameraXRotation.setValue(AngleUnit.DEGREES, 90);
-				}
-				else if (cameraXRotation.asDouble(AngleUnit.DEGREES) < -90)
-				{
-					cameraXRotation.setValue(AngleUnit.DEGREES, -90);
-				}
+				if (cameraXRotation.asDouble(AngleUnit.DEGREES) > 90) cameraXRotation.setValue(AngleUnit.DEGREES, 90);
+				else if (cameraXRotation.asDouble(AngleUnit.DEGREES) < -90) cameraXRotation.setValue(AngleUnit.DEGREES, -90);
 				cameraYRotation.add(Angle.of(x - oldMousePos[0].x(), AngleUnit.DEGREES));
 				rebuildProjectionMatrix = true;
 			}
@@ -315,7 +306,7 @@ public class ComputerTest extends RenderTest {
 		}
 		{
 			VulkanBuffer srcBuffer = new VulkanBuffer(storageBuffer0, 0, storageBuffer0.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-			VulkanBuffer dstBuffer = new VulkanBuffer(storageBuffer1, storageBuffer0.getSize(), storageBuffer0.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+			VulkanBuffer dstBuffer = new VulkanBuffer(storageBuffer1, 0, storageBuffer1.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), buffer -> buffer.copyBuffer(srcBuffer, 0, dstBuffer, 0, storageBuffer0.getSize()));
 		}
 		
@@ -380,6 +371,7 @@ public class ComputerTest extends RenderTest {
 		}
 	}
 	
+	@SuppressWarnings("null")
 	public static void loop(long time, long enlapsed) throws VulkanException
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
@@ -406,17 +398,17 @@ public class ComputerTest extends RenderTest {
 		}
 		window.setTitle(title);
 		
-		if (rebuildProjectionMatrix)
-		{
-			//	renderer.updateUniforms(uniformBuffer, l -> l.set(PROJECTION, uniformBuffer, buildProjectionMatrix(window)));
-		}
-		
 		window.pollEvents();
 		if (!window.isIconified())
 		{
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
 				CommandBuffer commandBuffer = window.getDevice().createSingleUseCommandBuffer();
+				
+				if (rebuildProjectionMatrix)
+				{
+					renderer.updateUniforms(l -> l.set(PROJECTION, buildProjectionMatrix(window)), commandBuffer);
+				}
 				
 				VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
 				renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
@@ -445,7 +437,15 @@ public class ComputerTest extends RenderTest {
 				commandBuffer.endRecording();
 				
 				window.swapBuffers(commandBuffer, () -> {
-					computer.swapBuffers();
+					
+					computer.getComputeStorageBufferLayout().update(sets -> {
+						VulkanBuffer t = storageBuffer0;
+						storageBuffer0 = storageBuffer1;
+						storageBuffer1 = t;
+						sets.get(0).pBufferInfo().buffer(storageBuffer0.getVk());
+						sets.get(1).pBufferInfo().buffer(storageBuffer1.getVk());
+					});
+					commandBuffer.close();
 					try
 					{
 						computer.getComputeUniformBufferLayout().set(ENLAPSED_TIME, enlapsed / 1000000000F);
