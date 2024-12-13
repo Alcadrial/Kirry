@@ -314,7 +314,6 @@ public class Vulkan implements AutoCloseable {
 		});
 		if (debugMessengerId != 0) EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(instance, debugMessengerId, null);
 		if (physicalDevices != null) for (PhysicalDevice physicalDevice : physicalDevices) physicalDevice.close();
-		Debug.debug("Released vulkan " + this);
 		if (RenderEngine.isDebug()) for (VulkanObject vulkanObject : Debug.getAvailableVulkanObjects()) Debug.debug("Warning object not released: " + vulkanObject);
 		VK10.vkDestroyInstance(instance, null);
 	}

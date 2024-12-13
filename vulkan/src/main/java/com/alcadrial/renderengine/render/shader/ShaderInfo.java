@@ -9,7 +9,6 @@ import java.io.InputStreamReader;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderCombinedImageSamplerLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderInputLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
@@ -21,11 +20,6 @@ import com.alcadrial.renderengine.render.util.JsonUtils;
 import com.google.gson.stream.JsonReader;
 
 public class ShaderInfo {
-	
-	static
-	{
-		RenderEngine.assertLoaded();
-	}
 	
 	/**
 	 * 

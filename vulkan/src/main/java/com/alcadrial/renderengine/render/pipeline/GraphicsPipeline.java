@@ -1,5 +1,6 @@
 package com.alcadrial.renderengine.render.pipeline;
 
+import java.io.File;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -221,7 +222,12 @@ public class GraphicsPipeline extends Pipeline {
 		{
 			Debug.print(e.getKey() + " {");
 			Debug.indent();
-			for (PreparedShader prepared : e.getValue()) Debug.print(prepared.shader().getFile());
+			for (PreparedShader prepared : e.getValue())
+			{
+				File file = prepared.shader().getFile();
+				if (file == null) Debug.print("Internal Shader");
+				else Debug.print(prepared.shader().getFile());
+			}
 			Debug.deindent();
 			Debug.print("}");
 		}

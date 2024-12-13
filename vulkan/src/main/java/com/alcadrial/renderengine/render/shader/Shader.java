@@ -3,6 +3,7 @@ package com.alcadrial.renderengine.render.shader;
 import java.io.File;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Optional;
 
@@ -31,11 +32,20 @@ public class Shader {
 		code = Files.readAllLines(file.toPath()).toArray(String[]::new);
 	}
 	
-	Shader(byte[] defaultVertexShaderBinary)
+	public Shader(String sourceCode)
 	{
-		file = new File("default");
-		code = new String[0];
-		compiled = CompiledShader.ofSuccess(code, defaultVertexShaderBinary);
+		this(sourceCode.split("(\r\n)|\n"));
+	}
+	
+	public Shader(String[] sourceCodeLines)
+	{
+		file = null;
+		code = sourceCodeLines;
+	}
+	
+	public CompiledShader loadCompiled(byte[] compiledCode)
+	{
+		return compiled = CompiledShader.ofSuccess(code, compiledCode);
 	}
 	
 	public CompiledShader loadCompiled(File compiledFile) throws IOException
@@ -45,13 +55,25 @@ public class Shader {
 	
 	public CompiledShader compile(ShaderInfo info)
 	{
+		Process process;
 		try
 		{
-			Process process = new ProcessBuilder(GLSLC_PATH, "-O", "-o", "-", "-fshader-stage=" + info.getType().toString().toLowerCase(), "-").redirectError(Redirect.INHERIT).start();
-			process.getOutputStream().write(Files.readAllBytes(file.toPath()));
-			process.getOutputStream().close();
-			
-			compiled = process.waitFor() == 0 ? CompiledShader.ofSuccess(code, process.getInputStream().readAllBytes()) : CompiledShader.ofFail();
+			if (file != null)
+			{
+				process = new ProcessBuilder(GLSLC_PATH, "-O", "-o", "-", "-fshader-stage=" + info.getType().toString().toLowerCase(), file.toPath().toAbsolutePath().toString()).redirectError(Redirect.INHERIT).start();
+			}
+			else
+			{
+				process = new ProcessBuilder(GLSLC_PATH, "-O", "-o", "-", "-fshader-stage=" + info.getType().toString().toLowerCase(), "-").redirectError(Redirect.INHERIT).start();
+				for (String l : code)
+				{
+					process.getOutputStream().write(l.getBytes(StandardCharsets.UTF_8));
+					process.getOutputStream().write('\n');
+				}
+				process.getOutputStream().close();
+			}
+			byte[] data = process.getInputStream().readAllBytes();
+			compiled = process.waitFor() == 0 ? CompiledShader.ofSuccess(code, data) : CompiledShader.ofFail();
 		}
 		catch (InterruptedException | IOException e)
 		{

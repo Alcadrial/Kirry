@@ -33,11 +33,6 @@ public class RenderTest {
 	private static final String[] SEVERITIES = new String[] {"UNKNOWN", "VERBOSE", "INFO", "WARNING", "ERROR"};
 	private static final String[] TYPES = new String[] {"UNKNOWN", "GENERAL", "VALIDATION", "PERFORMANCE"};
 	
-	public static void main(String[] args)
-	{
-		System.out.println("ASS");
-	}
-	
 	public static void mainTest(String[] args, VulkanRunnable start, VulkanRunnable loop, VulkanRunnable end)
 	{
 		try

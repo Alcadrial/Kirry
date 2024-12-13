@@ -2,8 +2,6 @@ package com.alcadrial.renderengine.render.shader;
 
 import org.lwjgl.vulkan.VK10;
 
-import com.alcadrial.renderengine.render.RenderEngine;
-
 public enum ShaderType {
 	
 	VERTEX("vert", VK10.VK_SHADER_STAGE_VERTEX_BIT),
@@ -13,11 +11,6 @@ public enum ShaderType {
 	FRAGMENT("frag", VK10.VK_SHADER_STAGE_FRAGMENT_BIT),
 	COMPUTE("comp", VK10.VK_SHADER_STAGE_COMPUTE_BIT),
 	UNKNOWN("", 0);
-	
-	static
-	{
-		RenderEngine.assertLoaded();
-	}
 	
 	public static ShaderType fromExtension(String extension)
 	{
