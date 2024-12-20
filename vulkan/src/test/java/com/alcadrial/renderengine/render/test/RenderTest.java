@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.concurrent.TimeUnit;
 
-import org.lwjgl.vulkan.EXTDebugReport;
 import org.lwjgl.vulkan.EXTDebugUtils;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
@@ -123,7 +122,7 @@ public class RenderTest {
 		RenderEngine.Builder builder = RenderEngine.create("Test", new Version(0, 0, 1, 0));
 		builder.messengerCallback(RenderTest::debugCallback);
 		builder.instanceLayersDebug("VK_LAYER_KHRONOS_validation");
-		builder.instanceExtensionsDebug(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME, EXTDebugReport.VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+		builder.instanceExtensionsDebug(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		builder.multiThreading(false);
 		builder.useWindowSystem(true);
 		builder.initialize();
@@ -134,7 +133,7 @@ public class RenderTest {
 		RenderEngine.Builder builder = RenderEngine.create("Test", new Version(0, 0, 1, 0));
 		builder.messengerCallback(RenderTest::debugCallback);
 		builder.instanceLayersDebug("VK_LAYER_KHRONOS_validation");
-		builder.instanceExtensionsDebug(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME, EXTDebugReport.VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+		builder.instanceExtensionsDebug(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		builder.multiThreading(true);
 		builder.useWindowSystem(true);
 		builder.initialize();

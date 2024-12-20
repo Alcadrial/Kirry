@@ -124,6 +124,8 @@ public class RenderEngine extends RenderEngineCore {
 			createInfo.sType(VK10.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO);
 			createInfo.pApplicationInfo(applicationInfo);
 			
+			boolean debugUtilsExtensionEnabled = false;
+			
 			{
 				PointerBuffer requiredInstances = builder.useWindowSystem ? GLFWVulkan.glfwGetRequiredInstanceExtensions() : null;
 				
@@ -139,8 +141,22 @@ public class RenderEngine extends RenderEngineCore {
 					enlargedBuffer = stack.mallocPointer(size + requiredInstances.remaining());
 					while (requiredInstances.remaining() > 0) enlargedBuffer.put(requiredInstances.get());
 				}
-				if (debug) for (String name : instanceExtensions) enlargedBuffer.put(stack.UTF8(name));
-				else for (String name : instanceExtensions.subLists(1, instanceExtensions.listsSize())) enlargedBuffer.put(stack.UTF8(name));
+				if (debug)
+				{
+					for (String name : instanceExtensions)
+					{
+						if (EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME.equals(name)) debugUtilsExtensionEnabled = true;
+						enlargedBuffer.put(stack.UTF8(name));
+					}
+				}
+				else
+				{
+					for (String name : instanceExtensions.subLists(1, instanceExtensions.listsSize()))
+					{
+						if (EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME.equals(name)) debugUtilsExtensionEnabled = true;
+						enlargedBuffer.put(stack.UTF8(name));
+					}
+				}
 				enlargedBuffer.rewind();
 				
 				createInfo.ppEnabledExtensionNames(enlargedBuffer);
@@ -167,7 +183,7 @@ public class RenderEngine extends RenderEngineCore {
 				}
 			}
 			initializated = true;
-			vulkan = new Vulkan(createInfo);
+			vulkan = new Vulkan(createInfo, debugUtilsExtensionEnabled);
 			executor = multiThreading ? Executors.newFixedThreadPool(16) : Executors.newSingleThreadExecutor();
 			return true;
 		}

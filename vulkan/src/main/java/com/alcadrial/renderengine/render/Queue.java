@@ -22,18 +22,23 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 		RenderEngine.assertLoaded();
 	}
 	
+	public static Queue createQueue(Device device, int familyIndex)
+	{
+		return new Queue(device, familyIndex);
+	}
+	
 	private final int familyIndex;
 	
-	public Queue(Device device, int familyIndex)
+	private Queue(Device device, int familyIndex)
 	{
 		super(device);
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			PointerBuffer pGraphicsQueue = stack.pointers(VK10.VK_NULL_HANDLE);
-			VK10.vkGetDeviceQueue(device.getVk(), familyIndex, 0, pGraphicsQueue);
-			vk = new VkQueue(pGraphicsQueue.get(0), device.getVk());
-			this.familyIndex = familyIndex;
+			PointerBuffer p = stack.mallocPointer(1);
+			VK10.vkGetDeviceQueue(device.getVk(), familyIndex, 0, p);
+			vk = new VkQueue(p.get(0), device.getVk());
 		}
+		this.familyIndex = familyIndex;
 	}
 	
 	@Override
@@ -63,7 +68,6 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 		return RenderEngine.getExecutor().submit(() -> {
 			VK10.vkQueueWaitIdle(vk);
 			action.run();
-			
 		});
 	}
 	

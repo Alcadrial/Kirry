@@ -10,7 +10,6 @@ import java.util.function.Predicate;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.windows.Kernel32;
-import org.lwjgl.vulkan.EXTDebugReport;
 import org.lwjgl.vulkan.EXTDebugUtils;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCreateInfoEXT;
@@ -47,12 +46,18 @@ public class Vulkan implements AutoCloseable {
 		{
 			window = defaultWindow;
 			physicalDeviceFilter = defaultPhysicalDeviceFilter;
-			threadId = Kernel32.GetCurrentThreadId();
+			threadId = switch (OperativeSystem.OS)
+			{
+				case WINDOWS -> Kernel32.GetCurrentThreadId();
+				default -> -1;
+			};
 		}
 	}
 	
 	private VkInstanceCreateInfo createInfo;
 	private VkInstance instance;
+	
+	private boolean debugUtilsExtensionEnabled;
 	
 	private long debugMessengerId;
 	
@@ -66,7 +71,7 @@ public class Vulkan implements AutoCloseable {
 	
 	private Device closingDevice;
 	
-	public Vulkan(VkInstanceCreateInfo createInfo) throws VulkanException
+	public Vulkan(VkInstanceCreateInfo createInfo, boolean debugUtilsExtensionEnabled) throws VulkanException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -76,6 +81,7 @@ public class Vulkan implements AutoCloseable {
 			this.createInfo = createInfo;
 			instance = new VkInstance(p.get(0), createInfo);
 		}
+		this.debugUtilsExtensionEnabled = debugUtilsExtensionEnabled;
 		defaultPhysicalDeviceFilter = d -> true;
 		data = new ConcurrentHashMap<>();
 		physicalDevicesMonitor = new Object();
@@ -217,12 +223,9 @@ public class Vulkan implements AutoCloseable {
 				}
 				queueCreateInfos.rewind();
 				
-				boolean debugReportExtensionEnabled = false;
-				
 				PointerBuffer deviceExtensionBuffer = stack.mallocPointer(deviceExtensions.length);
 				for (String extension : deviceExtensions)
 				{
-					if (extension.equals(EXTDebugReport.VK_EXT_DEBUG_REPORT_EXTENSION_NAME)) debugReportExtensionEnabled = true;
 					deviceExtensionBuffer.put(stack.UTF8(extension));
 				}
 				deviceExtensionBuffer.rewind();
@@ -236,19 +239,19 @@ public class Vulkan implements AutoCloseable {
 				
 				PointerBuffer devicePointer = stack.pointers(VK10.VK_NULL_HANDLE);
 				VulkanErrorUtils.assertNoError(VK10.vkCreateDevice(threadData.physicalDevice.getVk(), createInfo, null, devicePointer), "Failed to create logical device");
-				threadData.device = new Device(new VkDevice(devicePointer.get(0), threadData.physicalDevice.getVk(), createInfo), threadData.physicalDevice, debugReportExtensionEnabled);
+				threadData.device = new Device(new VkDevice(devicePointer.get(0), threadData.physicalDevice.getVk(), createInfo), threadData.physicalDevice);
 				
-				Queue queue = new Queue(threadData.device, graphicsQueue.getIndex());
+				Queue queue = Queue.createQueue(threadData.device, graphicsQueue.getIndex());
 				threadData.device.setGraphicsQueue(queue);
-				queue = new Queue(threadData.device, computeQueue.getIndex());
+				queue = Queue.createQueue(threadData.device, computeQueue.getIndex());
 				threadData.device.setComputeQueue(queue);
-				queue = new Queue(threadData.device, graphicsComputeQueue.getIndex());
+				queue = Queue.createQueue(threadData.device, graphicsComputeQueue.getIndex());
 				threadData.device.setGraphicsComputeQueue(queue);
 				
 				if (threadData.window != null)
 				{
 					QueueFamily presentationQueue = VulkanErrorUtils.nonNull(threadData.physicalDevice.getQueueFamily(0, threadData.window.getSurface()), "Missing valid presentation queue family");
-					threadData.device.setPresentQueue(graphicsQueue.getIndex() == presentationQueue.getIndex() ? queue : new Queue(threadData.device, presentationQueue.getIndex()));
+					threadData.device.setPresentQueue(graphicsQueue.getIndex() == presentationQueue.getIndex() ? queue : Queue.createQueue(threadData.device, presentationQueue.getIndex()));
 				}
 				return threadData.device;
 			}
@@ -274,6 +277,11 @@ public class Vulkan implements AutoCloseable {
 	public VkInstance getInstance()
 	{
 		return instance;
+	}
+	
+	public boolean isDebugUtilsExtensionEnabled()
+	{
+		return debugUtilsExtensionEnabled;
 	}
 	
 	public PhysicalDevice getPhysicalDevice()

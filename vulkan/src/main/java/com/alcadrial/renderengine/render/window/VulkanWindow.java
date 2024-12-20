@@ -46,8 +46,6 @@ import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
-import com.alcadrial.renderengine.render.Queue;
-import com.alcadrial.renderengine.render.QueueFamily;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Surface;
@@ -119,9 +117,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
 				this.device = Objects.requireNonNull(device);
-				
-				QueueFamily presentationQueue = VulkanErrorUtils.nonNull(device.getPhysicalDevice().getQueueFamily(0, surface), "Missing valid presentation queue family");
-				device.setPresentQueue(device.getGraphicsQueue().getFamilyIndex() == presentationQueue.getIndex() ? device.getGraphicsQueue() : new Queue(device, presentationQueue.getIndex()));
 				
 				surface.init(device.getPhysicalDevice(), stack);
 				Debug.runOnDebug(() -> device.setObjectDebugName(surface, "Surface " + Debug.getIncrementalId()));

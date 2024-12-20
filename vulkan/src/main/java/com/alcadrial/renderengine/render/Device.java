@@ -9,14 +9,15 @@ import java.util.concurrent.CompletableFuture;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.vulkan.EXTDebugMarker;
-import org.lwjgl.vulkan.EXTDebugReport;
+import org.lwjgl.vulkan.EXTDebugUtils;
+import org.lwjgl.vulkan.KHRSurface;
+import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkBufferCreateInfo;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferAllocateInfo;
 import org.lwjgl.vulkan.VkCommandPoolCreateInfo;
-import org.lwjgl.vulkan.VkDebugMarkerObjectNameInfoEXT;
+import org.lwjgl.vulkan.VkDebugUtilsObjectNameInfoEXT;
 import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkFenceCreateInfo;
 import org.lwjgl.vulkan.VkMemoryRequirements;
@@ -47,7 +48,6 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		RenderEngine.assertLoaded();
 	}
 	
-	private boolean debugReportExtensionEnabled;
 	private Deque<AbstractDeviceResource<?>> destructionList;
 	private PhysicalDevice physicalDevice;
 	private Queue graphicsQueue;
@@ -57,10 +57,9 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	private CommandPool resetCommandPool;
 	private CommandPool shortLivedCommandPool;
 	
-	public Device(VkDevice device, PhysicalDevice physicalDevice, boolean debugReportExtensionEnabled) throws VulkanException
+	public Device(VkDevice device, PhysicalDevice physicalDevice) throws VulkanException
 	{
 		vk = VulkanErrorUtils.nonNull(device);
-		this.debugReportExtensionEnabled = debugReportExtensionEnabled;
 		this.physicalDevice = VulkanErrorUtils.nonNull(physicalDevice);
 		destructionList = new LinkedList<>();
 		
@@ -445,98 +444,98 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	public void setObjectDebugName(Vulkan object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT, object.getInstance().address(), name);
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_INSTANCE, object.getInstance().address(), name);
 	}
 	
 	public void setObjectDebugName(Surface object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT, object.getVk(), name);
+		setObjectDebugName(KHRSurface.VK_OBJECT_TYPE_SURFACE_KHR, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(Swapchain object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT, object.getVk(), name);
+		setObjectDebugName(KHRSwapchain.VK_OBJECT_TYPE_SWAPCHAIN_KHR, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(PhysicalDevice object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT, object.getVk().address(), name);
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_PHYSICAL_DEVICE, object.getVk().address(), name);
 	}
 	
 	public void setObjectDebugName(Device object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT, object.getVk().address(), name);
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_DEVICE, object.getVk().address(), name);
 	}
 	
 	public void setObjectDebugName(PipelineLayout object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, object.getVk(), name);
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_PIPELINE_LAYOUT, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(Pipeline object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, object.getVk(), name);
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_PIPELINE, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(RenderPass object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, object.getVk(), name);
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_RENDER_PASS, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(TextureSampler object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT, object.getVk(), name);
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_SAMPLER, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(TextureView object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, object.getVk(), name);
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_IMAGE_VIEW, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(Texture object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, object.getVk(), name);
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_IMAGE, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(FrameBuffer object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, object.getVk(), name);
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_FRAMEBUFFER, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(Queue object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT, object.getVk().address(), name);
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_QUEUE, object.getVk().address(), name);
 	}
 	
 	public void setObjectDebugName(Memory object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, object.getVk(), name);
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_DEVICE_MEMORY, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(VulkanBuffer object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, object.getVk(), name);
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_BUFFER, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(CommandBuffer object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT, object.getVk().address(), name);
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_COMMAND_BUFFER, object.getVk().address(), name);
 	}
 	
 	public void setObjectDebugName(CommandPool object, String name)
 	{
-		setObjectDebugName(EXTDebugReport.VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT, object.getVk(), name);
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_COMMAND_POOL, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(int objectType, long object, String name)
 	{
-		if (RenderEngine.isDebug() && debugReportExtensionEnabled)
+		if (RenderEngine.isDebug() && RenderEngine.getVulkan().isDebugUtilsExtensionEnabled())
 		{
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
-				VkDebugMarkerObjectNameInfoEXT info = VkDebugMarkerObjectNameInfoEXT.malloc(stack);
-				info.set(EXTDebugMarker.VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, 0, objectType, object, stack.UTF8(name));
-				EXTDebugMarker.vkDebugMarkerSetObjectNameEXT(vk, info);
+				VkDebugUtilsObjectNameInfoEXT info = VkDebugUtilsObjectNameInfoEXT.malloc(stack);
+				info.set(EXTDebugUtils.VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, 0, objectType, object, stack.UTF8(name));
+				EXTDebugUtils.vkSetDebugUtilsObjectNameEXT(vk, info);
 			}
 		}
 	}
