@@ -25,8 +25,12 @@ import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 
 import com.alcadrial.renderengine.render.buffer.Memory;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.commandbuffer.CommandPool;
 import com.alcadrial.renderengine.render.pipeline.Pipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
+import com.alcadrial.renderengine.render.queue.PresentQueue;
+import com.alcadrial.renderengine.render.queue.Queue;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
@@ -34,14 +38,13 @@ import com.alcadrial.renderengine.render.texture.TextureView;
 import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
 import com.alcadrial.renderengine.render.util.OutOfSpaceException;
+import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.util.functional.VulkanConsumer;
 
 public class Device extends AbstractVulkanResource<VkDevice> {
-	
-	private static final int DESTRUCTION_LIST_THRESHOLD = 200;
 	
 	static
 	{
@@ -53,7 +56,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	private Queue graphicsQueue;
 	private Queue computeQueue;
 	private Queue graphicsComputeQueue;
-	private Queue presentQueue;
+	private PresentQueue presentQueue;
 	private CommandPool resetCommandPool;
 	private CommandPool shortLivedCommandPool;
 	
@@ -142,12 +145,12 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		graphicsComputeQueue = queue;
 	}
 	
-	public Queue getPresentQueue()
+	public PresentQueue getPresentQueue()
 	{
 		return presentQueue;
 	}
 	
-	public void setPresentQueue(Queue queue)
+	public void setPresentQueue(PresentQueue queue)
 	{
 		VulkanErrorUtils.match(this, queue.getDevice(), "Cannot set a queue of another device");
 		presentQueue = queue;
@@ -191,7 +194,12 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			});
 			List<CommandBuffer> commandBuffers = new ArrayList<>(count);
 			
-			for (int i = 0; i < count; i++) commandBuffers.add(new CommandBuffer(this, resetCommandPool, new VkCommandBuffer(p.get(), vk)));
+			for (int i = 0; i < count; i++)
+			{
+				CommandBuffer commandBuffer = new CommandBuffer(this, resetCommandPool, new VkCommandBuffer(p.get(), vk));
+				Debug.runOnDebug(() -> commandBuffer.setName("MultiUse CommandBuffer " + Debug.getIncrementalId(this)));
+				commandBuffers.add(commandBuffer);
+			}
 			return commandBuffers;
 		}
 	}
@@ -210,6 +218,8 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 				VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, commandBufferAllocateInfo, p), "Failed to create single use command buffer");
 			});
 			CommandBuffer commandBuffer = new CommandBuffer(this, shortLivedCommandPool, new VkCommandBuffer(p.get(), vk));
+			Debug.runOnDebug(() -> commandBuffer.setName("SingleUse CommandBuffer " + Debug.getIncrementalId(this)));
+			
 			VulkanErrorUtils.assertStatement(commandBuffer.beginRecording(), "Failed to create single use command buffer");
 			useShortLivedCommandPool(pool -> configure.accept(commandBuffer));
 		}
@@ -229,6 +239,8 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 				VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, commandBufferAllocateInfo, p), "Failed to create single use command buffer");
 			});
 			CommandBuffer commandBuffer = new CommandBuffer(this, shortLivedCommandPool, new VkCommandBuffer(p.get(), vk));
+			Debug.runOnDebug(() -> commandBuffer.setName("SingleUse CommandBuffer " + Debug.getIncrementalId(this)));
+			
 			VulkanErrorUtils.assertStatement(commandBuffer.beginRecording(), "Failed to create single use command buffer");
 			useShortLivedCommandPool(pool -> configure.accept(commandBuffer));
 			return submitSingleUseCommandBuffer(stack, commandBuffer, queue);
@@ -249,6 +261,8 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 				VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, commandBufferAllocateInfo, p), "Failed to create single use command buffer");
 			});
 			CommandBuffer commandBuffer = new CommandBuffer(this, shortLivedCommandPool, new VkCommandBuffer(p.get(), vk));
+			Debug.runOnDebug(() -> commandBuffer.setName("SingleUse CommandBuffer " + Debug.getIncrementalId(this)));
+			
 			VulkanErrorUtils.assertStatement(commandBuffer.beginRecording(), "Failed to create single use command buffer");
 			return commandBuffer;
 		}
@@ -263,24 +277,22 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	{
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
 		VulkanErrorUtils.assertStatement(commandBuffer.endRecording(), "Command buffer is not recording");
-		long fence = createFence(stack, false);
-		queue.submit(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), fence);
-		return waitForFences(fence).thenAccept(fences -> {
-			destroyFences(fence);
+		return queue.submit(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)).thenAccept(fences -> {
+			destroyFences(fences);
 			commandBuffer.close();
 		});
 	}
 	
-	public CompletableFuture<?> submitMultiUseCommandBuffer(CommandBuffer commandBuffer, Queue queue) throws VulkanException
+	public CompletableFuture<?> submitMultiUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer) throws VulkanException
 	{
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
-			VulkanErrorUtils.assertStatement(commandBuffer.endRecording(), "Command buffer is not recording");
-			long fence = createFence(stack, false);
-			queue.submit(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), fence);
-			return waitForFences(fence).thenAccept(this::destroyFences);
-		}
+		return submitMultiUseCommandBuffer(stack, commandBuffer, graphicsQueue);
+	}
+	
+	public CompletableFuture<?> submitMultiUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer, Queue queue) throws VulkanException
+	{
+		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
+		VulkanErrorUtils.assertStatement(commandBuffer.endRecording(), "Command buffer is not recording");
+		return queue.submit(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)).thenAccept(this::destroyFences);
 	}
 	
 	public CompletableFuture<Device> waitIdle()
@@ -408,19 +420,25 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	@Override
 	public void close()
 	{
-		waitIdle().thenRun(() -> {
-			if (destructionList.size() > DESTRUCTION_LIST_THRESHOLD)
-			{
-				Debug.debug("Warning: too much unclosed resources (" + destructionList.size() + "), logging the first " + DESTRUCTION_LIST_THRESHOLD);
-				
-				AbstractDeviceResource<?>[] resources = destructionList.stream().limit(DESTRUCTION_LIST_THRESHOLD).toArray(AbstractDeviceResource[]::new);
-				
-				for (int i = 0; i < resources.length; i++) Debug.print(i + " " + resources[i].getClass(), resources[i]);
-			}
-			while (destructionList.peek() != null) destructionList.pop().close();
-			VK10.vkDestroyDevice(vk, null);
-		}).join();
-		super.close();
+		if (vk != null)
+		{
+			waitIdle().thenRun(() -> {
+				int threshold = Properties.DEVICE_DESTRUCTION_LIST_THRESHOLD.getValue();
+				if (destructionList.size() > threshold)
+				{
+					int limit = Math.max(Math.min(destructionList.size(), 100), threshold);
+					Debug.debug("Warning: too much unclosed resources (" + destructionList.size() + "), logging the first " + limit);
+					
+					AbstractDeviceResource<?>[] resources = destructionList.stream().limit(limit).toArray(AbstractDeviceResource[]::new);
+					
+					for (int i = 0; i < resources.length; i++) Debug.print(i + " " + resources[i].getClass(), resources[i]);
+				}
+				while (destructionList.peek() != null) destructionList.pop().close();
+				VK10.vkDestroyDevice(vk, null);
+			}).join();
+			vk = null;
+			super.close();
+		}
 	}
 	
 	@Override

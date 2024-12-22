@@ -17,10 +17,10 @@ import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.core.util.Pair;
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
@@ -42,7 +42,7 @@ public class BufferLayout implements VulkanDebug {
 	private boolean updated;
 	private BufferWriter writer;
 	
-	public BufferLayout(Device device, Lock lock)
+	public BufferLayout(Device device, /*Remove*/Lock lock)
 	{
 		this.device = device;
 		marks = new ConcurrentHashMap<>();

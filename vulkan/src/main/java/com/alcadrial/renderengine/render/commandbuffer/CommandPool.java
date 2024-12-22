@@ -1,7 +1,10 @@
-package com.alcadrial.renderengine.render;
+package com.alcadrial.renderengine.render.commandbuffer;
 
 import org.lwjgl.vulkan.VK10;
 
+import com.alcadrial.renderengine.render.Debug;
+import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 
 public class CommandPool extends RawDeviceResource {

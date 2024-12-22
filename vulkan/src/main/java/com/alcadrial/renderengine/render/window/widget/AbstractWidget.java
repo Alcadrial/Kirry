@@ -6,9 +6,9 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.core.util.EmptyImplementation;
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 

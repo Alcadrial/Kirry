@@ -35,7 +35,7 @@ public class Debug {
 		
 	}
 	
-	public static long getIncrementalId()
+	public static long getIncrementalId(Object obj)
 	{
 		return 0;
 	}
@@ -56,6 +56,10 @@ public class Debug {
 	}
 	
 	public static void deindent()
+	{
+		
+	}
+	public static void print(String name, String s)
 	{
 		
 	}
@@ -141,6 +145,16 @@ public class Debug {
 	}
 	
 	public static boolean isEnableAllocationDebug()
+	{
+		return false;
+	}
+	
+	public static void setEnableCopyDebug(boolean enableCopyDebug)
+	{
+		
+	}
+	
+	public static boolean isEnableCopyDebug()
 	{
 		return false;
 	}

@@ -1,5 +1,6 @@
 package com.alcadrial.renderengine.render;
 
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 

@@ -21,6 +21,10 @@ import org.lwjgl.vulkan.VkInstanceCreateInfo;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 
+import com.alcadrial.renderengine.core.util.OperativeSystem;
+import com.alcadrial.renderengine.render.queue.PresentQueue;
+import com.alcadrial.renderengine.render.queue.Queue;
+import com.alcadrial.renderengine.render.queue.QueueFamily;
 import com.alcadrial.renderengine.render.util.PhysicalDeviceNotFoundException;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -211,6 +215,12 @@ public class Vulkan implements AutoCloseable {
 				QueueFamily graphicsQueue = VulkanErrorUtils.nonNull(threadData.physicalDevice.getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT), "Missing valid graphics queue family");
 				QueueFamily computeQueue = VulkanErrorUtils.nonNull(threadData.physicalDevice.getQueueFamily(VK10.VK_QUEUE_COMPUTE_BIT), "Missing valid compute queue family");
 				QueueFamily graphicsComputeQueue = VulkanErrorUtils.nonNull(threadData.physicalDevice.getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT | VK10.VK_QUEUE_COMPUTE_BIT));
+				QueueFamily presentationQueue = null;
+				
+				if (threadData.window != null)
+				{
+					presentationQueue = VulkanErrorUtils.nonNull(threadData.physicalDevice.getQueueFamily(0, threadData.window.getSurface()), "Missing valid presentation queue family");
+				}
 				
 				VkDeviceQueueCreateInfo.Buffer queueCreateInfos = VkDeviceQueueCreateInfo.calloc(threadData.physicalDevice.indices(), stack);
 				
@@ -224,10 +234,7 @@ public class Vulkan implements AutoCloseable {
 				queueCreateInfos.rewind();
 				
 				PointerBuffer deviceExtensionBuffer = stack.mallocPointer(deviceExtensions.length);
-				for (String extension : deviceExtensions)
-				{
-					deviceExtensionBuffer.put(stack.UTF8(extension));
-				}
+				for (String extension : deviceExtensions) deviceExtensionBuffer.put(stack.UTF8(extension));
 				deviceExtensionBuffer.rewind();
 				
 				VkDeviceCreateInfo createInfo = VkDeviceCreateInfo.calloc(stack);
@@ -241,18 +248,28 @@ public class Vulkan implements AutoCloseable {
 				VulkanErrorUtils.assertNoError(VK10.vkCreateDevice(threadData.physicalDevice.getVk(), createInfo, null, devicePointer), "Failed to create logical device");
 				threadData.device = new Device(new VkDevice(devicePointer.get(0), threadData.physicalDevice.getVk(), createInfo), threadData.physicalDevice);
 				
-				Queue queue = Queue.createQueue(threadData.device, graphicsQueue.getIndex());
-				threadData.device.setGraphicsQueue(queue);
+				Queue queue;
+				
+				if (presentationQueue != null)
+				{
+					queue = Queue.createPresentQueue(threadData.device, presentationQueue.getIndex());
+					threadData.device.setPresentQueue((PresentQueue) queue);
+					if (graphicsQueue.getIndex() == presentationQueue.getIndex())
+					{
+						threadData.device.setGraphicsQueue(queue);
+					}
+				}
+				else
+				{
+					queue = Queue.createQueue(threadData.device, graphicsQueue.getIndex());
+					threadData.device.setGraphicsQueue(queue);
+				}
+				
 				queue = Queue.createQueue(threadData.device, computeQueue.getIndex());
 				threadData.device.setComputeQueue(queue);
 				queue = Queue.createQueue(threadData.device, graphicsComputeQueue.getIndex());
 				threadData.device.setGraphicsComputeQueue(queue);
 				
-				if (threadData.window != null)
-				{
-					QueueFamily presentationQueue = VulkanErrorUtils.nonNull(threadData.physicalDevice.getQueueFamily(0, threadData.window.getSurface()), "Missing valid presentation queue family");
-					threadData.device.setPresentQueue(graphicsQueue.getIndex() == presentationQueue.getIndex() ? queue : Queue.createQueue(threadData.device, presentationQueue.getIndex()));
-				}
 				return threadData.device;
 			}
 			finally

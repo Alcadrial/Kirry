@@ -18,6 +18,7 @@ import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
 
 import com.alcadrial.renderengine.core.util.Nullable;
+import com.alcadrial.renderengine.render.queue.QueueFamily;
 import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
 
 /**

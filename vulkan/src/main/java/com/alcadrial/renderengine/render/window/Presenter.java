@@ -22,13 +22,13 @@ import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 
 import com.alcadrial.renderengine.core.util.Nullable;
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Surface;
 import com.alcadrial.renderengine.render.Swapchain;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
@@ -159,6 +159,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 	private Semaphore graphicsQueueSemaphor;
 	
 	private int frameIndex;
+	private String name;
 	
 	public Presenter(Device device, VulkanWindow window, RenderPass renderPass, int swappingBuffers) throws VulkanException
 	{
@@ -204,6 +205,12 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 			isSwapchainValid = false;
 			swapchainRecreationLock.unlock();
 		});
+	}
+	
+	public void setName(String name)
+	{
+		this.name = name;
+		swapchain.setName("Swapchain (" + name + ")");
 	}
 	
 	public void initialize(@Nullable Texture depthTexture) throws VulkanException
@@ -255,16 +262,19 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 			imageViewCreateInfo.subresourceRange().baseArrayLayer(0);
 			imageViewCreateInfo.subresourceRange().layerCount(1);
 			
-			for (FrameData frame : frames)
+			for (int i = 0; i < frames.length; i++)
 			{
+				FrameData frame = frames[i];
 				imageViewCreateInfo.image(frame.getImage());
 				
 				VulkanErrorUtils.assertNoError(VK10.vkCreateImageView(device.getVk(), imageViewCreateInfo, null, p0), "Failed to create image views");
 				frame.setImageView(p0[0]);
+				if (name != null) device.setObjectDebugName(VK10.VK_OBJECT_TYPE_IMAGE_VIEW, p0[0], "Frame" + i + " ImageView (" + name + ")");
 				
 				attachments.put(0, p0[0]);
 				framebufferCreateInfo.pAttachments(attachments);
 				FrameBuffer frameBuffer = new FrameBuffer(device, framebufferCreateInfo);
+				if (name != null) frameBuffer.setName("Frame" + i + " FrameBuffer (" + name + ")");
 				frame.setFrameBuffer(frameBuffer);
 			}
 			
@@ -331,6 +341,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 		swapchainCreateInfo.oldSwapchain(oldSwapchain.getVk());
 		
 		swapchain = new Swapchain(device, surface, swapchainCreateInfo);
+		if (name != null) swapchain.setName("Swapchain (" + name + ")");
 		
 		oldDevice.waitIdle().thenRun(() -> {
 			for (FrameData frame : oldFrames)
@@ -395,8 +406,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 			submitInfo.pCommandBuffers(VulkanUtils.toAddressBuffer(stack, commandBuffer));
 			submitInfo.pSignalSemaphores(p1);
 			
-			device.getGraphicsQueue().submit(submitInfo, frame.getFence());
-			device.waitForFences(frame.getFence()).thenAccept(fences -> {
+			device.getGraphicsQueue().submit(submitInfo, frame.getFence()).thenAccept(fences -> {
 				try
 				{
 					onCommandBufferEndAction.run();

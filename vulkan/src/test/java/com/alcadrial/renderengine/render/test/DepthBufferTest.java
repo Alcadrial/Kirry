@@ -30,7 +30,6 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.axis.Axis;
 import com.alcadrial.renderengine.core.util.color.Color;
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
@@ -42,6 +41,7 @@ import com.alcadrial.renderengine.render.buffer.BigVulkanBuffer.PhysicalDeviceTr
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
@@ -69,6 +69,7 @@ public class DepthBufferTest extends RenderTest {
 	private static VulkanBuffer vertexBuffer;
 	private static VulkanBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
+	private static VulkanBuffer localUniformBuffer;
 	private static Vector3f lightPos;
 	private static double f;
 	
@@ -129,7 +130,18 @@ public class DepthBufferTest extends RenderTest {
 		});
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			System.out.println("Resized " + width + "x" + height);
-			//	renderer.updateUniforms(uniformBuffer, l -> l.set(PROJECTION, uniformBuffer, buildProjectionMatrix(window)));
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
+				renderer.updateUniform(PROJECTION, l -> l.set(buildProjectionMatrix(window)), commandBuffer);
+				device.submitSingleUseCommandBuffer(stack, commandBuffer);
+			}
+			catch (VulkanException e)
+			{
+				e.printStackTrace(System.out);
+				RenderEngine.terminate();
+				return;
+			}
 		});
 		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
 			System.out.println("Refresh");
@@ -167,16 +179,15 @@ public class DepthBufferTest extends RenderTest {
 		window.setCallback((GLFWKeyCallbackI) (w, k, s, a, m) -> {
 			if (k == GLFW.GLFW_KEY_R)
 			{
-				try
+				try (MemoryStack stack = MemoryStack.stackPush())
 				{
-					renderer.updateUniforms(l -> {
-						l.set(PROJECTION, buildProjectionMatrix(window));
-						l.set(MODEL, buildModelMatrix());
-						l.set(LIGHT_POS, lightPos);
-						l.set(LIGHT_INTENSITY, 0.8F);
-						l.set(SPACE_FOG_INTENSITY, 0.4F);
-						l.flush(null);//TODO
-					});
+					CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
+					renderer.updateUniform(PROJECTION, l -> l.set(buildProjectionMatrix(window)), commandBuffer);
+					renderer.updateUniform(MODEL, l -> l.set(buildModelMatrix()), commandBuffer);
+					renderer.updateUniform(LIGHT_POS, l -> l.set(lightPos), commandBuffer);
+					renderer.updateUniform(LIGHT_INTENSITY, l -> l.set(0.8F), commandBuffer);
+					renderer.updateUniform(SPACE_FOG_INTENSITY, l -> l.set(0.4F), commandBuffer);
+					device.submitSingleUseCommandBuffer(stack, commandBuffer);
 				}
 				catch (VulkanException e)
 				{
@@ -193,6 +204,8 @@ public class DepthBufferTest extends RenderTest {
 		vertexBuffer = staticBigBuffer.allocate(36 * 10 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		indexBuffer = staticBigBuffer.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 		uniformBuffer = staticBigBuffer.allocate(256 * 2 * 4, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		localUniformBuffer = VulkanBuffer.asLocal(uniformBuffer);
+		localUniformBuffer.getMemory().mapMemory();
 		
 		Color[] colors = new Color[] {
 			Color.VERY_LIGHT_YELLOW,
@@ -219,27 +232,28 @@ public class DepthBufferTest extends RenderTest {
 		lightPos = Vector3f.of(0.3F, 1, 0);
 		f = 0;
 		
-		PhysicalDeviceTranferState bigBufferTransfert = staticBigBuffer.startLocalBuffering();
-		
 		Builder builder = Renderer.create();
 		builder.shaderProgram(shaderProgram);
 		builder.depthTestEnable(true);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.bufferBindings(
-				bigBufferTransfert.beginTransfer(uniformBuffer, 0, 256),
-				bigBufferTransfert.beginTransfer(uniformBuffer, 256, 256)
+				new BufferWriter(localUniformBuffer, uniformBuffer, 0, 256),
+				new BufferWriter(localUniformBuffer, uniformBuffer, 256, 256)
 		);
 		renderer = builder.build(device, window.getSurface().getSize(), renderPass);
 		renderer.setVertexBuffers(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
-		renderer.updateUniforms(l -> {
-			l.set(PROJECTION, buildProjectionMatrix(window));
-			l.set(MODEL, buildModelMatrix());
-			l.set(LIGHT_POS, lightPos);
-			l.set(LIGHT_INTENSITY, 0.8F);
-			l.set(SPACE_FOG_INTENSITY, 0.4F);
-		});
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
+			renderer.updateUniform(PROJECTION, l -> l.set(buildProjectionMatrix(window)), commandBuffer);
+			renderer.updateUniform(MODEL, l -> l.set(buildModelMatrix()), commandBuffer);
+			renderer.updateUniform(LIGHT_POS, l -> l.set(lightPos), commandBuffer);
+			renderer.updateUniform(LIGHT_INTENSITY, l -> l.set(0.8F), commandBuffer);
+			renderer.updateUniform(SPACE_FOG_INTENSITY, l -> l.set(0.4F), commandBuffer);
+			device.submitSingleUseCommandBuffer(stack, commandBuffer);
+		}
 		
 		Debug.runOnDebug(() -> {
 			renderPass.setName("Renderpass");
@@ -276,10 +290,7 @@ public class DepthBufferTest extends RenderTest {
 			clearValues.get().depthStencil().depth(1).stencil(0);
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
 			
-			renderer.updateUniforms(l -> {
-				l.set(MODEL, buildModelMatrix());
-				l.flush(commandBuffer);
-			}, commandBuffer);
+			renderer.updateUniform(MODEL, l -> l.set(buildModelMatrix()), commandBuffer);
 			commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
 			commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), 0, 1);
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);

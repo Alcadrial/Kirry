@@ -2,10 +2,10 @@ package com.alcadrial.renderengine.render.window;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.window.widget.ActionResult;
 

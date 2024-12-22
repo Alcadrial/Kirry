@@ -32,7 +32,6 @@ import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.axis.Axis;
 import com.alcadrial.renderengine.core.cursor.CursorInputMode;
 import com.alcadrial.renderengine.core.util.color.Color;
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Computer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
@@ -46,6 +45,7 @@ import com.alcadrial.renderengine.render.buffer.BufferLayout;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
@@ -59,7 +59,7 @@ public class ComputerTest extends RenderTest {
 	
 	private static final String SHADER = "shader3";
 	private static final String PROJECTION = "PROJECTION";
-	private static final String PARTICLE_RADIUS = "PARTICLE_RADIUS";
+	//	private static final String PARTICLE_RADIUS = "PARTICLE_RADIUS";
 	private static final String MIN_BOUND = "MIN_BOUND";
 	private static final String MAX_BOUND = "MAX_BOUND";
 	private static final String ENLAPSED_TIME = "ENLAPSED_TIME";
@@ -81,16 +81,21 @@ public class ComputerTest extends RenderTest {
 	private static final Vector3f UP = Axis.Y;
 	private static final Vector3f DOWN = Axis.NEGATIVE_Y;
 	
-	private static long fps;
 	private static RenderPass renderPass;
 	private static Renderer renderer;
 	private static Computer computer;
+	private static StaticBigBuffer staticBigBuffer;
 	private static VulkanBuffer vertexBuffer;
 	private static VulkanBuffer vertexStorageBuffer;
 	private static VulkanBuffer storageBuffer0;
 	private static VulkanBuffer storageBuffer1;
 	private static VulkanBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
+	private static VulkanBuffer localUniformBuffer;
+	private static BufferLayout computeUniformBufferLayout;
+	private static BufferLayout computeStorageBuffer0Layout;
+	private static BufferLayout computeStorageBuffer1Layout;
+	private static CommandBuffer commandBuffer;
 	
 	private static Vector3f cameraPosition;
 	private static Vector3f cameraMovement;
@@ -99,7 +104,6 @@ public class ComputerTest extends RenderTest {
 	private static boolean isCameraUnlocked;
 	
 	private static boolean rebuildProjectionMatrix;
-	private static StaticBigBuffer staticBigBuffer;
 	
 	private static Matrix4f buildProjectionMatrix(VulkanWindow window)
 	{
@@ -145,13 +149,13 @@ public class ComputerTest extends RenderTest {
 		window.init(device);
 		
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
-			//	renderer.updateUniforms(uniformBuffer, l -> l.set(PROJECTION, uniformBuffer, buildProjectionMatrix(window)));
+			rebuildProjectionMatrix = true;
 		});
 		
 		cameraPosition = Vector3f.of(0, 0, -1);
 		cameraMovement = Vector3f.of(0, 0, 0);
 		cameraXRotation = Angle.of(0, AngleUnit.RADIANS);
-		cameraYRotation = Angle.of(270, AngleUnit.DEGREES);
+		cameraYRotation = Angle.of(0, AngleUnit.RADIANS);
 		isCameraUnlocked = false;
 		
 		Vector2i[] oldPos = new Vector2i[] {Vector2i.of(0, 0)};
@@ -236,9 +240,20 @@ public class ComputerTest extends RenderTest {
 			vertexBuffer = staticBigBuffer.allocate(242 * 3 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 			indexBuffer = staticBigBuffer.allocate(2064 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 			uniformBuffer = staticBigBuffer.allocate(Math.max(minOffsetAlignment * 3, (16 + 16 + 3 + 1 + 1) * 4), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+			localUniformBuffer = VulkanBuffer.asLocal(uniformBuffer);
+			localUniformBuffer.getMemory().mapMemory();
 			vertexStorageBuffer = staticBigBuffer.allocate(2 * size, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 			storageBuffer0 = new VulkanBuffer(vertexStorageBuffer, 0, size);
 			storageBuffer1 = new VulkanBuffer(vertexStorageBuffer, size, size);
+			
+			staticBigBuffer.setName("StaticBigBuffer");
+			vertexBuffer.setName("VertexBuffer");
+			indexBuffer.setName("IndexBuffer");
+			uniformBuffer.setName("UniformBuffer");
+			localUniformBuffer.setName("LocalUniformBuffer");
+			vertexStorageBuffer.setName("CertexStorageBuffer");
+			storageBuffer0.setName("StorageBuffer0");
+			storageBuffer1.setName("StorageBuffer1");
 		}
 		
 		Color[] colors = new Color[] {
@@ -310,9 +325,8 @@ public class ComputerTest extends RenderTest {
 			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), buffer -> buffer.copyBuffer(srcBuffer, 0, dstBuffer, 0, storageBuffer0.getSize()));
 		}
 		
+		commandBuffer = device.createMultiUseCommandBuffer();
 		renderPass = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
-		
-		PhysicalDeviceTranferState bigBufferTransfert = staticBigBuffer.startLocalBuffering();
 		
 		Builder builder = Renderer.create();
 		builder.shaderProgram(shaderProgram);
@@ -320,8 +334,8 @@ public class ComputerTest extends RenderTest {
 		builder.cullMode(VK10.VK_CULL_MODE_NONE);
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		builder.bufferBindings(List.of(
-				bigBufferTransfert.beginTransfer(uniformBuffer, 0, 256),
-				bigBufferTransfert.beginTransfer(uniformBuffer, 256, 256)
+				new BufferWriter(localUniformBuffer, uniformBuffer, 0, 256),
+				new BufferWriter(localUniformBuffer, uniformBuffer, 256, 256)
 		));
 		builder.minDepth(-1000F).maxDepth(1000F);
 		
@@ -329,24 +343,25 @@ public class ComputerTest extends RenderTest {
 		renderer.setVertexBuffers(0, vertexBuffer);
 		renderer.setVertexBuffers(1, storageBuffer0);
 		renderer.setIndexBuffer(indexBuffer);
-		renderer.updateUniforms(l -> {
-			l.set(PROJECTION, buildProjectionMatrix(window));
-			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), l::flush);
-		});
+		rebuildProjectionMatrix = true;
 		
 		computer = new Computer(device, computeShader);
-		computer.setBinding(0, uniformBuffer);
-		computer.setBinding(1, storageBuffer0);
-		computer.setBinding(2, storageBuffer1);
+		computeUniformBufferLayout = computer.setBinding(0, new BufferWriter(localUniformBuffer, uniformBuffer, 512, 256));
+		computeStorageBuffer0Layout = computer.setBinding(1, storageBuffer0);
+		computeStorageBuffer1Layout = computer.setBinding(2, storageBuffer1);
 		computer.init();
+		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			BufferLayout uniformBufferLayout = computer.getComputeUniformBufferLayout();
-			uniformBufferLayout.setWriter(bigBufferTransfert.beginTransfer(uniformBuffer));
-			uniformBufferLayout.set(MIN_BOUND, MIN_BOUND_VALUE);
-			uniformBufferLayout.set(MAX_BOUND, MAX_BOUND_VALUE);
-			uniformBufferLayout.set(ENLAPSED_TIME, 0F);
-			uniformBufferLayout.updateDescriptorSets();
+			commandBuffer.beginRecording();
+			computeUniformBufferLayout.set(MIN_BOUND, MIN_BOUND_VALUE);
+			computeUniformBufferLayout.set(MAX_BOUND, MAX_BOUND_VALUE);
+			computeUniformBufferLayout.set(ENLAPSED_TIME, 1F);
+			computeUniformBufferLayout.flush(commandBuffer);
+			device.submitMultiUseCommandBuffer(stack, commandBuffer).thenRun(commandBuffer::reset);
 		}
+		
+		RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, 0, 16, true, "PPPP");
+		RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, 128, 12, true, "xyz*");
 		
 		printState();
 	}
@@ -388,28 +403,15 @@ public class ComputerTest extends RenderTest {
 			if (cameraMovement.x() == 1) movement.add(-cos, 0, -sin);
 			movement.add(0, cameraMovement.y(), 0);
 			
-			cameraPosition.add(movement.multiplyAll(time / 1000000000F));
+			cameraPosition.add(movement.multiplyAll(enlapsed / 1000000000F));
 			rebuildProjectionMatrix = true;
 		}
-		String title = "Test fps=" + fps;
-		if (isCameraUnlocked)
-		{
-			title += ", pos=" + cameraPosition + ", vel=" + cameraMovement + ", angles={" + cameraXRotation.asFloatBounded(AngleUnit.DEGREES) + ", " + cameraYRotation.asFloatBounded(AngleUnit.DEGREES) + "}";
-		}
-		window.setTitle(title);
 		
 		window.pollEvents();
 		if (!window.isIconified())
 		{
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
-				CommandBuffer commandBuffer = window.getDevice().createSingleUseCommandBuffer();
-				
-				if (rebuildProjectionMatrix)
-				{
-					renderer.updateUniforms(l -> l.set(PROJECTION, buildProjectionMatrix(window)), commandBuffer);
-				}
-				
 				VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
 				renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
 				renderPassBeginInfo.pNext(0);
@@ -428,35 +430,32 @@ public class ComputerTest extends RenderTest {
 				clearValues.get().depthStencil().depth(1).stencil(0);
 				renderPassBeginInfo.pClearValues(clearValues.rewind());
 				
+				computeUniformBufferLayout.set(ENLAPSED_TIME, enlapsed / 1000000000F);
+				commandBuffer.beginRecording();
+				if (rebuildProjectionMatrix)
+				{
+					RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, 0, 32, true, "PPPP");
+					RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, 128, 12, true, "xyz*");
+					renderer.updateUniform(PROJECTION, l -> l.set(buildProjectionMatrix(window)), commandBuffer);
+					rebuildProjectionMatrix = false;
+				}
 				commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
 				commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), -1000, 1000);
 				commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 				renderer.draw(commandBuffer, PARTICLE_COUNT);
 				commandBuffer.endRenderPass();
 				computer.dispatch(commandBuffer, PARTICLE_COUNT, 1, 1);
+				computeUniformBufferLayout.flush(commandBuffer);
 				commandBuffer.endRecording();
 				
 				window.swapBuffers(commandBuffer, () -> {
 					
-					computer.getComputeStorageBufferLayout().update(sets -> {
-						VulkanBuffer t = storageBuffer0;
-						storageBuffer0 = storageBuffer1;
-						storageBuffer1 = t;
-						sets.get(0).pBufferInfo().buffer(storageBuffer0.getVk());
-						sets.get(1).pBufferInfo().buffer(storageBuffer1.getVk());
-					});
-					commandBuffer.close();
-					try
-					{
-						computer.getComputeUniformBufferLayout().set(ENLAPSED_TIME, enlapsed / 1000000000F);
-						computer.getComputeUniformBufferLayout().updateDescriptorSets();
-					}
-					catch (VulkanException e)
-					{
-						e.printStackTrace(System.out);
-						RenderEngine.terminate();
-						return;
-					}
+					VulkanBuffer t = storageBuffer0;
+					storageBuffer0 = storageBuffer1;
+					storageBuffer1 = t;
+					computeStorageBuffer0Layout.update(sets -> sets.get(0).pBufferInfo().buffer(storageBuffer0.getVk()));
+					computeStorageBuffer1Layout.update(sets -> sets.get(0).pBufferInfo().buffer(storageBuffer1.getVk()));
+					commandBuffer.reset();
 				});
 			}
 		}

@@ -29,7 +29,6 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Test;
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -38,6 +37,7 @@ import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
@@ -239,7 +239,7 @@ public class TextureTest extends RenderTest {
 		renderer = builder.build(device, window.getSurface().getSize(), renderPass);
 		renderer.setVertexBuffers(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
-		renderer.updateUniforms(l -> l.set(TEXTURE_SAMPLER_UNIFORM, texture.getView(), new TextureSampler(device)));
+		renderer.updateUniform(TEXTURE_SAMPLER_UNIFORM, l -> l.set(texture.getView(), new TextureSampler(device)));
 		
 		window.addSurfaceUpdateActions(surface -> renderer.startModificationPlan().size(surface.getSize()).submit());
 		isModifiedMatrix = true;
@@ -276,12 +276,11 @@ public class TextureTest extends RenderTest {
 				if (isModifiedMatrix)
 				{
 					isModifiedMatrix = false;
-					renderer.updateUniforms(l -> {
+					renderer.updateUniform(TRANSFORMATION_UNIFORM, l -> {
 						Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
 						Matrix4f model = new Matrix4f().translateYTo(-10 * panelPos.y()).translateXTo(-10 * panelPos.x());
-						l.set(TRANSFORMATION_UNIFORM, orthographic.multiply(model).transpose());
-						l.flush(commandBuffer);
-					});
+						l.set(orthographic.multiply(model).transpose());
+					}, commandBuffer);
 				}
 				
 				commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);

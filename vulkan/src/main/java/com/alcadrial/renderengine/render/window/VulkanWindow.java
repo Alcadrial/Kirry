@@ -42,13 +42,13 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.Window;
 import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.core.util.Pair;
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Surface;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.texture.Texture;
@@ -83,6 +83,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private @Nullable Function<VulkanException, Boolean> exceptionHandler;
 	private List<CommandBuffer> commandBuffers;
 	private int drawCount;
+	private String name;
 	
 	/**
 	 * <b>WARNING:</b> the window hint {@link GLFW#GLFW_CLIENT_API CLIENT_API} is set to {@link GLFW#GLFW_NO_API NO_API}
@@ -110,6 +111,15 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		drawCount = 0;
 	}
 	
+	public void setName(String name)
+	{
+		this.name = name;
+		device.setObjectDebugName(surface, "Surface (" + name + ")");
+		if (presenter != null) presenter.setName("Presenter (" + name + ")");
+		if (renderer != null) renderer.setName("Renderer (" + name + ")");
+		if (depthTexture != null) depthTexture.setName("DepthTexture (" + name + ")");
+	}
+	
 	public void init(Device device) throws VulkanException
 	{
 		if (this.device == null)
@@ -119,14 +129,19 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				this.device = Objects.requireNonNull(device);
 				
 				surface.init(device.getPhysicalDevice(), stack);
-				Debug.runOnDebug(() -> device.setObjectDebugName(surface, "Surface " + Debug.getIncrementalId()));
 				createRenderPass();
 				presenter = new Presenter(device, this, renderPass, BUFFERED_FRAMES_COUNT);
+				if (name != null) presenter.setName("Presenter (" + name + ")");
 				
 				renderer = Renderer.create().shaderProgram(shaderProgram).build(device, surface.getSize(), presenter.getRenderPass());
+				if (name != null) renderer.setName("Renderer (" + name + ")");
 				
 				commandBuffers = device.createMultiUseCommandBuffer(BUFFERED_FRAMES_COUNT);
-				for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.beginRecording();
+				for (CommandBuffer commandBuffer : commandBuffers)
+				{
+					if (name != null) commandBuffer.setName("CommandBuffer (" + name + ")");
+					commandBuffer.beginRecording();
+				}
 				prepareFrameBuffers(stack);
 				presenter.startPresentation();
 			}
@@ -177,6 +192,11 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			swapBuffers(commandBuffer);
 			commandBuffer.beginRecording();
 		}
+	}
+	
+	public void setShouldClose(boolean value)
+	{
+		GLFW.glfwSetWindowShouldClose(id, value);
 	}
 	
 	public void swapBuffers(CommandBuffer commandBuffer) throws VulkanException
@@ -277,10 +297,17 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		if (useDepthTexture)
 		{
 			VkExtent2D extent = surface.getExtent();
-			depthTexture = Texture.create2dTexture(device, extent.width(), extent.height(), VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
+			Texture depthTexture = Texture.create2dTexture(device, extent.width(), extent.height(), VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
 			depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL).join();
+			if (name != null) depthTexture.setName("DepthTexture (" + name + ")");
+			presenter.initialize(depthTexture);
+			this.depthTexture = depthTexture;
 		}
-		presenter.initialize(depthTexture);
+		else
+		{
+			presenter.initialize(null);
+			depthTexture = null;
+		}
 		
 		VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
 		renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
@@ -590,11 +617,14 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	@Override
 	public void close()
 	{
-		if (renderer != null) renderer.close();
-		if (presenter != null) presenter.close();
-		surface.close();
-		RenderEngine.awaitRequestMainThread(() -> GLFW.glfwDestroyWindow(id));
-		id = 0L;
+		if (id != 0)
+		{
+			if (renderer != null) renderer.close();
+			if (presenter != null) presenter.close();
+			surface.close();
+			RenderEngine.awaitRequestMainThread(() -> GLFW.glfwDestroyWindow(id));
+			id = 0L;
+		}
 	}
 	
 	@Override

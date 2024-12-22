@@ -14,7 +14,7 @@ public class SphereDataCollector {
 		RenderEngine.assertLoaded();
 	}
 	
-	public static void collect(BufferWriter vertexBuffer, BufferWriter indexBuffer, Vector3f origin, float radius, int scan)
+	public static void collect(BufferWriter vertexBuffer, BufferWriter indexBuffer, Vector3f origin, float radius, int scan) throws OutOfSpaceException
 	{
 		if (radius < 0) throw new IllegalArgumentException("Negative radius");
 		if (scan <= 0) throw new IllegalArgumentException("Non positive scan");

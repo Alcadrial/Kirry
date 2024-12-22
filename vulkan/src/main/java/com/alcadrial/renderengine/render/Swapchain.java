@@ -27,7 +27,7 @@ public class Swapchain extends RawDeviceResource {
 		long[] p = new long[1];
 		VulkanErrorUtils.assertNoError(KHRSwapchain.vkCreateSwapchainKHR(device.getVk(), createInfo, null, p), "Failed to create swap chain");
 		vk = p[0];
-		Debug.runOnDebug(() -> device.setObjectDebugName(this, "Swapchain " + Debug.getIncrementalId()));
+		Debug.runOnDebug(() -> device.setObjectDebugName(this, "Swapchain " + Debug.getIncrementalId(getClass())));
 	}
 	
 	@Override

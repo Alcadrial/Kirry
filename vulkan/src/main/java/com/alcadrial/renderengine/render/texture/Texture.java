@@ -9,11 +9,11 @@ import org.lwjgl.vulkan.VkImageCreateInfo;
 import org.lwjgl.vulkan.VkImageMemoryBarrier;
 
 import com.alcadrial.renderengine.core.util.Nonnull;
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.buffer.Memory;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;

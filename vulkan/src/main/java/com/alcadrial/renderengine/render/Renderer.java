@@ -21,11 +21,18 @@ import org.lwjgl.vulkan.VkPhysicalDeviceLimits;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
+import com.alcadrial.kector.matrix.Matrix4f;
+import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3i;
+import com.alcadrial.kector.vector.Vector4f;
+import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.buffer.BufferLayout;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline.GraphicsPipelineBuildFunction;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
@@ -37,6 +44,8 @@ import com.alcadrial.renderengine.render.shader.ShaderUtils;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
+import com.alcadrial.renderengine.render.texture.TextureSampler;
+import com.alcadrial.renderengine.render.texture.TextureView;
 import com.alcadrial.renderengine.render.util.DataAccumulator;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
@@ -70,7 +79,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 	private long descriptorSetLayout;
 	private long[] descriptorSet;
 	private long descriptorPool;
-	private Map<String, BufferLayout> uniforms;
+	private Map<String, Entry<BufferLayout, UniformLayout>> uniforms;
 	private List<VulkanConsumer<CommandBuffer>> extraCommands;
 	
 	private Renderer(Builder builder, Device device, GraphicsPipeline graphicsPipeline, long descriptorSetLayout, long[] descriptorSet, long descriptorPool, Map<String, BufferLayout> uniforms)
@@ -81,39 +90,37 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		this.descriptorSetLayout = descriptorSetLayout;
 		this.descriptorSet = descriptorSet;
 		this.descriptorPool = descriptorPool;
-		this.uniforms = uniforms;
+		this.uniforms = new HashMap<>(uniforms.size());
+		for (Entry<String, BufferLayout> e : uniforms.entrySet())
+		{
+			this.uniforms.put(e.getKey(), Map.entry(e.getValue(), new UniformLayout(e.getKey(), e.getValue())));
+		}
 		
 		vertexBuffers = new HashMap<>();
 		extraCommands = new LinkedList<>();
 	}
 	
-	public void updateUniform(String uniform, VulkanConsumer<BufferLayout> action) throws VulkanException
+	public void setName(String name)
 	{
-		BufferLayout layout = uniforms.get(uniform);
-		if (layout != null) action.accept(layout);
+		graphicsPipeline.setName("Graphics Pipeline (" + name + ")");
+		for (int i = 0; i < descriptorSet.length; i++) device.setObjectDebugName(VK10.VK_OBJECT_TYPE_DESCRIPTOR_SET, descriptorSet[i], "Descriptor Set " + i + " (" + name + ")");
+		device.setObjectDebugName(VK10.VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, descriptorSetLayout, "Descriptor Set Layout (" + name + ")");
+		device.setObjectDebugName(VK10.VK_OBJECT_TYPE_DESCRIPTOR_POOL, descriptorPool, "Descriptor Pool (" + name + ")");
 	}
 	
-	public void updateUniform(String uniform, VulkanConsumer<BufferLayout> action, CommandBuffer target) throws VulkanException
+	public void updateUniform(String uniform, VulkanConsumer<UniformLayout> action) throws VulkanException
 	{
-		BufferLayout layout = uniforms.get(uniform);
-		if (layout != null)
+		Entry<BufferLayout, UniformLayout> e = uniforms.get(uniform);
+		if (e != null) action.accept(e.getValue());
+	}
+	
+	public void updateUniform(String uniform, VulkanConsumer<UniformLayout> action, CommandBuffer target) throws VulkanException
+	{
+		Entry<BufferLayout, UniformLayout> e = uniforms.get(uniform);
+		if (e != null)
 		{
-			action.accept(layout);
-			layout.flush(target);
-		}
-	}
-	
-	public void updateUniforms(VulkanConsumer<BufferLayout> action) throws VulkanException
-	{
-		for (BufferLayout layout : uniforms.values()) action.accept(layout);
-	}
-	
-	public void updateUniforms(VulkanConsumer<BufferLayout> action, CommandBuffer target) throws VulkanException
-	{
-		for (BufferLayout layout : uniforms.values())
-		{
-			action.accept(layout);
-			layout.flush(target);
+			action.accept(e.getValue());
+			e.getKey().flush(target);
 		}
 	}
 	
@@ -136,7 +143,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 	{
 		if (count == 0) throw new IllegalStateException("Cannot draw 0 vertices");
 		
-		for (BufferLayout layout : uniforms.values()) layout.updateDescriptorSets();
+		for (Entry<BufferLayout, UniformLayout> e : uniforms.values()) e.getKey().updateDescriptorSets();
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -212,12 +219,119 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 		Debug.print("DescriptorSet: " + Debug.address(descriptorSet[0]));
 		Debug.print("Other Buffers [");
 		Debug.indent();
-		for (BufferLayout layout : uniforms.values())
+		for (Entry<BufferLayout, UniformLayout> e : uniforms.values())
 		{
-			Debug.print("Buffer ", layout.getWriter().getDstBuffer());
+			Debug.print("Buffer ", e.getKey().getWriter().getDstBuffer());
 		}
 		Debug.deindent();
 		Debug.print("]");
+	}
+	
+	public class UniformLayout {
+		
+		private String uniform;
+		private BufferLayout layout;
+		
+		private UniformLayout(String uniform, BufferLayout layout)
+		{
+			this.uniform = uniform;
+			this.layout = layout;
+		}
+		
+		public void set(Matrix4f value) throws VulkanException
+		{
+			set(0, value);
+		}
+		
+		public void set(int index, Matrix4f value) throws VulkanException
+		{
+			layout.set(uniform, index, value);
+		}
+		
+		public void set(Vector2f value) throws VulkanException
+		{
+			set(0, value);
+		}
+		
+		public void set(int index, Vector2f value) throws VulkanException
+		{
+			layout.set(uniform, index, value);
+		}
+		
+		public void set(Vector3f value) throws VulkanException
+		{
+			set(0, value);
+		}
+		
+		public void set(int index, Vector3f value) throws VulkanException
+		{
+			layout.set(uniform, index, value);
+		}
+		
+		public void set(Vector4f value) throws VulkanException
+		{
+			set(0, value);
+		}
+		
+		public void set(int index, Vector4f value) throws VulkanException
+		{
+			layout.set(uniform, index, value);
+		}
+		
+		public void set(Vector2i value) throws VulkanException
+		{
+			set(0, value);
+		}
+		
+		public void set(int index, Vector2i value) throws VulkanException
+		{
+			layout.set(uniform, index, value);
+		}
+		
+		public void set(Vector3i value) throws VulkanException
+		{
+			set(0, value);
+		}
+		
+		public void set(int index, Vector3i value) throws VulkanException
+		{
+			layout.set(uniform, index, value);
+		}
+		
+		public void set(Vector4i value) throws VulkanException
+		{
+			set(0, value);
+		}
+		
+		public void set(int index, Vector4i value) throws VulkanException
+		{
+			layout.set(uniform, index, value);
+		}
+		
+		public void set(TextureView value, TextureSampler sampler)
+		{
+			layout.set(uniform, value, sampler);
+		}
+		
+		public void set(int value) throws VulkanException
+		{
+			set(0, value);
+		}
+		
+		public void set(int index, int value) throws VulkanException
+		{
+			layout.set(uniform, index, value);
+		}
+		
+		public void set(float value) throws VulkanException
+		{
+			set(0, value);
+		}
+		
+		public void set(int index, float value) throws VulkanException
+		{
+			layout.set(uniform, index, value);
+		}
 	}
 	
 	public class ModificationPlan extends RendererDataAccumulator<ModificationPlan> {
@@ -285,7 +399,12 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 				Renderer.this.descriptorSetLayout = descriptorSetLayout;
 				Renderer.this.descriptorSet = descriptorSet;
 				Renderer.this.descriptorPool = descriptorPool;
-				Renderer.this.uniforms = uniforms;
+				Map<String, Entry<BufferLayout, UniformLayout>> newUniforms = new HashMap<>(uniforms.size());
+				for (Entry<String, BufferLayout> e : uniforms.entrySet())
+				{
+					newUniforms.put(e.getKey(), Map.entry(e.getValue(), new UniformLayout(e.getKey(), e.getValue())));
+				}
+				Renderer.this.uniforms = newUniforms;
 			}
 			
 			Renderer.this.graphicsPipeline.getDevice().waitIdle().thenRun(Renderer.this.graphicsPipeline::close);

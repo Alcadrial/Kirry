@@ -37,6 +37,7 @@ public class RenderTest {
 		try
 		{
 			TestProperties.init(args);
+			//Properties.DEVICE_DESTRUCTION_LIST_THRESHOLD.setValue(0);
 			
 			if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
 			

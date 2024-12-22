@@ -1,16 +1,18 @@
-package com.alcadrial.renderengine.render;
+package com.alcadrial.renderengine.render.queue;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
-import org.lwjgl.vulkan.VkPresentInfoKHR;
 import org.lwjgl.vulkan.VkQueue;
 import org.lwjgl.vulkan.VkSubmitInfo;
 
+import com.alcadrial.renderengine.render.Debug;
+import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -27,9 +29,14 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 		return new Queue(device, familyIndex);
 	}
 	
+	public static PresentQueue createPresentQueue(Device device, int familyIndex)
+	{
+		return new PresentQueue(device, familyIndex);
+	}
+	
 	private final int familyIndex;
 	
-	private Queue(Device device, int familyIndex)
+	protected Queue(Device device, int familyIndex)
 	{
 		super(device);
 		try (MemoryStack stack = MemoryStack.stackPush())
@@ -53,9 +60,26 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 		return familyIndex;
 	}
 	
-	public synchronized void submit(VkSubmitInfo submitInfo, long fence) throws VulkanException
+	/**
+	 * 
+	 * @param submitInfo
+	 * @throws VulkanException
+	 */
+	public synchronized void submit(VkSubmitInfo submitInfo) throws VulkanException
+	{
+		VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(vk, submitInfo, 0), "Failed to submit queue");
+	}
+	
+	/**
+	 * 
+	 * @param submitInfo
+	 * @param fence an optional handle to a fence to be signaled once all submitted command buffers have completed execution. If fence is not {@link VK10#VK_NULL_HANDLE NULL_HANDLER}, it defines a fence signal operation.
+	 * @throws VulkanException
+	 */
+	public synchronized CompletableFuture<long[]> submit(VkSubmitInfo submitInfo, long fence) throws VulkanException
 	{
 		VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(vk, submitInfo, fence), "Failed to submit queue");
+		return device.waitForFences(fence);
 	}
 	
 	public synchronized void waitIdle()
@@ -66,7 +90,7 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 	public Future<?> waitAsyncIdle(Runnable action)
 	{
 		return RenderEngine.getExecutor().submit(() -> {
-			VK10.vkQueueWaitIdle(vk);
+			waitIdle();
 			action.run();
 		});
 	}
@@ -74,14 +98,9 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 	public Future<?> waitAsyncIdle(Consumer<Queue> action)
 	{
 		return RenderEngine.getExecutor().submit(() -> {
-			VK10.vkQueueWaitIdle(vk);
+			waitIdle();
 			action.accept(this);
 		});
-	}
-	
-	public int present(VkPresentInfoKHR presentInfo)
-	{
-		return KHRSwapchain.vkQueuePresentKHR(vk, presentInfo);
 	}
 	
 	@Override

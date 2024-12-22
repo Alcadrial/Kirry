@@ -14,10 +14,10 @@ import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.core.util.Nullable;
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class BufferWriter implements AutoCloseable {
@@ -64,6 +64,16 @@ public class BufferWriter implements AutoCloseable {
 	private Work firstWork;
 	private Work lastWork;
 	
+	public BufferWriter(VulkanBuffer srcBuffer, VulkanBuffer dstBuffer) throws VulkanException
+	{
+		this(srcBuffer, dstBuffer, 0, dstBuffer.getSize());
+	}
+	
+	public BufferWriter(VulkanBuffer srcBuffer, VulkanBuffer dstBuffer, int offset, int size) throws VulkanException
+	{
+		this(srcBuffer, offset, dstBuffer, offset, size, null);
+	}
+	
 	public BufferWriter(VulkanBuffer srcBuffer, int srcOffset, VulkanBuffer dstBuffer, int dstOffset, int size) throws VulkanException
 	{
 		this(srcBuffer, srcOffset, dstBuffer, dstOffset, size, null);
@@ -71,6 +81,7 @@ public class BufferWriter implements AutoCloseable {
 	
 	public BufferWriter(VulkanBuffer srcBuffer, int srcOffset, VulkanBuffer dstBuffer, int dstOffset, int size, @Nullable CommandBuffer flushCommandBuffer) throws VulkanException
 	{
+		if (srcBuffer.getMemory().getMapping() == null) throw new VulkanException("Memory of srcBuffer " + srcBuffer + " is not mapped");
 		this.srcBuffer = srcBuffer;
 		this.srcOffset = srcOffset;
 		this.dstBuffer = dstBuffer;
@@ -79,7 +90,7 @@ public class BufferWriter implements AutoCloseable {
 		this.size = size;
 		cursor = 0;
 		buffer = srcBuffer.getMemory().getMapping().getBuffer();
-		buffer = buffer.slice((int) srcBuffer.getOffset(), size).order(buffer.order());
+		buffer = buffer.slice((int) srcBuffer.getOffset() + srcOffset, size).order(buffer.order());
 		vkBufferCopy = VkBufferCopy.malloc(MAX_COPY_COUNT);
 		firstWork = lastWork = null;
 		lastSetCursor = 0;
@@ -119,7 +130,7 @@ public class BufferWriter implements AutoCloseable {
 			copy.srcOffset(srcOffset + lastSetCursor * 4L);
 			copy.dstOffset(dstOffset + lastSetCursor * 4L);
 			copy.size((cursor - lastSetCursor) * 4L);
-			Debug.debug("Copy (" + bufferCopyCount + ") from " + srcBuffer + " to " + dstBuffer + " {" + lastSetCursor * 4L + ", " + lastSetCursor * 4 + ", " + (cursor - lastSetCursor) * 4L + "}");
+			Debug.debugIf(Debug.isEnableCopyDebug(), () -> "Copy (" + bufferCopyCount + ") from " + srcBuffer + " to " + dstBuffer + " {" + lastSetCursor * 4L + ", " + lastSetCursor * 4 + ", " + (cursor - lastSetCursor) * 4L + "}");
 			bufferCopyCount++;
 			lastSetCursor = cursor;
 		}

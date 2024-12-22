@@ -15,7 +15,6 @@ import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.vulkan.EXTDebugMarker;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkClearValue;
@@ -29,8 +28,6 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Test;
-import com.alcadrial.renderengine.render.CommandBuffer;
-import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -41,6 +38,7 @@ import com.alcadrial.renderengine.render.buffer.BigVulkanBuffer.PhysicalDeviceTr
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
@@ -86,9 +84,7 @@ public class Test2dPanel extends RenderTest {
 		
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.wideLines(true);
-		Device device = Debug.get(
-				() -> vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME, EXTDebugMarker.VK_EXT_DEBUG_MARKER_EXTENSION_NAME),
-				() -> vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME));
+		Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 		window.init(device);
 		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
@@ -172,13 +168,14 @@ public class Test2dPanel extends RenderTest {
 		renderPass = RenderPassTemplate.initColorTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
 		
 		staticBigBuffer = new StaticBigBuffer(device, ((7 * 4 + 6) * SIZE * SIZE * 4 + 64) * 4);
-		staticBigBuffer.setName("BigBuffer");
 		
 		vertexBuffer = staticBigBuffer.allocate(7 * 4 * SIZE * SIZE * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		vertexBuffer.setName("VertexBuffer");
 		indexBuffer = staticBigBuffer.allocate(6 * SIZE * SIZE * 4 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-		indexBuffer.setName("IndexBuffer");
 		uniformBuffer = staticBigBuffer.allocate(64 * 4, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		
+		staticBigBuffer.setName("StaticBigBuffer");
+		vertexBuffer.setName("VertexBuffer");
+		indexBuffer.setName("IndexBuffer");
 		uniformBuffer.setName("UniformBuffer");
 		
 		PhysicalDeviceTranferState bigBufferTransfert = staticBigBuffer.startLocalBuffering();
@@ -205,11 +202,12 @@ public class Test2dPanel extends RenderTest {
 		renderer = builder.build(device, window.getSurface().getSize(), renderPass);
 		renderer.setVertexBuffers(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
-		renderer.updateUniforms(l -> {
-			Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
-			Matrix4f model = new Matrix4f().translateYTo(-panelPos.y()).translateXTo(-panelPos.x());
-			l.set(TRANSFORMATION_UNIFORM, orthographic.multiply(model));
-			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), l::flush).join();
+		device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), b -> {
+			renderer.updateUniform(TRANSFORMATION_UNIFORM, l -> {
+				Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
+				Matrix4f model = new Matrix4f().translateYTo(-panelPos.y()).translateXTo(-panelPos.x());
+				l.set(orthographic.multiply(model));
+			}, b);
 		});
 		
 		commandBuffers = device.createMultiUseCommandBuffer(3);
@@ -228,12 +226,11 @@ public class Test2dPanel extends RenderTest {
 			for (CommandBuffer commandBuffer : commandBuffers)
 			{
 				commandBuffer.beginRecording();
-				renderer.updateUniforms(l -> {
+				renderer.updateUniform(TRANSFORMATION_UNIFORM, l -> {
 					Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
 					Matrix4f model = new Matrix4f().translateYTo(-panelPos.y()).translateXTo(-panelPos.x());
-					l.set(TRANSFORMATION_UNIFORM, orthographic.multiply(model));
-					l.flush(commandBuffer);
-				});
+					l.set(orthographic.multiply(model));
+				}, commandBuffer);
 			}
 			isModified = true;
 		}

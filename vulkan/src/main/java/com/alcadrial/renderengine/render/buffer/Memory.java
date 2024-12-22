@@ -117,12 +117,15 @@ public class Memory extends RawDeviceResource {
 	@Override
 	public void debug()
 	{
-		
+		Debug.print("Vk", vk);
+		Debug.print("Name", name);
+		Debug.print("Mapped: " + (mapping != null));
 	}
 	
 	@Override
 	public void setName(String name)
 	{
+		this.name = name;
 		device.setObjectDebugName(this, name);
 	}
 }

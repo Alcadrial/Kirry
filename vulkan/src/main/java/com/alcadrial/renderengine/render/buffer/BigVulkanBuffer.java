@@ -7,10 +7,10 @@ import java.util.function.Consumer;
 
 import org.lwjgl.vulkan.VK10;
 
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.OutOfSpaceException;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -156,8 +156,7 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 					}
 					catch (InterruptedException | ExecutionException e)
 					{
-						// TODO Auto-generated catch block
-						e.printStackTrace(System.out);
+						Thread.currentThread().interrupt();
 					}
 					writer.close();
 				}

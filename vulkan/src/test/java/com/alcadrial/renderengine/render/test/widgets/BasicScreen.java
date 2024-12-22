@@ -5,10 +5,10 @@ import java.util.List;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;

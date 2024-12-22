@@ -18,6 +18,11 @@ public class VulkanBuffer extends RawDeviceResource {
 		RenderEngine.assertLoaded();
 	}
 	
+	public static VulkanBuffer asLocal(VulkanBuffer vulkanBuffer) throws VulkanException
+	{
+		return new VulkanBuffer(vulkanBuffer.device, vulkanBuffer.size, vulkanBuffer.usage | VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK10.VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+	}
+	
 	protected Memory memory;
 	private VulkanBuffer parent;
 	
@@ -140,9 +145,10 @@ public class VulkanBuffer extends RawDeviceResource {
 	@Override
 	public void debug()
 	{
-		Debug.print("Vk: " + Debug.address(vk));
+		Debug.print("Vk", vk);
+		Debug.print("Name", name);
 		Debug.print("Offset: " + offset);
-		Debug.print("Memory: ", memory);
+		Debug.print("Memory", memory);
 		Debug.print("Size: " + size);
 	}
 	

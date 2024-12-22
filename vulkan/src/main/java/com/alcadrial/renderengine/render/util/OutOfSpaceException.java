@@ -1,7 +1,8 @@
 package com.alcadrial.renderengine.render.util;
 
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
-public class OutOfSpaceException extends RuntimeException {
+public class OutOfSpaceException extends VulkanException {
 	
 	public OutOfSpaceException()
 	{

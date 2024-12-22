@@ -3,10 +3,10 @@ package com.alcadrial.renderengine.render;
 import java.io.PrintStream;
 import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -28,16 +28,18 @@ public class Debug {
 	}
 	
 	private static volatile PrintStream debugOutput;
-	private static volatile Map<String, Long> idMap;
+	private static volatile Map<Object, Long> idMap;
 	private static String prefix;
 	private static boolean enableAllocationDebug;
+	private static boolean enableCopyDebug;
 	
 	static
 	{
 		debugOutput = System.out;
-		idMap = new HashMap<>();
+		idMap = new ConcurrentHashMap<>();
 		prefix = "";
 		enableAllocationDebug = false;
+		enableCopyDebug = false;
 	}
 	
 	public static <T> T get(VulkanSupplier<T> debugSupplier, VulkanSupplier<T> releaseSupplier) throws VulkanException
@@ -55,9 +57,9 @@ public class Debug {
 		t.printStackTrace(debugOutput);
 	}
 	
-	public static long getIncrementalId()
+	public static long getIncrementalId(Object obj)
 	{
-		return idMap.computeIfAbsent(Thread.currentThread().getStackTrace()[0].getClassName(), s -> 0L);
+		return idMap.compute(obj, (k, v) -> v == null ? 0L : v + 1);
 	}
 	
 	public static void printState(String name, VulkanDebug vk)
@@ -104,6 +106,11 @@ public class Debug {
 	public static void deindent()
 	{
 		prefix = prefix.substring(0, prefix.length() - 1);
+	}
+	
+	public static void print(String name, String s)
+	{
+		print(name + ": " + s);
 	}
 	
 	public static void print(String name, Pointer vk)
@@ -232,6 +239,16 @@ public class Debug {
 	public static boolean isEnableAllocationDebug()
 	{
 		return enableAllocationDebug;
+	}
+	
+	public static void setEnableCopyDebug(boolean enableCopyDebug)
+	{
+		Debug.enableCopyDebug = enableCopyDebug;
+	}
+	
+	public static boolean isEnableCopyDebug()
+	{
+		return enableCopyDebug;
 	}
 	
 	public static void setDebugOutput(PrintStream debugOutput)

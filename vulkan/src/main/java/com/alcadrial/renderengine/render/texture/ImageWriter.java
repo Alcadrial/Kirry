@@ -14,10 +14,10 @@ import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.core.util.Nullable;
-import com.alcadrial.renderengine.render.CommandBuffer;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class ImageWriter implements AutoCloseable {

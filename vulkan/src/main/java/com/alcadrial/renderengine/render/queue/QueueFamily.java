@@ -1,6 +1,8 @@
-package com.alcadrial.renderengine.render;
+package com.alcadrial.renderengine.render.queue;
 
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
+
+import com.alcadrial.renderengine.render.RenderEngine;
 
 public class QueueFamily {
 	

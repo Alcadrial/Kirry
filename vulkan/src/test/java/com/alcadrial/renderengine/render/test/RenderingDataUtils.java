@@ -131,7 +131,12 @@ public class RenderingDataUtils {
 		loadRectangleIndices(indexBuffer, startIndex);
 	}
 	
-	public static void printBufferContent(StaticBigBuffer bigBuffer, VulkanBuffer buffer, boolean floats, int rowSize, int rows, String alphabet) throws VulkanException
+	public static void printBufferContent(StaticBigBuffer bigBuffer, VulkanBuffer buffer, boolean floats, int rows, String alphabet) throws VulkanException
+	{
+		printBufferContent(bigBuffer, buffer, 0, rows * alphabet.length(), floats, alphabet);
+	}
+	
+	public static void printBufferContent(StaticBigBuffer bigBuffer, VulkanBuffer buffer, int offset, int length, boolean floats, String alphabet) throws VulkanException
 	{
 		Device device = bigBuffer.getDevice();
 		try (VulkanBuffer b = new VulkanBuffer(device, buffer.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0))
@@ -140,10 +145,11 @@ public class RenderingDataUtils {
 				c.copyBuffer(bigBuffer.getRemoteBuffer(), buffer.getOffset(), b, 0, b.getSize());
 			}).join();
 			
+			int rowSize = alphabet.length();
 			try (Mapping m = b.getMemory().mapMemory())
 			{
-				int[] data = new int[rowSize * rows];
-				m.getBuffer().asIntBuffer().get(data);
+				int[] data = new int[length];
+				m.getBuffer().asIntBuffer().position(offset).get(data);
 				
 				for (int i = 0; i < rowSize - 1; i++) System.out.print(" " + alphabet.charAt(i) + " |");
 				System.out.println(" " + alphabet.charAt(rowSize - 1));
@@ -168,7 +174,7 @@ public class RenderingDataUtils {
 		}
 	}
 	
-	public static void printBufferContentStripped(StaticBigBuffer bigBuffer, VulkanBuffer buffer, boolean floats, int rowSize, int rows, String alphabet) throws VulkanException
+	public static void printBufferContentStripped(StaticBigBuffer bigBuffer, VulkanBuffer buffer, boolean floats, int rows, int rowSize, String alphabet) throws VulkanException
 	{
 		Device device = bigBuffer.getDevice();
 		try (VulkanBuffer b = new VulkanBuffer(device, buffer.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0))
