@@ -28,7 +28,7 @@ public class VulkanBuffer extends RawDeviceResource {
 	
 	protected final long offset;
 	protected final int size;
-	private final int usage;
+	protected final int usage;
 	
 	/**
 	 *
@@ -47,9 +47,10 @@ public class VulkanBuffer extends RawDeviceResource {
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			vk = device.createBuffer(stack, size, usage);
+			Debug.debugCreate(() -> "Created " + this);
 			memory = device.allocateMemory(stack, this, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+			Debug.debugAllocation(() -> "Allocated " + this);
 		}
-		Debug.debugAllocation(() -> "Allocated " + this);
 	}
 	
 	public VulkanBuffer(Device device, int size, int usage, int requiredProperties, int optimalProperties) throws VulkanException
@@ -61,9 +62,10 @@ public class VulkanBuffer extends RawDeviceResource {
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			vk = device.createBuffer(stack, size, usage);
+			Debug.debugCreate(() -> "Created " + this);
 			memory = device.allocateMemory(stack, this, requiredProperties, optimalProperties);
+			Debug.debugAllocation(() -> "Allocated " + this);
 		}
-		Debug.debugAllocation(() -> "Allocated " + this);
 	}
 	
 	public VulkanBuffer(VulkanBuffer buffer, long offset, int size, int usage) throws VulkanException
@@ -73,12 +75,13 @@ public class VulkanBuffer extends RawDeviceResource {
 		this.size = size;
 		this.usage = usage;
 		parent = buffer;
+		memory = buffer.memory;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			vk = device.createBuffer(stack, size, usage);
-			memory = buffer.memory;
-			VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), vk, memory.getVk(), buffer.offset + offset), "Failed to bind buffer memory");
+			Debug.debugCreate(() -> "Created " + this);
 		}
+		bindMemory();
 	}
 	
 	public VulkanBuffer(VulkanBuffer buffer, long offset, int size) throws VulkanException
@@ -88,12 +91,30 @@ public class VulkanBuffer extends RawDeviceResource {
 		this.size = size;
 		usage = buffer.usage;
 		parent = buffer;
+		memory = buffer.memory;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			vk = device.createBuffer(stack, size, usage);
-			memory = buffer.memory;
-			VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), vk, memory.getVk(), buffer.offset + offset), "Failed to bind buffer memory");
+			Debug.debugCreate(() -> "Created " + this);
 		}
+		bindMemory();
+	}
+	
+	protected VulkanBuffer(VulkanBuffer parent, long vk, long offset, int size, int usage) throws VulkanException
+	{
+		super(parent.device);
+		this.offset = parent.offset + offset;
+		this.size = size;
+		this.usage = usage;
+		this.parent = parent;
+		this.vk = vk;
+		memory = parent.memory;
+		bindMemory();
+	}
+	
+	protected void bindMemory() throws VulkanException
+	{
+		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), vk, memory.getVk(), this.offset), "Failed to bind buffer memory");
 	}
 	
 	public Memory getMemory()
@@ -132,6 +153,7 @@ public class VulkanBuffer extends RawDeviceResource {
 			Debug.debugAllocation(() -> "Deallocated " + this);
 			memory.close();
 		}
+		Debug.debugClose(() -> "Closing VulkanBuffer " + this);
 		VK10.vkDestroyBuffer(device.getVk(), vk, null);
 		super.close();
 	}
@@ -139,7 +161,7 @@ public class VulkanBuffer extends RawDeviceResource {
 	@Override
 	public String toString()
 	{
-		return (name != null ? name + "{" : "VulkanBuffer{") + Debug.address(vk) + ", " + (offset != 0 ? "offset=" + offset + ", " : "") + size + " bytes, (" + DataUtils.getBufferUsage(usage) + "), mem=" + Debug.address(memory.getVk()) + "}";
+		return (name != null ? name + "{" : "VulkanBuffer{") + Debug.address(vk) + ", " + (offset != 0 ? "offset=" + offset + ", " : "") + size + " bytes, (" + DataUtils.getBufferUsage(usage) + ")" + (memory != null ? ", mem=" + Debug.address(memory.getVk()) : "") + "}";
 	}
 	
 	@Override

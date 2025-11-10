@@ -40,7 +40,7 @@ public class Swapchain extends RawDeviceResource {
 	@Override
 	public void close()
 	{
-		device.waitIdle().join();
+		device.waitIdle();
 		KHRSwapchain.vkDestroySwapchainKHR(device.getVk(), vk, null);
 		super.close();
 	}

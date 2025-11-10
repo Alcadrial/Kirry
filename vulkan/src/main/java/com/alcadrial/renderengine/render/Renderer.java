@@ -188,7 +188,7 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 	@Override
 	public void close()
 	{
-		device.waitIdle().join();
+		device.waitIdle();
 		graphicsPipeline.close();
 		VK10.vkDestroyDescriptorSetLayout(device.getVk(), descriptorSetLayout, null);
 		VK10.vkDestroyDescriptorPool(device.getVk(), descriptorPool, null);
@@ -377,7 +377,11 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			boolean deviceModified = device.isModified();
 			
 			Device device0 = device.require();
+
 			physicalDevice.set(device0.getPhysicalDevice());
+			
+			GraphicsPipeline oldGraphicsPipeline = Renderer.this.graphicsPipeline;
+			Device oldDevice = oldGraphicsPipeline.getDevice();
 			
 			if (deviceModified || shaderProgram.isModified())
 			{
@@ -391,9 +395,11 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 				long descriptorSetLayouts0 = Renderer.this.descriptorSetLayout;
 				long descriptorPool0 = Renderer.this.descriptorPool;
 				
-				device0.waitIdle().thenRun(() -> {
-					VK10.vkDestroyDescriptorSetLayout(device0.getVk(), descriptorSetLayouts0, null);
-					VK10.vkDestroyDescriptorPool(device0.getVk(), descriptorPool0, null);
+				RenderEngine.submitAsync(() -> {
+					oldDevice.waitIdle();
+					VK10.vkDestroyDescriptorSetLayout(oldDevice.getVk(), descriptorSetLayouts0, null);
+					VK10.vkDestroyDescriptorPool(oldDevice.getVk(), descriptorPool0, null);
+					oldGraphicsPipeline.close();
 				});
 				
 				Renderer.this.descriptorSetLayout = descriptorSetLayout;
@@ -406,8 +412,14 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 				}
 				Renderer.this.uniforms = newUniforms;
 			}
+			else
+			{
+				RenderEngine.submitAsync(() -> {
+					oldDevice.waitIdle();
+					oldGraphicsPipeline.close();
+				});
+			}
 			
-			Renderer.this.graphicsPipeline.getDevice().waitIdle().thenRun(Renderer.this.graphicsPipeline::close);
 			graphicsPipeline.set(createGraphicsPipeline(size.require(), builderFunction));
 			
 			Renderer.this.device = device0;
@@ -549,7 +561,6 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 				switch (descriptorType)
 				{
 					case UNIFORM_BUFFER, STORAGE_BUFFER -> {
-						
 						switch (descriptorType)
 						{
 							case UNIFORM_BUFFER -> {

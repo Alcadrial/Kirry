@@ -126,7 +126,7 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 			VkQueueFamilyProperties.Buffer buffer = VkQueueFamilyProperties.malloc(p0[0], stack);
 			VK10.vkGetPhysicalDeviceQueueFamilyProperties(vk, p0, buffer);
 			
-			for (int i = 0; i < buffer.capacity(); i++) queues.get(buffer.get(i).queueFlags()).add(new QueueFamily(buffer.get(i), i));
+			for (int i = 0; i < buffer.capacity(); i++) queues.get(buffer.get(i).queueFlags() & 0x0F).add(new QueueFamily(buffer.get(i), i));
 		}
 	}
 	

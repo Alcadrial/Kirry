@@ -1,8 +1,6 @@
 package com.alcadrial.renderengine.render.buffer;
 
 import java.nio.ByteBuffer;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
@@ -13,6 +11,7 @@ import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.util.VulkanFuture;
 
 final class NullBufferWriter extends BufferWriter {
 	
@@ -143,9 +142,9 @@ final class NullBufferWriter extends BufferWriter {
 	}
 	
 	@Override
-	public Future<?> getLoad()
+	public VulkanFuture<?> getLoad()
 	{
-		return CompletableFuture.completedFuture(null);
+		return RenderEngine.completedTask();
 	}
 	
 	@Override

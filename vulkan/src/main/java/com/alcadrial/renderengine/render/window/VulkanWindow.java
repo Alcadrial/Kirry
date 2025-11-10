@@ -56,6 +56,7 @@ import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanResource;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.util.functional.VulkanConsumer;
+import com.alcadrial.renderengine.render.window.Presenter.Result;
 
 public class VulkanWindow extends Window implements VulkanResource<Long> {
 	
@@ -89,6 +90,8 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	 * <b>WARNING:</b> the window hint {@link GLFW#GLFW_CLIENT_API CLIENT_API} is set to {@link GLFW#GLFW_NO_API NO_API}
 	 * using {@link RenderEngine#setWindowHint(int, int) RenderEngine#setWindowHint}
 	 * before creating the window and is never restored to the previous value if different.
+	 * <p>
+	 * Must be called from the main thread if single threaded otherwise it will block waiting for the main thread.
 	 * 
 	 * @param width the width in pixels of the window
 	 * @param height the height int pixels of the window
@@ -114,10 +117,11 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	public void setName(String name)
 	{
 		this.name = name;
-		device.setObjectDebugName(surface, "Surface (" + name + ")");
-		if (presenter != null) presenter.setName("Presenter (" + name + ")");
-		if (renderer != null) renderer.setName("Renderer (" + name + ")");
-		if (depthTexture != null) depthTexture.setName("DepthTexture (" + name + ")");
+		device.setObjectDebugName(surface, "Surface(" + name + ")");
+		if (presenter != null) presenter.setName("Presenter(" + name + ")");
+		if (renderer != null) renderer.setName("Renderer(" + name + ")");
+		if (depthTexture != null) depthTexture.setName("DepthTexture(" + name + ")");
+		for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.setName("CommandBuffer (" + name + ")");
 	}
 	
 	public void init(Device device) throws VulkanException
@@ -131,17 +135,11 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				surface.init(device.getPhysicalDevice(), stack);
 				createRenderPass();
 				presenter = new Presenter(device, this, renderPass, BUFFERED_FRAMES_COUNT);
-				if (name != null) presenter.setName("Presenter (" + name + ")");
 				
 				renderer = Renderer.create().shaderProgram(shaderProgram).build(device, surface.getSize(), presenter.getRenderPass());
-				if (name != null) renderer.setName("Renderer (" + name + ")");
 				
 				commandBuffers = device.createMultiUseCommandBuffer(BUFFERED_FRAMES_COUNT);
-				for (CommandBuffer commandBuffer : commandBuffers)
-				{
-					if (name != null) commandBuffer.setName("CommandBuffer (" + name + ")");
-					commandBuffer.beginRecording();
-				}
+				for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.beginRecording();
 				prepareFrameBuffers(stack);
 				presenter.startPresentation();
 			}
@@ -156,7 +154,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			
 			if (!screen.isInitialized()) screen.initializeRendering(null);//TODO
 			if (!screen.isRendered()) screen.render(new Matrix4f().orthographicPositive(width, height), renderer);
-			if (drawCount++ < 3)
+			if (drawCount++ < 3)//WIP
 			{
 				try (MemoryStack stack = MemoryStack.stackPush())
 				{
@@ -201,8 +199,12 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	
 	public void swapBuffers(CommandBuffer commandBuffer) throws VulkanException
 	{
-		presenter.endPresentation(commandBuffer);
-		presenter.startPresentation();
+		Result r = presenter.endPresentation(commandBuffer);
+		if (r == Result.FAILED) throw new VulkanException("Failed to end presentation");
+		if (r != Result.SUCCESS) Debug.debug("Swap buffers status: " + r);
+		r = presenter.startPresentation();
+		if (r == Result.FAILED) throw new VulkanException("Failed to start presentation");
+		if (r != Result.SUCCESS) Debug.debug("Swap buffers status: " + r);
 	}
 	
 	public void swapBuffers(CommandBuffer commandBuffer, Runnable onCommandBufferEndAction) throws VulkanException
@@ -371,7 +373,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				height = h;
 			});
 			GLFW.glfwSetFramebufferSizeCallback(id, (p, w, h) -> {
-				
 				if (w != 0)
 				{
 					try (MemoryStack stack = MemoryStack.stackPush())
@@ -621,6 +622,10 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		{
 			if (renderer != null) renderer.close();
 			if (presenter != null) presenter.close();
+			device.waitIdle();
+			for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.close();
+			if (depthTexture != null) depthTexture.close();
+			
 			surface.close();
 			RenderEngine.awaitRequestMainThread(() -> GLFW.glfwDestroyWindow(id));
 			id = 0L;

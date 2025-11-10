@@ -2,7 +2,6 @@ package com.alcadrial.renderengine.render.buffer;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
 import org.lwjgl.vulkan.VK10;
@@ -11,8 +10,9 @@ import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
-import com.alcadrial.renderengine.render.util.OutOfSpaceException;
+import com.alcadrial.renderengine.render.util.OverflowException;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
+import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoCloseable {
@@ -29,7 +29,7 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 	{
 		super(device);
 		remoteBigBuffer = new VulkanBuffer(device, size, VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
-		Debug.debugAllocation(() -> "Created BigBuffer " + (isLocalBufferingActive() ? "Local" : "Remote") + " " + remoteBigBuffer);
+		Debug.debugCreate(() -> "Created BigBuffer Remote " + remoteBigBuffer);
 		vk = remoteBigBuffer.getVk();
 	}
 	
@@ -45,16 +45,17 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 	 * @param size the capacity of the buffer in bytes
 	 * @param usage the vulkan usage flags
 	 * @return the newly allocated buffer
-	 * @throws OutOfSpaceException 
+	 * @throws OverflowException 
 	 * @throws VulkanException 
 	 */
-	public abstract VulkanBuffer allocate(int size, int usage) throws OutOfSpaceException, VulkanException;
+	public abstract VulkanBuffer allocate(int size, int usage) throws OverflowException, VulkanException;
 	
 	public synchronized PhysicalDeviceTranferState startLocalBuffering() throws VulkanException
 	{
 		if (localBigBuffer == null)
 		{
 			localBigBuffer = new VulkanBuffer(remoteBigBuffer.getDevice(), remoteBigBuffer.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK10.VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+			Debug.debugCreate(() -> "Created BigBuffer Local " + localBigBuffer + " of " + remoteBigBuffer);
 			localBigBuffer.getMemory().mapMemory();
 			return new PhysicalDeviceTranferState();
 		}
@@ -80,9 +81,7 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 	
 	@Override
 	public void debug()
-	{
-		
-	}
+	{}
 	
 	@Override
 	public void close()
@@ -92,6 +91,7 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 			clear();
 			localBigBuffer.close();
 			localBigBuffer = null;
+			Debug.debugClose(() -> "Destroyed BigBuffer Local of " + remoteBigBuffer);
 		}
 		clear();
 		remoteBigBuffer.close();
@@ -143,6 +143,13 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 			for (BufferWriter writer : writers) writer.flush();
 		}
 		
+		public VulkanFuture<?> waitIdle()
+		{
+			return RenderEngine.submitAsync(() -> {
+				for (BufferWriter writer : writers) writer.getLoad().join();
+			});
+		}
+		
 		@Override
 		public void close() throws VulkanException
 		{
@@ -150,15 +157,21 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 			{
 				for (BufferWriter writer : writers)
 				{
-					try
-					{
-						writer.getLoad().get();
-					}
-					catch (InterruptedException | ExecutionException e)
-					{
-						Thread.currentThread().interrupt();
-					}
 					writer.close();
+					boolean interrupted = false;
+					while (true)
+					{
+						try
+						{
+							writer.getLoad().await();
+							break;
+						}
+						catch (InterruptedException e)
+						{
+							interrupted = true;
+						}
+					}
+					if (interrupted) Thread.currentThread().interrupt();
 				}
 				writers.clear();
 				clear();
@@ -189,9 +202,7 @@ public abstract class BigVulkanBuffer extends RawDeviceResource implements AutoC
 		}
 		
 		public void sync()
-		{
-			
-		}
+		{}
 		
 		@Override
 		public boolean equals(Object obj)

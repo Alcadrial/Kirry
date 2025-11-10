@@ -9,7 +9,7 @@ import org.lwjgl.vulkan.VkMemoryRequirements;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.util.OutOfSpaceException;
+import com.alcadrial.renderengine.render.util.OverflowException;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class StaticBigBuffer extends BigVulkanBuffer {
@@ -33,7 +33,7 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 	}
 	
 	@Override
-	public VulkanBuffer allocate(int size, int usage) throws OutOfSpaceException, VulkanException
+	public VulkanBuffer allocate(int size, int usage) throws OverflowException, VulkanException
 	{
 		if (size == 0) throw new IllegalStateException("Size must be positive");
 		
@@ -56,26 +56,27 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 		
 		if (bigBuffer.size >= allocationOffset + size)
 		{
-			int offset = allocationOffset;
-			allocationOffset += size;
+			usage |= isLocalBufferingActive() ? VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT : VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+			long bufferVk;
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
+				bufferVk = device.createBuffer(stack, size, usage);
 				VkMemoryRequirements requirements = VkMemoryRequirements.malloc(stack);
-				VK10.vkGetBufferMemoryRequirements(bigBuffer.getDevice().getVk(), bigBuffer.getVk(), requirements);
+				VK10.vkGetBufferMemoryRequirements(bigBuffer.getDevice().getVk(), bufferVk, requirements);
 				
 				allocationOffset = (int) (Math.ceilDiv(allocationOffset, requirements.alignment()) * requirements.alignment());
 			}
-			usage |= isLocalBufferingActive() ? VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT : VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 			
-			VulkanBuffer buffer = new VulkanBuffer(bigBuffer, offset, size, usage);
+			VulkanBuffer buffer = new VulkanBuffer(bigBuffer, bufferVk, allocationOffset, size, usage);
 			Debug.debugAllocation(() -> "Allocate " + (isLocalBufferingActive() ? "Local" : "Remote") + " " + buffer);
 			slots.addLast(new Slot<>(buffer));
-			
+
+			allocationOffset += size;
 			if (isLocalBufferingActive()) localAllocationOffset = allocationOffset;
 			else remoteAllocationOffset = allocationOffset;
 			return buffer;
 		}
-		throw new OutOfSpaceException("Missing " + (allocationOffset + size - bigBuffer.size) + " bytes of " + size + " requested (" + allocationOffset + "/" + bigBuffer.size + ")");
+		throw new OverflowException("Missing " + (allocationOffset + size - bigBuffer.size) + " bytes of " + size + " requested (" + allocationOffset + "/" + bigBuffer.size + ")");
 	}
 	
 	public VulkanBuffer getRemoteBuffer()
@@ -113,7 +114,7 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 			for (Slot<? extends VulkanBuffer> slot : localSlots)
 			{
 				VulkanBuffer buffer = slot.getBuffer();
-				Debug.debugAllocation(() -> "Deallocated Local " + buffer);
+				Debug.debugAllocation(() -> "Deallocated Local " + buffer + " of " + this);
 				buffer.close();
 			}
 			localSlots.clear();
@@ -124,7 +125,7 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 			for (Slot<? extends VulkanBuffer> slot : remoteSlots)
 			{
 				VulkanBuffer buffer = slot.getBuffer();
-				Debug.debugAllocation(() -> "Deallocated Remote " + buffer);
+				Debug.debugAllocation(() -> "Deallocated Remote " + buffer + " of " + this);
 				buffer.close();
 			}
 			remoteSlots.clear();

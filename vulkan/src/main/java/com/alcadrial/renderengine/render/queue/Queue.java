@@ -1,6 +1,5 @@
 package com.alcadrial.renderengine.render.queue;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
@@ -15,6 +14,7 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class Queue extends AbstractDeviceResource<VkQueue> {
@@ -38,14 +38,17 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 	
 	protected Queue(Device device, int familyIndex)
 	{
-		super(device);
+		super(device, 0);
+		VkQueue vkQueue;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			PointerBuffer p = stack.mallocPointer(1);
 			VK10.vkGetDeviceQueue(device.getVk(), familyIndex, 0, p);
-			vk = new VkQueue(p.get(0), device.getVk());
+			vk = vkQueue = new VkQueue(p.get(0), device.getVk());
 		}
 		this.familyIndex = familyIndex;
+		closeInternal();
+		vk = vkQueue;
 	}
 	
 	@Override
@@ -76,10 +79,15 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 	 * @param fence an optional handle to a fence to be signaled once all submitted command buffers have completed execution. If fence is not {@link VK10#VK_NULL_HANDLE NULL_HANDLER}, it defines a fence signal operation.
 	 * @throws VulkanException
 	 */
-	public synchronized CompletableFuture<long[]> submit(VkSubmitInfo submitInfo, long fence) throws VulkanException
+	public synchronized VulkanFuture<long[]> submitAsync(VkSubmitInfo submitInfo, long fence) throws VulkanException
 	{
 		VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(vk, submitInfo, fence), "Failed to submit queue");
-		return device.waitForFences(fence);
+		return device.waitForFencesAsync(fence);
+	}
+	public synchronized void submit(VkSubmitInfo submitInfo, long fence) throws VulkanException
+	{
+		VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(vk, submitInfo, fence), "Failed to submit queue");
+		device.waitForFences(fence);
 	}
 	
 	public synchronized void waitIdle()
@@ -101,6 +109,12 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 			waitIdle();
 			action.accept(this);
 		});
+	}
+	
+	@Override
+	public void close()
+	{
+		
 	}
 	
 	@Override

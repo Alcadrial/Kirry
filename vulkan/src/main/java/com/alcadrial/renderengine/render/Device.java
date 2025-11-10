@@ -3,9 +3,10 @@ package com.alcadrial.renderengine.render;
 import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.Map;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
@@ -37,9 +38,10 @@ import com.alcadrial.renderengine.render.texture.TextureSampler;
 import com.alcadrial.renderengine.render.texture.TextureView;
 import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
-import com.alcadrial.renderengine.render.util.OutOfSpaceException;
+import com.alcadrial.renderengine.render.util.OverflowException;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.util.functional.VulkanConsumer;
@@ -57,8 +59,11 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	private Queue computeQueue;
 	private Queue graphicsComputeQueue;
 	private PresentQueue presentQueue;
-	private CommandPool resetCommandPool;
-	private CommandPool shortLivedCommandPool;
+	private CommandPool multiUseCommandPool;
+	private CommandPool singleUseCommandPool;
+	//private Map<Queue, Integer > queues; to sync
+	
+	private Map<Object, String> debugNames;
 	
 	public Device(VkDevice device, PhysicalDevice physicalDevice) throws VulkanException
 	{
@@ -66,6 +71,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		this.physicalDevice = VulkanErrorUtils.nonNull(physicalDevice);
 		destructionList = new LinkedList<>();
 		
+		if (RenderEngine.isDebug() && RenderEngine.getVulkan().isDebugUtilsExtensionEnabled()) debugNames = new HashMap<>(1024);
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			long[] p = new long[1];
@@ -76,11 +82,16 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			poolInfo.flags(VK10.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 			
 			VulkanErrorUtils.assertNoError(VK10.vkCreateCommandPool(device, poolInfo, null, p), "Failed to create reset command pool");
-			resetCommandPool = new CommandPool(this, p[0]);
+			multiUseCommandPool = new CommandPool(this, p[0]);
 			
 			poolInfo.flags(VK10.VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
 			VulkanErrorUtils.assertNoError(VK10.vkCreateCommandPool(device, poolInfo, null, p), "Failed to create short lived command pool");
-			shortLivedCommandPool = new CommandPool(this, p[0]);
+			singleUseCommandPool = new CommandPool(this, p[0]);
+			if (RenderEngine.isDebug() && RenderEngine.getVulkan().isDebugUtilsExtensionEnabled())
+			{
+				multiUseCommandPool.setName("MultiUseCommandPool(" + device + ")");
+				singleUseCommandPool.setName("SingleUseCommandPool(" + device + ")");
+			}
 		}
 	}
 	
@@ -158,17 +169,17 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	public void useResetCommandPool(VulkanConsumer<CommandPool> action) throws VulkanException
 	{
-		synchronized (resetCommandPool)
+		synchronized (multiUseCommandPool)
 		{
-			action.accept(resetCommandPool);
+			action.accept(multiUseCommandPool);
 		}
 	}
 	
 	public void useShortLivedCommandPool(VulkanConsumer<CommandPool> action) throws VulkanException
 	{
-		synchronized (shortLivedCommandPool)
+		synchronized (singleUseCommandPool)
 		{
-			action.accept(shortLivedCommandPool);
+			action.accept(singleUseCommandPool);
 		}
 	}
 	
@@ -196,7 +207,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			
 			for (int i = 0; i < count; i++)
 			{
-				CommandBuffer commandBuffer = new CommandBuffer(this, resetCommandPool, new VkCommandBuffer(p.get(), vk));
+				CommandBuffer commandBuffer = new CommandBuffer(this, multiUseCommandPool, new VkCommandBuffer(p.get(), vk));
 				Debug.runOnDebug(() -> commandBuffer.setName("MultiUse CommandBuffer " + Debug.getIncrementalId(this)));
 				commandBuffers.add(commandBuffer);
 			}
@@ -217,15 +228,22 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 					.commandBufferCount(1);
 				VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, commandBufferAllocateInfo, p), "Failed to create single use command buffer");
 			});
-			CommandBuffer commandBuffer = new CommandBuffer(this, shortLivedCommandPool, new VkCommandBuffer(p.get(), vk));
+			CommandBuffer commandBuffer = new CommandBuffer(this, singleUseCommandPool, new VkCommandBuffer(p.get(), vk));
 			Debug.runOnDebug(() -> commandBuffer.setName("SingleUse CommandBuffer " + Debug.getIncrementalId(this)));
 			
-			VulkanErrorUtils.assertStatement(commandBuffer.beginRecording(), "Failed to create single use command buffer");
-			useShortLivedCommandPool(pool -> configure.accept(commandBuffer));
+			useShortLivedCommandPool(pool -> {
+				commandBuffer.beginRecording();
+				configure.accept(commandBuffer);
+				commandBuffer.endRecording();
+			});
+			long fence = createFence(stack, false);
+			queue.submit(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), fence);
+			destroyFences(fence);
+			useShortLivedCommandPool(pool -> commandBuffer.close());
 		}
 	}
 	
-	public CompletableFuture<?> configureAndSubmitSingleUseCommandBuffer(Queue queue, VulkanConsumer<CommandBuffer> configure) throws VulkanException
+	public VulkanFuture<?> configureAndSubmitSingleUseCommandBuffer(Queue queue, VulkanConsumer<CommandBuffer> configure) throws VulkanException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -238,12 +256,21 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 					.commandBufferCount(1);
 				VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, commandBufferAllocateInfo, p), "Failed to create single use command buffer");
 			});
-			CommandBuffer commandBuffer = new CommandBuffer(this, shortLivedCommandPool, new VkCommandBuffer(p.get(), vk));
+			CommandBuffer commandBuffer = new CommandBuffer(this, singleUseCommandPool, new VkCommandBuffer(p.get(), vk));
 			Debug.runOnDebug(() -> commandBuffer.setName("SingleUse CommandBuffer " + Debug.getIncrementalId(this)));
 			
-			VulkanErrorUtils.assertStatement(commandBuffer.beginRecording(), "Failed to create single use command buffer");
-			useShortLivedCommandPool(pool -> configure.accept(commandBuffer));
-			return submitSingleUseCommandBuffer(stack, commandBuffer, queue);
+			useShortLivedCommandPool(pool -> {
+				commandBuffer.beginRecording();
+				configure.accept(commandBuffer);
+				commandBuffer.endRecording();
+			});
+			return RenderEngine.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
+				destroyFences(fences);
+				synchronized (singleUseCommandPool)
+				{
+					commandBuffer.close();
+				}
+			});
 		}
 	}
 	
@@ -260,69 +287,91 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 					.commandBufferCount(1);
 				VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, commandBufferAllocateInfo, p), "Failed to create single use command buffer");
 			});
-			CommandBuffer commandBuffer = new CommandBuffer(this, shortLivedCommandPool, new VkCommandBuffer(p.get(), vk));
+			CommandBuffer commandBuffer = new CommandBuffer(this, singleUseCommandPool, new VkCommandBuffer(p.get(), vk));
 			Debug.runOnDebug(() -> commandBuffer.setName("SingleUse CommandBuffer " + Debug.getIncrementalId(this)));
 			
-			VulkanErrorUtils.assertStatement(commandBuffer.beginRecording(), "Failed to create single use command buffer");
+			commandBuffer.beginRecording();
 			return commandBuffer;
 		}
 	}
 	
-	public CompletableFuture<?> submitSingleUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer) throws VulkanException
+	public VulkanFuture<?> submitSingleUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer) throws VulkanException
 	{
 		return submitSingleUseCommandBuffer(stack, commandBuffer, graphicsQueue);
 	}
 	
-	public CompletableFuture<?> submitSingleUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer, Queue queue) throws VulkanException
+	public VulkanFuture<?> submitSingleUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer, Queue queue) throws VulkanException
 	{
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
-		VulkanErrorUtils.assertStatement(commandBuffer.endRecording(), "Command buffer is not recording");
-		return queue.submit(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)).thenAccept(fences -> {
+		return RenderEngine.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 			destroyFences(fences);
-			commandBuffer.close();
+			synchronized (commandBuffer.getPool())
+			{
+				commandBuffer.close();
+			}
 		});
 	}
 	
-	public CompletableFuture<?> submitMultiUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer) throws VulkanException
+	public VulkanFuture<?> submitMultiUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer) throws VulkanException
 	{
 		return submitMultiUseCommandBuffer(stack, commandBuffer, graphicsQueue);
 	}
 	
-	public CompletableFuture<?> submitMultiUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer, Queue queue) throws VulkanException
+	public VulkanFuture<?> submitMultiUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer, Queue queue) throws VulkanException
 	{
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
-		VulkanErrorUtils.assertStatement(commandBuffer.endRecording(), "Command buffer is not recording");
-		return queue.submit(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)).thenAccept(this::destroyFences);
+		return RenderEngine.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
+			destroyFences(fences);
+		});
 	}
 	
-	public CompletableFuture<Device> waitIdle()
+	public VulkanFuture<?> submitAndResetMultiUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer) throws VulkanException
 	{
-		return CompletableFuture.supplyAsync(() -> {
-			sync(graphicsQueue, () -> {
-				Queue q = null;
-				if (computeQueue != graphicsQueue) q = computeQueue;
-				sync(q, () -> {
-					Queue q0 = null;
-					if (presentQueue != graphicsQueue && presentQueue != computeQueue) q0 = computeQueue;
-					sync(q0, () -> VK10.vkDeviceWaitIdle(vk));
-				});
+		return submitAndResetMultiUseCommandBuffer(stack, commandBuffer, graphicsQueue);
+	}
+	
+	public VulkanFuture<?> submitAndResetMultiUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer, Queue queue) throws VulkanException
+	{
+		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
+		return RenderEngine.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
+			destroyFences(fences);
+			commandBuffer.reset();
+		});
+	}
+	
+	public Device waitIdle()
+	{
+		sync(graphicsQueue, () -> {
+			Queue q = null;
+			if (computeQueue != graphicsQueue) q = computeQueue;
+			sync(q, () -> {
+				Queue q0 = null;
+				if (presentQueue != graphicsQueue && presentQueue != computeQueue) q0 = presentQueue;
+				sync(q0, () -> VK10.vkDeviceWaitIdle(vk));
 			});
-			return this;
-		}, RenderEngine.getExecutor());
+		});
+		return this;
+	}
+	
+	public VulkanFuture<Device> waitIdleAsync()
+	{
+		return RenderEngine.submitAsync(this::waitIdle);
 	}
 	
 	// FENCES
 	
-	/**
-	 *
-	 * @param fences
-	 */
-	public CompletableFuture<long[]> waitForFences(long... fences)
+	public long[] waitForFences(long... fences)
 	{
-		return CompletableFuture.supplyAsync(() -> {
+		while (VK10.vkWaitForFences(vk, fences, true, 0xFFFFFFFF) == VK10.VK_TIMEOUT);
+		return fences;
+	}
+	
+	public VulkanFuture<long[]> waitForFencesAsync(long... fences)
+	{
+		return RenderEngine.submitAsync(() -> {
 			while (VK10.vkWaitForFences(vk, fences, true, 0xFFFFFFFF) == VK10.VK_TIMEOUT);
 			return fences;
-		}, RenderEngine.getExecutor());
+		});
 	}
 	
 	public long createFence(MemoryStack stack, boolean signaled) throws VulkanException
@@ -409,7 +458,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 					break;
 				}
 			}
-			if (index == memoryProperties.memoryTypeCount()) throw new OutOfSpaceException("Failed to find suitable memory type");
+			if (index == memoryProperties.memoryTypeCount()) throw new OverflowException("Failed to find suitable memory type");
 		}
 		
 		LongBuffer p = stack.mallocLong(1);
@@ -422,20 +471,19 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	{
 		if (vk != null)
 		{
-			waitIdle().thenRun(() -> {
-				int threshold = Properties.DEVICE_DESTRUCTION_LIST_THRESHOLD.getValue();
-				if (destructionList.size() > threshold)
-				{
-					int limit = Math.max(Math.min(destructionList.size(), 100), threshold);
-					Debug.debug("Warning: too much unclosed resources (" + destructionList.size() + "), logging the first " + limit);
-					
-					AbstractDeviceResource<?>[] resources = destructionList.stream().limit(limit).toArray(AbstractDeviceResource[]::new);
-					
-					for (int i = 0; i < resources.length; i++) Debug.print(i + " " + resources[i].getClass(), resources[i]);
-				}
-				while (destructionList.peek() != null) destructionList.pop().close();
-				VK10.vkDestroyDevice(vk, null);
-			}).join();
+			waitIdle();
+			int threshold = Properties.DEVICE_DESTRUCTION_LIST_THRESHOLD.getValue();
+			if (destructionList.size() > threshold)
+			{
+				int limit = Math.max(Math.min(destructionList.size(), 100), threshold);
+				Debug.debug("Warning: too much unclosed resources (" + destructionList.size() + "), logging the first " + limit);
+				
+				AbstractDeviceResource<?>[] resources = destructionList.stream().limit(limit).toArray(AbstractDeviceResource[]::new);
+				
+				for (int i = 0; i < resources.length; i++) Debug.print(i + " " + resources[i].getClass(), resources[i]);
+			}
+			while (destructionList.peek() != null) destructionList.pop().close();
+			VK10.vkDestroyDevice(vk, null);
 			vk = null;
 			super.close();
 		}
@@ -454,11 +502,20 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			Debug.print("Queue (Graphics)", graphicsQueue);
 			Debug.print("Queue (Present)", presentQueue);
 		}
-		Debug.print("Single-use command pool: ", shortLivedCommandPool);
-		Debug.print("Multi-use command pool: ", resetCommandPool);
+		Debug.print("Single-use command pool: ", singleUseCommandPool);
+		Debug.print("Multi-use command pool: ", multiUseCommandPool);
 	}
 	
 	// DEBUG
+	
+	public String getObjectDebugName(Object object)
+	{
+		if (RenderEngine.isDebug() && RenderEngine.getVulkan().isDebugUtilsExtensionEnabled())
+		{
+			return debugNames.get(object);
+		}
+		return null;
+	}
 	
 	public void setObjectDebugName(Vulkan object, String name)
 	{
@@ -554,6 +611,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 				VkDebugUtilsObjectNameInfoEXT info = VkDebugUtilsObjectNameInfoEXT.malloc(stack);
 				info.set(EXTDebugUtils.VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, 0, objectType, object, stack.UTF8(name));
 				EXTDebugUtils.vkSetDebugUtilsObjectNameEXT(vk, info);
+				debugNames.put(object, name);
 			}
 		}
 	}

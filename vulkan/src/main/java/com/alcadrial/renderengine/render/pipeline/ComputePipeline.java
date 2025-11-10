@@ -1,7 +1,5 @@
 package com.alcadrial.renderengine.render.pipeline;
 
-import java.util.List;
-
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkComputePipelineCreateInfo;
@@ -12,10 +10,6 @@ import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
-import com.alcadrial.renderengine.render.shader.ShaderVariable;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderStorageBufferLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderStorageBufferLayout.Usage;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
@@ -34,7 +28,6 @@ public class ComputePipeline extends Pipeline {
 	private boolean autoCloseLayout;
 	
 	private PreparedShader computeShader;
-	private List<ShaderVariable> inputs;
 	
 	public ComputePipeline(Device device, PipelineLayout layout, boolean autoCloseLayout, PreparedShader computeShader) throws VulkanException
 	{
@@ -42,8 +35,7 @@ public class ComputePipeline extends Pipeline {
 		this.autoCloseLayout = autoCloseLayout;
 		this.computeShader = computeShader;
 		
-		ShaderStorageBufferLayout storageBufferLayout = computeShader.info().getLayouts().stream().filter(l -> l.getType() == Type.STORAGE_BUFFER).map(l -> (ShaderStorageBufferLayout) l).filter(l -> l.getUsage() == Usage.INPUT).findFirst().orElseThrow(() -> new RuntimeException("Missing input layout"));
-		inputs = storageBufferLayout.getVariables();
+		//	ShaderStorageBufferLayout storageBufferLayout = computeShader.info().getLayouts().stream().filter(l -> l.getType() == Type.STORAGE_BUFFER).map(l -> (ShaderStorageBufferLayout) l).filter(l -> l.getUsage() == Usage.INPUT).findFirst().orElseThrow(() -> new RuntimeException("Missing input layout"));
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -81,11 +73,6 @@ public class ComputePipeline extends Pipeline {
 		return VK10.VK_PIPELINE_BIND_POINT_COMPUTE;
 	}
 	
-	public List<ShaderVariable> getInputs()
-	{
-		return inputs;
-	}
-	
 	public PreparedShader getComputeShader()
 	{
 		return computeShader;
@@ -103,6 +90,5 @@ public class ComputePipeline extends Pipeline {
 	{
 		Debug.print("Vk: " + Debug.address(vk));
 		Debug.print("Layout", layout);
-		Debug.print("Inputs: " + inputs);
 	}
 }

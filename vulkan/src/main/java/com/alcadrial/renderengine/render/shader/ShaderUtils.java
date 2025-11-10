@@ -68,13 +68,12 @@ public class ShaderUtils {
 		VkDescriptorSetLayoutBinding.Buffer descriptorSetLayoutBindings = VkDescriptorSetLayoutBinding.malloc(bindingFlags.size(), stack);// static
 		for (Entry<Integer, ShaderLayoutBinding> e : bindingFlags.entrySet())
 		{
-			ShaderLayout.Type type = e.getValue().getDescriptorType();
-			VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = descriptorSetLayoutBindings.get();
-			descriptorSetLayoutBinding.binding(e.getKey());
-			descriptorSetLayoutBinding.descriptorCount(1);
-			descriptorSetLayoutBinding.descriptorType(type.getType());
-			descriptorSetLayoutBinding.pImmutableSamplers(null);
-			descriptorSetLayoutBinding.stageFlags(e.getValue().getStages());
+			descriptorSetLayoutBindings.get()
+				.binding(e.getKey())
+				.descriptorCount(1)
+				.descriptorType(e.getValue().getDescriptorType().getType())
+				.pImmutableSamplers(null)
+				.stageFlags(e.getValue().getStages());
 		}
 		return descriptorSetLayoutBindings.rewind();
 	}

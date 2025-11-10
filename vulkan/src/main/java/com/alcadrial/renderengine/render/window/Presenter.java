@@ -134,6 +134,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 			VK10.vkDestroySemaphore(vk, renderFinished, null);
 			VK10.vkDestroyFence(vk, fence, null);
 			MemoryUtil.memFree(imageIndex);
+			frameBuffer.close();
 		}
 	}
 	
@@ -343,7 +344,8 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 		swapchain = new Swapchain(device, surface, swapchainCreateInfo);
 		if (name != null) swapchain.setName("Swapchain (" + name + ")");
 		
-		oldDevice.waitIdle().thenRun(() -> {
+		RenderEngine.submitAsync(() -> {
+			oldDevice.waitIdle();
 			for (FrameData frame : oldFrames)
 			{
 				frame.frameBuffer.close();
@@ -406,7 +408,7 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 			submitInfo.pCommandBuffers(VulkanUtils.toAddressBuffer(stack, commandBuffer));
 			submitInfo.pSignalSemaphores(p1);
 			
-			device.getGraphicsQueue().submit(submitInfo, frame.getFence()).thenAccept(fences -> {
+			RenderEngine.composeAfter(device.getGraphicsQueue().submitAsync(submitInfo, frame.getFence()), fences -> {
 				try
 				{
 					onCommandBufferEndAction.run();

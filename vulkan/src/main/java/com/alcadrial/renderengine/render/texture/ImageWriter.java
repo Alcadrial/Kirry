@@ -18,6 +18,7 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class ImageWriter implements AutoCloseable {
@@ -29,10 +30,10 @@ public class ImageWriter implements AutoCloseable {
 	
 	private class Work {
 		
-		private Future<?> work;
+		private VulkanFuture<?> work;
 		private Work next;
 		
-		public Work(Future<?> work)
+		public Work(VulkanFuture<?> work)
 		{
 			this.work = work;
 			next = null;

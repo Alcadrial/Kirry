@@ -1,7 +1,5 @@
 package com.alcadrial.renderengine.render.texture;
 
-import java.util.concurrent.CompletableFuture;
-
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VK13;
@@ -16,6 +14,7 @@ import com.alcadrial.renderengine.render.buffer.Memory;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class Texture extends RawDeviceResource {
@@ -120,7 +119,7 @@ public class Texture extends RawDeviceResource {
 		return memory;
 	}
 	
-	public CompletableFuture<?> changeLayout(int layout) throws VulkanException
+	public VulkanFuture<?> changeLayout(int layout) throws VulkanException
 	{
 		if (this.layout != layout)
 		{
@@ -128,10 +127,11 @@ public class Texture extends RawDeviceResource {
 			{
 				CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
 				changeLayout(commandBuffer, layout);
+				commandBuffer.endRecording();
 				return device.submitSingleUseCommandBuffer(stack, commandBuffer);
 			}
 		}
-		return CompletableFuture.completedFuture(null);
+		return RenderEngine.completedTask();
 	}
 	
 	public void changeLayout(CommandBuffer commandBuffer, int layout)

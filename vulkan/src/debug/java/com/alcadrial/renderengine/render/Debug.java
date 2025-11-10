@@ -30,16 +30,20 @@ public class Debug {
 	private static volatile PrintStream debugOutput;
 	private static volatile Map<Object, Long> idMap;
 	private static String prefix;
-	private static boolean enableAllocationDebug;
-	private static boolean enableCopyDebug;
+	private static boolean enabledAllocationDebug;
+	private static boolean enabledCopyDebug;
+	private static boolean enabledCloseDebug;
+	private static boolean enabledCreateDebug;
+	private static boolean enabledExtraTimePrecision;
 	
 	static
 	{
 		debugOutput = System.out;
 		idMap = new ConcurrentHashMap<>();
 		prefix = "";
-		enableAllocationDebug = false;
-		enableCopyDebug = false;
+		enabledAllocationDebug = false;
+		enabledCopyDebug = false;
+		enabledCloseDebug = false;
 	}
 	
 	public static <T> T get(VulkanSupplier<T> debugSupplier, VulkanSupplier<T> releaseSupplier) throws VulkanException
@@ -183,9 +187,9 @@ public class Debug {
 	
 	public static void debug(Object x)
 	{
-		debugOutput.print(time());
-		debugOutput.print("[DEBUG] ");
-		debugOutput.println(x);
+		Vulkan vulkan = RenderEngine.getVulkan();
+		if (vulkan != null) debugOutput.println(time() + "[DEBUG|" + Thread.currentThread().getName() + "/" + vulkan.getData().threadId + "] " + x);
+		else debugOutput.println(time() + "[DEBUG] " + x);
 	}
 	
 	private static String time()
@@ -194,8 +198,8 @@ public class Debug {
 		int h = now.getHour();
 		int m = now.getMinute();
 		int s = now.getSecond();
-		int n = now.getNano() / 1000000;
-		StringBuilder time = new StringBuilder(15);
+		int ms = now.getNano() / 1000000;
+		StringBuilder time = new StringBuilder(enabledExtraTimePrecision ? 19 : 15);
 		time.append('[');
 		if (h < 10) time.append('0');
 		time.append(h).append(':');
@@ -203,9 +207,17 @@ public class Debug {
 		time.append(m).append(':');
 		if (s < 10) time.append('0');
 		time.append(s).append('.');
-		if (n < 10) time.append('0');
-		if (n < 100) time.append('0');
-		time.append(n);
+		if (ms < 10) time.append('0');
+		if (ms < 100) time.append('0');
+		time.append(ms);
+		if (enabledExtraTimePrecision)
+		{
+			time.append('.');
+			int us = now.getNano() / 1000 % 1000;
+			if (us < 10) time.append('0');
+			if (us < 100) time.append('0');
+			time.append(us);
+		}
 		time.append(']');
 		time.append(' ');
 		return time.toString();
@@ -228,27 +240,80 @@ public class Debug {
 	
 	public static void debugAllocation(Supplier<Object> x)
 	{
-		if (enableAllocationDebug) debug(x.get());
+		if (enabledAllocationDebug) debug(x.get());
 	}
 	
-	public static void setEnableAllocationDebug(boolean enableAllocationDebug)
+	public static void setEnabledAllocationDebug(boolean enabledAllocationDebug)
 	{
-		Debug.enableAllocationDebug = enableAllocationDebug;
+		Debug.enabledAllocationDebug = enabledAllocationDebug;
 	}
 	
 	public static boolean isEnableAllocationDebug()
 	{
-		return enableAllocationDebug;
+		return enabledAllocationDebug;
 	}
 	
-	public static void setEnableCopyDebug(boolean enableCopyDebug)
+	public static void debugCopy(Supplier<Object> x)
 	{
-		Debug.enableCopyDebug = enableCopyDebug;
+		if (enabledCopyDebug) debug(x.get());
+	}
+	
+	public static void setEnabledCopyDebug(boolean enabledCopyDebug)
+	{
+		Debug.enabledCopyDebug = enabledCopyDebug;
 	}
 	
 	public static boolean isEnableCopyDebug()
 	{
-		return enableCopyDebug;
+		return enabledCopyDebug;
+	}
+	
+	public static void debugClose(Supplier<Object> x)
+	{
+		if (enabledCloseDebug) debug(x.get());
+	}
+	
+	public static void setEnabledCloseDebug(boolean enabledCloseDebug)
+	{
+		Debug.enabledCloseDebug = enabledCloseDebug;
+	}
+	
+	public static boolean isEnableCloseDebug()
+	{
+		return enabledCloseDebug;
+	}
+
+	public static void debugCreate(Supplier<Object> x)
+	{
+		if (enabledCreateDebug) debug(x.get());
+	}
+	
+	public static void setEnabledCreateDebug(boolean enabledCreateDebug)
+	{
+		Debug.enabledCreateDebug = enabledCreateDebug;
+	}
+	
+	public static boolean isEnableCreateDebug()
+	{
+		return enabledCreateDebug;
+	}
+	
+	public static void setEnabledExtraTimePrecision(boolean enabledExtraTimePrecision)
+	{
+		Debug.enabledExtraTimePrecision = enabledExtraTimePrecision;
+	}
+	
+	public static boolean isEnableExtraTimePrecision()
+	{
+		return enabledExtraTimePrecision;
+	}
+	
+	public static void setEnabledAllDebug(boolean enabled)
+	{
+		setEnabledCreateDebug(enabled);
+		setEnabledAllocationDebug(enabled);
+		setEnabledCopyDebug(enabled);
+		setEnabledCloseDebug(enabled);
 	}
 	
 	public static void setDebugOutput(PrintStream debugOutput)

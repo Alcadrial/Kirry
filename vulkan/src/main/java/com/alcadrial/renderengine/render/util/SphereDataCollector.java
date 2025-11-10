@@ -6,6 +6,7 @@ import com.alcadrial.kector.Math;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class SphereDataCollector {
 	
@@ -14,7 +15,7 @@ public class SphereDataCollector {
 		RenderEngine.assertLoaded();
 	}
 	
-	public static void collect(BufferWriter vertexBuffer, BufferWriter indexBuffer, Vector3f origin, float radius, int scan) throws OutOfSpaceException
+	public static void collect(BufferWriter vertexBuffer, BufferWriter indexBuffer, Vector3f origin, float radius, int scan) throws VulkanException
 	{
 		if (radius < 0) throw new IllegalArgumentException("Negative radius");
 		if (scan <= 0) throw new IllegalArgumentException("Non positive scan");
@@ -35,8 +36,8 @@ public class SphereDataCollector {
 		int vertexCount = meridianCount * parallelCount + 2;
 		int indexCount = 3 * meridianCount * (3 * parallelCount - 2);
 		
-		if (vertexBuffer.getSize() < vertexCount * 3 * 4) throw new OutOfSpaceException("VertexBuffer capacity required: " + vertexCount * 3 + ", available: " + vertexBuffer.getSize() / 4);
-		if (indexBuffer.getSize() < indexCount * 4) throw new OutOfSpaceException("IndexBuffer capacity required: " + indexCount + ", available: " + indexBuffer.getSize() / 4);
+		if (vertexBuffer.getSize() < vertexCount * 3 * 4) throw new OverflowException("VertexBuffer capacity required: " + vertexCount * 3 + ", available: " + vertexBuffer.getSize() / 4);
+		if (indexBuffer.getSize() < indexCount * 4) throw new OverflowException("IndexBuffer capacity required: " + indexCount + ", available: " + indexBuffer.getSize() / 4);
 		
 		Vector3f[][] vertexMatrix = new Vector3f[parallelCount + 2][];
 		

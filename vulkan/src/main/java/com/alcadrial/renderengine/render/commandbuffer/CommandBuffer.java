@@ -48,6 +48,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		vk = commandBuffer;
 		isRecording = false;
 		this.pool = pool;
+		Debug.debugCreate(() -> "Created " + this + " of " + pool);
 	}
 	
 	@Override
@@ -362,9 +363,15 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		return isRecording;
 	}
 	
+	public CommandPool getPool()
+	{
+		return pool;
+	}
+	
 	@Override
 	public void close()
 	{
+		Debug.debugClose(() -> "Closing CommandBuffer " + this);
 		VK10.vkFreeCommandBuffers(device.getVk(), pool.getVk(), vk);
 		super.close();
 	}

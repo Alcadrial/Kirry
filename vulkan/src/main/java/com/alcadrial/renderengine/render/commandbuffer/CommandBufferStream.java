@@ -17,6 +17,7 @@ import org.lwjgl.vulkan.VkSubmitInfo;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.queue.Queue;
+import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class CommandBufferStream {
@@ -92,7 +93,7 @@ public class CommandBufferStream {
 	 * @return a {@link CompletableFuture} that is completed when all the command buffer are executed.
 	 * @throws VulkanException
 	 */
-	public CompletableFuture<?> flush() throws VulkanException
+	public VulkanFuture<?> flush() throws VulkanException
 	{
 		List<Entry<VkCommandBuffer, CompletableFuture<?>>> buffers = extractBuffers();
 		if (!buffers.isEmpty())
@@ -112,13 +113,13 @@ public class CommandBufferStream {
 				info.pCommandBuffers(p.rewind());
 				info.pSignalSemaphores(null);
 				Device device = queue.getDevice();
-				return queue.submit(info, device.createFence(stack, false)).thenAccept(fences -> {
-					device.destroyFences(fences);
+				return RenderEngine.composeAfter(queue.submitAsync(info, device.createFence(stack, false)), fences -> {
+					device.destroyFences(fences); 
 					for (Entry<VkCommandBuffer, CompletableFuture<?>> e : buffers) e.getValue().complete(null);
 				});
 			}
 		}
-		return CompletableFuture.completedFuture(null);
+		return RenderEngine.completedTask();
 	}
 	
 	protected List<Entry<VkCommandBuffer, CompletableFuture<?>>> extractBuffers()

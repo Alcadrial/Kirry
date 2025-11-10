@@ -128,7 +128,7 @@ public class GraphicsPipeline extends Pipeline {
 			for (ShaderVariable input : inputs)
 			{
 				ShaderInputType type = input.getType();
-				attributeDescriptions.get().set(locationSize, 0, type.getType(), size);
+				attributeDescriptions.get().set(locationSize, 0, type.getVulkanType(), size);
 				size += type.getLength();
 				locationSize += type.getLocationSize();
 			}

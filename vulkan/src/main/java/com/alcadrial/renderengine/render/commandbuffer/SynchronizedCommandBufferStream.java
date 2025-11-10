@@ -6,6 +6,7 @@ import java.util.concurrent.locks.Lock;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.queue.Queue;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class SynchronizedCommandBufferStream extends CommandBufferStream {
@@ -30,7 +31,7 @@ public class SynchronizedCommandBufferStream extends CommandBufferStream {
 	 * @throws VulkanException
 	 */
 	@Override
-	public CompletableFuture<?> flush() throws VulkanException
+	public VulkanFuture<?> flush() throws VulkanException
 	{
 		lock.lock();
 		try

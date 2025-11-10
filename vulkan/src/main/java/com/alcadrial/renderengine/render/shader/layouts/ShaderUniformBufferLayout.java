@@ -30,8 +30,7 @@ public final class ShaderUniformBufferLayout extends ShaderBufferLayout {
 			{
 				case "binding" -> binding = reader.nextInt();
 				case "name" -> name = reader.nextString();
-				case "variables" ->
-				{
+				case "variables" -> {
 					if (variables != null) throw new IOException(JsonUtils.duplicate(reader, "variables"));
 					variables = new LinkedList<>();
 					
@@ -56,5 +55,11 @@ public final class ShaderUniformBufferLayout extends ShaderBufferLayout {
 	public ShaderUniformBufferLayout(int binding, @Nullable String name, List<ShaderVariable> variables)
 	{
 		super(Type.UNIFORM_BUFFER, binding, name, variables);
+	}
+	
+	@Override
+	public List<ShaderVariable> getVariables()
+	{
+		return super.getVariables();
 	}
 }

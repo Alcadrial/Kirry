@@ -18,6 +18,7 @@ public class CommandPool extends RawDeviceResource {
 	{
 		super(device);
 		this.vk = vk;
+		Debug.debugCreate(() -> "Created " + this);
 	}
 	
 	@Override

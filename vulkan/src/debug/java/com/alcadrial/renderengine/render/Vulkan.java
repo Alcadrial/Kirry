@@ -312,7 +312,7 @@ public class Vulkan implements AutoCloseable {
 		return getData().window;
 	}
 	
-	private ThreadData getData()
+	ThreadData getData()
 	{
 		return data.computeIfAbsent(Thread.currentThread(), t -> new ThreadData());
 	}

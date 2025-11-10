@@ -1,8 +1,6 @@
 package com.alcadrial.renderengine.render.buffer;
 
 import java.nio.ByteBuffer;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.Future;
 
 import org.lwjgl.vulkan.VkBufferCopy;
 
@@ -18,6 +16,7 @@ import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class BufferWriter implements AutoCloseable {
@@ -34,10 +33,10 @@ public class BufferWriter implements AutoCloseable {
 	
 	private class Work {
 		
-		private Future<?> work;
+		private VulkanFuture<?> work;
 		private Work next;
 		
-		public Work(Future<?> work)
+		public Work(VulkanFuture<?> work)
 		{
 			this.work = work;
 			next = null;
@@ -98,9 +97,7 @@ public class BufferWriter implements AutoCloseable {
 	}
 	
 	BufferWriter()
-	{
-		
-	}
+	{}
 	
 	public BufferWriter resetCursor() throws VulkanException
 	{
@@ -130,7 +127,7 @@ public class BufferWriter implements AutoCloseable {
 			copy.srcOffset(srcOffset + lastSetCursor * 4L);
 			copy.dstOffset(dstOffset + lastSetCursor * 4L);
 			copy.size((cursor - lastSetCursor) * 4L);
-			Debug.debugIf(Debug.isEnableCopyDebug(), () -> "Copy (" + bufferCopyCount + ") from " + srcBuffer + " to " + dstBuffer + " {" + lastSetCursor * 4L + ", " + lastSetCursor * 4 + ", " + (cursor - lastSetCursor) * 4L + "}");
+			Debug.debugCopy(() -> "Copy (" + bufferCopyCount + ") from " + srcBuffer + " to " + dstBuffer + " {" + lastSetCursor * 4L + ", " + lastSetCursor * 4 + ", " + (cursor - lastSetCursor) * 4L + "}");
 			bufferCopyCount++;
 			lastSetCursor = cursor;
 		}
@@ -258,13 +255,13 @@ public class BufferWriter implements AutoCloseable {
 	
 	public void flush() throws VulkanException
 	{
+		if (flushCommandBuffer != null)
+		{
+			flush(flushCommandBuffer);
+			return;
+		}
 		if (isModified)
 		{
-			if (flushCommandBuffer != null)
-			{
-				flush(flushCommandBuffer);
-				return;
-			}
 			Device device = srcBuffer.getDevice();
 			Work work = new Work(device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), this::flush));
 			
@@ -289,14 +286,12 @@ public class BufferWriter implements AutoCloseable {
 		}
 	}
 	
-	public Future<?> getLoad()
+	public VulkanFuture<?> getLoad()
 	{
-		return RenderEngine.getExecutor().submit(() -> {
-			
+		return RenderEngine.submitAsync(() -> {
 			for (Work work = firstWork; work != null; work = work.next)
 			{
-				if (Thread.interrupted()) throw new CancellationException();
-				work.work.get();
+				work.work.join();
 				firstWork = work;
 			}
 			return null;

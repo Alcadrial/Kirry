@@ -253,8 +253,6 @@ public class Computer implements AutoCloseable, VulkanDebug {
 					}
 				}
 			}
-			
-			System.out.println("SUCCESS");
 		}
 	}
 	
@@ -293,7 +291,7 @@ public class Computer implements AutoCloseable, VulkanDebug {
 	@Override
 	public void close()
 	{
-		device.waitIdle().join();
+		device.waitIdle();
 		if (computePipeline != null) computePipeline.close();
 		VK10.vkDestroyDescriptorSetLayout(device.getVk(), computeDescriptorSetLayout, null);
 		VK10.vkDestroyDescriptorPool(device.getVk(), computeDescriptorPool, null);

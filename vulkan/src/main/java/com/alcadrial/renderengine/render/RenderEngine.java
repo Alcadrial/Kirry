@@ -8,6 +8,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -39,6 +40,13 @@ import com.alcadrial.renderengine.core.RenderEngineCore;
 import com.alcadrial.renderengine.render.util.DebugMessengerSeverity;
 import com.alcadrial.renderengine.render.util.DebugMessengerType;
 import com.alcadrial.renderengine.render.util.Version;
+import com.alcadrial.renderengine.render.util.VulkanFuture;
+import com.alcadrial.renderengine.render.util.exception.ExternalException;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.functional.VulkanConsumer;
+import com.alcadrial.renderengine.render.util.functional.VulkanFunction;
+import com.alcadrial.renderengine.render.util.functional.VulkanRunnable;
+import com.alcadrial.renderengine.render.util.functional.VulkanSupplier;
 
 public class RenderEngine extends RenderEngineCore {
 	
@@ -184,7 +192,7 @@ public class RenderEngine extends RenderEngineCore {
 			}
 			initializated = true;
 			vulkan = new Vulkan(createInfo, debugUtilsExtensionEnabled);
-			executor = multiThreading ? Executors.newFixedThreadPool(16) : Executors.newSingleThreadExecutor();
+			executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("VirtualTask-", 0).factory());
 			return true;
 		}
 		catch (Exception e)
@@ -214,6 +222,7 @@ public class RenderEngine extends RenderEngineCore {
 	 */
 	public static void terminate()
 	{
+		VulkanFuture<?> f = null;
 		LOCK.lock();
 		try
 		{
@@ -222,7 +231,7 @@ public class RenderEngine extends RenderEngineCore {
 				vulkan.close();
 				if (executor != null) executor.shutdown();
 				vulkan = null;
-				Future<?> f = requestMainThread(() -> {
+				f = requestMainThread(() -> {
 					GLFW.glfwTerminate();
 					if (executor != null)
 					{
@@ -238,24 +247,25 @@ public class RenderEngine extends RenderEngineCore {
 					mainThreadActions = null;
 					initializated = false;
 				});
-				while (!f.isDone())
-				{
-					try
-					{
-						f.get();
-					}
-					catch (InterruptedException e)
-					{}
-					catch (ExecutionException e)
-					{
-						throw (RuntimeException) e.getCause();
-					}
-				}
 			}
 		}
 		finally
 		{
 			LOCK.unlock();
+		}
+		if (f != null) while (true)
+		{
+			try
+			{
+				f.get();
+				break;
+			}
+			catch (InterruptedException e)
+			{}
+			catch (VulkanException e)
+			{
+				throw new IllegalStateException(e);
+			}
 		}
 	}
 	
@@ -311,6 +321,245 @@ public class RenderEngine extends RenderEngineCore {
 		return executor;
 	}
 	
+	public static VulkanFuture<?> completedTask()
+	{
+		return new CompletedTaskHandler<>(null);
+	}
+	
+	public static <V> VulkanFuture<V> completedTask(V value)
+	{
+		return new CompletedTaskHandler<>(value);
+	}
+	
+	public static CompletableTaskHandler<?> completableTask()
+	{
+		return new CompletableTaskHandler<>();
+	}
+	
+	public static VulkanFuture<?> submitAsync(VulkanRunnable action)
+	{
+		return new AsyncRunnableTaskHandler(action);
+	}
+	
+	public static <V> VulkanFuture<V> submitAsync(VulkanSupplier<V> action)
+	{
+		return new AsyncSupplierTaskHandler<>(action);
+	}
+	
+	public static VulkanFuture<?> composeAfter(VulkanFuture<?> future, VulkanRunnable action)
+	{
+		return new AsyncDependentTaskHandler<>(future, v -> {
+			action.run();
+			return null;
+		});
+	}
+	
+	public static <V> VulkanFuture<V> composeAfter(VulkanFuture<?> future, VulkanSupplier<V> action)
+	{
+		return new AsyncDependentTaskHandler<>(future, v -> action.get());
+	}
+	
+	public static <V> VulkanFuture<?> composeAfter(VulkanFuture<V> future, VulkanConsumer<V> action)
+	{
+		return new AsyncDependentTaskHandler<>(future, v -> {
+			action.accept(v);
+			return null;
+		});
+	}
+	
+	public static <V, W> VulkanFuture<W> composeAfter(VulkanFuture<V> future, VulkanFunction<V, W> action)
+	{
+		return new AsyncDependentTaskHandler<>(future, action);
+	}
+	
+	private static class CompletedTaskHandler<V> implements VulkanFuture<V> {
+		
+		private V value;
+		
+		public CompletedTaskHandler(V value)
+		{
+			this.value = value;
+		}
+		
+		@Override
+		public void await() throws InterruptedException
+		{}
+		
+		@Override
+		public V get() throws VulkanException, InterruptedException
+		{
+			return value;
+		}
+	}
+	
+	public static class CompletableTaskHandler<V> implements VulkanFuture<V> {
+		
+		private CountDownLatch termination;
+		private VulkanException exception;
+		private V value;
+		private boolean isCompleted;
+		
+		public CompletableTaskHandler()
+		{
+			termination = new CountDownLatch(1);
+			isCompleted = false;
+		}
+		
+		public void complete(V value)
+		{
+			if (!isCompleted)
+			{
+				this.value = value;
+				termination.countDown();
+			}
+		}
+		
+		public void throwComplete(VulkanException exception)
+		{
+			if (!isCompleted)
+			{
+				this.exception = exception;
+				termination.countDown();
+			}
+		}
+		
+		@Override
+		public void await() throws InterruptedException
+		{
+			if (!isCompleted) termination.await();
+		}
+		
+		@Override
+		public V get() throws VulkanException, InterruptedException
+		{
+			await();
+			if (exception != null) throw exception;
+			return value;
+		}
+	}
+	
+	private static abstract class AsyncTaskHandler<V> implements VulkanFuture<V> {
+		
+		private CountDownLatch termination;
+		private V result;
+		private VulkanException exception;
+		private StackTraceElement[] callerStackTrace;
+		
+		public AsyncTaskHandler()
+		{
+			termination = new CountDownLatch(1);
+			result = null;
+			callerStackTrace = new Exception().getStackTrace();
+		}
+		
+		protected void start()
+		{
+			if (RenderEngine.debug) Thread.ofVirtual().name("Task thread").start(this::run);
+			else Thread.startVirtualThread(this::run);
+		}
+		
+		protected abstract V execute() throws VulkanException;
+		
+		private void run()
+		{
+			try
+			{
+				result = execute();
+			}
+			catch (VulkanException e)
+			{
+				exception = e;
+				StackTraceElement[] errorStackTrace = e.getStackTrace();
+				StackTraceElement[] stackTrace = new StackTraceElement[errorStackTrace.length + callerStackTrace.length - 2];
+				System.arraycopy(errorStackTrace, 0, stackTrace, 0, errorStackTrace.length);
+				System.arraycopy(callerStackTrace, 2, stackTrace, errorStackTrace.length, callerStackTrace.length - 2);
+				exception.setStackTrace(stackTrace);
+				exception.printStackTrace();
+			}
+			catch (Throwable e)
+			{
+				exception = new ExternalException(e);
+				StackTraceElement[] stackTrace = new StackTraceElement[callerStackTrace.length - 2];
+				System.arraycopy(callerStackTrace, 2, stackTrace, 0, callerStackTrace.length - 2);
+				exception.setStackTrace(stackTrace);
+				exception.printStackTrace();
+			}
+			finally
+			{
+				termination.countDown();
+			}
+		}
+		
+		@Override
+		public void await() throws InterruptedException
+		{
+			termination.await();
+		}
+		
+		@Override
+		public V get() throws VulkanException, InterruptedException
+		{
+			await();
+			if (exception != null) throw exception;
+			return result;
+		}
+	}
+	
+	private static class AsyncRunnableTaskHandler extends AsyncTaskHandler<Object> {
+		
+		private VulkanRunnable action;
+		
+		public AsyncRunnableTaskHandler(VulkanRunnable action)
+		{
+			this.action = action;
+			start();
+		}
+		
+		@Override
+		protected Object execute() throws VulkanException
+		{
+			action.run();
+			return null;
+		}
+	}
+	
+	private static class AsyncSupplierTaskHandler<V> extends AsyncTaskHandler<V> {
+		
+		private VulkanSupplier<V> action;
+		
+		public AsyncSupplierTaskHandler(VulkanSupplier<V> action)
+		{
+			this.action = action;
+			start();
+		}
+		
+		@Override
+		protected V execute() throws VulkanException
+		{
+			return action.get();
+		}
+	}
+	
+	private static class AsyncDependentTaskHandler<V, W> extends AsyncTaskHandler<W> {
+		
+		private VulkanFuture<V> other;
+		private VulkanFunction<V, W> action;
+		
+		public AsyncDependentTaskHandler(VulkanFuture<V> other, VulkanFunction<V, W> action)
+		{
+			this.other = Objects.requireNonNull(other);
+			this.action = action;
+			start();
+		}
+		
+		@Override
+		protected W execute() throws VulkanException
+		{
+			other.join();
+			return action.apply(other.forceGet());
+		}
+	}
+	
 	public static void setDebugOutput(PrintStream debugOutput)
 	{
 		Debug.setDebugOutput(debugOutput);
@@ -347,23 +596,23 @@ public class RenderEngine extends RenderEngineCore {
 		else action.run();
 	}
 	
-	public static Future<?> requestMainThread(Runnable action)
+	public static VulkanFuture<?> requestMainThread(Runnable action)
 	{
 		assertLoaded();
-		CompletableFuture<?> f = new CompletableFuture<>();
 		if (multiThreading && mainThread != Thread.currentThread())
 		{
+			CompletableTaskHandler<?> f = completableTask();
 			mainThreadActions.add(() -> {
 				action.run();
 				f.complete(null);
 			});
+			return f;
 		}
 		else
 		{
 			action.run();
-			f.complete(null);
+			return completedTask();
 		}
-		return f;
 	}
 	
 	public static boolean awaitRequestMainThread(BooleanSupplier action)
@@ -435,6 +684,9 @@ public class RenderEngine extends RenderEngineCore {
 		return f;
 	}
 	
+	/**
+	 * This function return only after a call to {@link #terminate()} from another thread.
+	 */
 	public static void serveRenderEngine()
 	{
 		assertLoaded();
@@ -465,6 +717,9 @@ public class RenderEngine extends RenderEngineCore {
 		}
 	}
 	
+	/**
+	 * Empties the queue of action and then returns.
+	 */
 	public static void serveOnceRenderEngine()
 	{
 		assertLoaded();

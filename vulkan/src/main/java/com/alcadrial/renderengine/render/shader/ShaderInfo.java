@@ -38,30 +38,50 @@ public class ShaderInfo {
 	 * The json must be as follows:
 	 * <pre>
 	 * {
-	 *     "type": "{vert|tesc|tese|geom|frag|comp}",                                                                [REQUIRED FIRST]
-	 *     "entryPoint": "main",                      // The starting point of the shader                            [REQUIRED]
-	 *     "inputs": [                                // A list of 0 or more inputs                                  [REQUIRED]
+	 *     "type": "{vert|tesc|tese|geom|frag|comp}",                                             [REQUIRED FIRST]
+	 *     "entryPoint": "main",                      // The starting point of the shader         [REQUIRED]
+	 *     "layouts": [                               // A list of 0 or more layouts              [REQUIRED]
 	 *         {
-	 *             "location": 0,                     // The location of the shader's input variable                 [REQUIRED]
-	 *             "type": "vec4",                    // The type of the shader's input variable                     [REQUIRED]
-	 *             "name": "color"                    // The name of the shader's input variable                     [REQUIRED]
-	 *         }
-	 *     ],
-	 *     "uniformsBlocks": [                        // A list of 0 or more uniform blocks                          [REQUIRED]
-	 *         {
-	 *             "binding": 0,                      // The binding of the block                                    [REQUIRED]
-	 *             "name": "block"                    // The name of the block                                       [OPTIONAL]
-	 *             "variables": [                     // A list of uniform variables                                 [REQUIRED]
+	 *             "type": "uniformBuffer",           // The type of a uniform block              [REQUIRED FIRST]
+	 *             "binding": 0,                      // The binding of the block                 [REQUIRED]
+	 *             "name": "uniformBlock"             // The name of the block                    [OPTIONAL]
+	 *             "variables": [                     // A list of uniform variables              [REQUIRED]
 	 *                 {
-	 *                     "type": "mat4",            // The type of the uniform variable                            [REQUIRED]
-	 *                     "name": "TRANSFORMATION"   // The name of the uniform variable                            [REQUIRED]
+	 *                     "type": "mat4",            // The type of the uniform variable         [REQUIRED]
+	 *                     "name": "TRANSFORMATION"   // The name of the uniform variable         [REQUIRED]
 	 *                 }
 	 *             ]
+	 *         },
+	 *         {
+	 *             "type": "storageBuffer",           // The type of a storage block              [REQUIRED FIRST]
+	 *             "binding": 1,                      // The binding of the block                 [REQUIRED]
+	 *             "name": "storageBlock"             // The name of the block                    [OPTIONAL]
+	 *             "usage": "{input|output|other}"                                                [REQUIRED]
+	 *             "variables": [                     // A list of uniform variables              [OPTIONAL]
+	 *                 {
+	 *                     "type": "vec3",            // The type of the uniform variable         [REQUIRED]
+	 *                     "name": "position"         // The name of the uniform variable         [REQUIRED]
+	 *                 }
+	 *             ]
+	 *         },
+	 *         {
+	 *             "type": "input",                   // The type of a buffer used in rendering   [REQUIRED FIRST]
+	 *             "binding": 2,                      // The binding of the block                 [REQUIRED]
+	 *             "name": "inputBlock"               // The name of the block                    [OPTIONAL]
+	 *             "variables": [                     // A list of uniform variables              [REQUIRED]
+	 *                 {
+	 *                     "type": "vec4",            // The type of the shader's input variable  [REQUIRED]
+	 *                     "name": "color"            // The name of the shader's input variable  [REQUIRED]
+	 *                 }
+	 *             ]
+	 *         },
+	 *         {
+	 *             "type": "localSize",               // The type of localSize used in computing   [REQUIRED FIRST]
+	 *             "xSize": 64,                       // The x size                                [REQUIRED]
+	 *             "ySize": 64,                       // The y size                                [REQUIRED]
+	 *             "zSize": 64                        // The z size                                [REQUIRED]
 	 *         }
-	 *     ],
-	 *     "bindingsDescriptorTypes": {               // A map between the bindings and the descriptor type required [REQUIRED]
-	 *         "0": "uniformBuffer"                   // The binding value and the descriptor type                   [REQUIRED]
-	 *     }
+	 *     ]
 	 * }
 	 * </pre>
 	 * 

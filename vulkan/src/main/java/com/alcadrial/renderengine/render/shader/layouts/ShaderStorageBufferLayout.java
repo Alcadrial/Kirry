@@ -33,8 +33,7 @@ public final class ShaderStorageBufferLayout extends ShaderBufferLayout {
 				case "binding" -> binding = reader.nextInt();
 				case "name" -> name = reader.nextString();
 				case "usage" -> JsonUtils.require((usage = Usage.of(reader.nextString())) != null, JsonUtils.invalid(reader, "usage"));
-				case "variables" ->
-				{
+				case "variables" -> {
 					if (variables != null) throw new IOException(JsonUtils.duplicate(reader, "variables"));
 					variables = new LinkedList<>();
 					
@@ -51,7 +50,6 @@ public final class ShaderStorageBufferLayout extends ShaderBufferLayout {
 			}
 		}
 		if (binding == null) throw new IOException(JsonUtils.missing(reader, "binding"));
-		if (variables == null) throw new IOException(JsonUtils.missing(reader, "variables"));
 		
 		return new ShaderStorageBufferLayout(binding, name, usage, variables);
 	}
@@ -76,7 +74,7 @@ public final class ShaderStorageBufferLayout extends ShaderBufferLayout {
 	
 	private Usage usage;
 	
-	public ShaderStorageBufferLayout(int binding, @Nullable String name, Usage usage, List<ShaderVariable> variables)
+	public ShaderStorageBufferLayout(int binding, @Nullable String name, Usage usage, @Nullable List<ShaderVariable> variables)
 	{
 		super(Type.STORAGE_BUFFER, binding, name, variables);
 		this.usage = Objects.requireNonNull(usage);
