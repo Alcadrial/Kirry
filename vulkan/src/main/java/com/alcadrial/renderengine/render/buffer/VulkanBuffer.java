@@ -151,7 +151,7 @@ public class VulkanBuffer extends RawDeviceResource {
 		if (parent == null)
 		{
 			Debug.debugAllocation(() -> "Deallocated " + this);
-			memory.close();
+			if (memory.getVk() != 0) memory.close();
 		}
 		Debug.debugClose(() -> "Closing VulkanBuffer " + this);
 		VK10.vkDestroyBuffer(device.getVk(), vk, null);

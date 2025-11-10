@@ -4,9 +4,12 @@ import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
@@ -24,6 +27,7 @@ import org.lwjgl.vulkan.VkFenceCreateInfo;
 import org.lwjgl.vulkan.VkMemoryRequirements;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 
+import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.buffer.Memory;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
@@ -32,6 +36,7 @@ import com.alcadrial.renderengine.render.pipeline.Pipeline;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.queue.PresentQueue;
 import com.alcadrial.renderengine.render.queue.Queue;
+import com.alcadrial.renderengine.render.queue.QueueFamily;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
@@ -61,11 +66,11 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	private PresentQueue presentQueue;
 	private CommandPool multiUseCommandPool;
 	private CommandPool singleUseCommandPool;
-	//private Map<Queue, Integer > queues; to sync
+	private Set<Queue> queues;
 	
 	private Map<Object, String> debugNames;
 	
-	public Device(VkDevice device, PhysicalDevice physicalDevice) throws VulkanException
+	public Device(VkDevice device, PhysicalDevice physicalDevice, QueueFamily graphicsQueueFamily, QueueFamily computeQueueFamily, QueueFamily graphicsComputeQueueFamily, @Nullable QueueFamily presentQueueFamily) throws VulkanException
 	{
 		vk = VulkanErrorUtils.nonNull(device);
 		this.physicalDevice = VulkanErrorUtils.nonNull(physicalDevice);
@@ -93,6 +98,17 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 				singleUseCommandPool.setName("SingleUseCommandPool(" + device + ")");
 			}
 		}
+		queues = new HashSet<>();
+		graphicsQueue = Queue.createQueue(this, graphicsQueueFamily.getIndex());
+		queues.add(graphicsQueue);
+		computeQueue = Queue.createQueue(this, computeQueueFamily.getIndex());
+		queues.add(computeQueue);
+		graphicsComputeQueue = Queue.createQueue(this, graphicsComputeQueueFamily.getIndex());
+		queues.add(graphicsComputeQueue);
+		if (presentQueueFamily != null) {
+			presentQueue = Queue.createPresentQueue(this, presentQueueFamily.getIndex());
+			queues.add(presentQueue);
+		}
 	}
 	
 	public void addToDestructionList(AbstractDeviceResource<?> resource)
@@ -105,19 +121,6 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		destructionList.remove(resource);
 	}
 	
-	private void sync(Queue queue, Runnable r)
-	{
-		if (queue == null)
-		{
-			r.run();
-			return;
-		}
-		synchronized (queue)
-		{
-			r.run();
-		}
-	}
-	
 	public PhysicalDevice getPhysicalDevice()
 	{
 		return physicalDevice;
@@ -128,21 +131,9 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		return graphicsQueue;
 	}
 	
-	public void setGraphicsQueue(Queue queue)
-	{
-		VulkanErrorUtils.match(this, queue.getDevice(), "Cannot set a queue of another device");
-		graphicsQueue = queue;
-	}
-	
 	public Queue getComputeQueue()
 	{
 		return computeQueue;
-	}
-	
-	public void setComputeQueue(Queue queue)
-	{
-		VulkanErrorUtils.match(this, queue.getDevice(), "Cannot set a queue of another device");
-		computeQueue = queue;
 	}
 	
 	public Queue getGraphicsComputeQueue()
@@ -150,21 +141,9 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		return graphicsComputeQueue;
 	}
 	
-	public void setGraphicsComputeQueue(Queue queue)
-	{
-		VulkanErrorUtils.match(this, queue.getDevice(), "Cannot set a queue of another device");
-		graphicsComputeQueue = queue;
-	}
-	
 	public PresentQueue getPresentQueue()
 	{
 		return presentQueue;
-	}
-	
-	public void setPresentQueue(PresentQueue queue)
-	{
-		VulkanErrorUtils.match(this, queue.getDevice(), "Cannot set a queue of another device");
-		presentQueue = queue;
 	}
 	
 	public void useResetCommandPool(VulkanConsumer<CommandPool> action) throws VulkanException
@@ -341,16 +320,19 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	public Device waitIdle()
 	{
-		sync(graphicsQueue, () -> {
-			Queue q = null;
-			if (computeQueue != graphicsQueue) q = computeQueue;
-			sync(q, () -> {
-				Queue q0 = null;
-				if (presentQueue != graphicsQueue && presentQueue != computeQueue) q0 = presentQueue;
-				sync(q0, () -> VK10.vkDeviceWaitIdle(vk));
-			});
-		});
-		return this;
+		return waitIdle0(queues.iterator());
+	}
+	
+	private Device waitIdle0(Iterator<Queue> iterator)
+	{
+		if (!iterator.hasNext()) {
+			VK10.vkDeviceWaitIdle(vk);
+			return this;
+		}
+		synchronized (iterator.next())
+		{
+			return waitIdle0(iterator);
+		}
 	}
 	
 	public VulkanFuture<Device> waitIdleAsync()
@@ -478,14 +460,16 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 				int limit = Math.max(Math.min(destructionList.size(), 100), threshold);
 				Debug.debug("Warning: too much unclosed resources (" + destructionList.size() + "), logging the first " + limit);
 				
-				AbstractDeviceResource<?>[] resources = destructionList.stream().limit(limit).toArray(AbstractDeviceResource[]::new);
-				
-				for (int i = 0; i < resources.length; i++) Debug.print(i + " " + resources[i].getClass(), resources[i]);
+				Iterator<AbstractDeviceResource<?>> iterator = destructionList.iterator();
+				for (int i = 0; i < limit; i++) {
+					AbstractDeviceResource<?> resource = iterator.next();
+					Debug.print(i + " " + resource.getClass(), resource);
+				}
 			}
 			while (destructionList.peek() != null) destructionList.pop().close();
 			VK10.vkDestroyDevice(vk, null);
-			vk = null;
 			super.close();
+			vk = null;
 		}
 	}
 	

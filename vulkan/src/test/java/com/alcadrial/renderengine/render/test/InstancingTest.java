@@ -2,6 +2,7 @@ package com.alcadrial.renderengine.render.test;
 
 import java.io.IOException;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.lwjgl.glfw.GLFW;
@@ -44,7 +45,11 @@ import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.util.OutOfSpaceException;
+import com.alcadrial.renderengine.render.test.util.RenderTest;
+import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
+import com.alcadrial.renderengine.render.test.util.TestProperties;
+import com.alcadrial.renderengine.render.util.OverflowException;
+import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
@@ -140,6 +145,7 @@ public class InstancingTest extends RenderTest {
 				{
 					CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
 					renderer.updateUniform(PROJECTION, l -> l.set(buildProjectionMatrix(window)), commandBuffer);
+					commandBuffer.endRecording();
 					device.submitSingleUseCommandBuffer(stack, commandBuffer);
 				}
 				catch (VulkanException e)
@@ -196,6 +202,7 @@ public class InstancingTest extends RenderTest {
 						renderer.updateUniform(LIGHT_POS, l -> l.set(buildScaleMatrix().multiply(lightPos).xyz()), commandBuffer);
 						renderer.updateUniform(LIGHT_INTENSITY, l -> l.set(0.75F), commandBuffer);
 						renderer.updateUniform(SPACE_FOG_INTENSITY, l -> l.set(0.1F), commandBuffer);
+						commandBuffer.endRecording();
 						device.submitSingleUseCommandBuffer(stack, commandBuffer);
 					}
 					catch (VulkanException e)
@@ -253,7 +260,7 @@ public class InstancingTest extends RenderTest {
 			
 			RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3f.of(-1, -1, -1), Vector3f.of(0, 0, 0), (i, j) -> colors[i]);
 		}
-		catch (OutOfSpaceException e)
+		catch (OverflowException e)
 		{
 			e.printStackTrace(System.out);
 			RenderEngine.terminate();
@@ -272,6 +279,8 @@ public class InstancingTest extends RenderTest {
 		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		
 		commandBuffers = device.createMultiUseCommandBuffer(renderersCount);
+		
+		ArrayList<VulkanFuture<?>> uniformUpdateFutures = new ArrayList<>(renderersCount);
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -293,7 +302,8 @@ public class InstancingTest extends RenderTest {
 				renderer.updateUniform(LIGHT_POS, l -> l.set(buildScaleMatrix().multiply(lightPos).xyz()), commandBuffer);
 				renderer.updateUniform(LIGHT_INTENSITY, l -> l.set(0.75F), commandBuffer);
 				renderer.updateUniform(SPACE_FOG_INTENSITY, l -> l.set(0.1F), commandBuffer);
-				device.submitMultiUseCommandBuffer(stack, commandBuffer).thenRun(commandBuffer::reset);
+				commandBuffer.endRecording();
+				uniformUpdateFutures.add(device.submitMultiUseCommandBuffer(stack, commandBuffer));
 				
 				renderers[i] = renderer;
 				
@@ -303,6 +313,10 @@ public class InstancingTest extends RenderTest {
 				RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, i * 128 + 64 + 3, 1, true, "I");
 				RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, i * 128 + 64 + 4, 1, true, "F");
 			}
+		}
+		for (int i = 0; i < renderersCount; i++) {
+			uniformUpdateFutures.get(i).join();
+			commandBuffers.get(i).reset();
 		}
 	}
 	

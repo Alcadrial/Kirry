@@ -23,8 +23,6 @@ import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 
 import com.alcadrial.renderengine.core.util.OperativeSystem;
-import com.alcadrial.renderengine.render.queue.PresentQueue;
-import com.alcadrial.renderengine.render.queue.Queue;
 import com.alcadrial.renderengine.render.queue.QueueFamily;
 import com.alcadrial.renderengine.render.util.PhysicalDeviceNotFoundException;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
@@ -247,29 +245,7 @@ public class Vulkan implements AutoCloseable {
 				
 				PointerBuffer devicePointer = stack.pointers(VK10.VK_NULL_HANDLE);
 				VulkanErrorUtils.assertNoError(VK10.vkCreateDevice(threadData.physicalDevice.getVk(), createInfo, null, devicePointer), "Failed to create logical device");
-				threadData.device = new Device(new VkDevice(devicePointer.get(0), threadData.physicalDevice.getVk(), createInfo), threadData.physicalDevice);
-				
-				Queue queue;
-				
-				if (presentationQueue != null)
-				{
-					queue = Queue.createPresentQueue(threadData.device, presentationQueue.getIndex());
-					threadData.device.setPresentQueue((PresentQueue) queue);
-					if (graphicsQueue.getIndex() == presentationQueue.getIndex())
-					{
-						threadData.device.setGraphicsQueue(queue);
-					}
-				}
-				else
-				{
-					queue = Queue.createQueue(threadData.device, graphicsQueue.getIndex());
-					threadData.device.setGraphicsQueue(queue);
-				}
-				
-				queue = Queue.createQueue(threadData.device, computeQueue.getIndex());
-				threadData.device.setComputeQueue(queue);
-				queue = Queue.createQueue(threadData.device, graphicsComputeQueue.getIndex());
-				threadData.device.setGraphicsComputeQueue(queue);
+				threadData.device = new Device(new VkDevice(devicePointer.get(0), threadData.physicalDevice.getVk(), createInfo), threadData.physicalDevice, graphicsQueue, computeQueue, graphicsComputeQueue, presentationQueue);
 				
 				return threadData.device;
 			}

@@ -16,6 +16,7 @@ import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
+import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.util.Version;
 
 public class CompileShaders extends RenderTest {

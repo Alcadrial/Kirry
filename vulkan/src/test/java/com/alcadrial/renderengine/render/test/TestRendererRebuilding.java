@@ -1,16 +1,9 @@
 package com.alcadrial.renderengine.render.test;
 
 import java.io.IOException;
-import java.math.RoundingMode;
 import java.util.List;
 
 import org.lwjgl.glfw.GLFW;
-import org.lwjgl.glfw.GLFWCursorPosCallbackI;
-import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
-import org.lwjgl.glfw.GLFWWindowCloseCallbackI;
-import org.lwjgl.glfw.GLFWWindowIconifyCallbackI;
-import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
-import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSwapchain;
@@ -22,8 +15,6 @@ import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kector.vector.Vector2f;
-import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
@@ -41,6 +32,9 @@ import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.test.util.RenderTest;
+import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
+import com.alcadrial.renderengine.render.test.util.TestProperties;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
@@ -66,6 +60,7 @@ public class TestRendererRebuilding extends RenderTest {
 				RenderEngine.getLastInitializationException().printStackTrace(System.out);
 				return;
 			}
+			if (Properties.DEBUG.getValue()) Debug.setEnabledAllDebug(true);
 		}
 		catch (VulkanException e)
 		{
@@ -191,44 +186,9 @@ public class TestRendererRebuilding extends RenderTest {
 			window.init(device);
 			window.setName("Window");
 			
-			window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
-				System.out.println(iconified ? "Iconified" : "Restored");
-			});
 			window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 				System.out.println("Resized " + width + "x" + height);
 				//		renderer.updateUniforms(uniformBuffer, l -> l.set("TRANSFORMATION", uniformBuffer, new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
-			});
-			window.setCallback((GLFWWindowRefreshCallbackI) w -> {
-				System.out.println("Refresh");
-			});
-			window.setCallback((GLFWWindowCloseCallbackI) w -> {
-				System.out.println("Closed");
-			});
-			window.setCallback((GLFWWindowMaximizeCallbackI) (w, maximized) -> {
-				System.out.println(maximized ? "Maximized" : "Restored");
-			});
-			
-			Vector2i[] oldPos = new Vector2i[] {Vector2i.of(0, 0)};
-			Vector2f[] oldMousePos = new Vector2f[] {Vector2f.of(0, 0), Vector2f.of(0, 0)};
-			boolean[] pressing = new boolean[2];
-			window.setCallback((GLFWMouseButtonCallbackI) (w, button, action, mods) -> {
-				if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT)
-				{
-					if (pressing[0] = action == GLFW.GLFW_PRESS)
-					{
-						window.getMousePos(oldMousePos[0]);
-					}
-				}
-			});
-			window.setCallback((GLFWCursorPosCallbackI) (w, x, y) -> {
-				if (pressing[0] && !pressing[1])
-				{
-					pressing[1] = true;
-					window.getPos(oldPos[0]);
-					window.setPos(Vector2i.of((float) x - oldMousePos[0].x() + oldPos[0].x(), (float) y - oldMousePos[0].y() + oldPos[0].y(), RoundingMode.FLOOR));
-					window.getMousePos(oldMousePos[0]);
-					pressing[1] = false;
-				}
 			});
 		}
 		
@@ -305,9 +265,9 @@ public class TestRendererRebuilding extends RenderTest {
 			}
 			synchronized (MONITOR)
 			{
-				RenderingDataUtils.printBufferContent(staticBigBuffer, vertexBuffer, true, 10, "xyzrgba");
-				RenderingDataUtils.printBufferContent(staticBigBuffer, indexBuffer, false, 8, "ijk");
-				RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, true, 4, "mmmm");
+				RenderingDataUtils.printBufferContent(staticBigBuffer, vertexBuffer, 10, true, "xyzrgba");
+				RenderingDataUtils.printBufferContent(staticBigBuffer, indexBuffer, 8, false, "ijk");
+				RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, 4, true, "mmmm");
 			}
 		}
 		
@@ -338,6 +298,7 @@ public class TestRendererRebuilding extends RenderTest {
 				if (++l % 25 == 0) modified = true;
 				if (modified)
 				{
+					System.out.println("Rebuild");
 					ModificationPlan plan = renderer.startModificationPlan();
 					if (i == 0) plan.lineWidth(f);
 					if (l % 25 == 0) plan.topology(l % 50 == 0 ? VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST : VK10.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
@@ -384,8 +345,6 @@ public class TestRendererRebuilding extends RenderTest {
 			localUniformBuffer.close();
 			staticBigBuffer.close();
 			for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.close();
-			RenderEngine.getVulkan().getWindow().close();
-			RenderEngine.getVulkan().getDevice().close();
 			synchronized (MONITOR)
 			{
 				MONITOR.notify();

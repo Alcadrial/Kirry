@@ -3,7 +3,6 @@ package com.alcadrial.renderengine.render.test;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.math.RoundingMode;
-import java.util.concurrent.Future;
 
 import javax.imageio.ImageIO;
 
@@ -42,9 +41,13 @@ import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.test.util.RenderTest;
+import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
 import com.alcadrial.renderengine.render.texture.ImageWriter;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
+import com.alcadrial.renderengine.render.util.VulkanFuture;
+import com.alcadrial.renderengine.render.util.exception.ExternalException;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
@@ -74,20 +77,6 @@ public class TextureTest extends RenderTest {
 	
 	public static void start() throws VulkanException
 	{
-		ShaderProgram shaderProgram;
-		try
-		{
-			PreparedShader vertexShader = loadShader(SHADER + ".vert");
-			PreparedShader fragmentShader = loadShader(SHADER + ".frag");
-			shaderProgram = ShaderProgram.create().add(vertexShader, fragmentShader).build();
-		}
-		catch (IOException e)
-		{
-			e.printStackTrace(System.out);
-			RenderEngine.terminate();
-			return;
-		}
-		
 		Vulkan vulkan = RenderEngine.getVulkan();
 		
 		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
@@ -97,10 +86,7 @@ public class TextureTest extends RenderTest {
 		VulkanWindow window = new VulkanWindow(1080, 720, "Test");
 		window.setUseDepthTexture(false);
 		vulkan.setWindow(window);
-		if (!pickPhysicalDevice(window))
-		{
-			return;
-		}
+		if (!pickPhysicalDevice(window)) throw new VulkanException("Physical device not found");
 		
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.samplerAnisotropy(true);
@@ -172,6 +158,29 @@ public class TextureTest extends RenderTest {
 				}
 			}
 		});
+
+		VulkanFuture<BufferedImage> future = RenderEngine.submitAsync(() -> {
+			try
+			{
+				return ImageIO.read(getFile("KhishweTransparent.png"));
+			}
+			catch (IOException e)
+			{
+				throw new ExternalException(e);
+			}
+		});
+		VulkanFuture<ShaderProgram> shaderProgramFuture = RenderEngine.submitAsync(() -> {
+			try
+			{
+				PreparedShader vertexShader = loadShader(SHADER + ".vert");
+				PreparedShader fragmentShader = loadShader(SHADER + ".frag");
+				return ShaderProgram.create().add(vertexShader, fragmentShader).build();
+			}
+			catch (IOException e)
+			{
+				throw new ExternalException(e);
+			}
+		});
 		
 		vertexBuffer = new VulkanBuffer(device, 28 * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		indexBuffer = new VulkanBuffer(device, 6 * 4 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
@@ -181,8 +190,6 @@ public class TextureTest extends RenderTest {
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			Future<BufferedImage> future = RenderEngine.getExecutor().submit(() -> ImageIO.read(getFile("KhishweTransparent.png")));
-			
 			VulkanBuffer localVertexBuffer = new VulkanBuffer(device, vertexBuffer.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0);
 			VulkanBuffer localIndexBuffer = new VulkanBuffer(device, indexBuffer.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0);
 			
@@ -200,7 +207,7 @@ public class TextureTest extends RenderTest {
 			
 			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
 			
-			BufferedImage image = future.get();
+			BufferedImage image = future.forceGet();
 			texture = Texture.create2dTexture(device, image.getWidth(), image.getHeight(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 			
@@ -212,38 +219,35 @@ public class TextureTest extends RenderTest {
 			
 			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			
-			device.submitSingleUseCommandBuffer(stack, commandBuffer)
-				.thenRunAsync(localTextureBuffer::close)
-				.thenRunAsync(localVertexBuffer::close)
-				.thenRunAsync(localIndexBuffer::close);
+			commandBuffer.endRecording();
+			
+			VulkanFuture<?> textureFuture = device.submitSingleUseCommandBuffer(stack, commandBuffer);
 			localVertexBuffer.getMemory().unmapMemory();
 			localIndexBuffer.getMemory().unmapMemory();
 			localTextureBuffer.getMemory().unmapMemory();
+			
+			Builder builder = Renderer.create();
+			builder.shaderProgram(shaderProgramFuture.forceGet());
+			builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
+			builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+			builder.bufferBindings(
+					new BufferWriter(localUniformBuffer, 0, uniformBuffer, 0, uniformBuffer.getSize()),
+					new BufferWriter(localUniformBuffer, 0, uniformBuffer, 0, 0)//texture sampler
+			);
+			builder.dynamicViewport(false).dynamicScissor(false);
+			renderer = builder.build(device, window.getSurface().getSize(), renderPass);
+			renderer.setVertexBuffers(0, vertexBuffer);
+			renderer.setIndexBuffer(indexBuffer);
+			renderer.updateUniform(TEXTURE_SAMPLER_UNIFORM, l -> l.set(texture.getView(), new TextureSampler(device)));
+			
+			window.addSurfaceUpdateActions(surface -> renderer.startModificationPlan().size(surface.getSize()).submit());
+			isModifiedMatrix = true;
+			isModified = true;
+			textureFuture.join();
+			localTextureBuffer.close();
+			localVertexBuffer.close();
+			localIndexBuffer.close();
 		}
-		catch (Exception e)
-		{
-			e.printStackTrace(System.out);
-			RenderEngine.terminate();
-			return;
-		}
-		
-		Builder builder = Renderer.create();
-		builder.shaderProgram(shaderProgram);
-		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
-		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-		builder.bufferBindings(
-				new BufferWriter(localUniformBuffer, 0, uniformBuffer, 0, uniformBuffer.getSize()),
-				new BufferWriter(localUniformBuffer, 0, uniformBuffer, 0, 0)//texture sampler
-		);
-		builder.dynamicViewport(false).dynamicScissor(false);
-		renderer = builder.build(device, window.getSurface().getSize(), renderPass);
-		renderer.setVertexBuffers(0, vertexBuffer);
-		renderer.setIndexBuffer(indexBuffer);
-		renderer.updateUniform(TEXTURE_SAMPLER_UNIFORM, l -> l.set(texture.getView(), new TextureSampler(device)));
-		
-		window.addSurfaceUpdateActions(surface -> renderer.startModificationPlan().size(surface.getSize()).submit());
-		isModifiedMatrix = true;
-		isModified = true;
 	}
 	
 	public static void loop(long time, long enlapsed) throws VulkanException

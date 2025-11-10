@@ -1,6 +1,6 @@
 package com.alcadrial.renderengine.render.test.widgets;
 
-import com.alcadrial.renderengine.render.test.RenderTest;
+import com.alcadrial.renderengine.render.test.util.RenderTest;
 
 public class ScreenTest extends RenderTest {
 	/*

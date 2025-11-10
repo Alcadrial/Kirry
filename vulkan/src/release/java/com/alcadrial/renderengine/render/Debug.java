@@ -134,6 +134,16 @@ public class Debug {
 		
 	}
 	
+	public static void setEnabledDeallocationFail(boolean enabledDeallocationFail)
+	{
+		
+	}
+	
+	public static boolean isEnabledDeallocationFail()
+	{
+		
+	}
+	
 	public static void debugAllocation(Supplier<Object> x)
 	{
 		

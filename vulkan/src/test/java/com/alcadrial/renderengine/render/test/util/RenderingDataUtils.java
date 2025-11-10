@@ -1,4 +1,4 @@
-package com.alcadrial.renderengine.render.test;
+package com.alcadrial.renderengine.render.test.util;
 
 import java.util.function.BiFunction;
 
@@ -131,7 +131,7 @@ public class RenderingDataUtils {
 		loadRectangleIndices(indexBuffer, startIndex);
 	}
 	
-	public static void printBufferContent(StaticBigBuffer bigBuffer, VulkanBuffer buffer, boolean floats, int rows, String alphabet) throws VulkanException
+	public static void printBufferContent(StaticBigBuffer bigBuffer, VulkanBuffer buffer, int rows, boolean floats, String alphabet) throws VulkanException
 	{
 		printBufferContent(bigBuffer, buffer, 0, rows * alphabet.length(), floats, alphabet);
 	}

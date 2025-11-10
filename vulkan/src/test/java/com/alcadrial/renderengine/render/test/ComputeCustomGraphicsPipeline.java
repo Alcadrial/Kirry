@@ -48,9 +48,9 @@ public class ComputeCustomGraphicsPipeline extends GraphicsPipeline {
 			bindingDescription.get().set(1, 48, VK10.VK_VERTEX_INPUT_RATE_INSTANCE);
 			
 			VkVertexInputAttributeDescription.Buffer attributeDescriptions = VkVertexInputAttributeDescription.calloc(3, stack);
-			attributeDescriptions.get().set(0, 0, ShaderVariable.VERTEX_POSITION.getType().getType(), 0);
-			attributeDescriptions.get().set(1, 1, ShaderVariable.COLOR.getType().getType(), 32);
-			attributeDescriptions.get().set(2, 1, ShaderVariable.POSITION.getType().getType(), 0);
+			attributeDescriptions.get().set(0, 0, ShaderVariable.VERTEX_POSITION.getType().getVulkanType(), 0);
+			attributeDescriptions.get().set(1, 1, ShaderVariable.COLOR.getType().getVulkanType(), 32);
+			attributeDescriptions.get().set(2, 1, ShaderVariable.POSITION.getType().getVulkanType(), 0);
 			
 			vertexInputInfo.pVertexBindingDescriptions(bindingDescription.rewind());
 			vertexInputInfo.pVertexAttributeDescriptions(attributeDescriptions.rewind());

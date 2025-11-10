@@ -2,7 +2,6 @@ package com.alcadrial.renderengine.render.test.animation;
 
 import java.io.IOException;
 import java.math.RoundingMode;
-import java.nio.FloatBuffer;
 import java.util.function.Function;
 
 import org.lwjgl.glfw.GLFW;
@@ -15,7 +14,6 @@ import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.vulkan.EXTDebugMarker;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkClearValue;
@@ -39,13 +37,16 @@ import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.Vulkan;
+import com.alcadrial.renderengine.render.buffer.BigVulkanBuffer.PhysicalDeviceTranferState;
+import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.test.RenderTest;
+import com.alcadrial.renderengine.render.test.util.RenderTest;
+import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
@@ -70,6 +71,16 @@ public class AnimationTest extends RenderTest {
 	private static RenderPass renderPass;
 	private static Renderer[] renderers;
 	private static StaticBigBuffer staticBigBuffer;
+	private static VulkanBuffer vertexBuffer;
+	private static VulkanBuffer instancingVertexBuffer;
+	private static VulkanBuffer localInstancingVertexBuffer;
+	private static BufferWriter instancingVertexBufferWriter;
+	private static VulkanBuffer indexBuffer;
+	private static VulkanBuffer pathBuffer;
+	private static VulkanBuffer localPathBuffer;
+	private static VulkanBuffer uniformBuffer;
+	private static VulkanBuffer localUniformBuffer;
+	
 	private static Texture depthTexture;
 	private static Vector3f lightPos;
 	private static double f;
@@ -129,7 +140,7 @@ public class AnimationTest extends RenderTest {
 		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
 		deviceFeatures.wideLines(true);
 		deviceFeatures.samplerAnisotropy(true);
-		Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME, EXTDebugMarker.VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
+		Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 		
 		device.setObjectDebugName(device, "GPU");
 		window.init(device);
@@ -223,7 +234,7 @@ public class AnimationTest extends RenderTest {
 		
 		instanceCount = CUBES * 2;
 		
-		lightPos = Vector3f.of(5, 14, 0);
+		lightPos = Vector3f.of(0, 1, -0.1F);
 		f = 0;
 		
 		Color[] colors = new Color[] {
@@ -235,51 +246,38 @@ public class AnimationTest extends RenderTest {
 			Color.VERY_LIGHT_BLUE
 		};
 		
-		VulkanBuffer deviceVertexBuffer = staticBigBuffer.allocate(240 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		deviceInstancingVertexBuffer = staticBigBuffer.allocate(instanceCount * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		VulkanBuffer deviceIndexBuffer = staticBigBuffer.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-		VulkanBuffer devicePathBuffer = staticBigBuffer.allocate(PRECISION * 2 * 4 * 4, VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-		deviceUniformBuffer = staticBigBuffer.allocate(2048, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-		/*
-				try (PhysicalDeviceTranferState transfert = staticBigBuffer.startLocalBuffering())
-				{
-					VulkanBuffer localVertexBuffer = transfert.mapLocal(deviceVertexBuffer);
-					VulkanBuffer localInstancingVertexBuffer = transfert.mapLocal(deviceInstancingVertexBuffer);
-					VulkanBuffer localIndexBuffer = transfert.mapLocal(deviceIndexBuffer);
-					VulkanBuffer localPathBuffer = transfert.mapLocal(devicePathBuffer);
+		vertexBuffer = staticBigBuffer.allocate(240 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		instancingVertexBuffer = staticBigBuffer.allocate(instanceCount * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		localInstancingVertexBuffer = VulkanBuffer.asLocal(instancingVertexBuffer);
+		localInstancingVertexBuffer.getMemory().mapMemory();
+		indexBuffer = staticBigBuffer.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+		pathBuffer = staticBigBuffer.allocate((PRECISION + 1) * 2 * 4 * 4, VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		localPathBuffer = VulkanBuffer.asLocal(pathBuffer);
+		localPathBuffer.getMemory().mapMemory();
+		uniformBuffer = staticBigBuffer.allocate(2048, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		localUniformBuffer = VulkanBuffer.asLocal(uniformBuffer);
+		localUniformBuffer.getMemory().mapMemory();
 		
-					RenderingDataUtils.loadOrthoCube(localVertexBuffer, 0, localIndexBuffer, 0, 0, Vector3f.of(-1, -1, -1), Vector3f.of(0, 0, 0), (i, j) -> colors[i]);
-					{
-						FloatBuffer buffer = localInstancingVertexBuffer.asFloatBuffer();
-						IntBuffer buffer0 = localInstancingVertexBuffer.asIntBuffer();
+		instancingVertexBufferWriter = new BufferWriter(localInstancingVertexBuffer, instancingVertexBuffer);
 		
-						float step = 1F / CUBES;
-						for (float j = 0; j < 1; j += step)
-						{
-							buffer0.put(0).put(0).put(0).put((int) (PRECISION * j));
-							buffer0.put(0).put(0).put(0).put((int) (PRECISION * j + PRECISION));
-						}
-		
-						buffer.rewind();
-						buffer0.rewind();
-					}
-					{
-						FloatBuffer buffer = localPathBuffer.asFloatBuffer();
-						renderCurve(buffer, Vector2f.of(-50, 0), Vector2f.of(100, 5), x -> Math.cos(8 * x * Math.PIF), PRECISION);
-						renderCurve(buffer, Vector2f.of(-50, 0), Vector2f.of(100, 5), x -> -Math.cos(8 * x * Math.PIF), PRECISION);
-						buffer.rewind();
-					}
-					localVertexBuffer.copyToBuffer(deviceVertexBuffer);
-					localInstancingVertexBuffer.copyToBuffer(deviceInstancingVertexBuffer);
-					localIndexBuffer.copyToBuffer(deviceIndexBuffer);
-					localPathBuffer.copyToBuffer(devicePathBuffer);
-				}
-				catch (OutOfSpaceException e)
-				{
-					e.printStackTrace(System.out);
-					RenderEngine.terminate();
-					return;
-				}*/
+		try (PhysicalDeviceTranferState transfert = staticBigBuffer.startLocalBuffering())
+		{
+			BufferWriter vertexBufferWriter = transfert.beginTransfer(vertexBuffer);
+			BufferWriter instancingVertexBufferWriter = transfert.beginTransfer(instancingVertexBuffer);
+			BufferWriter indexBufferWriter = transfert.beginTransfer(indexBuffer);
+			BufferWriter pathBufferWriter = transfert.beginTransfer(pathBuffer);
+			
+			RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3f.of(-1, -1, -1), Vector3f.of(0, 0, 0), (i, j) -> colors[i]);
+			
+			float step = 1F / CUBES;
+			for (float j = 0; j < 1; j += step)
+			{
+				instancingVertexBufferWriter.put(0).put(0).put(0).put((int) (PRECISION * j));
+				instancingVertexBufferWriter.put(0).put(0).put(0).put((int) (PRECISION * j + PRECISION));
+			}
+			renderCurve(pathBufferWriter, Vector2f.of(-50, 0), Vector2f.of(100, 5), x -> Math.cos(8 * x * Math.PIF), PRECISION);
+			renderCurve(pathBufferWriter, Vector2f.of(-50, 0), Vector2f.of(100, 5), x -> -Math.cos(8 * x * Math.PIF), PRECISION);
+		}
 		
 		renderers = new Renderer[3];
 		
@@ -287,52 +285,49 @@ public class AnimationTest extends RenderTest {
 		builder.shaderProgram(shaderProgram);
 		builder.depthTestEnable(true);
 		builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
-		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);/*
-																	builder.bufferBindings(
-																	new VulkanBufferRange(deviceUniformBuffer, 0, 256),
-																	new VulkanBufferRange(deviceUniformBuffer, 256, 256),
-																	new VulkanBufferRange(devicePathBuffer, 0)
-																	);
-																	renderers[0] = builder.build(device, window.getSurface().getSize(), renderPass, AnimationInstancingGraphicsPipeline::new);
-																	builder.bufferBindings(
-																	new VulkanBufferRange(deviceUniformBuffer, 512, 256),
-																	new VulkanBufferRange(deviceUniformBuffer, 768, 256),
-																	new VulkanBufferRange(devicePathBuffer, 0)
-																	);
-																	renderers[1] = builder.build(device, window.getSurface().getSize(), renderPass, AnimationInstancingGraphicsPipeline::new);
-																	builder.bufferBindings(
-																	new VulkanBufferRange(deviceUniformBuffer, 1024, 256),
-																	new VulkanBufferRange(deviceUniformBuffer, 1280, 256),
-																	new VulkanBufferRange(devicePathBuffer, 0)
-																	);
-																	renderers[2] = builder.build(device, window.getSurface().getSize(), renderPass, AnimationInstancingGraphicsPipeline::new);
-																	*/
-		for (Renderer renderer : renderers)
-		{/*
-			renderer.addVertexBuffer(0, deviceVertexBuffer);
-			renderer.addVertexBuffer(1, deviceInstancingVertexBuffer);
-			renderer.setIndexBuffer(deviceIndexBuffer);
-			renderer.updateUniforms(deviceUniformBuffer, l -> {
-				try (PhysicalDeviceTranferState transfert = staticBigBuffer.startLocalBuffering())
-				{
-					VulkanBuffer localUniformBuffer = transfert.mapLocal(deviceUniformBuffer);
-					l.set(PROJECTION, localUniformBuffer, buildProjectionMatrix(window));
-					l.set(MODEL, localUniformBuffer, buildModelMatrix());
-					l.set(LIGHT_POS, localUniformBuffer, buildScaleMatrix().multiply(lightPos).xyz());
-					l.set(LIGHT_INTENSITY, localUniformBuffer, 0.75F);
-					l.set(SPACE_FOG_INTENSITY, localUniformBuffer, 0.1F);
-					localUniformBuffer.copyToBuffer(deviceUniformBuffer);
-				}
-				catch (OutOfSpaceException e)
-				{
-					System.out.println("Cannot update uniforms");
-					e.printStackTrace(System.out);
-				}
-			});*/
+		builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+		builder.bufferBindings(
+				new BufferWriter(localUniformBuffer, uniformBuffer, 0, 256),
+				new BufferWriter(localUniformBuffer, uniformBuffer, 256, 256),
+				new BufferWriter(localPathBuffer, pathBuffer, 0, pathBuffer.getSize())
+		);
+		renderers[0] = builder.build(device, window.getSurface().getSize(), renderPass, AnimationInstancingGraphicsPipeline::new);
+		builder.bufferBindings(
+				new BufferWriter(localUniformBuffer, uniformBuffer, 512, 256),
+				new BufferWriter(localUniformBuffer, uniformBuffer, 768, 256),
+				new BufferWriter(localPathBuffer, pathBuffer, 0, pathBuffer.getSize())
+		);
+		renderers[1] = builder.build(device, window.getSurface().getSize(), renderPass, AnimationInstancingGraphicsPipeline::new);
+		builder.bufferBindings(
+				new BufferWriter(localUniformBuffer, uniformBuffer, 1024, 256),
+				new BufferWriter(localUniformBuffer, uniformBuffer, 1280, 256),
+				new BufferWriter(localPathBuffer, pathBuffer, 0, pathBuffer.getSize())
+		);
+		renderers[2] = builder.build(device, window.getSurface().getSize(), renderPass, AnimationInstancingGraphicsPipeline::new);
+		
+		
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			for (Renderer renderer : renderers)
+			{
+				CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
+				
+				renderer.setVertexBuffers(0, vertexBuffer);
+				renderer.setVertexBuffers(1, instancingVertexBuffer);
+				renderer.setIndexBuffer(indexBuffer);
+				renderer.updateUniform(PROJECTION, l -> l.set(buildProjectionMatrix(window)), commandBuffer);
+				renderer.updateUniform(MODEL, l -> l.set(buildModelMatrix()), commandBuffer);
+				renderer.updateUniform(LIGHT_POS, l -> l.set(lightPos), commandBuffer);
+				renderer.updateUniform(LIGHT_INTENSITY, l -> l.set(0.8F), commandBuffer);
+				renderer.updateUniform(SPACE_FOG_INTENSITY, l -> l.set(0.4F), commandBuffer);
+				commandBuffer.endRecording();
+				
+				device.submitSingleUseCommandBuffer(stack, commandBuffer);
+			}
 		}
 	}
 	
-	public static void renderCurve(FloatBuffer buffer, Vector2f pos, Vector2f size, Function<Float, Float> interpolationFunction, int precision)
+	public static void renderCurve(BufferWriter buffer, Vector2f pos, Vector2f size, Function<Float, Float> interpolationFunction, int precision)
 	{
 		if (size.x() == 0 || size.y() == 0)
 		{
@@ -350,9 +345,6 @@ public class AnimationTest extends RenderTest {
 		buffer.put(point.x()).put(point.y()).put(0).put(0);
 	}
 	
-	private static VulkanBuffer deviceInstancingVertexBuffer;
-	private static VulkanBuffer deviceUniformBuffer;
-	
 	public static void loop(long time, long enlapsed) throws VulkanException
 	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
@@ -360,35 +352,22 @@ public class AnimationTest extends RenderTest {
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			window.pollEvents();
-			/*
-						try (PhysicalDeviceTranferState transfert = staticBigBuffer.startLocalBuffering())
-						{
-							VulkanBuffer localInstancingVertexBuffer = transfert.mapLocal(deviceInstancingVertexBuffer);
-							{
-								IntBuffer buffer = localInstancingVertexBuffer.asIntBuffer();
-								float speed = 10F;
-								float pass = (time * PRECISION * speed / 10000000000L) % PRECISION;
-								int i = (int) pass;
-								float extra = pass * 25 / PRECISION;
-								float extraI = pass / PRECISION;
-								float step = 1F / CUBES;
-								for (float j = 0; j < 1; j += step)
-								{
-									buffer.put(Float.floatToIntBits(extra)).put(0).put(0).put((int) (PRECISION * j + i + extraI) % (2 * PRECISION));
-									buffer.put(Float.floatToIntBits(extra)).put(0).put(0).put((int) (PRECISION * j + i + extraI + PRECISION) % (2 * PRECISION));
-								}
-								buffer.rewind();
-							}
-							localInstancingVertexBuffer.copyToBuffer(deviceInstancingVertexBuffer);
-						}
-						catch (OutOfSpaceException e)
-						{
-							e.printStackTrace(System.out);
-							RenderEngine.terminate();
-							return;
-						}*/
+			
 			
 			CommandBuffer commandBuffer = window.getDevice().createSingleUseCommandBuffer();
+			
+			instancingVertexBufferWriter.resetCursor();
+			float speed = 10F;
+			float pass = (time * PRECISION * speed / 10000000000L) % PRECISION;
+			int i = (int) pass;
+			float extra = pass * 25 / PRECISION;
+			float extraI = pass / PRECISION;
+			float step = 1F / CUBES;
+			for (float j = 0; j < 1; j += step)
+			{
+				instancingVertexBufferWriter.put(Float.floatToIntBits(extra)).put(0).put(0).put((int) (PRECISION * j + i + extraI) % (2 * PRECISION));
+				instancingVertexBufferWriter.put(Float.floatToIntBits(extra)).put(0).put(0).put((int) (PRECISION * j + i + extraI + PRECISION) % (2 * PRECISION));
+			}
 			
 			VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
 			renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
@@ -407,7 +386,8 @@ public class AnimationTest extends RenderTest {
 			clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
 			clearValues.get().depthStencil().depth(1).stencil(0);
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
-			
+
+			instancingVertexBufferWriter.flush(commandBuffer);
 			commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
 			commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), 0, 1);
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
@@ -415,7 +395,9 @@ public class AnimationTest extends RenderTest {
 			commandBuffer.endRenderPass();
 			commandBuffer.endRecording();
 			
-			window.swapBuffers(commandBuffer);
+			window.swapBuffers(commandBuffer, () -> {
+				commandBuffer.close();
+			});
 			window.pollEvents();
 			window.update();
 		} /*

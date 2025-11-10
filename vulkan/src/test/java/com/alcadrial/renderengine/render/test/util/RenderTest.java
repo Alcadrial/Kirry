@@ -1,4 +1,4 @@
-package com.alcadrial.renderengine.render.test;
+package com.alcadrial.renderengine.render.test.util;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,8 +43,9 @@ public class RenderTest {
 			
 			println("RenderEngine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
 			if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-			
-			if (Properties.DEBUG.getValue()) Debug.setEnableAllocationDebug(true);
+
+			if (Properties.DEBUG.getValue()) Debug.setEnabledAllocationDebug(true);
+			if (Properties.DEBUG.getValue()) Debug.setEnabledDeallocationFail(true);
 			
 			try
 			{
@@ -116,6 +117,7 @@ public class RenderTest {
 			frame++;
 			lastCurrent = current;
 		}
+		window.getDevice().waitIdle();
 	}
 	
 	public static void initRenderEngine()

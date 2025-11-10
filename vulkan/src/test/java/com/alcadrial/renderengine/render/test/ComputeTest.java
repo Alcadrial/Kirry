@@ -60,7 +60,8 @@ import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
-import com.alcadrial.renderengine.render.util.OutOfSpaceException;
+import com.alcadrial.renderengine.render.test.util.RenderTest;
+import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
 import com.alcadrial.renderengine.render.util.SphereDataCollector;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
@@ -239,6 +240,7 @@ public class ComputeTest extends RenderTest {
 						{
 							CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
 							renderer.updateUniform(PARTICLE_RADIUS, l -> l.set(0.01F), commandBuffer);
+							commandBuffer.endRecording();
 							device.submitSingleUseCommandBuffer(null, commandBuffer);
 						}
 						catch (VulkanException e)
@@ -342,16 +344,12 @@ public class ComputeTest extends RenderTest {
 				}
 			}
 		}
-		catch (OutOfSpaceException e)
-		{
-			e.printStackTrace(System.out);
-			RenderEngine.terminate();
-			return;
-		}
 		{
 			VulkanBuffer srcBuffer = new VulkanBuffer(storageBuffer0, 0, storageBuffer0.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 			VulkanBuffer dstBuffer = new VulkanBuffer(storageBuffer1, 0, storageBuffer1.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), buffer -> buffer.copyBuffer(srcBuffer, 0, dstBuffer, 0, storageBuffer0.getSize())).join();
+			srcBuffer.close();
+			dstBuffer.close();
 		}
 		
 		renderPass = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);

@@ -45,7 +45,9 @@ import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.util.OutOfSpaceException;
+import com.alcadrial.renderengine.render.test.util.RenderTest;
+import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
+import com.alcadrial.renderengine.render.util.OverflowException;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
@@ -134,6 +136,7 @@ public class DepthBufferTest extends RenderTest {
 			{
 				CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
 				renderer.updateUniform(PROJECTION, l -> l.set(buildProjectionMatrix(window)), commandBuffer);
+				commandBuffer.endRecording();
 				device.submitSingleUseCommandBuffer(stack, commandBuffer);
 			}
 			catch (VulkanException e)
@@ -187,6 +190,7 @@ public class DepthBufferTest extends RenderTest {
 					renderer.updateUniform(LIGHT_POS, l -> l.set(lightPos), commandBuffer);
 					renderer.updateUniform(LIGHT_INTENSITY, l -> l.set(0.8F), commandBuffer);
 					renderer.updateUniform(SPACE_FOG_INTENSITY, l -> l.set(0.4F), commandBuffer);
+					commandBuffer.endRecording();
 					device.submitSingleUseCommandBuffer(stack, commandBuffer);
 				}
 				catch (VulkanException e)
@@ -223,7 +227,7 @@ public class DepthBufferTest extends RenderTest {
 			
 			RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3f.of(-1, -1, -1), Vector3f.of(1, 1, 1), (i, j) -> colors[i]);
 		}
-		catch (OutOfSpaceException e)
+		catch (OverflowException e)
 		{
 			e.printStackTrace(System.out);
 			RenderEngine.terminate();
@@ -252,6 +256,7 @@ public class DepthBufferTest extends RenderTest {
 			renderer.updateUniform(LIGHT_POS, l -> l.set(lightPos), commandBuffer);
 			renderer.updateUniform(LIGHT_INTENSITY, l -> l.set(0.8F), commandBuffer);
 			renderer.updateUniform(SPACE_FOG_INTENSITY, l -> l.set(0.4F), commandBuffer);
+			commandBuffer.endRecording();
 			device.submitSingleUseCommandBuffer(stack, commandBuffer);
 		}
 		

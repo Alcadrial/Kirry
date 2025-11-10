@@ -3,9 +3,9 @@ package com.alcadrial.renderengine.render;
 import java.io.PrintStream;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -30,6 +30,7 @@ public class Debug {
 	private static volatile PrintStream debugOutput;
 	private static volatile Map<Object, Long> idMap;
 	private static String prefix;
+	private static boolean enabledDeallocationFail;
 	private static boolean enabledAllocationDebug;
 	private static boolean enabledCopyDebug;
 	private static boolean enabledCloseDebug;
@@ -238,6 +239,16 @@ public class Debug {
 		if (condition) debug(x.get());
 	}
 	
+	public static void setEnabledDeallocationFail(boolean enabledDeallocationFail)
+	{
+		Debug.enabledDeallocationFail = enabledDeallocationFail;
+	}
+	
+	public static boolean isEnabledDeallocationFail()
+	{
+		return enabledDeallocationFail;
+	}
+	
 	public static void debugAllocation(Supplier<Object> x)
 	{
 		if (enabledAllocationDebug) debug(x.get());
@@ -248,7 +259,7 @@ public class Debug {
 		Debug.enabledAllocationDebug = enabledAllocationDebug;
 	}
 	
-	public static boolean isEnableAllocationDebug()
+	public static boolean isEnabledAllocationDebug()
 	{
 		return enabledAllocationDebug;
 	}
@@ -263,7 +274,7 @@ public class Debug {
 		Debug.enabledCopyDebug = enabledCopyDebug;
 	}
 	
-	public static boolean isEnableCopyDebug()
+	public static boolean isEnabledCopyDebug()
 	{
 		return enabledCopyDebug;
 	}
@@ -278,7 +289,7 @@ public class Debug {
 		Debug.enabledCloseDebug = enabledCloseDebug;
 	}
 	
-	public static boolean isEnableCloseDebug()
+	public static boolean isEnabledCloseDebug()
 	{
 		return enabledCloseDebug;
 	}
@@ -293,7 +304,7 @@ public class Debug {
 		Debug.enabledCreateDebug = enabledCreateDebug;
 	}
 	
-	public static boolean isEnableCreateDebug()
+	public static boolean isEnabledCreateDebug()
 	{
 		return enabledCreateDebug;
 	}
@@ -303,7 +314,7 @@ public class Debug {
 		Debug.enabledExtraTimePrecision = enabledExtraTimePrecision;
 	}
 	
-	public static boolean isEnableExtraTimePrecision()
+	public static boolean isEnabledExtraTimePrecision()
 	{
 		return enabledExtraTimePrecision;
 	}
@@ -321,8 +332,8 @@ public class Debug {
 		Debug.debugOutput = debugOutput;
 	}
 	
-	public static Set<VulkanObject> getAvailableVulkanObjects()
+	public static List<VulkanObject> getAvailableVulkanObjects()
 	{
-		return VulkanObject.VULKAN_INSTANCE_IMMUTABLE_SET;
+		return VulkanObject.VULKAN_INSTANCE_IMMUTABLE_LIST;
 	}
 }

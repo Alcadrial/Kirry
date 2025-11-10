@@ -50,7 +50,8 @@ import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.util.OutOfSpaceException;
+import com.alcadrial.renderengine.render.test.util.RenderTest;
+import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
 import com.alcadrial.renderengine.render.util.SphereDataCollector;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
@@ -313,12 +314,6 @@ public class ComputerTest extends RenderTest {
 				}
 			}
 		}
-		catch (OutOfSpaceException e)
-		{
-			e.printStackTrace(System.out);
-			RenderEngine.terminate();
-			return;
-		}
 		{
 			VulkanBuffer srcBuffer = new VulkanBuffer(storageBuffer0, 0, storageBuffer0.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 			VulkanBuffer dstBuffer = new VulkanBuffer(storageBuffer1, 0, storageBuffer1.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
@@ -357,7 +352,8 @@ public class ComputerTest extends RenderTest {
 			computeUniformBufferLayout.set(MAX_BOUND, MAX_BOUND_VALUE);
 			computeUniformBufferLayout.set(ENLAPSED_TIME, 1F);
 			computeUniformBufferLayout.flush(commandBuffer);
-			device.submitMultiUseCommandBuffer(stack, commandBuffer).thenRun(commandBuffer::reset);
+			commandBuffer.endRecording();
+			device.submitAndResetMultiUseCommandBuffer(stack, commandBuffer).join();
 		}
 		
 		RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, 0, 16, true, "PPPP");

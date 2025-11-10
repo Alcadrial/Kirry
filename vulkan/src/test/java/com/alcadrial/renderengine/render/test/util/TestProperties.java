@@ -1,4 +1,4 @@
-package com.alcadrial.renderengine.render.test;
+package com.alcadrial.renderengine.render.test.util;
 
 import java.io.File;
 

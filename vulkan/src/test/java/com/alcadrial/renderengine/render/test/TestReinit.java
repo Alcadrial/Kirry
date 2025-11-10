@@ -1,17 +1,9 @@
 package com.alcadrial.renderengine.render.test;
 
 import java.io.IOException;
-import java.math.RoundingMode;
 import java.util.List;
 
 import org.lwjgl.glfw.GLFW;
-import org.lwjgl.glfw.GLFWCursorPosCallbackI;
-import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
-import org.lwjgl.glfw.GLFWWindowCloseCallbackI;
-import org.lwjgl.glfw.GLFWWindowIconifyCallbackI;
-import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
-import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
-import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
@@ -22,10 +14,8 @@ import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kector.vector.Vector2f;
-import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.kroperties.Property;
 import com.alcadrial.renderengine.core.util.Test;
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -40,6 +30,8 @@ import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.test.util.RenderTest;
+import com.alcadrial.renderengine.render.test.util.TestProperties;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
@@ -51,30 +43,51 @@ public class TestReinit extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		Property.parseProperties(args, Properties.PROPERTIES);
+		TestProperties.init(args);
 		
 		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
 		
 		Logic logic = new Logic();
 		
-		for (int i = 0; i < 100; i++)
+		try
 		{
-			try
+			boolean[] flag = { true };
+			for (int i = 0; i < 100 && flag[0]; i++)
 			{
 				System.out.println("Iteration " + i);
-				println("Render Engine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
+				println("Render Engine initialization", RenderTest::initMultiThreadRenderEngine, TestProperties.PRINT_LOADING_TIMES);
 				if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
 				
-				logic.load();
-				logic.start();
-				logic.loop();
-				logic.end();
-				RenderEngine.terminate();
+				if (Properties.DEBUG.getValue())
+				{
+					Debug.setEnabledAllDebug(true);
+					Debug.setEnabledExtraTimePrecision(true);
+				}
+				Thread.ofPlatform().name("Logic").start(() -> {
+					try
+					{
+						logic.load();
+						logic.start();
+						logic.loop();
+						logic.end();
+					}
+					catch (VulkanException | IOException e)
+					{
+						e.printStackTrace(System.out);
+						flag[0] = false;
+					}
+					finally
+					{
+						RenderEngine.terminate();
+					}
+				});
+				RenderEngine.serveRenderEngine();
 			}
-			catch (VulkanException | IOException e)
-			{
-				e.printStackTrace(System.out);
-			}
+			System.out.println("Test SUCCESS");
+		}
+		catch (VulkanException e)
+		{
+			e.printStackTrace(System.out);
 		}
 	}
 	
@@ -125,46 +138,6 @@ public class TestReinit extends RenderTest {
 			deviceFeatures.wideLines(true);
 			Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 			window.init(device);
-			
-			window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
-				System.out.println(iconified ? "Iconified" : "Restored");
-			});
-			window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
-				System.out.println("Resized " + width + "x" + height);
-				//		renderer.updateUniforms(uniformBuffer, l -> l.set("TRANSFORMATION", uniformBuffer, new Matrix4f().orthographic(window.getWidth(), window.getHeight())));
-			});
-			window.setCallback((GLFWWindowRefreshCallbackI) w -> {
-				System.out.println("Refresh");
-			});
-			window.setCallback((GLFWWindowCloseCallbackI) w -> {
-				System.out.println("Closed");
-			});
-			window.setCallback((GLFWWindowMaximizeCallbackI) (w, maximized) -> {
-				System.out.println(maximized ? "Maximized" : "Restored");
-			});
-			
-			Vector2i[] oldPos = new Vector2i[] {Vector2i.of(0, 0)};
-			Vector2f[] oldMousePos = new Vector2f[] {Vector2f.of(0, 0), Vector2f.of(0, 0)};
-			boolean[] pressing = new boolean[2];
-			window.setCallback((GLFWMouseButtonCallbackI) (w, button, action, mods) -> {
-				if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT)
-				{
-					if (pressing[0] = action == GLFW.GLFW_PRESS)
-					{
-						window.getMousePos(oldMousePos[0]);
-					}
-				}
-			});
-			window.setCallback((GLFWCursorPosCallbackI) (w, x, y) -> {
-				if (pressing[0] && !pressing[1])
-				{
-					pressing[1] = true;
-					window.getPos(oldPos[0]);
-					window.setPos(Vector2i.of((float) x - oldMousePos[0].x() + oldPos[0].x(), (float) y - oldMousePos[0].y() + oldPos[0].y(), RoundingMode.FLOOR));
-					window.getMousePos(oldMousePos[0]);
-					pressing[1] = false;
-				}
-			});
 		}
 		
 		private void initBuffersAndRenderer() throws VulkanException
@@ -203,7 +176,7 @@ public class TestReinit extends RenderTest {
 				renderer.updateUniform("TRANSFORMATION", l -> {
 					l.set(new Matrix4f().orthographic(window.getWidth(), window.getHeight()));
 				}, b);
-			});
+			}).join();
 			renderer.setName("Renderer");
 			
 			try (PhysicalDeviceTranferState transfert = staticBigBuffer.startLocalBuffering())
@@ -241,13 +214,12 @@ public class TestReinit extends RenderTest {
 		
 		public void loop() throws VulkanException
 		{
+			VulkanWindow window = RenderEngine.getVulkan().getWindow();
 			RenderTest.defaultLoop((enlapsed, enlapsedFrame) -> {
-				
-				if (i++ == 5) RenderEngine.getVulkan().getWindow().setShouldClose(true);
+				if (i++ == 30) RenderEngine.getVulkan().getWindow().setShouldClose(true);
 				
 				try (MemoryStack stack = MemoryStack.stackPush())
 				{
-					VulkanWindow window = RenderEngine.getVulkan().getWindow();
 					FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
 					CommandBuffer commandBuffer = commandBuffers.get(window.getFrameIndex());
 					
@@ -274,7 +246,7 @@ public class TestReinit extends RenderTest {
 					
 					window.swapBuffers(commandBuffer);
 					window.pollEvents();
-					window.update();
+					System.out.println("Frame " + i);
 				}
 			});
 		}
@@ -285,7 +257,6 @@ public class TestReinit extends RenderTest {
 			localUniformBuffer.close();
 			staticBigBuffer.close();
 			for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.close();
-			RenderEngine.getVulkan().getWindow().close();
 		}
 	}
 }

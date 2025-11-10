@@ -24,6 +24,18 @@ public abstract class AbstractVulkanResource<VK> extends VulkanObject {
 	}
 	
 	@Override
+	public int hashCode()
+	{
+		return vk.hashCode();
+	}
+	
+	@Override
+	public boolean equals(Object obj)
+	{
+		return obj instanceof AbstractVulkanResource r && vk.equals(r.vk);
+	}
+	
+	@Override
 	public String toString()
 	{
 		return super.toString() + "(" + (vk instanceof Long l ? Debug.address(l) : vk) + ")";

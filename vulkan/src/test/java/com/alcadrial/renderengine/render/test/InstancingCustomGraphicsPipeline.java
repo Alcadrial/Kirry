@@ -49,10 +49,10 @@ public class InstancingCustomGraphicsPipeline extends GraphicsPipeline {
 			bindingDescription.get().set(1, 12, VK10.VK_VERTEX_INPUT_RATE_INSTANCE);
 			
 			VkVertexInputAttributeDescription.Buffer attributeDescriptions = VkVertexInputAttributeDescription.calloc(4, stack);
-			attributeDescriptions.get().set(0, 0, ShaderInputType.VECTOR_FLOAT_3.getType(), 0);
-			attributeDescriptions.get().set(1, 0, ShaderInputType.VECTOR_FLOAT_4.getType(), 12);
-			attributeDescriptions.get().set(2, 0, ShaderInputType.VECTOR_FLOAT_3.getType(), 28);
-			attributeDescriptions.get().set(3, 1, ShaderInputType.VECTOR_FLOAT_3.getType(), 0);
+			attributeDescriptions.get().set(0, 0, ShaderInputType.VECTOR_FLOAT_3.getVulkanType(), 0);
+			attributeDescriptions.get().set(1, 0, ShaderInputType.VECTOR_FLOAT_4.getVulkanType(), 12);
+			attributeDescriptions.get().set(2, 0, ShaderInputType.VECTOR_FLOAT_3.getVulkanType(), 28);
+			attributeDescriptions.get().set(3, 1, ShaderInputType.VECTOR_FLOAT_3.getVulkanType(), 0);
 			
 			vertexInputInfo.pVertexBindingDescriptions(bindingDescription.rewind());
 			vertexInputInfo.pVertexAttributeDescriptions(attributeDescriptions.rewind());
