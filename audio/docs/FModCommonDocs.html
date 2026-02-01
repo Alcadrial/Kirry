@@ -1,5 +1,5 @@
 <div class="manual-content api">
-<h1>7. Core API Reference | Common</h1>
+<h1>11. Core API Reference | Common</h1>
 <p><strong>File:</strong></p>
 <ul>
 <li><span><a class="apilink" href="core-api-common.html#file_getdiskbusy" title="Information function to retrieve the state of FMOD disk access.">File_GetDiskBusy</a> Information function to retrieve the state of FMOD disk access.</span></li>
@@ -54,9 +54,9 @@
 </ul>
 <hr>
 <ul>
-<li><span><a class="apilink" href="core-api-common.html#fmod_channelmask" title="Flags that describe the speakers present in a given signal.">FMOD_CHANNELMASK</a> Flags that describe the speakers present in a given signal.</span></li>
-<li><span><a class="apilink" href="core-api-common.html#fmod_channelorder" title="Speaker ordering for multi-channel signals.">FMOD_CHANNELORDER</a> Speaker ordering for multi-channel signals.</span></li>
-<li><span><a class="apilink" href="core-api-common.html#fmod_max_channel_width" title="Maximum number of channels per frame of audio supported by audio files, buffers, connections and DSPs.">FMOD_MAX_CHANNEL_WIDTH</a> Maximum number of channels per frame of audio supported by audio files, buffers, connections and DSPs.</span></li>
+<li><span><a class="apilink" href="core-api-common.html#fmod_channelmask" title="Flags that describe the speakers present in a given signal.">FMOD_CHANNELMASK</a> Flags that describe the speakers present in a given <a href="glossary.html#signal">signal</a>.</span></li>
+<li><span><a class="apilink" href="core-api-common.html#fmod_channelorder" title="Speaker ordering for multi-channel signals.">FMOD_CHANNELORDER</a> Speaker ordering for multi-channel <a href="glossary.html#signal">signals</a>.</span></li>
+<li><span><a class="apilink" href="core-api-common.html#fmod_max_channel_width" title="Maximum number of channels per sample of audio supported by audio files, buffers, connections and DSPs.">FMOD_MAX_CHANNEL_WIDTH</a> Maximum number of channels per sample of audio supported by audio files, buffers, connections and <a href="glossary.html#dsp">DSPs</a>.</span></li>
 <li><span><a class="apilink" href="core-api-common.html#fmod_max_listeners" title="Maximum number of listeners supported.">FMOD_MAX_LISTENERS</a> Maximum number of listeners supported.</span></li>
 <li><span><a class="apilink" href="core-api-common.html#fmod_max_systems" title="Maximum number of System objects allowed.">FMOD_MAX_SYSTEMS</a> Maximum number of System objects allowed.</span></li>
 <li><span><a class="apilink" href="core-api-common.html#fmod_version" title="Current FMOD version number.">FMOD_VERSION</a> Current FMOD version number.</span></li>
@@ -70,8 +70,8 @@
 <p>Structure describing a position, velocity and orientation.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -125,11 +125,11 @@
 <p>Vectors must be provided in the correct <a href="glossary.html#handedness">handedness</a>.</p>
 <p><strong>See Also:</strong> <a class="apilink" href="plugin-api-dsp.html#fmod_dsp_parameter_3dattributes">FMOD_DSP_PARAMETER_3DATTRIBUTES</a></p>
 <h2 api="define" id="fmod_channelmask"><a href="#fmod_channelmask">FMOD_CHANNELMASK</a></h2>
-<p>Flags that describe the speakers present in a given signal.</p>
+<p>Flags that describe the speakers present in a given <a href="glossary.html#signal">signal</a>.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -238,11 +238,11 @@
 </dl>
 <p><strong>See Also:</strong> <a class="apilink" href="core-api-dsp.html#dsp_setchannelformat">DSP::setChannelFormat</a>, <a class="apilink" href="core-api-dsp.html#dsp_getchannelformat">DSP::getChannelFormat</a></p>
 <h2 api="enum" id="fmod_channelorder"><a href="#fmod_channelorder">FMOD_CHANNELORDER</a></h2>
-<p>Speaker ordering for multi-channel signals.</p>
+<p>Speaker ordering for multi-channel <a href="glossary.html#signal">signals</a>.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -300,8 +300,8 @@
 <p>Performance information for Core API functionality.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -341,7 +341,7 @@
 <dl>
 <dt id="fmod_cpu_usage_dsp">dsp</dt>
 <dd>
-<p>DSP mixing engine CPU usage.  Percentage of <a class="apilink" href="core-api-common.html#fmod_thread_type_mixer">FMOD_THREAD_TYPE_MIXER</a>, or main thread if <a class="apilink" href="core-api-system.html#fmod_init_mix_from_update">FMOD_INIT_MIX_FROM_UPDATE</a> flag is used with <a class="apilink" href="core-api-system.html#system_init">System::init</a>.</p>
+<p><a href="glossary.html#dsp">DSP</a> mixing engine CPU usage.  Percentage of <a class="apilink" href="core-api-common.html#fmod_thread_type_mixer">FMOD_THREAD_TYPE_MIXER</a>, or main thread if <a class="apilink" href="core-api-system.html#fmod_init_mix_from_update">FMOD_INIT_MIX_FROM_UPDATE</a> flag is used with <a class="apilink" href="core-api-system.html#system_init">System::init</a>.</p>
 <ul>
 <li><span class="label">Units:</span> Percent</li>
 <li><span class="label">Range:</span> [0, 100]</li>
@@ -397,8 +397,8 @@
 <p>Callback for debug messages when using the logging version of FMOD.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -445,8 +445,8 @@
 <p>Specify the requested information to be output when using the logging version of FMOD.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -459,6 +459,7 @@
 <span class="cp">#define FMOD_DEBUG_TYPE_FILE             0x00000200</span>
 <span class="cp">#define FMOD_DEBUG_TYPE_CODEC            0x00000400</span>
 <span class="cp">#define FMOD_DEBUG_TYPE_TRACE            0x00000800</span>
+<span class="cp">#define FMOD_DEBUG_TYPE_VIRTUAL          0x00001000</span>
 <span class="cp">#define FMOD_DEBUG_DISPLAY_TIMESTAMPS    0x00010000</span>
 <span class="cp">#define FMOD_DEBUG_DISPLAY_LINENUMBERS   0x00020000</span>
 <span class="cp">#define FMOD_DEBUG_DISPLAY_THREAD        0x00040000</span>
@@ -475,6 +476,7 @@
   <span class="n">TYPE_FILE</span>             <span class="p">=</span> <span class="m">0</span><span class="n">x00000200</span><span class="p">,</span>
   <span class="n">TYPE_CODEC</span>            <span class="p">=</span> <span class="m">0</span><span class="n">x00000400</span><span class="p">,</span>
   <span class="n">TYPE_TRACE</span>            <span class="p">=</span> <span class="m">0</span><span class="n">x00000800</span><span class="p">,</span>
+  <span class="n">TYPE_VIRTUAL</span>          <span class="p">=</span> <span class="m">0</span><span class="n">x00001000</span><span class="p">,</span>
   <span class="n">DISPLAY_TIMESTAMPS</span>    <span class="p">=</span> <span class="m">0</span><span class="n">x00010000</span><span class="p">,</span>
   <span class="n">DISPLAY_LINENUMBERS</span>   <span class="p">=</span> <span class="m">0</span><span class="n">x00020000</span><span class="p">,</span>
   <span class="n">DISPLAY_THREAD</span>        <span class="p">=</span> <span class="m">0</span><span class="n">x00040000</span><span class="p">,</span>
@@ -489,6 +491,7 @@
 <span class="nx">DEBUG_TYPE_FILE</span>             <span class="o">=</span> <span class="mh">0x00000200</span>
 <span class="nx">DEBUG_TYPE_CODEC</span>            <span class="o">=</span> <span class="mh">0x00000400</span>
 <span class="nx">DEBUG_TYPE_TRACE</span>            <span class="o">=</span> <span class="mh">0x00000800</span>
+<span class="nx">DEBUG_TYPE_VIRTUAL</span>          <span class="o">=</span> <span class="mh">0x00001000</span>
 <span class="nx">DEBUG_DISPLAY_TIMESTAMPS</span>    <span class="o">=</span> <span class="mh">0x00010000</span>
 <span class="nx">DEBUG_DISPLAY_LINENUMBERS</span>   <span class="o">=</span> <span class="mh">0x00020000</span>
 <span class="nx">DEBUG_DISPLAY_THREAD</span>        <span class="o">=</span> <span class="mh">0x00040000</span>
@@ -511,6 +514,8 @@
 <dd>Verbose logging for codec initialization, only use this if you are debugging a codec related issue.</dd>
 <dt id="fmod_debug_type_trace">FMOD_DEBUG_TYPE_TRACE</dt>
 <dd>Verbose logging for internal errors, use this for tracking the origin of error codes.</dd>
+<dt id="fmod_debug_type_virtual">FMOD_DEBUG_TYPE_VIRTUAL</dt>
+<dd>Verbose logging for whenever a <a class="apilink" href="core-api-channel.html">Channel</a> changes its <a href="managing-resources-in-the-core-api.html#virtual-voice-system">virtual state</a>.</dd>
 <dt id="fmod_debug_display_timestamps">FMOD_DEBUG_DISPLAY_TIMESTAMPS</dt>
 <dd>Display the time stamp of the log message in milliseconds.</dd>
 <dt id="fmod_debug_display_linenumbers">FMOD_DEBUG_DISPLAY_LINENUMBERS</dt>
@@ -523,13 +528,13 @@
 <p>Specify the level and delivery method of log messages when using the logging version of FMOD.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">Debug_Initialize</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">Debug_Initialize</span><span class="p">(</span>
   <span class="n">FMOD_DEBUG_FLAGS</span> <span class="n">flags</span><span class="p">,</span>
   <span class="n">FMOD_DEBUG_MODE</span> <span class="n">mode</span> <span class="o">=</span> <span class="n">FMOD_DEBUG_MODE_TTY</span><span class="p">,</span>
   <span class="n">FMOD_DEBUG_CALLBACK</span> <span class="n">callback</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
@@ -537,7 +542,7 @@
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Debug_Initialize</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Debug_Initialize</span><span class="p">(</span>
   <span class="n">FMOD_DEBUG_FLAGS</span> <span class="n">flags</span><span class="p">,</span>
   <span class="n">FMOD_DEBUG_MODE</span> <span class="n">mode</span><span class="p">,</span>
   <span class="n">FMOD_DEBUG_CALLBACK</span> <span class="n">callback</span><span class="p">,</span>
@@ -581,8 +586,8 @@
 <p>Specify the destination of log output when using the logging version of FMOD.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -619,18 +624,18 @@
 <p>Information function to retrieve the state of FMOD disk access.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">File_GetDiskBusy</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">File_GetDiskBusy</span><span class="p">(</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">busy</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_File_GetDiskBusy</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_File_GetDiskBusy</span><span class="p">(</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">busy</span>
 <span class="p">);</span>
 </pre></div>
@@ -651,18 +656,18 @@
 <p>Sets the busy state for disk access ensuring mutual exclusion of file operations.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">File_SetDiskBusy</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">File_SetDiskBusy</span><span class="p">(</span>
   <span class="kt">int</span> <span class="n">busy</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_File_SetDiskBusy</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_File_SetDiskBusy</span><span class="p">(</span>
   <span class="kt">int</span> <span class="n">busy</span>
 <span class="p">);</span>
 </pre></div>
@@ -684,8 +689,8 @@
 <p>Structure describing a globally unique identifier.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -712,7 +717,7 @@
 
 <dl>
 <dt id="fmod_guid_data1">Data1</dt>
-<dd>Specifies the first 8 hexadecimal digits of the GUID.</dd>
+<dd>Specifies the first 8 hexadecimal digits of the <a href="glossary.html#guid">GUID</a>.</dd>
 <dt id="fmod_guid_data2">Data2</dt>
 <dd>Specifies the first group of 4 hexadecimal digits.</dd>
 <dt id="fmod_guid_data3">Data3</dt>
@@ -722,11 +727,11 @@
 </dl>
 <p><strong>See Also:</strong> <a class="apilink" href="core-api-system.html#system_getdriverinfo">System::getDriverInfo</a></p>
 <h2 api="define" id="fmod_max_channel_width"><a href="#fmod_max_channel_width">FMOD_MAX_CHANNEL_WIDTH</a></h2>
-<p>Maximum number of channels per frame of audio supported by audio files, buffers, connections and DSPs.</p>
+<p>Maximum number of channels per sample of audio supported by audio files, buffers, connections and <a href="glossary.html#dsp">DSPs</a>.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -752,8 +757,8 @@
 <p>Maximum number of listeners supported.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -779,8 +784,8 @@
 <p>Maximum number of System objects allowed.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -806,8 +811,8 @@
 <p>Callback to allocate a block of memory.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -851,8 +856,8 @@
 <p>Callback to free a block of memory.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -890,20 +895,20 @@
 <p>Returns information on the memory usage of FMOD.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">Memory_GetStats</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">Memory_GetStats</span><span class="p">(</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">currentalloced</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">maxalloced</span><span class="p">,</span>
   <span class="kt">bool</span> <span class="n">blocking</span> <span class="o">=</span> <span class="nb">true</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Memory_GetStats</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Memory_GetStats</span><span class="p">(</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">currentalloced</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">maxalloced</span><span class="p">,</span>
   <span class="n">FMOD_BOOL</span> <span class="n">blocking</span>
@@ -931,7 +936,7 @@
 <dd>Maximum allocated memory since <a class="apilink" href="core-api-system.html#system_init">System::init</a> or <a class="apilink" href="core-api-common.html#memory_initialize">Memory_Initialize</a>.</dd>
 <dt>blocking</dt>
 <dd>
-<p>Flag to indicate whether to favour speed or accuracy. Specifying true for this parameter will flush the <a class="apilink" href="core-api-dsp.html">DSP</a> network to make sure all queued allocations happen immediately, which can be costly.</p>
+<p>Flag to indicate whether to favour speed or accuracy. Specifying true for this parameter will flush the <a href="glossary.html#dsp-graph">DSP graph</a> to make sure all queued allocations happen immediately, which can be costly.</p>
 <ul>
 <li><span class="label">Units:</span> Boolean</li>
 </ul>
@@ -943,13 +948,13 @@
 <p>Specifies a method for FMOD to allocate and free memory, either through user supplied callbacks or through a user supplied memory buffer with a fixed size.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">Memory_Initialize</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">Memory_Initialize</span><span class="p">(</span>
   <span class="kt">void</span> <span class="o">*</span><span class="n">poolmem</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">poollen</span><span class="p">,</span>
   <span class="n">FMOD_MEMORY_ALLOC_CALLBACK</span> <span class="n">useralloc</span><span class="p">,</span>
@@ -959,7 +964,7 @@
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Memory_Initialize</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Memory_Initialize</span><span class="p">(</span>
   <span class="kt">void</span> <span class="o">*</span><span class="n">poolmem</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">poollen</span><span class="p">,</span>
   <span class="n">FMOD_MEMORY_ALLOC_CALLBACK</span> <span class="n">useralloc</span><span class="p">,</span>
@@ -1012,8 +1017,8 @@ If 'useralloc' and 'userfree' are provided without 'userrealloc' the reallocatio
 <p>Callback to re-allocate a block of memory to a different size.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -1062,8 +1067,8 @@ If 'useralloc' and 'userfree' are provided without 'userrealloc' the reallocatio
 <p>Bitfields for memory allocation type being passed into FMOD memory callbacks.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -1118,8 +1123,8 @@ If 'useralloc' and 'userfree' are provided without 'userrealloc' the reallocatio
 <p>Sound description bitfields, bitwise OR them together for loading and describing Sounds.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -1233,7 +1238,7 @@ If 'useralloc' and 'userfree' are provided without 'userrealloc' the reallocatio
 <dt id="fmod_2d">FMOD_2D</dt>
 <dd>Ignores any 3d processing. (DEFAULT).</dd>
 <dt id="fmod_3d">FMOD_3D</dt>
-<dd>Makes the <a class="apilink" href="core-api-sound.html">Sound</a> positionable in 3D.  Overrides <a class="apilink" href="core-api-common.html#fmod_2d">FMOD_2D</a>.</dd>
+<dd>Makes the <a class="apilink" href="core-api-sound.html">Sound</a>, <a href="core-api-channel.html">Channel</a> or <a href="core-api-channelgroup.html">ChannelGroup</a> positionable in 3D. Overrides <a class="apilink" href="core-api-common.html#fmod_2d">FMOD_2D</a>.</dd>
 <dt id="fmod_createstream">FMOD_CREATESTREAM</dt>
 <dd>Decompress at runtime, streaming from the source provided (ie from disk).  Overrides <a class="apilink" href="core-api-common.html#fmod_createsample">FMOD_CREATESAMPLE</a> and <a class="apilink" href="core-api-common.html#fmod_createcompressedsample">FMOD_CREATECOMPRESSEDSAMPLE</a>.  Note a stream can only be played once at a time due to a stream only having 1 stream buffer and file handle.  Open multiple streams to have them play concurrently.</dd>
 <dt id="fmod_createsample">FMOD_CREATESAMPLE</dt>
@@ -1247,7 +1252,7 @@ If 'useralloc' and 'userfree' are provided without 'userrealloc' the reallocatio
 <dt id="fmod_openmemory_point">FMOD_OPENMEMORY_POINT</dt>
 <dd>When used, the first argument of <a class="apilink" href="core-api-system.html#system_createsound">System::createSound</a> and <a class="apilink" href="core-api-system.html#system_createstream">System::createStream</a>, <code>name_or_data</code>, is interpreted as a pointer to memory instead of filename for creating sounds.  The following data must be provided using <a class="apilink" href="core-api-system.html#fmod_createsoundexinfo">FMOD_CREATESOUNDEXINFO</a>: <code>cbsize</code>, and <code>length</code>.  This differs to <a class="apilink" href="core-api-common.html#fmod_openmemory">FMOD_OPENMEMORY</a> in that it uses the memory as is, without duplicating the memory into its own buffers.  Cannot be freed after open, only after <a class="apilink" href="core-api-sound.html#sound_release">Sound::release</a>.   Will not work if the data is compressed and <a class="apilink" href="core-api-common.html#fmod_createcompressedsample">FMOD_CREATECOMPRESSEDSAMPLE</a> is not used. Cannot be used in conjunction with <a class="apilink" href="core-api-system.html#fmod_createsoundexinfo_encryptionkey">FMOD_CREATESOUNDEXINFO::encryptionkey</a>.</dd>
 <dt id="fmod_openraw">FMOD_OPENRAW</dt>
-<dd>Will ignore file format and treat as raw pcm.  The following data must be provided using <a class="apilink" href="core-api-system.html#fmod_createsoundexinfo">FMOD_CREATESOUNDEXINFO</a>: <code>cbsize</code>, <code>numchannels</code>, <code>defaultfrequency</code>, and <code>format</code>.  Must be little endian data.</dd>
+<dd>Will ignore file format and treat as raw PCM.  The following data must be provided using <a class="apilink" href="core-api-system.html#fmod_createsoundexinfo">FMOD_CREATESOUNDEXINFO</a>: <code>cbsize</code>, <code>numchannels</code>, <code>defaultfrequency</code>, and <code>format</code>.  Must be little endian data, and integer data must also be signed.</dd>
 <dt id="fmod_openonly">FMOD_OPENONLY</dt>
 <dd>Just open the file, don't prebuffer or read.  Good for fast opens for info, or when <a class="apilink" href="core-api-sound.html#sound_readdata">Sound::readData</a> is to be used. </dd>
 <dt id="fmod_accuratetime">FMOD_ACCURATETIME</dt>
@@ -1295,8 +1300,8 @@ If 'useralloc' and 'userfree' are provided without 'userrealloc' the reallocatio
 <p>Error codes returned from every function.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -1570,21 +1575,21 @@ If 'useralloc' and 'userfree' are provided without 'userrealloc' the reallocatio
 <dt id="fmod_err_dma">FMOD_ERR_DMA</dt>
 <dd>DMA Failure.  See debug output for more information.</dd>
 <dt id="fmod_err_dsp_connection">FMOD_ERR_DSP_CONNECTION</dt>
-<dd>DSP connection error.  Connection possibly caused a cyclic dependency or connected dsps with incompatible buffer counts.</dd>
+<dd><a href="glossary.html#dsp">DSP</a> connection error.  Connection possibly caused a cyclic dependency or connected DSPs with incompatible buffer counts.</dd>
 <dt id="fmod_err_dsp_dontprocess">FMOD_ERR_DSP_DONTPROCESS</dt>
-<dd>DSP return code from a DSP process query callback.  Tells mixer not to call the process callback and therefore not consume CPU.  Use this to optimize the DSP graph.</dd>
+<dd><a href="glossary.html#dsp">DSP</a> return code from a DSP process query callback.  Tells mixer not to call the process callback and therefore not consume CPU. Use this to optimize the DSP graph.</dd>
 <dt id="fmod_err_dsp_format">FMOD_ERR_DSP_FORMAT</dt>
-<dd>DSP Format error.  A DSP unit may have attempted to connect to this network with the wrong format, or a matrix may have been set with the wrong size if the target unit has a specified channel map.</dd>
+<dd><a href="glossary.html#dsp">DSP</a> format error.  A DSP unit may have attempted to connect to this <a href="glossary.html#dsp-graph">graph</a> with the wrong format, or a matrix may have been set with the wrong size if the target unit has a specified channel map.</dd>
 <dt id="fmod_err_dsp_inuse">FMOD_ERR_DSP_INUSE</dt>
-<dd>DSP is already in the mixer's DSP network. It must be removed before being reinserted or released.</dd>
+<dd><a href="glossary.html#dsp">DSP</a> is already in the mixer's <a href="glossary.html#dsp-graph">DSP graph</a>. It must be removed before being reinserted or released.</dd>
 <dt id="fmod_err_dsp_notfound">FMOD_ERR_DSP_NOTFOUND</dt>
-<dd>DSP connection error.  Couldn't find the DSP unit specified.</dd>
+<dd><a href="glossary.html#dsp">DSP</a> connection error. Couldn't find the DSP unit specified.</dd>
 <dt id="fmod_err_dsp_reserved">FMOD_ERR_DSP_RESERVED</dt>
-<dd>DSP operation error.  Cannot perform operation on this DSP as it is reserved by the system.</dd>
+<dd><a href="glossary.html#dsp">DSP</a> operation error. Cannot perform operation on this DSP as it is reserved by the system.</dd>
 <dt id="fmod_err_dsp_silence">FMOD_ERR_DSP_SILENCE</dt>
-<dd>DSP return code from a DSP process query callback.  Tells mixer silence would be produced from read, so go idle and not consume CPU.  Use this to optimize the DSP graph.</dd>
+<dd><a href="glossary.html#dsp">DSP</a> return code from a DSP process query callback. Tells the mixer silence would be produced from read, so go idle and not consume CPU. Use this to optimize the DSP graph.</dd>
 <dt id="fmod_err_dsp_type">FMOD_ERR_DSP_TYPE</dt>
-<dd>DSP operation cannot be performed on a DSP of this type.</dd>
+<dd><a href="glossary.html#dsp">DSP</a> operation cannot be performed on a DSP of this type.</dd>
 <dt id="fmod_err_file_bad">FMOD_ERR_FILE_BAD</dt>
 <dd>Error loading file.</dd>
 <dt id="fmod_err_file_couldnotseek">FMOD_ERR_FILE_COULDNOTSEEK</dt>
@@ -1600,7 +1605,7 @@ If 'useralloc' and 'userfree' are provided without 'userrealloc' the reallocatio
 <dt id="fmod_err_format">FMOD_ERR_FORMAT</dt>
 <dd>Unsupported file or audio format.</dd>
 <dt id="fmod_err_header_mismatch">FMOD_ERR_HEADER_MISMATCH</dt>
-<dd>There is a version mismatch between the FMOD header and either the FMOD Studio library or the FMOD Core library.</dd>
+<dd>There is a version mismatch between the FMOD header and either the <a href="glossary.html#fmod-studio">FMOD API</a> library or the Core API library.</dd>
 <dt id="fmod_err_http">FMOD_ERR_HTTP</dt>
 <dd>A HTTP error occurred. This is a catch-all for HTTP errors not listed elsewhere.</dd>
 <dt id="fmod_err_http_access">FMOD_ERR_HTTP_ACCESS</dt>
@@ -1666,13 +1671,13 @@ If 'useralloc' and 'userfree' are provided without 'userrealloc' the reallocatio
 <dt id="fmod_err_output_nodrivers">FMOD_ERR_OUTPUT_NODRIVERS</dt>
 <dd>The output device has no drivers installed.  If pre-init, FMOD_OUTPUT_NOSOUND is selected as the output mode.  If post-init, the function just fails.</dd>
 <dt id="fmod_err_plugin">FMOD_ERR_PLUGIN</dt>
-<dd>An unspecified error has been returned from a plugin.</dd>
+<dd>An unspecified error has been returned from a plug-in.</dd>
 <dt id="fmod_err_plugin_missing">FMOD_ERR_PLUGIN_MISSING</dt>
-<dd>A requested output, dsp unit type or codec was not available.</dd>
+<dd>A requested output, <a href="glossary.html#dsp">dsp unit</a> type or codec was not available.</dd>
 <dt id="fmod_err_plugin_resource">FMOD_ERR_PLUGIN_RESOURCE</dt>
-<dd>A resource that the plugin requires cannot be allocated or found. (ie the DLS file for MIDI playback)</dd>
+<dd>A resource that the plug-in requires (e.g.: The DLS file for MIDI playback) cannot be allocated or found. </dd>
 <dt id="fmod_err_plugin_version">FMOD_ERR_PLUGIN_VERSION</dt>
-<dd>A plugin was built with an unsupported SDK version.</dd>
+<dd>A plug-in was built with an unsupported SDK version.</dd>
 <dt id="fmod_err_record">FMOD_ERR_RECORD</dt>
 <dd>An error occurred trying to initialize the recording device.</dd>
 <dt id="fmod_err_reverb_channelgroup">FMOD_ERR_REVERB_CHANNELGROUP</dt>
@@ -1688,7 +1693,7 @@ If 'useralloc' and 'userfree' are provided without 'userrealloc' the reallocatio
 <dt id="fmod_err_tagnotfound">FMOD_ERR_TAGNOTFOUND</dt>
 <dd>The specified tag could not be found or there are no tags.</dd>
 <dt id="fmod_err_toomanychannels">FMOD_ERR_TOOMANYCHANNELS</dt>
-<dd>The <a class="apilink" href="core-api-sound.html">Sound</a> created exceeds the allowable input channel count.  This can be increased using the 'maxinputchannels' parameter in <a class="apilink" href="core-api-system.html#system_setsoftwareformat">System::setSoftwareFormat</a>.</dd>
+<dd>The <a class="apilink" href="core-api-sound.html">Sound</a> created exceeds the allowable input speaker channel count. This result occurs only when a signal's speaker channel format requires more than 32 channels.</dd>
 <dt id="fmod_err_truncated">FMOD_ERR_TRUNCATED</dt>
 <dd>The retrieved string is too long to fit in the supplied buffer and has been truncated.</dd>
 <dt id="fmod_err_unimplemented">FMOD_ERR_UNIMPLEMENTED</dt>
@@ -1696,11 +1701,11 @@ If 'useralloc' and 'userfree' are provided without 'userrealloc' the reallocatio
 <dt id="fmod_err_uninitialized">FMOD_ERR_UNINITIALIZED</dt>
 <dd>This command failed because <a class="apilink" href="core-api-system.html#system_init">System::init</a> or <a class="apilink" href="core-api-system.html#system_setdriver">System::setDriver</a> was not called.</dd>
 <dt id="fmod_err_unsupported">FMOD_ERR_UNSUPPORTED</dt>
-<dd>A command issued was not supported by this object.  Possibly a plugin without certain callbacks specified.</dd>
+<dd>A command issued was not supported by this object.  Possibly a plug-in without certain callbacks specified.</dd>
 <dt id="fmod_err_version">FMOD_ERR_VERSION</dt>
 <dd>The version number of this file format is not supported.</dd>
 <dt id="fmod_err_event_already_loaded">FMOD_ERR_EVENT_ALREADY_LOADED</dt>
-<dd>The specified bank has already been loaded.</dd>
+<dd>The specified <a href="glossary.html#bank-file">bank</a> has already been loaded.</dd>
 <dt id="fmod_err_event_liveupdate_busy">FMOD_ERR_EVENT_LIVEUPDATE_BUSY</dt>
 <dd>The live update connection failed due to the game already being connected.</dd>
 <dt id="fmod_err_event_liveupdate_mismatch">FMOD_ERR_EVENT_LIVEUPDATE_MISMATCH</dt>
@@ -1728,8 +1733,8 @@ If 'useralloc' and 'userfree' are provided without 'userrealloc' the reallocatio
 <p>Assigns an enumeration for a speaker index.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -1822,8 +1827,8 @@ If 'useralloc' and 'userfree' are provided without 'userrealloc' the reallocatio
 <p>Speaker mode types.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -1956,8 +1961,8 @@ This mode is for 7.1 speaker arrangements that have a left/right/center/surround
 <p>Named marker for a given point in time.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -1977,8 +1982,8 @@ This mode is for 7.1 speaker arrangements that have a left/right/center/surround
 <p>Bitfield for specifying the CPU core a given thread runs on.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -2138,8 +2143,8 @@ See the FMOD platform specific docs for each platform to see how the groups map 
 <p>Scheduling priority to assign a given thread to.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -2250,13 +2255,13 @@ See platform documentation for details on the available priority values for a gi
 <p>Specify the affinity, priority and stack size for all FMOD created threads.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">Thread_SetAttributes</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">Thread_SetAttributes</span><span class="p">(</span>
   <span class="n">FMOD_THREAD_TYPE</span> <span class="n">type</span><span class="p">,</span>
   <span class="n">FMOD_THREAD_AFFINITY</span> <span class="n">affinity</span> <span class="o">=</span> <span class="n">FMOD_THREAD_AFFINITY_GROUP_DEFAULT</span><span class="p">,</span>
   <span class="n">FMOD_THREAD_PRIORITY</span> <span class="n">priority</span> <span class="o">=</span> <span class="n">FMOD_THREAD_PRIORITY_DEFAULT</span><span class="p">,</span>
@@ -2264,7 +2269,7 @@ See platform documentation for details on the available priority values for a gi
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Thread_SetAttributes</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Thread_SetAttributes</span><span class="p">(</span>
   <span class="n">FMOD_THREAD_TYPE</span> <span class="n">type</span><span class="p">,</span>
   <span class="n">FMOD_THREAD_AFFINITY</span> <span class="n">affinity</span><span class="p">,</span>
   <span class="n">FMOD_THREAD_PRIORITY</span> <span class="n">priority</span><span class="p">,</span>
@@ -2303,8 +2308,8 @@ See platform documentation for details on the available priority values for a gi
 <p>Stack space available to the given thread.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -2379,8 +2384,8 @@ See platform documentation for details on the available priority values for a gi
 <p>Named constants for threads created at runtime.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -2429,7 +2434,7 @@ See platform documentation for details on the available priority values for a gi
 <dt id="fmod_thread_type_mixer">FMOD_THREAD_TYPE_MIXER</dt>
 <dd>Thread responsible for mixing and processing blocks of audio.</dd>
 <dt id="fmod_thread_type_feeder">FMOD_THREAD_TYPE_FEEDER</dt>
-<dd>Thread used by some output plugins for transferring buffered audio from <a class="apilink" href="core-api-common.html#fmod_thread_type_mixer">FMOD_THREAD_TYPE_MIXER</a> to the sound output device.</dd>
+<dd>Thread used by some output plug-ins for transferring buffered audio from <a class="apilink" href="core-api-common.html#fmod_thread_type_mixer">FMOD_THREAD_TYPE_MIXER</a> to the sound output device.</dd>
 <dt id="fmod_thread_type_stream">FMOD_THREAD_TYPE_STREAM</dt>
 <dd>Thread that decodes compressed audio to PCM for Sounds created as <a class="apilink" href="core-api-common.html#fmod_createstream">FMOD_CREATESTREAM</a>.</dd>
 <dt id="fmod_thread_type_file">FMOD_THREAD_TYPE_FILE</dt>
@@ -2437,7 +2442,7 @@ See platform documentation for details on the available priority values for a gi
 <dt id="fmod_thread_type_nonblocking">FMOD_THREAD_TYPE_NONBLOCKING</dt>
 <dd>Thread that processes the creation of Sounds asynchronously when opened with <a class="apilink" href="core-api-common.html#fmod_nonblocking">FMOD_NONBLOCKING</a>.</dd>
 <dt id="fmod_thread_type_record">FMOD_THREAD_TYPE_RECORD</dt>
-<dd>Thread used by some output plugins for transferring audio from a microphone to <a class="apilink" href="core-api-common.html#fmod_thread_type_mixer">FMOD_THREAD_TYPE_MIXER</a>.</dd>
+<dd>Thread used by some output plug-ins for transferring audio from a microphone to <a class="apilink" href="core-api-common.html#fmod_thread_type_mixer">FMOD_THREAD_TYPE_MIXER</a>.</dd>
 <dt id="fmod_thread_type_geometry">FMOD_THREAD_TYPE_GEOMETRY</dt>
 <dd>Thread used by the <a class="apilink" href="core-api-geometry.html">Geometry</a> system for performing background calculations.</dd>
 <dt id="fmod_thread_type_profiler">FMOD_THREAD_TYPE_PROFILER</dt>
@@ -2460,8 +2465,8 @@ See platform documentation for details on the available priority values for a gi
 <p>Time types used for position or length.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -2510,7 +2515,7 @@ See platform documentation for details on the available priority values for a gi
 <dt id="fmod_timeunit_rawbytes">FMOD_TIMEUNIT_RAWBYTES</dt>
 <dd>Raw file bytes of (compressed) sound data (does not include headers).  Only used by <a class="apilink" href="core-api-sound.html#sound_getlength">Sound::getLength</a> and <a class="apilink" href="core-api-channel.html#channel_getposition">Channel::getPosition</a>. </dd>
 <dt id="fmod_timeunit_pcmfraction">FMOD_TIMEUNIT_PCMFRACTION</dt>
-<dd>Fractions of 1 PCM sample.  Unsigned int range 0 to 0xFFFFFFFF.  Used for sub-sample granularity for <a class="apilink" href="core-api-dsp.html">DSP</a> purposes. </dd>
+<dd>Fractions of 1 PCM sample.  Unsigned int range 0 to 0xFFFFFFFF.  Used for sub-sample granularity for <a href="glossary.html#dsp">DSP</a> purposes. </dd>
 <dt id="fmod_timeunit_modorder">FMOD_TIMEUNIT_MODORDER</dt>
 <dd>MOD/S3M/XM/IT.  Order in a sequenced module format.  Use <a class="apilink" href="core-api-sound.html#sound_getformat">Sound::getFormat</a> to determine the PCM format being decoded to. </dd>
 <dt id="fmod_timeunit_modrow">FMOD_TIMEUNIT_MODROW</dt>
@@ -2523,8 +2528,8 @@ See platform documentation for details on the available priority values for a gi
 <p>Structure describing a point in 3D space.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -2567,8 +2572,8 @@ See platform documentation for details on the available priority values for a gi
 <p>Current FMOD version number.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>

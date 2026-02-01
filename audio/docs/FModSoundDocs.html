@@ -1,5 +1,5 @@
 <div class="manual-content api">
-<h1>7. Core API Reference | Sound</h1>
+<h1>11. Core API Reference | Sound</h1>
 <p>Container for <a href="glossary.html#sample-data">sample data</a> that can be played on a <a class="apilink" href="core-api-channel.html">Channel</a>.</p>
 <p>Create with <a class="apilink" href="core-api-system.html#system_createsound">System::createSound</a> or <a class="apilink" href="core-api-system.html#system_createstream">System::createStream</a>.</p>
 <p><strong>Format information:</strong></p>
@@ -91,8 +91,8 @@
 <p>These values describe what state a sound is in after FMOD_NONBLOCKING has been used to open it.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -162,13 +162,13 @@
 <p>Adds a sync point at a specific time within the sound.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">addSyncPoint</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">addSyncPoint</span><span class="p">(</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">offset</span><span class="p">,</span>
   <span class="n">FMOD_TIMEUNIT</span> <span class="n">offsettype</span><span class="p">,</span>
   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span>
@@ -176,7 +176,7 @@
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_AddSyncPoint</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_AddSyncPoint</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">offset</span><span class="p">,</span>
   <span class="n">FMOD_TIMEUNIT</span> <span class="n">offsettype</span><span class="p">,</span>
@@ -217,18 +217,18 @@
 <p>Deletes a sync point within the sound.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">deleteSyncPoint</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">deleteSyncPoint</span><span class="p">(</span>
   <span class="n">FMOD_SYNCPOINT</span> <span class="o">*</span><span class="n">point</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_DeleteSyncPoint</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_DeleteSyncPoint</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="n">FMOD_SYNCPOINT</span> <span class="o">*</span><span class="n">point</span>
 <span class="p">);</span>
@@ -254,8 +254,8 @@
 <p>These definitions describe the native format of the hardware or software buffer that will be used.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -313,25 +313,26 @@
 <dt id="fmod_sound_format_max">FMOD_SOUND_FORMAT_MAX</dt>
 <dd>Maximum number of sound formats supported.</dd>
 </dl>
+<p>FMOD expects all PCM data referred to by <code>FMOD_SOUND_FORMAT</code> to be little endian, and integer PCM data to be signed.</p>
 <p><strong>See Also:</strong> <a class="apilink" href="core-api-system.html#system_createsound">System::createSound</a>, <a class="apilink" href="core-api-sound.html#sound_getformat">Sound::getFormat</a></p>
 <h2 api="function" id="sound_get3dconesettings"><a href="#sound_get3dconesettings">Sound::get3DConeSettings</a></h2>
 <p>Retrieves the inside and outside angles of the 3D projection cone and the outside volume.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">get3DConeSettings</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">get3DConeSettings</span><span class="p">(</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">insideconeangle</span><span class="p">,</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">outsideconeangle</span><span class="p">,</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">outsidevolume</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Get3DConeSettings</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Get3DConeSettings</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">insideconeangle</span><span class="p">,</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">outsideconeangle</span><span class="p">,</span>
@@ -387,19 +388,19 @@
 <p>Retrieves the current custom roll-off shape for 3D distance attenuation.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">get3DCustomRolloff</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">get3DCustomRolloff</span><span class="p">(</span>
   <span class="n">FMOD_VECTOR</span> <span class="o">**</span><span class="n">points</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numpoints</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Get3DCustomRolloff</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Get3DCustomRolloff</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="n">FMOD_VECTOR</span> <span class="o">**</span><span class="n">points</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numpoints</span>
@@ -429,19 +430,19 @@
 <p>Retrieve the minimum and maximum audible distance for a 3D sound.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">get3DMinMaxDistance</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">get3DMinMaxDistance</span><span class="p">(</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">min</span><span class="p">,</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">max</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Get3DMinMaxDistance</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Get3DMinMaxDistance</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">min</span><span class="p">,</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">max</span>
@@ -483,19 +484,19 @@
 <p>Retrieves a sound's default playback attributes.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getDefaults</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getDefaults</span><span class="p">(</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">frequency</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">priority</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetDefaults</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetDefaults</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">frequency</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">priority</span>
@@ -537,13 +538,13 @@
 <p>Returns format information about the sound.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getFormat</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getFormat</span><span class="p">(</span>
   <span class="n">FMOD_SOUND_TYPE</span> <span class="o">*</span><span class="n">type</span><span class="p">,</span>
   <span class="n">FMOD_SOUND_FORMAT</span> <span class="o">*</span><span class="n">format</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">channels</span><span class="p">,</span>
@@ -551,7 +552,7 @@
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetFormat</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetFormat</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="n">FMOD_SOUND_TYPE</span> <span class="o">*</span><span class="n">type</span><span class="p">,</span>
   <span class="n">FMOD_SOUND_FORMAT</span> <span class="o">*</span><span class="n">format</span><span class="p">,</span>
@@ -590,19 +591,19 @@
 <p>Retrieves the length using the specified time unit.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getLength</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getLength</span><span class="p">(</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="o">*</span><span class="n">length</span><span class="p">,</span>
   <span class="n">FMOD_TIMEUNIT</span> <span class="n">lengthtype</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetLength</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetLength</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="o">*</span><span class="n">length</span><span class="p">,</span>
   <span class="n">FMOD_TIMEUNIT</span> <span class="n">lengthtype</span>
@@ -636,18 +637,18 @@ For these formats, use <a class="apilink" href="core-api-common.html#fmod_accura
 <p>Retrieves the sound's loop count.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getLoopCount</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getLoopCount</span><span class="p">(</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">loopcount</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetLoopCount</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetLoopCount</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">loopcount</span>
 <span class="p">);</span>
@@ -679,13 +680,13 @@ For these formats, use <a class="apilink" href="core-api-common.html#fmod_accura
 <p>Retrieves the loop points for a sound.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getLoopPoints</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getLoopPoints</span><span class="p">(</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="o">*</span><span class="n">loopstart</span><span class="p">,</span>
   <span class="n">FMOD_TIMEUNIT</span> <span class="n">loopstarttype</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="o">*</span><span class="n">loopend</span><span class="p">,</span>
@@ -693,7 +694,7 @@ For these formats, use <a class="apilink" href="core-api-common.html#fmod_accura
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetLoopPoints</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetLoopPoints</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="o">*</span><span class="n">loopstart</span><span class="p">,</span>
   <span class="n">FMOD_TIMEUNIT</span> <span class="n">loopstarttype</span><span class="p">,</span>
@@ -734,18 +735,18 @@ For these formats, use <a class="apilink" href="core-api-common.html#fmod_accura
 <p>Retrieves the mode of a sound.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getMode</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getMode</span><span class="p">(</span>
   <span class="n">FMOD_MODE</span> <span class="o">*</span><span class="n">mode</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetMode</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetMode</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="n">FMOD_MODE</span> <span class="o">*</span><span class="n">mode</span>
 <span class="p">);</span>
@@ -771,19 +772,19 @@ For these formats, use <a class="apilink" href="core-api-common.html#fmod_accura
 <p>Retrieves the volume of a MOD/S3M/XM/IT/MIDI music channel volume.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getMusicChannelVolume</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getMusicChannelVolume</span><span class="p">(</span>
   <span class="kt">int</span> <span class="n">channel</span><span class="p">,</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">volume</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetMusicChannelVolume</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetMusicChannelVolume</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">channel</span><span class="p">,</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">volume</span>
@@ -820,18 +821,18 @@ For these formats, use <a class="apilink" href="core-api-common.html#fmod_accura
 <p>Gets the number of music channels inside a MOD/S3M/XM/IT/MIDI file.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getMusicNumChannels</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getMusicNumChannels</span><span class="p">(</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numchannels</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetMusicNumChannels</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetMusicNumChannels</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numchannels</span>
 <span class="p">);</span>
@@ -856,18 +857,18 @@ For these formats, use <a class="apilink" href="core-api-common.html#fmod_accura
 <p>Gets the relative speed of MOD/S3M/XM/IT/MIDI music.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getMusicSpeed</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getMusicSpeed</span><span class="p">(</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">speed</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetMusicSpeed</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetMusicSpeed</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">speed</span>
 <span class="p">);</span>
@@ -892,19 +893,19 @@ For these formats, use <a class="apilink" href="core-api-common.html#fmod_accura
 <p>Retrieves the name of a sound.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getName</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getName</span><span class="p">(</span>
   <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">namelen</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetName</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetName</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">namelen</span>
@@ -938,18 +939,18 @@ For these formats, use <a class="apilink" href="core-api-common.html#fmod_accura
 <p>Retrieves the number of subsounds stored within a sound.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getNumSubSounds</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getNumSubSounds</span><span class="p">(</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numsubsounds</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetNumSubSounds</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetNumSubSounds</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numsubsounds</span>
 <span class="p">);</span>
@@ -975,18 +976,18 @@ For these formats, use <a class="apilink" href="core-api-common.html#fmod_accura
 <p>Retrieves the number of sync points stored within a sound.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getNumSyncPoints</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getNumSyncPoints</span><span class="p">(</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numsyncpoints</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetNumSyncPoints</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetNumSyncPoints</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numsyncpoints</span>
 <span class="p">);</span>
@@ -1012,19 +1013,19 @@ For these formats, use <a class="apilink" href="core-api-common.html#fmod_accura
 <p>Retrieves the number of metadata tags.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getNumTags</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getNumTags</span><span class="p">(</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numtags</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numtagsupdated</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetNumTags</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetNumTags</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numtags</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numtagsupdated</span>
@@ -1056,13 +1057,13 @@ For these formats, use <a class="apilink" href="core-api-common.html#fmod_accura
 <p>Retrieves the state a sound is in after being opened with the non blocking flag, or the current state of the streaming buffer.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getOpenState</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getOpenState</span><span class="p">(</span>
   <span class="n">FMOD_OPENSTATE</span> <span class="o">*</span><span class="n">openstate</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="o">*</span><span class="n">percentbuffered</span><span class="p">,</span>
   <span class="kt">bool</span> <span class="o">*</span><span class="n">starving</span><span class="p">,</span>
@@ -1070,7 +1071,7 @@ For these formats, use <a class="apilink" href="core-api-common.html#fmod_accura
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetOpenState</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetOpenState</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="n">FMOD_OPENSTATE</span> <span class="o">*</span><span class="n">openstate</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="o">*</span><span class="n">percentbuffered</span><span class="p">,</span>
@@ -1131,18 +1132,18 @@ With the ability to detect stream starvation, muting the sound with <a class="ap
 <p>Retrieves the sound's current sound group.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getSoundGroup</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getSoundGroup</span><span class="p">(</span>
   <span class="n">SoundGroup</span> <span class="o">**</span><span class="n">soundgroup</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetSoundGroup</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetSoundGroup</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="n">FMOD_SOUNDGROUP</span> <span class="o">**</span><span class="n">soundgroup</span>
 <span class="p">);</span>
@@ -1167,19 +1168,19 @@ With the ability to detect stream starvation, muting the sound with <a class="ap
 <p>Retrieves a handle to a Sound object that is contained within the parent sound.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getSubSound</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getSubSound</span><span class="p">(</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
   <span class="n">Sound</span> <span class="o">**</span><span class="n">subsound</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetSubSound</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetSubSound</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
   <span class="n">FMOD_SOUND</span> <span class="o">**</span><span class="n">subsound</span>
@@ -1217,18 +1218,18 @@ With the ability to detect stream starvation, muting the sound with <a class="ap
 <p>Retrieves the parent Sound object that contains this subsound.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getSubSoundParent</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getSubSoundParent</span><span class="p">(</span>
   <span class="n">Sound</span> <span class="o">**</span><span class="n">parentsound</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetSubSoundParent</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetSubSoundParent</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="n">FMOD_SOUND</span> <span class="o">**</span><span class="n">parentsound</span>
 <span class="p">);</span>
@@ -1254,19 +1255,19 @@ With the ability to detect stream starvation, muting the sound with <a class="ap
 <p>Retrieve a sync point.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getSyncPoint</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getSyncPoint</span><span class="p">(</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
   <span class="n">FMOD_SYNCPOINT</span> <span class="o">**</span><span class="n">point</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetSyncPoint</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetSyncPoint</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
   <span class="n">FMOD_SYNCPOINT</span> <span class="o">**</span><span class="n">point</span>
@@ -1302,13 +1303,13 @@ With the ability to detect stream starvation, muting the sound with <a class="ap
 <p>Retrieves information on an embedded sync point.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getSyncPointInfo</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getSyncPointInfo</span><span class="p">(</span>
   <span class="n">FMOD_SYNCPOINT</span> <span class="o">*</span><span class="n">point</span><span class="p">,</span>
   <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">namelen</span><span class="p">,</span>
@@ -1317,7 +1318,7 @@ With the ability to detect stream starvation, muting the sound with <a class="ap
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetSyncPointInfo</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetSyncPointInfo</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="n">FMOD_SYNCPOINT</span> <span class="o">*</span><span class="n">point</span><span class="p">,</span>
   <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span>
@@ -1368,18 +1369,18 @@ With the ability to detect stream starvation, muting the sound with <a class="ap
 <p>Retrieves the parent System object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getSystemObject</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getSystemObject</span><span class="p">(</span>
   <span class="n">System</span> <span class="o">**</span><span class="n">system</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetSystemObject</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetSystemObject</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="n">FMOD_SYSTEM</span> <span class="o">**</span><span class="n">system</span>
 <span class="p">);</span>
@@ -1404,20 +1405,20 @@ With the ability to detect stream starvation, muting the sound with <a class="ap
 <p>Retrieves a metadata tag.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getTag</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getTag</span><span class="p">(</span>
   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
   <span class="n">FMOD_TAG</span> <span class="o">*</span><span class="n">tag</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetTag</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetTag</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
@@ -1462,7 +1463,7 @@ With the ability to detect stream starvation, muting the sound with <a class="ap
 </ul>
 <p>Note with netstreams an important consideration must be made between songs, a tag may occur that changes the playback rate of the song.  It is up to the user to catch this and reset the playback rate with <a class="apilink" href="core-api-channel.html#channel_setfrequency">Channel::setFrequency</a>.<br>
 A sample rate change will be signalled with a tag of type <a class="apilink" href="core-api-sound.html#fmod_tagtype_fmod">FMOD_TAGTYPE_FMOD</a>.</p>
-<div class="highlight language-c" style="display: block;"><pre><span></span>  <span class="n">FMOD_TAG</span> <span class="n">tag</span><span class="p">;</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span>  <span class="n">FMOD_TAG</span> <span class="n">tag</span><span class="p">;</span>
   <span class="k">while</span> <span class="p">(</span><span class="n">FMOD_Sound_GetTag</span><span class="p">(</span><span class="n">sound</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">tag</span><span class="p">)</span> <span class="o">==</span> <span class="n">FMOD_OK</span><span class="p">)</span>
   <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="n">tag</span><span class="p">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">FMOD_TAGTYPE_FMOD</span><span class="p">)</span>
@@ -1479,7 +1480,7 @@ A sample rate change will be signalled with a tag of type <a class="apilink" hre
   <span class="p">}</span>
 </pre></div>
 
-<div class="highlight language-cpp" style="display: none;"><pre><span></span>  <span class="n">FMOD_TAG</span> <span class="n">tag</span><span class="p">;</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span>  <span class="n">FMOD_TAG</span> <span class="n">tag</span><span class="p">;</span>
   <span class="k">while</span> <span class="p">(</span><span class="n">sound</span><span class="o">-&gt;</span><span class="n">getTag</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">tag</span><span class="p">)</span> <span class="o">==</span> <span class="n">FMOD_OK</span><span class="p">)</span>
   <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="n">tag</span><span class="p">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">FMOD_TAGTYPE_FMOD</span><span class="p">)</span>
@@ -1500,18 +1501,18 @@ A sample rate change will be signalled with a tag of type <a class="apilink" hre
 <p>Retrieves a user value associated with this object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getUserData</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">getUserData</span><span class="p">(</span>
   <span class="kt">void</span> <span class="o">**</span><span class="n">userdata</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetUserData</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_GetUserData</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">void</span> <span class="o">**</span><span class="n">userdata</span>
 <span class="p">);</span>
@@ -1536,13 +1537,13 @@ A sample rate change will be signalled with a tag of type <a class="apilink" hre
 <p>Gives access to a portion or all the sample data of a sound for direct manipulation.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">lock</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">lock</span><span class="p">(</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">offset</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">length</span><span class="p">,</span>
   <span class="kt">void</span> <span class="o">**</span><span class="n">ptr1</span><span class="p">,</span>
@@ -1552,7 +1553,7 @@ A sample rate change will be signalled with a tag of type <a class="apilink" hre
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Lock</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Lock</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">offset</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">length</span><span class="p">,</span>
@@ -1641,8 +1642,8 @@ A sample rate change will be signalled with a tag of type <a class="apilink" hre
 <p>Callback to be called when a sound has finished loading, or a non blocking seek is occuring.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -1677,7 +1678,7 @@ A sample rate change will be signalled with a tag of type <a class="apilink" hre
 <p>Return code currently ignored.</p>
 <p>Note that for non blocking streams a seek could occur when restarting the sound after the first playthrough. This will result in a callback being triggered again.</p>
 <p>Since this callback can occur from the async thread, there are restrictions about what functions can be called during the callback. All Sound functions are safe to call, except for <a class="apilink" href="core-api-sound.html#sound_setsoundgroup">Sound::setSoundGroup</a> and <a class="apilink" href="core-api-sound.html#sound_release">Sound::release</a>. It is also safe to call <a class="apilink" href="core-api-system.html#system_getuserdata">System::getUserData</a>. The rest of the Core API and the Studio API is not allowed. Calling a non-allowed function will return <a class="apilink" href="core-api-common.html#fmod_err_invalid_thread">FMOD_ERR_INVALID_THREAD</a>.</p>
-<div class="admonition language-cpp" style="display: none;">
+<div class="admonition language-cpp" style="display: block;">
 <p><code>sound</code> can be cast to <code>Sound *</code>.</p>
 </div>
 <p><strong>See Also:</strong> <a class="apilink" href="core-api-system.html#fmod_createsoundexinfo">FMOD_CREATESOUNDEXINFO</a></p>
@@ -1685,8 +1686,8 @@ A sample rate change will be signalled with a tag of type <a class="apilink" hre
 <p>Read callback used for user created sounds or to intercept FMOD's decoder during a normal sound open.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -1742,7 +1743,7 @@ A sample rate change will be signalled with a tag of type <a class="apilink" hre
 <li>During a normal <a class="apilink" href="core-api-system.html#system_createsound">System::createsound</a> or <a class="apilink" href="core-api-system.html#system_createstream">System::createStream</a>, the read callback will be issued with decoded pcm data, allowing it to be manipulated or copied somewhere else.  The return value is ignored.</li>
 </ul>
 <p>The format of the sound can be retrieved with <a class="apilink" href="core-api-sound.html#sound_getformat">Sound::getFormat</a> from this callback.  This will allow the user to determine what type of pointer to use if they are not sure what format the sound is.</p>
-<div class="admonition language-cpp" style="display: none;">
+<div class="admonition language-cpp" style="display: block;">
 <p><code>sound</code> can be cast to <code>Sound *</code>.</p>
 </div>
 <p><strong>See Also:</strong> <a class="apilink" href="core-api-sound.html#fmod_sound_pcmsetpos_callback">FMOD_SOUND_PCMSETPOS_CALLBACK</a>, <a class="apilink" href="core-api-system.html#fmod_createsoundexinfo">FMOD_CREATESOUNDEXINFO</a></p>
@@ -1750,8 +1751,8 @@ A sample rate change will be signalled with a tag of type <a class="apilink" hre
 <p>Set position callback for user created sounds or to intercept FMOD's decoder during an API setPositon call.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -1807,7 +1808,7 @@ A sample rate change will be signalled with a tag of type <a class="apilink" hre
 <li>A <a class="apilink" href="core-api-common.html#fmod_openuser">FMOD_OPENUSER</a> created sound. The callback is used to allow seeking within the user's resource.</li>
 <li>During a normal <a class="apilink" href="core-api-system.html#system_createsound">System::createsound</a> or <a class="apilink" href="core-api-system.html#system_createstream">System::createStream</a>, the setposition callback is purely informational and the return value is ignored.</li>
 </ul>
-<div class="admonition language-cpp" style="display: none;">
+<div class="admonition language-cpp" style="display: block;">
 <p><code>sound</code> can be cast to <code>Sound *</code>.</p>
 </div>
 <p><strong>See Also:</strong> <a class="apilink" href="core-api-sound.html#fmod_sound_pcmread_callback">FMOD_SOUND_PCMREAD_CALLBACK</a>, <a class="apilink" href="core-api-system.html#fmod_createsoundexinfo">FMOD_CREATESOUNDEXINFO</a></p>
@@ -1815,20 +1816,20 @@ A sample rate change will be signalled with a tag of type <a class="apilink" hre
 <p>Reads data from an opened sound to a specified buffer, using FMOD's internal codecs.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">readData</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">readData</span><span class="p">(</span>
   <span class="kt">void</span> <span class="o">*</span><span class="n">buffer</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">length</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="o">*</span><span class="n">read</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_ReadData</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_ReadData</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">void</span> <span class="o">*</span><span class="n">buffer</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">length</span><span class="p">,</span>
@@ -1884,21 +1885,21 @@ If <a class="apilink" href="core-api-common.html#fmod_openonly">FMOD_OPENONLY</a
 <p>If you are calling <a class="apilink" href="core-api-sound.html#sound_readdata">Sound::readData</a> and <a class="apilink" href="core-api-sound.html#sound_seekdata">Sound::seekData</a> on a stream, information functions such as <a class="apilink" href="core-api-channel.html#channel_getposition">Channel::getPosition</a> may give misleading results.  Calling <a class="apilink" href="core-api-channel.html#channel_setposition">Channel::setPosition</a> will cause the streaming engine to reset and flush the stream, leading to the time values returning to their correct position.</p>
 <p>NOTE!  Thread safety.  If you call this from another stream callback, or any other thread besides the main thread, make sure to mutex the callback with <a class="apilink" href="core-api-sound.html#sound_release">Sound::release</a> in case the sound is still being read from while releasing.</p>
 <p>This function is thread safe to call from a stream callback or different thread as long as it doesnt conflict with a call to <a class="apilink" href="core-api-sound.html#sound_release">Sound::release</a>.</p>
-<p><strong>See Also:</strong> <a href="core-guide.html#extracting-pcm-data-from-a-sound">Extracting PCM Data from a Sound</a>, <a class="apilink" href="core-api-sound.html#sound_lock">Sound::lock</a>, <a class="apilink" href="core-api-sound.html#sound_unlock">Sound::unlock</a></p>
+<p><strong>See Also:</strong> <a href="advanced-core-api-topics.html#extracting-pcm-data-from-a-sound">Extracting PCM Data from a Sound</a>, <a class="apilink" href="core-api-sound.html#sound_lock">Sound::lock</a>, <a class="apilink" href="core-api-sound.html#sound_unlock">Sound::unlock</a></p>
 <h2 api="function" id="sound_release"><a href="#sound_release">Sound::release</a></h2>
 <p>Frees a sound object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">release</span><span class="p">();</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">release</span><span class="p">();</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Release</span><span class="p">(</span><span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">);</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Release</span><span class="p">(</span><span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">);</span>
 </pre></div>
 
 <div class="highlight language-csharp" style="display: none;"><pre><span></span><span class="n">RESULT</span> <span class="n">Sound</span><span class="p">.</span><span class="n">release</span><span class="p">();</span>
@@ -1914,18 +1915,18 @@ If <a class="apilink" href="core-api-common.html#fmod_openonly">FMOD_OPENONLY</a
 <p>Seeks a sound for use with data reading, using FMOD's internal codecs.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">seekData</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">seekData</span><span class="p">(</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">pcm</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SeekData</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SeekData</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">pcm</span>
 <span class="p">);</span>
@@ -1957,20 +1958,20 @@ If <a class="apilink" href="core-api-common.html#fmod_openonly">FMOD_OPENONLY</a
 <p>Sets the angles and attenuation levels of a 3D cone shape, for simulated occlusion which is based on direction.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">set3DConeSettings</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">set3DConeSettings</span><span class="p">(</span>
   <span class="kt">float</span> <span class="n">insideconeangle</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">outsideconeangle</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">outsidevolume</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Set3DConeSettings</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Set3DConeSettings</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">insideconeangle</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">outsideconeangle</span><span class="p">,</span>
@@ -2032,19 +2033,19 @@ If <a class="apilink" href="core-api-common.html#fmod_openonly">FMOD_OPENONLY</a
 <p>Sets a custom roll-off shape for 3D distance attenuation.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">set3DCustomRolloff</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">set3DCustomRolloff</span><span class="p">(</span>
   <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">points</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">numpoints</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Set3DCustomRolloff</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Set3DCustomRolloff</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">points</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">numpoints</span>
@@ -2089,19 +2090,19 @@ If <a class="apilink" href="core-api-common.html#fmod_openonly">FMOD_OPENONLY</a
 <p>Sets the minimum and maximum audible distance for a 3D sound.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">set3DMinMaxDistance</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">set3DMinMaxDistance</span><span class="p">(</span>
   <span class="kt">float</span> <span class="n">min</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">max</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Set3DMinMaxDistance</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Set3DMinMaxDistance</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">min</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">max</span>
@@ -2161,19 +2162,19 @@ Increasing the <code>min</code> distance simulates a larger sound in the world, 
 <p>When the Sound is played it will use these values without having to specify them later on a per Channel basis.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setDefaults</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setDefaults</span><span class="p">(</span>
   <span class="kt">float</span> <span class="n">frequency</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">priority</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetDefaults</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetDefaults</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">frequency</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">priority</span>
@@ -2195,10 +2196,10 @@ Increasing the <code>min</code> distance simulates a larger sound in the world, 
 <dl>
 <dt>frequency</dt>
 <dd>
-<p>Default playback frequency.</p>
+<p>Default playback frequency. Default value is determined by the sound source's sample rate.</p>
 <ul>
 <li><span class="label">Units:</span> Hertz</li>
-<li><span class="label">Default:</span> 48000</li>
+<li><span class="label">Default:</span> 44100</li>
 </ul>
 </dd>
 <dt>priority</dt>
@@ -2210,23 +2211,43 @@ Increasing the <code>min</code> distance simulates a larger sound in the world, 
 </ul>
 </dd>
 </dl>
+<p>If you only want to change one of the default values, you will need to call <a class="apilink" href="core-api-sound.html#sound_getdefaults">Sound::getDefaults</a> to get the other existing default value first. e.g.:</p>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="kt">int</span> <span class="n">priority</span><span class="p">;</span>
+<span class="n">sound</span><span class="o">-&gt;</span><span class="n">getDefaults</span><span class="p">(</span><span class="k">nullptr</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">priority</span><span class="p">);</span>
+<span class="n">sound</span><span class="o">-&gt;</span><span class="n">setDefaults</span><span class="p">(</span><span class="mi">48000</span><span class="p">,</span> <span class="n">priority</span><span class="p">);</span>
+</pre></div>
+
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="kt">int</span> <span class="n">priority</span><span class="p">;</span>
+<span class="n">FMOD_Sound_GetDefaults</span><span class="p">(</span><span class="n">sound</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">priority</span><span class="p">);</span>
+<span class="n">FMOD_Sound_SetDefaults</span><span class="p">(</span><span class="mi">48000</span><span class="p">,</span> <span class="n">priority</span><span class="p">);</span>
+</pre></div>
+
+<div class="highlight language-csharp" style="display: none;"><pre><span></span><span class="kt">int</span> <span class="n">priority</span><span class="p">;</span>
+<span class="n">sound</span><span class="p">.</span><span class="n">getDefaults</span><span class="p">(</span><span class="k">out</span> <span class="n">_</span><span class="p">,</span> <span class="k">out</span> <span class="n">priority</span><span class="p">);</span>
+<span class="n">sound</span><span class="p">.</span><span class="n">setDefaults</span><span class="p">(</span><span class="m">48000</span><span class="p">,</span> <span class="n">priority</span><span class="p">);</span>
+</pre></div>
+
+<div class="highlight language-javascript" style="display: none;"><pre><span></span><span class="nx">sound</span><span class="p">.</span><span class="nx">getDefaults</span><span class="p">(</span><span class="kc">null</span><span class="p">,</span> <span class="nx">outval</span><span class="p">);</span>
+<span class="nx">sound</span><span class="p">.</span><span class="nx">setDefaults</span><span class="p">(</span><span class="mi">48000</span><span class="p">,</span> <span class="nx">outval</span><span class="p">.</span><span class="nx">val</span><span class="p">);</span>
+</pre></div>
+
 <p><strong>See Also:</strong> <a class="apilink" href="core-api-sound.html#sound_getdefaults">Sound::getDefaults</a>, <a class="apilink" href="core-api-system.html#system_playsound">System::playSound</a>, <a class="apilink" href="core-api-system.html#system_createsound">System::createSound</a></p>
 <h2 api="function" id="sound_setloopcount"><a href="#sound_setloopcount">Sound::setLoopCount</a></h2>
 <p>Sets the sound to loop a specified number of times before stopping if the playback mode is set to looping.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setLoopCount</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setLoopCount</span><span class="p">(</span>
   <span class="kt">int</span> <span class="n">loopcount</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetLoopCount</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetLoopCount</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">loopcount</span>
 <span class="p">);</span>
@@ -2258,13 +2279,13 @@ Increasing the <code>min</code> distance simulates a larger sound in the world, 
 <p>Sets the loop points within a sound.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setLoopPoints</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setLoopPoints</span><span class="p">(</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">loopstart</span><span class="p">,</span>
   <span class="n">FMOD_TIMEUNIT</span> <span class="n">loopstarttype</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">loopend</span><span class="p">,</span>
@@ -2272,7 +2293,7 @@ Increasing the <code>min</code> distance simulates a larger sound in the world, 
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetLoopPoints</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetLoopPoints</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">loopstart</span><span class="p">,</span>
   <span class="n">FMOD_TIMEUNIT</span> <span class="n">loopstarttype</span><span class="p">,</span>
@@ -2326,18 +2347,18 @@ Increasing the <code>min</code> distance simulates a larger sound in the world, 
 <p>Sets or alters the mode of a sound.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setMode</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setMode</span><span class="p">(</span>
   <span class="n">FMOD_MODE</span> <span class="n">mode</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetMode</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetMode</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="n">FMOD_MODE</span> <span class="n">mode</span>
 <span class="p">);</span>
@@ -2387,19 +2408,19 @@ This is the default for when the sound next plays, not a mode that will suddenly
 <p>Sets the volume of a MOD/S3M/XM/IT/MIDI music channel volume.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setMusicChannelVolume</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setMusicChannelVolume</span><span class="p">(</span>
   <span class="kt">int</span> <span class="n">channel</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">volume</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetMusicChannelVolume</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetMusicChannelVolume</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">channel</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">volume</span>
@@ -2436,18 +2457,18 @@ This is the default for when the sound next plays, not a mode that will suddenly
 <p>Sets the relative speed of MOD/S3M/XM/IT/MIDI music.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setMusicSpeed</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setMusicSpeed</span><span class="p">(</span>
   <span class="kt">float</span> <span class="n">speed</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetMusicSpeed</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetMusicSpeed</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">speed</span>
 <span class="p">);</span>
@@ -2479,18 +2500,18 @@ This is the default for when the sound next plays, not a mode that will suddenly
 <p>Moves the sound from its existing SoundGroup to the specified sound group.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setSoundGroup</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setSoundGroup</span><span class="p">(</span>
   <span class="n">SoundGroup</span> <span class="o">*</span><span class="n">soundgroup</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetSoundGroup</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetSoundGroup</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="n">FMOD_SOUNDGROUP</span> <span class="o">*</span><span class="n">soundgroup</span>
 <span class="p">);</span>
@@ -2516,18 +2537,18 @@ This is the default for when the sound next plays, not a mode that will suddenly
 <p>Sets a user value associated with this object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setUserData</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">setUserData</span><span class="p">(</span>
   <span class="kt">void</span> <span class="o">*</span><span class="n">userdata</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetUserData</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_SetUserData</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">void</span> <span class="o">*</span><span class="n">userdata</span>
 <span class="p">);</span>
@@ -2553,8 +2574,8 @@ This is the default for when the sound next plays, not a mode that will suddenly
 <p>Recognized audio formats that can be loaded into a Sound.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -2650,7 +2671,7 @@ This is the default for when the sound next plays, not a mode that will suddenly
 
 <dl>
 <dt id="fmod_sound_type_unknown">FMOD_SOUND_TYPE_UNKNOWN</dt>
-<dd>Unknown or custom codec plugin.</dd>
+<dd>Unknown or custom codec plug-in.</dd>
 <dt id="fmod_sound_type_aiff">FMOD_SOUND_TYPE_AIFF</dt>
 <dd>Audio Interchange File Format (.aif, .aiff). Uncompressed integer formats only.</dd>
 <dt id="fmod_sound_type_asf">FMOD_SOUND_TYPE_ASF</dt>
@@ -2707,13 +2728,13 @@ This is the default for when the sound next plays, not a mode that will suddenly
 <p>Finalizes a previous sample data lock and submits it back to the Sound object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">unlock</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Sound</span><span class="o">::</span><span class="n">unlock</span><span class="p">(</span>
   <span class="kt">void</span> <span class="o">*</span><span class="n">ptr1</span><span class="p">,</span>
   <span class="kt">void</span> <span class="o">*</span><span class="n">ptr2</span><span class="p">,</span>
   <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">len1</span><span class="p">,</span>
@@ -2721,7 +2742,7 @@ This is the default for when the sound next plays, not a mode that will suddenly
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Unlock</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Sound_Unlock</span><span class="p">(</span>
   <span class="n">FMOD_SOUND</span> <span class="o">*</span><span class="n">sound</span><span class="p">,</span>
   <span class="kt">void</span> <span class="o">*</span><span class="n">ptr1</span><span class="p">,</span>
   <span class="kt">void</span> <span class="o">*</span><span class="n">ptr2</span><span class="p">,</span>
@@ -2784,8 +2805,8 @@ This is the default for when the sound next plays, not a mode that will suddenly
 <p>Tag data / metadata description.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -2846,8 +2867,8 @@ This is the default for when the sound next plays, not a mode that will suddenly
 <p>List of tag data / metadata types.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
@@ -2911,8 +2932,8 @@ This is the default for when the sound next plays, not a mode that will suddenly
 <p>List of tag data / metadata types that could be stored within a sound.  These include id3 tags, metadata from netstreams and vorbis/asf data.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>

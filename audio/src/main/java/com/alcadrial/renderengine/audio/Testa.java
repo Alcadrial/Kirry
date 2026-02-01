@@ -26,6 +26,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.fmod.FMOD;
 import org.lwjgl.fmod.FMOD_CREATESOUNDEXINFO;
@@ -38,14 +39,16 @@ import com.alcadrial.renderengine.audio.StreamUtils.ForwardInputStream;
 import com.alcadrial.renderengine.audio.StreamUtils.SeekerInputStream;
 import com.alcadrial.renderengine.audio.StreamUtils.ShellStream;
 import com.alcadrial.renderengine.audio.bindings.FModChannel;
+import com.alcadrial.renderengine.audio.bindings.FModCommon;
 import com.alcadrial.renderengine.audio.bindings.FModSound;
 import com.alcadrial.renderengine.audio.bindings.FModSystem;
 
-public class Testa {
+class Testa {
 	
 	public static class InputStreamStream extends InputStream {
 		
 		private final BlockingQueue<InputStream> bufferedInputStream;
+		@Nullable
 		private InputStream stream;
 		private boolean ended;
 		
@@ -59,9 +62,9 @@ public class Testa {
 		public int read() throws IOException
 		{
 			boolean interrupted = false;
+			InputStream stream = this.stream;
 			try
 			{
-				
 				boolean taken = false;
 				while (stream == null && !taken)
 				{
@@ -109,18 +112,22 @@ public class Testa {
 			finally
 			{
 				if (interrupted) Thread.currentThread().interrupt();
+				this.stream = stream;
 			}
 		}
 	}
 	
 	private static class NodeList {
 		
+		@Nullable
 		Node head;
+		@Nullable
 		Node tail;
 		
+		@SuppressWarnings("null")
 		public void add(long channel)
 		{
-			if (head == null)
+			if (head != null)
 			{
 				head = tail = new Node(channel);
 				return;
@@ -130,12 +137,12 @@ public class Testa {
 			tail = tail.next;
 		}
 		
-		public Node head()
+		public @Nullable Node head()
 		{
 			return head;
 		}
 		
-		public Node tail()
+		public @Nullable Node tail()
 		{
 			return tail;
 		}
@@ -147,7 +154,9 @@ public class Testa {
 		
 		public class Node {
 			
+			@Nullable
 			Node next;
+			@Nullable
 			Node previous;
 			long channel;
 			
@@ -169,7 +178,7 @@ public class Testa {
 		
 		private class Cursor extends Node {
 			
-			public Cursor(Node next)
+			public Cursor(@Nullable Node next)
 			{
 				super(0);
 				this.next = next;
@@ -178,13 +187,14 @@ public class Testa {
 			@Override
 			public long getChannel()
 			{
-				return next.getChannel();
+				if (next != null) return next.getChannel();
+				return 0;
 			}
 			
 			@Override
 			public void setChannel(long channel)
 			{
-				next.setChannel(channel);
+				if (next != null) next.setChannel(channel);
 			}
 		}
 	}
@@ -304,7 +314,7 @@ public class Testa {
 				for (Path path : stream)
 				{
 					if (i++ >= 5) break;
-					int error = FModSystem.createSound(system, stack.UTF8(path.toString()), FMOD.FMOD_LOOP_NORMAL | FMOD.FMOD_3D, createSoundInfo, pp);
+					int error = FModSystem.createSound(system, stack.UTF8("" + path), FMOD.FMOD_LOOP_NORMAL | FMOD.FMOD_3D, createSoundInfo, pp);
 					switch (error)
 					{
 						case FMOD.FMOD_OK -> {
@@ -312,13 +322,7 @@ public class Testa {
 							FModSound.setLoopCount(pp.get(0), 0);
 							System.out.println("Loaded \"" + path + "\"");
 						}
-						case FMOD.FMOD_ERR_FILE_BAD -> System.out.println("Failed to load \"" + path + "\": Corrupted file");
-						case FMOD.FMOD_ERR_FILE_COULDNOTSEEK -> System.out.println("Failed to load \"" + path + "\": Corrupted file");
-						case FMOD.FMOD_ERR_FILE_DISKEJECTED -> System.out.println("Failed to load \"" + path + "\": Disk ejected");
-						case FMOD.FMOD_ERR_FILE_ENDOFDATA -> System.out.println("Failed to load \"" + path + "\": Corrupted file");
-						case FMOD.FMOD_ERR_FILE_EOF -> System.out.println("Failed to load \"" + path + "\": Corrupted file");
-						case FMOD.FMOD_ERR_FILE_NOTFOUND -> System.out.println("Failed to load \"" + path + "\": File not found");
-						default -> System.out.println("Failed to load \"" + path + "\": Unknown error " + error);
+						default -> System.out.println(FModCommon.ErrorString(error));
 					}
 				}
 			}

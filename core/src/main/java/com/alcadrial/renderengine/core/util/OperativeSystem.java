@@ -2,6 +2,8 @@ package com.alcadrial.renderengine.core.util;
 
 import java.io.File;
 
+import org.jspecify.annotations.Nullable;
+
 public enum OperativeSystem {
 	
 	WINDOWS("exe"),
@@ -22,7 +24,8 @@ public enum OperativeSystem {
 		else if (os.matches("(?i).*(sunos|solaris).*")) OS = SOLARIS;
 		else OS = UNKNOWN;
 	}
-	
+
+	@Nullable
 	private String executableExtension;
 	
 	OperativeSystem(String executableExtension)
@@ -30,8 +33,7 @@ public enum OperativeSystem {
 		this.executableExtension = executableExtension;
 	}
 	
-	@Nullable
-	public String getExecutableExtension()
+	public @Nullable String getExecutableExtension()
 	{
 		return executableExtension;
 	}

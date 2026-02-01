@@ -3,7 +3,7 @@ package com.alcadrial.renderengine.audio.bindings;
 import org.lwjgl.fmod.FMOD;
 
 /**
- * <div class="manual-content api"><h1>7. Core API Reference | Reverb3D</h1>An interface that manages virtual 3D reverb spheres. See the <a href="https://www.fmod.com/docs/2.03/api/white-papers-3d-reverb.html">3D Reverb</a> guide for more information.
+ * <div class="manual-content api"><h1>11. Core API Reference | Reverb3D</h1>An interface that manages virtual 3D reverb spheres. For more information, see the <a href="https://www.fmod.com/docs/2.03/api/advanced-core-api-topics.html#3d-reverbs">3D Reverbs</a> section of the <a href="https://www.fmod.com/docs/2.03/api/advanced-core-api-topics.html">Advanced Core API Topics</a> chapter.
  * <p>
  * <strong>General:</strong>
  * <p>
@@ -40,8 +40,8 @@ public class FModReverb3D {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * See the 
-	 * <a href="https://www.fmod.com/docs/2.03/api/white-papers-3d-reverb.html">3D Reverb</a> guide for more information.
+	 * For more information, see the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/advanced-core-api-topics.html#3d-reverbs">3D Reverbs</a> section of the <a href="https://www.fmod.com/docs/2.03/api/advanced-core-api-topics.html">Advanced Core API Topics</a> chapter.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModReverb3D#set3DAttributes}
 	 * <p>
@@ -66,8 +66,8 @@ public class FModReverb3D {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * See the 
-	 * <a href="https://www.fmod.com/docs/2.03/api/white-papers-3d-reverb.html">3D Reverb</a> guide for more information.
+	 * For more information, see the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/advanced-core-api-topics.html#3d-reverbs">3D Reverbs</a> section of the <a href="https://www.fmod.com/docs/2.03/api/advanced-core-api-topics.html">Advanced Core API Topics</a> chapter.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModReverb3D#setActive}
 	 * <p>
@@ -90,8 +90,8 @@ public class FModReverb3D {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * See the 
-	 * <a href="https://www.fmod.com/docs/2.03/api/white-papers-3d-reverb.html">3D Reverb</a> guide for more information.
+	 * For more information, see the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/advanced-core-api-topics.html#3d-reverbs">3D Reverbs</a> section of the <a href="https://www.fmod.com/docs/2.03/api/advanced-core-api-topics.html">Advanced Core API Topics</a> chapter.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModReverb3D#setProperties}
 	 * <p>
@@ -117,7 +117,7 @@ public class FModReverb3D {
 	 * This function allows arbitrary user data to be retrieved from this object. See the 
 	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#user-data">User Data</a> section of the glossary for an example of how to get and set user data.
 	 * <p>
-	 * <strong>See Also:</strong> <a href="https://www.fmod.com/docs/2.03/api/white-papers-3d-reverb.html">3D Reverb</a>
+	 * <strong>See Also:</strong> <a href="https://www.fmod.com/docs/2.03/api/advanced-core-api-topics.html#3d-reverbs">3D Reverbs</a>.
 	 * <p>
 	 * 
 	 * @param reverb3D
@@ -162,10 +162,11 @@ public class FModReverb3D {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * See the 
-	 * <a href="https://www.fmod.com/docs/2.03/api/white-papers-3d-reverb.html">3D Reverb</a> guide for more information.
+	 * For more information, see the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/advanced-core-api-topics.html#3d-reverbs">3D Reverbs</a> section of the <a href="https://www.fmod.com/docs/2.03/api/advanced-core-api-topics.html">Advanced Core API Topics</a> chapter.
 	 * <p>
-	 * When the position of the listener is less than maxdistance away from the position of one or more reverb objects, the listener's 3D reverb properties are a weighted combination of those reverb objects. Otherwise, the reverb dsp will use the global reverb settings.
+	 * When the position of the listener is less than maxdistance away from the position of one or more reverb objects, the listener's 3D reverb properties are a weighted combination of those reverb objects. Otherwise, the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/effects-reference.html#sfx-reverb">reverb DSP</a> will use the global reverb settings.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModReverb3D#get3DAttributes}
 	 * <p>
@@ -190,8 +191,8 @@ public class FModReverb3D {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * See the 
-	 * <a href="https://www.fmod.com/docs/2.03/api/white-papers-3d-reverb.html">3D Reverb</a> guide for more information.
+	 * For more information, see the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/advanced-core-api-topics.html#3d-reverbs">3D Reverbs</a> section of the <a href="https://www.fmod.com/docs/2.03/api/advanced-core-api-topics.html">Advanced Core API Topics</a> chapter.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModReverb3D#getActive}
 	 * <p>
@@ -214,8 +215,8 @@ public class FModReverb3D {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * See the 
-	 * <a href="https://www.fmod.com/docs/2.03/api/white-papers-3d-reverb.html">3D Reverb</a> guide for more information.
+	 * Fore more information, see the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/advanced-core-api-topics.html#3d-reverbs">3D Reverbs</a> section of the <a href="https://www.fmod.com/docs/2.03/api/advanced-core-api-topics.html">Advanced Core API Topics</a> chapter.
 	 * <p>
 	 * Reverb presets are available, see 
 	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_reverb_presets">FMOD_REVERB_PRESETS</a>.

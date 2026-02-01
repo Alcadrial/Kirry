@@ -17,7 +17,7 @@ publishing {
 				url = localMaven
 			}
 		}
-		if (remoteMaven != null) {
+		if (project.hasProperty("remoteMaven")) {
 			maven {
 				name = "RemoveMaven"
 				url = remoteMaven

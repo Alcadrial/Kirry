@@ -1,5 +1,5 @@
 <div class="manual-content api">
-<h1>7. Core API Reference | Geometry</h1>
+<h1>11. Core API Reference | Geometry</h1>
 <p>An interface that allows the setup and modification of geometry for occlusion</p>
 <p><strong>Polygons:</strong></p>
 <ul>
@@ -34,13 +34,13 @@
 <p>Adds a polygon.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">addPolygon</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">addPolygon</span><span class="p">(</span>
   <span class="kt">float</span> <span class="n">directocclusion</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">reverbocclusion</span><span class="p">,</span>
   <span class="kt">bool</span> <span class="n">doublesided</span><span class="p">,</span>
@@ -50,7 +50,7 @@
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_AddPolygon</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_AddPolygon</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">directocclusion</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">reverbocclusion</span><span class="p">,</span>
@@ -114,18 +114,18 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Retrieves whether an object is processed by the geometry engine.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getActive</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getActive</span><span class="p">(</span>
   <span class="kt">bool</span> <span class="o">*</span><span class="n">active</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetActive</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetActive</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="n">FMOD_BOOL</span> <span class="o">*</span><span class="n">active</span>
 <span class="p">);</span>
@@ -156,19 +156,19 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Retrieves the maximum number of polygons and vertices allocatable for this object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getMaxPolygons</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getMaxPolygons</span><span class="p">(</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">maxpolygons</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">maxvertices</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetMaxPolygons</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetMaxPolygons</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">maxpolygons</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">maxvertices</span>
@@ -199,18 +199,18 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Retrieves the number of polygons in this object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getNumPolygons</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getNumPolygons</span><span class="p">(</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numpolygons</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetNumPolygons</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetNumPolygons</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numpolygons</span>
 <span class="p">);</span>
@@ -235,13 +235,13 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Retrieves the attributes for a polygon.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getPolygonAttributes</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getPolygonAttributes</span><span class="p">(</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">directocclusion</span><span class="p">,</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">reverbocclusion</span><span class="p">,</span>
@@ -249,7 +249,7 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetPolygonAttributes</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetPolygonAttributes</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
   <span class="kt">float</span> <span class="o">*</span><span class="n">directocclusion</span><span class="p">,</span>
@@ -314,19 +314,19 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Gets the number of vertices in a polygon.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getPolygonNumVertices</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getPolygonNumVertices</span><span class="p">(</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numvertices</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetPolygonNumVertices</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetPolygonNumVertices</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">numvertices</span>
@@ -360,20 +360,20 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Retrieves the position of a vertex.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getPolygonVertex</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getPolygonVertex</span><span class="p">(</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">vertexindex</span><span class="p">,</span>
   <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">vertex</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetPolygonVertex</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetPolygonVertex</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">vertexindex</span><span class="p">,</span>
@@ -424,18 +424,18 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Retrieves the 3D position of the object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getPosition</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getPosition</span><span class="p">(</span>
   <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">position</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetPosition</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetPosition</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">position</span>
 <span class="p">);</span>
@@ -467,19 +467,19 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Retrieves the 3D orientation of the object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getRotation</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getRotation</span><span class="p">(</span>
   <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">forward</span><span class="p">,</span>
   <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">up</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetRotation</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetRotation</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">forward</span><span class="p">,</span>
   <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">up</span>
@@ -509,18 +509,18 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Retrieves the 3D scale of the object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getScale</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getScale</span><span class="p">(</span>
   <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">scale</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetScale</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetScale</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">scale</span>
 <span class="p">);</span>
@@ -551,18 +551,18 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Retrieves a user value associated with this object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getUserData</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">getUserData</span><span class="p">(</span>
   <span class="kt">void</span> <span class="o">**</span><span class="n">userdata</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetUserData</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_GetUserData</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="kt">void</span> <span class="o">**</span><span class="n">userdata</span>
 <span class="p">);</span>
@@ -587,16 +587,16 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Frees a geometry object and releases its memory.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">release</span><span class="p">();</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">release</span><span class="p">();</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_Release</span><span class="p">(</span><span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">);</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_Release</span><span class="p">(</span><span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">);</span>
 </pre></div>
 
 <div class="highlight language-csharp" style="display: none;"><pre><span></span><span class="n">RESULT</span> <span class="n">Geometry</span><span class="p">.</span><span class="n">release</span><span class="p">();</span>
@@ -609,19 +609,19 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Saves the geometry object as a serialized binary block to a user memory buffer.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">save</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">save</span><span class="p">(</span>
   <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">datasize</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_Save</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_Save</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">,</span>
   <span class="kt">int</span> <span class="o">*</span><span class="n">datasize</span>
@@ -655,18 +655,18 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Sets whether an object is processed by the geometry engine.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">setActive</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">setActive</span><span class="p">(</span>
   <span class="kt">bool</span> <span class="n">active</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_SetActive</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_SetActive</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="n">FMOD_BOOL</span> <span class="n">active</span>
 <span class="p">);</span>
@@ -697,13 +697,13 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Sets individual attributes for a polygon inside a geometry object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">setPolygonAttributes</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">setPolygonAttributes</span><span class="p">(</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">directocclusion</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">reverbocclusion</span><span class="p">,</span>
@@ -711,7 +711,7 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_SetPolygonAttributes</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_SetPolygonAttributes</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
   <span class="kt">float</span> <span class="n">directocclusion</span><span class="p">,</span>
@@ -776,20 +776,20 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Alters the position of a polygon's vertex inside a geometry object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">setPolygonVertex</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">setPolygonVertex</span><span class="p">(</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">vertexindex</span><span class="p">,</span>
   <span class="k">const</span> <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">vertex</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_SetPolygonVertex</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_SetPolygonVertex</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">index</span><span class="p">,</span>
   <span class="kt">int</span> <span class="n">vertexindex</span><span class="p">,</span>
@@ -842,18 +842,18 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Sets the 3D position of the object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">setPosition</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">setPosition</span><span class="p">(</span>
   <span class="k">const</span> <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">position</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_SetPosition</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_SetPosition</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="k">const</span> <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">position</span>
 <span class="p">);</span>
@@ -885,19 +885,19 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Sets the 3D orientation of the object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">setRotation</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">setRotation</span><span class="p">(</span>
   <span class="k">const</span> <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">forward</span><span class="p">,</span>
   <span class="k">const</span> <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">up</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_SetRotation</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_SetRotation</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="k">const</span> <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">forward</span><span class="p">,</span>
   <span class="k">const</span> <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">up</span>
@@ -938,18 +938,18 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Sets the 3D scale of the object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">setScale</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">setScale</span><span class="p">(</span>
   <span class="k">const</span> <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">scale</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_SetScale</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_SetScale</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="k">const</span> <span class="n">FMOD_VECTOR</span> <span class="o">*</span><span class="n">scale</span>
 <span class="p">);</span>
@@ -981,18 +981,18 @@ False: Polygon is single sided, and the winding of the polygon (which determines
 <p>Sets a user value associated with this object.</p>
 <p>
 </p><div class="language-selector">
-<div class="language-tab selected" data-language="language-c">C</div>
-<div class="language-tab" data-language="language-cpp">C++</div>
+<div class="language-tab" data-language="language-c">C</div>
+<div class="language-tab selected" data-language="language-cpp">C++</div>
 <div class="language-tab" data-language="language-csharp">C#</div>
 <div class="language-tab" data-language="language-javascript">JS</div>
 </div>
 <p></p>
-<div class="highlight language-cpp" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">setUserData</span><span class="p">(</span>
+<div class="highlight language-cpp" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="n">Geometry</span><span class="o">::</span><span class="n">setUserData</span><span class="p">(</span>
   <span class="kt">void</span> <span class="o">*</span><span class="n">userdata</span>
 <span class="p">);</span>
 </pre></div>
 
-<div class="highlight language-c" style="display: block;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_SetUserData</span><span class="p">(</span>
+<div class="highlight language-c" style="display: none;"><pre><span></span><span class="n">FMOD_RESULT</span> <span class="nf">FMOD_Geometry_SetUserData</span><span class="p">(</span>
   <span class="n">FMOD_GEOMETRY</span> <span class="o">*</span><span class="n">geometry</span><span class="p">,</span>
   <span class="kt">void</span> <span class="o">*</span><span class="n">userdata</span>
 <span class="p">);</span>

@@ -3,7 +3,7 @@ package com.alcadrial.renderengine.audio.bindings;
 import org.lwjgl.fmod.FMOD;
 
 /**
- * <div class="manual-content api"><h1>7. Core API Reference | ChannelGroup</h1>A submix in the mixing hierarchy akin to a bus that can contain both <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> and <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> objects.
+ * <div class="manual-content api"><h1>11. Core API Reference | ChannelGroup</h1>A submix in the mixing hierarchy akin to a bus that can contain both <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> and <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> objects.
  * <p>
  * Create with {@link FModSystem#createChannelGroup}.
  * <p>
@@ -44,7 +44,7 @@ import org.lwjgl.fmod.FMOD;
  * <strong>Volume levels:</strong>
  * <p>
  * <ul>
- *     <li><span>{@link FModChannel#getAudibility} Retrieves an estimation of the output volume.</span></li>
+ *     <li><span>{@link FModChannel#getAudibility} Gets the calculated audibility based on all attenuation factors which contribute to the final output volume.</span></li>
  *     <li><span>{@link FModChannel#setVolume} Sets the volume level.</span></li>
  *     <li><span>{@link FModChannel#getVolume} Retrieves the volume level.</span></li>
  *     <li><span>{@link FModChannel#setVolumeRamp} Sets whether volume changes are ramped or instantaneous.</span></li>
@@ -80,36 +80,36 @@ import org.lwjgl.fmod.FMOD;
  * <p>
  * <ul>
  *     <li><span>{@link FModChannel#setPan} Sets the left/right pan level.</span></li>
- *     <li><span>{@link FModChannel#setMixLevelsInput} Sets the incoming volume level for each channel of a multi-channel signal.</span></li>
+ *     <li><span>{@link FModChannel#setMixLevelsInput} Sets the incoming volume level for each channel of a multi-channel <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a>.</span></li>
  *     <li><span>{@link FModChannel#setMixLevelsOutput} Sets the outgoing volume levels for each speaker.</span></li>
- *     <li><span>{@link FModChannel#setMixMatrix} Sets a 2 dimensional pan matrix that maps the signal from input channels (columns) to output speakers (rows).</span></li>
- *     <li><span>{@link FModChannel#getMixMatrix} Retrieves a 2 dimensional pan matrix that maps the signal from input channels (columns) to output speakers (rows).</span></li>
+ *     <li><span>{@link FModChannel#setMixMatrix} Sets a two-dimensional pan matrix that maps the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> from input channels (columns) to output speakers (rows).</span></li>
+ *     <li><span>{@link FModChannel#getMixMatrix} Retrieves a 2 dimensional pan matrix that maps the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> from input channels (columns) to output speakers (rows).</span></li>
  * </ul>
  * <strong>Filtering:</strong>
  * <p>
  * <ul>
  *     <li><span>{@link FModChannel#setReverbProperties} Sets the wet / send level for a particular reverb instance.</span></li>
  *     <li><span>{@link FModChannel#getReverbProperties} Retrieves the wet / send level for a particular reverb instance.</span></li>
- *     <li><span>{@link FModChannel#setLowPassGain} Sets the gain of the dry signal when built in lowpass / distance filtering is applied.</span></li>
- *     <li><span>{@link FModChannel#getLowPassGain} Retrieves the gain of the dry signal when built in lowpass / distance filtering is applied.</span></li>
+ *     <li><span>{@link FModChannel#setLowPassGain} Sets the gain of the dry <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> when built in lowpass / distance filtering is applied.</span></li>
+ *     <li><span>{@link FModChannel#getLowPassGain} Retrieves the gain of the dry <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> when built in lowpass / distance filtering is applied.</span></li>
  * </ul>
  * <strong>DSP chain configuration:</strong>
  * <p>
  * <ul>
- *     <li><span>{@link FModChannel#addDSP} Adds a DSP unit to the specified index in the DSP chain.</span></li>
- *     <li><span>{@link FModChannel#removeDSP} Removes the specified DSP unit from the DSP chain.</span></li>
- *     <li><span>{@link FModChannel#getNumDSPs} Retrieves the number of DSP units in the DSP chain.</span></li>
- *     <li><span>{@link FModChannel#getDSP} Retrieves the DSP unit at the specified index in the DSP chain.</span></li>
- *     <li><span>{@link FModChannel#setDSPIndex} Sets the index in the DSP chain of the specified DSP.</span></li>
- *     <li><span>{@link FModChannel#getDSPIndex} Retrieves the index of a DSP inside the Channel or ChannelGroup's DSP chain.</span></li>
+ *     <li><span>{@link FModChannel#addDSP} Adds a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> to the specified index in the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.</span></li>
+ *     <li><span>{@link FModChannel#removeDSP} Removes the specified <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> from the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.</span></li>
+ *     <li><span>{@link FModChannel#getNumDSPs} Retrieves the number of <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP units</a> in the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.</span></li>
+ *     <li><span>{@link FModChannel#getDSP} Retrieves the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> at the specified index in the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.</span></li>
+ *     <li><span>{@link FModChannel#setDSPIndex} Sets the index in the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a> of the specified <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a>.</span></li>
+ *     <li><span>{@link FModChannel#getDSPIndex} Retrieves the index of a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> inside the <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> or <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>'s <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.</span></li>
  * </ul>
  * <strong>Sample accurate scheduling:</strong>
  * <p>
  * <ul>
- *     <li><span>{@link FModChannel#getDSPClock} Retrieves the DSP clock values at this point in time.</span></li>
- *     <li><span>{@link FModChannel#setDelay} Sets a sample accurate start (and/or stop) time relative to the parent ChannelGroup DSP clock.</span></li>
- *     <li><span>{@link FModChannel#getDelay} Retrieves a sample accurate start (and/or stop) time relative to the parent ChannelGroup DSP clock.</span></li>
- *     <li><span>{@link FModChannel#addFadePoint} Adds a sample accurate fade point at a time relative to the parent ChannelGroup DSP clock.</span></li>
+ *     <li><span>{@link FModChannel#getDSPClock} Retrieves the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a> values at this point in time.</span></li>
+ *     <li><span>{@link FModChannel#setDelay} Sets a sample accurate start (and/or stop) time relative to the parent ChannelGroup <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a>.</span></li>
+ *     <li><span>{@link FModChannel#getDelay} Retrieves a sample accurate start (and/or stop) time relative to the parent ChannelGroup <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a>.</span></li>
+ *     <li><span>{@link FModChannel#addFadePoint} Adds a sample accurate fade point at a time relative to the parent ChannelGroup <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a>.</span></li>
  *     <li><span>{@link FModChannel#setFadePointRamp} Adds a volume ramp at the specified time in the future using fade points.</span></li>
  *     <li><span>{@link FModChannel#removeFadePoints} Removes all fade points between the two specified clock values (inclusive).</span></li>
  *     <li><span>{@link FModChannel#getFadePoints} Retrieves information about stored fade points.</span></li>
@@ -126,19 +126,50 @@ import org.lwjgl.fmod.FMOD;
  * @author FMOD team, autogenerated by Alcadrial
  */
 public class FModChannelGroup {
-	
+
 	private FModChannelGroup()
 	{
-		
+
 	}
-	
+
+	/**
+	 * Adds a 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> to the specified index in the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.
+	 * <p>
+	 * <pre><code>
+	 * FMOD_RESULT FMOD_Channel_AddDSP(
+	 *   FMOD_CHANNEL *channel,
+	 *   int index,
+	 *   FMOD_DSP *dsp
+	 * );
+	 * FMOD_RESULT FMOD_ChannelGroup_AddDSP(
+	 *   FMOD_CHANNELGROUP *channelgroup,
+	 *   int index,
+	 *   FMOD_DSP *dsp
+	 * );
+	 * </code></pre>
+	 * <p>
+	 * If 
+	 * <code>dsp</code> is already added to an existing object it will be removed and then added to this object.
+	 * <p>
+	 * For detailed information on FMOD's 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-graph">DSP graph</a>, see the <a href="https://www.fmod.com/docs/2.03/api/using-dsp-effects-in-the-core-api.html#dsp-architecture-and-usage">DSP Architecture and Usage</a> section of the <a href="https://www.fmod.com/docs/2.03/api/using-dsp-effects-in-the-core-api.html">Using DSP Effects in the Core API</a> chapter.
+	 * <p>
+	 * <strong>See Also:</strong> {@link FModChannel#removeDSP}, {@link FModSystem#createDSP}, {@link FModSystem#createDSPByType}, {@link FModSystem#createDSPByPlugin}
+	 * <p>
+	 * 
+	 * @param channelGroup
+	 * @param index <dd><p>Offset into the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>, see <a href="https://www.fmod.com/docs/2.03/api/core-api-channelcontrol.html#fmod_channelcontrol_dsp_index">FMOD_CHANNELCONTROL_DSP_INDEX</a> for special named offsets for 'head' and 'tail' and 'fader' units.</p><ul><li><span class="label">Range:</span> [0, {@link FModChannel#getNumDSPs})</li></ul>
+	 * @param dsp <dd>DSP unit to be added. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>)
+	 */
 	public static int addDSP(long channelGroup, int index, long dsp)
 	{
 		return FMOD.FMOD_ChannelGroup_AddDSP(channelGroup, index, dsp);
 	}
-	
+
 	/**
-	 * Adds a sample accurate fade point at a time relative to the parent ChannelGroup DSP clock.
+	 * Adds a sample accurate fade point at a time relative to the parent ChannelGroup 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a>.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_Channel_AddFadePoint(
@@ -180,14 +211,14 @@ public class FModChannelGroup {
 	 * <p>
 	 * 
 	 * @param channelGroup
-	 * @param dspclock <dd><p>DSP clock of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> to set the fade point volume.</p><ul><li><span class="label">Units:</span> Samples</li></ul>
-	 * @param volume <dd><p>Volume level at the given <code>dspclock</code>.  Values above 1.0 amplify the signal.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> [0, inf)</li></ul>
+	 * @param dspclock <dd><p><a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a> of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> to set the fade point volume.</p><ul><li><span class="label">Units:</span> Samples</li></ul>
+	 * @param volume <dd><p>Volume level at the given <code>dspclock</code>.  Values above 1.0 amplify the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a>.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> [0, inf)</li></ul>
 	 */
 	public static int addFadePoint(long channelGroup, long dspclock, float volume)
 	{
 		return FMOD.FMOD_ChannelGroup_AddFadePoint(channelGroup, dspclock, volume);
 	}
-	
+
 	/**
 	 * Adds a ChannelGroup as an input to this group.
 	 * <p>
@@ -212,7 +243,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_AddGroup(channelGroup, group, propagatedspclock, connection);
 	}
-	
+
 	/**
 	 * Retrieves the 3D position and velocity used to apply panning, attenuation and doppler.
 	 * <p>
@@ -240,7 +271,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Get3DAttributes(channelGroup, pos, vel);
 	}
-	
+
 	/**
 	 * Retrieves the orientation of a 3D cone shape, used for simulated occlusion.
 	 * <p>
@@ -265,7 +296,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Get3DConeOrientation(channelGroup, orientation);
 	}
-	
+
 	/**
 	 * Retrieves the angles and attenuation levels of a 3D cone shape, for simulated occlusion which is based on direction.
 	 * <p>
@@ -301,7 +332,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Get3DConeSettings(channelGroup, insideConeAngle, outsideConeAngle, outsideVolume);
 	}
-	
+
 	/**
 	 * Retrieves the current custom roll-off shape for 3D distance attenuation.
 	 * <p>
@@ -329,7 +360,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Get3DCustomRolloff(channelGroup, points, numPoints);
 	}
-	
+
 	/**
 	 * Retrieves the override values for the 3D distance filter.
 	 * <p>
@@ -360,7 +391,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Get3DDistanceFilter(channelGroup, custom, customLevel, centerFreq);
 	}
-	
+
 	/**
 	 * Retrieves the amount by which doppler is scaled.
 	 * <p>
@@ -385,7 +416,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Get3DDopplerLevel(channelGroup, level);
 	}
-	
+
 	/**
 	 * Retrieves the blend between 3D panning and 2D panning.
 	 * <p>
@@ -421,7 +452,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Get3DLevel(channelGroup, level);
 	}
-	
+
 	/**
 	 * Retrieves the minimum and maximum distances used to calculate the 3D roll-off attenuation.
 	 * <p>
@@ -449,7 +480,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Get3DMinMaxDistance(channelGroup, mindistance, maxdistance);
 	}
-	
+
 	/**
 	 * Retrieves the 3D attenuation factors for the direct and reverb paths.
 	 * <p>
@@ -477,7 +508,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Get3DOcclusion(channelGroup, directocclusion, reverbocclusion);
 	}
-	
+
 	/**
 	 * Retrieves the spread of a 3D sound in speaker space.
 	 * <p>
@@ -502,9 +533,9 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Get3DSpread(channelGroup, angle);
 	}
-	
+
 	/**
-	 * Retrieves an estimation of the output volume.
+	 * Gets the calculated audibility based on all attenuation factors which contribute to the final output volume.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_Channel_GetAudibility(
@@ -517,7 +548,8 @@ public class FModChannelGroup {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * Estimated volume is calculated based on 3D spatialization, occlusion, API volume levels and DSPs used.
+	 * The estimated volume is calculated using a number of factors detailed in the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html#audibility-calculation">Audibility Calculation</a> section of the <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html">Core API Managing Resources</a> chapter.
 	 * <p>
 	 * While this does not represent the actual waveform, 
 	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s playing FSB files will take into consideration the overall peak level of the file (if available).
@@ -526,7 +558,7 @@ public class FModChannelGroup {
 	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s should be audible and which <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s to virtualize when resources are limited.
 	 * <p>
 	 * See the 
-	 * <a href="https://www.fmod.com/docs/2.03/api/white-papers-virtual-voices.html#audibility-calculation">Virtual Voice System</a> white paper for more details about how audibility is calculated.
+	 * <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html#virtual-voice-system">Virtual Voice System</a> section of the <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html">Managing Resources in the Core API</a> chapter for more details about how audibility is calculated.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModChannel#isVirtual}, {@link FModChannel#getVolume}, {@link FModChannel#get3DOcclusion}, {@link FModChannel#get3DAttributes}, <a href="https://www.fmod.com/docs/2.03/api/plugin-api-dsp.html#fmod_dsp_parameter_overallgain">FMOD_DSP_PARAMETER_OVERALLGAIN</a>
 	 * <p>
@@ -538,7 +570,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetAudibility(channelGroup, audibility);
 	}
-	
+
 	/**
 	 * Retrieves the Channel at the specified index in the list of Channel inputs.
 	 * <p>
@@ -550,24 +582,23 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetChannel(channelGroup, index, channel);
 	}
-	
+
 	/**
-	 * Retrieves the DSP unit at the specified index in the DSP chain.
-	 * <p>
-	 * See 
-	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>
+	 * Retrieves the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> at the specified index in the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.
 	 * <p>
 	 * @param channelGroup
 	 * @param index <dd><p>Offset into the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>, see <a href="https://www.fmod.com/docs/2.03/api/core-api-channelcontrol.html#fmod_channelcontrol_dsp_index">FMOD_CHANNELCONTROL_DSP_INDEX</a> for special named offsets for 'head' and 'tail' and 'fader' units.</p><ul><li><span class="label">Range:</span> [0, {@link FModChannel#getNumDSPs})</li></ul>
-	 * @param dsp <span>(<i>Out</i>) <dd>DSP unit at the specified <code>index</code>. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>)
+	 * @param dsp <span>(<i>Out</i>) <dd><a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> at the specified <code>index</code>. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>)
 	 */
 	public static int getDSP(long channelGroup, int index, org.lwjgl.PointerBuffer dsp)
 	{
 		return FMOD.FMOD_ChannelGroup_GetDSP(channelGroup, index, dsp);
 	}
-	
+
 	/**
-	 * Retrieves the DSP clock values at this point in time.
+	 * Retrieves the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a> values at this point in time.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_Channel_GetDSPClock(
@@ -589,19 +620,17 @@ public class FModChannelGroup {
 	 * <p>
 	 * 
 	 * @param channelGroup
-	 * @param dspclock <span>(<i>Out, Opt</i>) <dd><p><a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> clock value for the tail <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> (<a href="https://www.fmod.com/docs/2.03/api/core-api-channelcontrol.html#fmod_channelcontrol_dsp_tail">FMOD_CHANNELCONTROL_DSP_TAIL</a>) node.</p><ul><li><span class="label">Units:</span> Samples</li></ul>
-	 * @param parentclock <span>(<i>Out, Opt</i>) <dd><p><a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> clock value for the tail <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> (<a href="https://www.fmod.com/docs/2.03/api/core-api-channelcontrol.html#fmod_channelcontrol_dsp_tail">FMOD_CHANNELCONTROL_DSP_TAIL</a>) node of the parent ChannelGroup.</p><ul><li><span class="label">Units:</span> Samples</li></ul>
+	 * @param dspclock <span>(<i>Out, Opt</i>) <dd><p><a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a> value for the tail <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> (<a href="https://www.fmod.com/docs/2.03/api/core-api-channelcontrol.html#fmod_channelcontrol_dsp_tail">FMOD_CHANNELCONTROL_DSP_TAIL</a>) node.</p><ul><li><span class="label">Units:</span> Samples</li></ul>
+	 * @param parentclock <span>(<i>Out, Opt</i>) <dd><p><a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a> value for the tail <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> (<a href="https://www.fmod.com/docs/2.03/api/core-api-channelcontrol.html#fmod_channelcontrol_dsp_tail">FMOD_CHANNELCONTROL_DSP_TAIL</a>) node of the parent ChannelGroup.</p><ul><li><span class="label">Units:</span> Samples</li></ul>
 	 */
 	public static int getDSPClock(long channelGroup, java.nio.LongBuffer dspclock, java.nio.LongBuffer parentclock)
 	{
 		return FMOD.FMOD_ChannelGroup_GetDSPClock(channelGroup, dspclock, parentclock);
 	}
-	
+
 	/**
-	 * Retrieves the index of a DSP inside the Channel or ChannelGroup's DSP chain.
-	 * <p>
-	 * See 
-	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.
+	 * Retrieves the index of a 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> inside the <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> or <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>'s <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_Channel_GetDSPIndex(
@@ -620,16 +649,17 @@ public class FModChannelGroup {
 	 * <p>
 	 * 
 	 * @param channelGroup
-	 * @param dsp <dd>DSP unit that exists in the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>)
+	 * @param dsp <dd><a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> that exists in the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>)
 	 * @param index <span>(<i>Out</i>) <dd>Offset into the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.
 	 */
 	public static int getDSPIndex(long channelGroup, long dsp, java.nio.IntBuffer index)
 	{
 		return FMOD.FMOD_ChannelGroup_GetDSPIndex(channelGroup, dsp, index);
 	}
-	
+
 	/**
-	 * Retrieves a sample accurate start (and/or stop) time relative to the parent ChannelGroup DSP clock.
+	 * Retrieves a sample accurate start (and/or stop) time relative to the parent ChannelGroup 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a>.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_Channel_GetDelay(
@@ -650,15 +680,15 @@ public class FModChannelGroup {
 	 * <p>
 	 * 
 	 * @param channelGroup
-	 * @param dspclock_start <span>(<i>Out, Opt</i>) <dd><p><a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> clock of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> to audibly start playing sound at.</p><ul><li><span class="label">Units:</span> Samples</li><li><span class="label">Default:</span> 0</li></ul>
-	 * @param dspclock_end <span>(<i>Out, Opt</i>) <dd><p><a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> clock of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> to audibly stop playing sound at.</p><ul><li><span class="label">Units:</span> Samples</li><li><span class="label">Default:</span> 0</li></ul>
+	 * @param dspclock_start <span>(<i>Out, Opt</i>) <dd><p><a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a> of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> to audibly start playing sound at.</p><ul><li><span class="label">Units:</span> Samples</li><li><span class="label">Default:</span> 0</li></ul>
+	 * @param dspclock_end <span>(<i>Out, Opt</i>) <dd><p><a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a> of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> to audibly stop playing sound at.</p><ul><li><span class="label">Units:</span> Samples</li><li><span class="label">Default:</span> 0</li></ul>
 	 * @param stopchannels <span>(<i>Out, Opt</i>) <dd><p>True: When <code>dspclock_end</code> is reached, behaves like {@link FModChannel#stop} has been called.<br>False: When <code>dspclock_end</code> is reached, behaves like {@link FModChannel#setPaused} has been called, a subsequent <code>dspclock_start</code> allows it to resume.</p><ul><li><span class="label">Units:</span> Boolean</li></ul></dd>
 	 */
 	public static int getDelay(long channelGroup, java.nio.LongBuffer dspclock_start, java.nio.LongBuffer dspclock_end, java.nio.IntBuffer stopchannels)
 	{
 		return FMOD.FMOD_ChannelGroup_GetDelay(channelGroup, dspclock_start, dspclock_end, stopchannels);
 	}
-	
+
 	/**
 	 * Retrieves information about stored fade points.
 	 * <p>
@@ -685,14 +715,14 @@ public class FModChannelGroup {
 	 * 
 	 * @param channelGroup
 	 * @param numPoints <span>(<i>Out</i>) <dd>Number of fade points.
-	 * @param point_dspclock <span>(<i>Out, Opt</i>) <dd><p>Array of <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> clock values that represent the fade point times.</p><ul><li><span class="label">Units:</span> Samples</li></ul>
+	 * @param point_dspclock <span>(<i>Out, Opt</i>) <dd><p>Array of <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a> values that represent the fade point times.</p><ul><li><span class="label">Units:</span> Samples</li></ul>
 	 * @param point_volume <span>(<i>Out, Opt</i>) <dd><p>Array of volume levels that represent the fade point values.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> [0, inf)</li></ul>
 	 */
 	public static int getFadePoints(long channelGroup, java.nio.IntBuffer numPoints, java.nio.LongBuffer point_dspclock, java.nio.FloatBuffer point_volume)
 	{
 		return FMOD.FMOD_ChannelGroup_GetFadePoints(channelGroup, numPoints, point_dspclock, point_volume);
 	}
-	
+
 	/**
 	 * Retrieves the ChannelGroup at the specified index in the list of group inputs.
 	 * <p>
@@ -715,9 +745,10 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetGroup(channelGroup, index, group);
 	}
-	
+
 	/**
-	 * Retrieves the gain of the dry signal when built in lowpass / distance filtering is applied.
+	 * Retrieves the gain of the dry 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> when built in lowpass / distance filtering is applied.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_Channel_GetLowPassGain(
@@ -749,9 +780,10 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetLowPassGain(channelGroup, gain);
 	}
-	
+
 	/**
-	 * Retrieves a 2 dimensional pan matrix that maps the signal from input channels (columns) to output speakers (rows).
+	 * Retrieves a 2 dimensional pan matrix that maps the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> from input channels (columns) to output speakers (rows).
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_Channel_GetMixMatrix(
@@ -788,7 +820,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetMixMatrix(channelGroup, matrix, outchannels, inchannels, inchannel_hop);
 	}
-	
+
 	/**
 	 * Retrieves the playback mode bits that control how this object behaves.
 	 * <p>
@@ -813,7 +845,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetMode(channelGroup, mode);
 	}
-	
+
 	/**
 	 * Retrieves the mute state.
 	 * <p>
@@ -841,7 +873,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetMute(channelGroup, mute);
 	}
-	
+
 	/**
 	 * Retrieves the name set when the group was created.
 	 * <p>
@@ -863,7 +895,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetName(channelGroup, name);
 	}
-	
+
 	/**
 	 * Retrieves the number of Channels that feed into to this group.
 	 * <p>
@@ -884,12 +916,10 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetNumChannels(channelGroup, numchannels);
 	}
-	
+
 	/**
-	 * Retrieves the number of DSP units in the DSP chain.
-	 * <p>
-	 * See 
-	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.
+	 * Retrieves the number of 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP units</a> in the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_Channel_GetNumDSPs(
@@ -906,13 +936,13 @@ public class FModChannelGroup {
 	 * <p>
 	 * 
 	 * @param channelGroup
-	 * @param numdsps <span>(<i>Out</i>) <dd>Number of <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> units in the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.
+	 * @param numdsps <span>(<i>Out</i>) <dd>Number of <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP units</a> in the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.
 	 */
 	public static int getNumDSPs(long channelGroup, java.nio.IntBuffer numdsps)
 	{
 		return FMOD.FMOD_ChannelGroup_GetNumDSPs(channelGroup, numdsps);
 	}
-	
+
 	/**
 	 * Retrieves the number of ChannelGroups that feed into to this group.
 	 * <p>
@@ -933,7 +963,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetNumGroups(channelGroup, numgroups);
 	}
-	
+
 	/**
 	 * Retrieves the ChannelGroup this object outputs to.
 	 * <p>
@@ -954,7 +984,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetParentGroup(channelGroup, group);
 	}
-	
+
 	/**
 	 * Retrieves the paused state.
 	 * <p>
@@ -982,7 +1012,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetPaused(channelGroup, paused);
 	}
-	
+
 	/**
 	 * Retrieves the relative pitch / playback rate.
 	 * <p>
@@ -1010,7 +1040,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetPitch(channelGroup, pitch);
 	}
-	
+
 	/**
 	 * Retrieves the wet / send level for a particular reverb instance.
 	 * <p>
@@ -1032,13 +1062,13 @@ public class FModChannelGroup {
 	 * 
 	 * @param channelGroup
 	 * @param instance <dd><p>Reverb instance index.</p><ul><li><span class="label">Range:</span> [0, <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_reverb_maxinstances">FMOD_REVERB_MAXINSTANCES</a>]</li></ul>
-	 * @param wet <span>(<i>Out</i>) <dd><p>Send level for the signal to the reverb. 0 = none, 1 = full.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> (-inf, inf)</li><li><span class="label">Default:</span> 1 for <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>, 0 for <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a></li></ul>
+	 * @param wet <span>(<i>Out</i>) <dd><p>Send level for the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> to the reverb. 0 = none, 1 = full.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> (-inf, inf)</li><li><span class="label">Default:</span> 1 for <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>, 0 for <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a></li></ul>
 	 */
 	public static int getReverbProperties(long channelGroup, int instance, java.nio.FloatBuffer wet)
 	{
 		return FMOD.FMOD_ChannelGroup_GetReverbProperties(channelGroup, instance, wet);
 	}
-	
+
 	/**
 	 * Retrieves the System that created this object.
 	 * <p>
@@ -1063,7 +1093,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetSystemObject(channelGroup, system);
 	}
-	
+
 	/**
 	 * Retrieves a user value associated with this object.
 	 * <p>
@@ -1089,7 +1119,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetUserData(channelGroup, userdata);
 	}
-	
+
 	/**
 	 * Retrieves the volume level.
 	 * <p>
@@ -1114,7 +1144,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetVolume(channelGroup, volume);
 	}
-	
+
 	/**
 	 * Retrieves whether volume changes are ramped or instantaneous.
 	 * <p>
@@ -1139,7 +1169,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_GetVolumeRamp(channelGroup, ramp);
 	}
-	
+
 	/**
 	 * Retrieves the playing state.
 	 * <p>
@@ -1168,7 +1198,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_IsPlaying(channelGroup, isplaying);
 	}
-	
+
 	/**
 	 * Frees the memory for the group.
 	 * <p>
@@ -1189,12 +1219,10 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Release(channelGroup);
 	}
-	
+
 	/**
-	 * Removes the specified DSP unit from the DSP chain.
-	 * <p>
-	 * See 
-	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>
+	 * Removes the specified 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> from the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_Channel_RemoveDSP(
@@ -1211,13 +1239,13 @@ public class FModChannelGroup {
 	 * <p>
 	 * 
 	 * @param channelGroup
-	 * @param dsp <dd>DSP unit to be removed. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>)
+	 * @param dsp <dd><a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> to be removed. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>)
 	 */
 	public static int removeDSP(long channelGroup, long dsp)
 	{
 		return FMOD.FMOD_ChannelGroup_RemoveDSP(channelGroup, dsp);
 	}
-	
+
 	/**
 	 * Removes all fade points between the two specified clock values (inclusive).
 	 * <p>
@@ -1238,14 +1266,14 @@ public class FModChannelGroup {
 	 * <p>
 	 * 
 	 * @param channelGroup
-	 * @param dspclock_start <dd><p><a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> clock of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> at which to begin removing fade points.</p><ul><li><span class="label">Units:</span> Samples</li></ul>
-	 * @param dspclock_end <dd><p><a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> clock of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> at which to stop removing fade points.</p><ul><li><span class="label">Units:</span> Samples</li></ul>
+	 * @param dspclock_start <dd><p><a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a> of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> at which to begin removing fade points.</p><ul><li><span class="label">Units:</span> Samples</li></ul>
+	 * @param dspclock_end <dd><p><a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a> of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> at which to stop removing fade points.</p><ul><li><span class="label">Units:</span> Samples</li></ul>
 	 */
 	public static int removeFadePoints(long channelGroup, long dspclock_start, long dspclock_end)
 	{
 		return FMOD.FMOD_ChannelGroup_RemoveFadePoints(channelGroup, dspclock_start, dspclock_end);
 	}
-	
+
 	/**
 	 * Sets the 3D position and velocity used to apply panning, attenuation and doppler.
 	 * <p>
@@ -1282,7 +1310,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Set3DAttributes(channelGroup, pos, vel);
 	}
-	
+
 	/**
 	 * Sets the orientation of a 3D cone shape, used for simulated occlusion.
 	 * <p>
@@ -1316,7 +1344,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Set3DConeOrientation(channelGroup, orientation);
 	}
-	
+
 	/**
 	 * Sets the angles and attenuation levels of a 3D cone shape, for simulated occlusion which is based on direction.
 	 * <p>
@@ -1355,7 +1383,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Set3DConeSettings(channelGroup, insideConeAngle, outsideConeAngle, outsideVolume);
 	}
-	
+
 	/**
 	 * Sets a custom roll-off shape for 3D distance attenuation.
 	 * <p>
@@ -1399,7 +1427,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Set3DCustomRolloff(channelGroup, points);
 	}
-	
+
 	/**
 	 * Sets an override value for the 3D distance filter.
 	 * <p>
@@ -1445,7 +1473,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Set3DDistanceFilter(channelGroup, custom, customLevel, centerFreq);
 	}
-	
+
 	/**
 	 * Sets the amount by which doppler is scaled.
 	 * <p>
@@ -1482,7 +1510,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Set3DDopplerLevel(channelGroup, level);
 	}
-	
+
 	/**
 	 * Sets the blend between 3D panning and 2D panning.
 	 * <p>
@@ -1518,7 +1546,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Set3DLevel(channelGroup, level);
 	}
-	
+
 	/**
 	 * Sets the minimum and maximum distances used to calculate the 3D roll-off attenuation.
 	 * <p>
@@ -1563,7 +1591,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Set3DMinMaxDistance(channelGroup, mindistance, maxdistance);
 	}
-	
+
 	/**
 	 * Sets the 3D attenuation factors for the direct and reverb paths.
 	 * <p>
@@ -1597,7 +1625,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Set3DOcclusion(channelGroup, directocclusion, reverbocclusion);
 	}
-	
+
 	/**
 	 * Sets the spread of a 3D sound in speaker space.
 	 * <p>
@@ -1612,8 +1640,8 @@ public class FModChannelGroup {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * When the spread angle is 0 (default) a multi-channel signal will collapse to mono and be spatialized to a single point based on 
-	 * {@link FModChannel#set3DAttributes} calculations. As the angle is increased, each channel within a multi-channel signal will be rotated away from that point. For 2, 4, 6, 8, and 12 channel signals, the spread is arranged from leftmost speaker to rightmost speaker intelligently, for example in 5.1 the leftmost speaker is rear left, followed by front left, center, front right then finally rear right as the rightmost speaker (LFE is not spread). For other channel counts the individual channels are spread evenly in the order of the signal. As the signal is spread the power will be preserved.
+	 * When the spread angle is 0 (default) a multi-channel 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> will collapse to mono and be spatialized to a single point based on {@link FModChannel#set3DAttributes} calculations. As the angle is increased, each channel within a multi-channel signal will be rotated away from that point. For 2, 4, 6, 8, and 12 channel signals, the spread is arranged from leftmost speaker to rightmost speaker intelligently, for example in 5.1 the leftmost speaker is rear left, followed by front left, center, front right then finally rear right as the rightmost speaker (LFE is not spread). For other channel counts the individual channels are spread evenly in the order of the signal. As the signal is spread the power will be preserved.
 	 * <p>
 	 * For a stereo signal given different spread angles:
 	 * <p>
@@ -1629,7 +1657,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Set3DSpread(channelGroup, angle);
 	}
-	
+
 	/**
 	 * Sets the callback for ChannelControl level notifications.
 	 * <p>
@@ -1654,12 +1682,10 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_SetCallback(channelGroup, callback);
 	}
-	
+
 	/**
-	 * Sets the index in the DSP chain of the specified DSP.
-	 * <p>
-	 * See 
-	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>.
+	 * Sets the index in the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a> of the specified <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a>.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_Channel_SetDSPIndex(
@@ -1681,16 +1707,17 @@ public class FModChannelGroup {
 	 * <p>
 	 * 
 	 * @param channelGroup
-	 * @param dsp <dd>DSP unit that exists in the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>)
+	 * @param dsp <dd>A <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> that exists in the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a>. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>)
 	 * @param index <dd>Offset into the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-chain">DSP chain</a> to move the <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> to, see <a href="https://www.fmod.com/docs/2.03/api/core-api-channelcontrol.html#fmod_channelcontrol_dsp_index">FMOD_CHANNELCONTROL_DSP_INDEX</a> for special named offsets.
 	 */
 	public static int setDSPIndex(long channelGroup, long dsp, int index)
 	{
 		return FMOD.FMOD_ChannelGroup_SetDSPIndex(channelGroup, dsp, index);
 	}
-	
+
 	/**
-	 * Sets a sample accurate start (and/or stop) time relative to the parent ChannelGroup DSP clock.
+	 * Sets a sample accurate start (and/or stop) time relative to the parent ChannelGroup 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a>.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_Channel_SetDelay(
@@ -1714,15 +1741,15 @@ public class FModChannelGroup {
 	 * <p>
 	 * 
 	 * @param channelGroup
-	 * @param dspclock_start <span>(<i>Opt</i>) <dd><p><a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> clock of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> to audibly start playing sound at.</p><ul><li><span class="label">Units:</span> Samples</li><li><span class="label">Default:</span> 0</li></ul>
-	 * @param dspclock_end <span>(<i>Opt</i>) <dd><p><a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> clock of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> to audibly stop playing sound at.</p><ul><li><span class="label">Units:</span> Samples</li><li><span class="label">Default:</span> 0</li></ul>
+	 * @param dspclock_start <span>(<i>Opt</i>) <dd><p><a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a> of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> to audibly start playing sound at.</p><ul><li><span class="label">Units:</span> Samples</li><li><span class="label">Default:</span> 0</li></ul>
+	 * @param dspclock_end <span>(<i>Opt</i>) <dd><p><a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a> of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> to audibly stop playing sound at.</p><ul><li><span class="label">Units:</span> Samples</li><li><span class="label">Default:</span> 0</li></ul>
 	 * @param stopchannels <dd><p>True: When <code>dspclock_end</code> is reached, behaves like {@link FModChannel#stop} has been called.<br>False: When <code>dspclock_end</code> is reached, behaves like {@link FModChannel#setPaused} has been called, a subsequent <code>dspclock_start</code> allows it to resume.</p><ul><li><span class="label">Units:</span> Boolean</li></ul></dd>
 	 */
 	public static int setDelay(long channelGroup, long dspclock_start, long dspclock_end, int stopchannels)
 	{
 		return FMOD.FMOD_ChannelGroup_SetDelay(channelGroup, dspclock_start, dspclock_end, stopchannels);
 	}
-	
+
 	/**
 	 * Adds a volume ramp at the specified time in the future using fade points.
 	 * <p>
@@ -1752,16 +1779,17 @@ public class FModChannelGroup {
 	 * <p>
 	 * 
 	 * @param channelGroup
-	 * @param dspclock <dd><p>Time at which the ramp will end, as measured by the <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> clock of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>.</p><ul><li><span class="label">Units:</span> Samples</li></ul>
+	 * @param dspclock <dd><p>Time at which the ramp will end, as measured by the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-clock">DSP clock</a> of the parent <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>.</p><ul><li><span class="label">Units:</span> Samples</li></ul>
 	 * @param volume <dd><p>Volume level at the given <code>dspclock</code>.  0 = silent, 1 = full.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> [0, inf)</li></ul>
 	 */
 	public static int setFadePointRamp(long channelGroup, long dspclock, float volume)
 	{
 		return FMOD.FMOD_ChannelGroup_SetFadePointRamp(channelGroup, dspclock, volume);
 	}
-	
+
 	/**
-	 * Sets the gain of the dry signal when built in lowpass / distance filtering is applied.
+	 * Sets the gain of the dry 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> when built in lowpass / distance filtering is applied.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_Channel_SetLowPassGain(
@@ -1793,9 +1821,10 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_SetLowPassGain(channelGroup, gain);
 	}
-	
+
 	/**
-	 * Sets the incoming volume level for each channel of a multi-channel signal.
+	 * Sets the incoming volume level for each channel of a multi-channel 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a>.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_Channel_SetMixLevelsInput(
@@ -1830,7 +1859,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_SetMixLevelsInput(channelGroup, levels);
 	}
-	
+
 	/**
 	 * Sets the outgoing volume levels for each speaker.
 	 * <p>
@@ -1875,7 +1904,7 @@ public class FModChannelGroup {
 	 * <p>
 	 * 
 	 * @param channelGroup
-	 * @param frontleft <dd><p>Volume level for <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_speaker_front_left">FMOD_SPEAKER_FRONT_LEFT</a>. Volume level. 0 = silent, 1 = full. Negative level inverts the signal.  Values larger than 1 amplify the signal.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> (-inf, inf)</li></ul>
+	 * @param frontleft <dd><p>Volume level for <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_speaker_front_left">FMOD_SPEAKER_FRONT_LEFT</a>. Volume level. 0 = silent, 1 = full. Negative level inverts the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a>.  Values larger than 1 amplify the signal.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> (-inf, inf)</li></ul>
 	 * @param frontright <dd><p>Volume level for <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_speaker_front_right">FMOD_SPEAKER_FRONT_RIGHT</a>. Volume level. 0 = silent, 1 = full. Negative level inverts the signal.  Values larger than 1 amplify the signal.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> (-inf, inf)</li></ul>
 	 * @param center <dd><p>Volume level for <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_speaker_front_center">FMOD_SPEAKER_FRONT_CENTER</a>. Volume level. 0 = silent, 1 = full. Negative level inverts the signal.  Values larger than 1 amplify the signal.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> (-inf, inf)</li></ul>
 	 * @param lfe <dd><p>Volume level for <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_speaker_low_frequency">FMOD_SPEAKER_LOW_FREQUENCY</a>. Volume level. 0 = silent, 1 = full. Negative level inverts the signal.  Values larger than 1 amplify the signal.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> (-inf, inf)</li></ul>
@@ -1888,9 +1917,10 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_SetMixLevelsOutput(channelGroup, frontleft, frontright, center, lfe, surroundleft, surroundright, backleft, backright);
 	}
-	
+
 	/**
-	 * Sets a 2 dimensional pan matrix that maps the signal from input channels (columns) to output speakers (rows).
+	 * Sets a two-dimensional pan matrix that maps the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> from input channels (columns) to output speakers (rows).
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_Channel_SetMixMatrix(
@@ -1934,7 +1964,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_SetMixMatrix(channelGroup, matrix, outchannels, inchannels, inchannel_hop);
 	}
-	
+
 	/**
 	 * Sets the playback mode that controls how this object behaves.
 	 * <p>
@@ -1972,7 +2002,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_SetMode(channelGroup, mode);
 	}
-	
+
 	/**
 	 * Sets the mute state.
 	 * <p>
@@ -2002,7 +2032,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_SetMute(channelGroup, mute);
 	}
-	
+
 	/**
 	 * Sets the left/right pan level.
 	 * <p>
@@ -2036,7 +2066,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_SetPan(channelGroup, pan);
 	}
-	
+
 	/**
 	 * Sets the paused state.
 	 * <p>
@@ -2067,7 +2097,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_SetPaused(channelGroup, paused);
 	}
-	
+
 	/**
 	 * Sets the relative pitch / playback rate.
 	 * <p>
@@ -2098,7 +2128,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_SetPitch(channelGroup, pitch);
 	}
-	
+
 	/**
 	 * Sets the wet / send level for a particular reverb instance.
 	 * <p>
@@ -2128,13 +2158,13 @@ public class FModChannelGroup {
 	 * 
 	 * @param channelGroup
 	 * @param instance <dd><p>Reverb instance index.</p><ul><li><span class="label">Range:</span> [0, <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_reverb_maxinstances">FMOD_REVERB_MAXINSTANCES</a>]</li></ul>
-	 * @param wet <dd><p>Send level for the signal to the reverb. 0 = none, 1 = full. Negative level inverts the signal.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> (-inf, inf)</li><li><span class="label">Default:</span> 1 for <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>, 0 for <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a></li></ul>
+	 * @param wet <dd><p>Send level for the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> to the reverb. 0 = none, 1 = full. Negative level inverts the signal.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> (-inf, inf)</li><li><span class="label">Default:</span> 1 for <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>, 0 for <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a></li></ul>
 	 */
 	public static int setReverbProperties(long channelGroup, int instance, float wet)
 	{
 		return FMOD.FMOD_ChannelGroup_SetReverbProperties(channelGroup, instance, wet);
 	}
-	
+
 	/**
 	 * Sets a user value associated with this object.
 	 * <p>
@@ -2162,7 +2192,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_SetUserData(channelGroup, userdata);
 	}
-	
+
 	/**
 	 * Sets the volume level.
 	 * <p>
@@ -2187,13 +2217,13 @@ public class FModChannelGroup {
 	 * <p>
 	 * 
 	 * @param channelGroup
-	 * @param volume <dd><p>Volume level. 0 = silent, 1 = full. Negative level inverts the signal.  Values larger than 1 amplify the signal.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> (-inf, inf)</li><li><span class="label">Default:</span> 1</li></ul>
+	 * @param volume <dd><p>Volume level. 0 = silent, 1 = full. Negative level inverts the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a>.  Values larger than 1 amplify the signal.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> (-inf, inf)</li><li><span class="label">Default:</span> 1</li></ul>
 	 */
 	public static int setVolume(long channelGroup, float volume)
 	{
 		return FMOD.FMOD_ChannelGroup_SetVolume(channelGroup, volume);
 	}
-	
+
 	/**
 	 * Sets whether volume changes are ramped or instantaneous.
 	 * <p>
@@ -2220,7 +2250,7 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_SetVolumeRamp(channelGroup, ramp);
 	}
-	
+
 	/**
 	 * Stops the Channel (or all Channels in nested ChannelGroups) from playing.
 	 * <p>
@@ -2235,7 +2265,7 @@ public class FModChannelGroup {
 	 * <p>
 	 * This will free up internal resources for reuse by the virtual voice system.
 	 * <p>
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s are stopped automatically when their playback position reaches the length of the <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a> being played. This is not the case however if the <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> is playing a DSP or the <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a> is looping, in which case the <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> will continue playing until stop is called. Once stopped, the <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> handle will become invalid and can be discarded and any API calls made with it will return <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_err_invalid_handle">FMOD_ERR_INVALID_HANDLE</a>.
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s are stopped automatically when their playback position reaches the length of the <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a> being played. This is not the case however if the <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> is playing a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> or the <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a> is looping, in which case the <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> will continue playing until stop is called. Once stopped, the <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> handle will become invalid and can be discarded and any API calls made with it will return <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_err_invalid_handle">FMOD_ERR_INVALID_HANDLE</a>.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModSystem#playSound}, {@link FModChannel#getPosition}, {@link FModSound#getLength}, {@link FModSystem#playDSP}
 	 * <p>
@@ -2246,5 +2276,5 @@ public class FModChannelGroup {
 	{
 		return FMOD.FMOD_ChannelGroup_Stop(channelGroup);
 	}
-	
+
 }

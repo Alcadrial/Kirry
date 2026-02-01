@@ -12,10 +12,8 @@ dependencies {
 	
 	implementation(libs.kector)
 	implementation(libs.kroperties)
-	implementation(libs.threads)
-	implementation(":Tester")
+	implementation(libs.jspecify)
 	
-    implementation(libs.gson)
     implementation(libs.lwjgl)
     implementation(libs.lwjgl.glfw)
     implementation(libs.lwjgl.fmod)
@@ -30,6 +28,7 @@ publishing {
 		release(MavenPublication) {
 			artifactId = "$project.name"
 			artifact(jar)
+			artifact(sourcesJar)
 		}
 	}
 }

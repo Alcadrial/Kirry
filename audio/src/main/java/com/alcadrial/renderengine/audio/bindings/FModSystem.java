@@ -3,18 +3,18 @@ package com.alcadrial.renderengine.audio.bindings;
 import org.lwjgl.fmod.FMOD;
 
 /**
- * <div class="manual-content api"><h1>7. Core API Reference | System</h1>Management object from which all resources are created and played.
+ * <div class="manual-content api"><h1>11. Core API Reference | System</h1>Management object from which all resources are created and played.
  * <p>
  * Create with {@link FModSystem#create}.
  * <p>
  * <strong>Lifetime management:</strong>
  * <p>
  * <ul>
- *     <li><span>{@link FModSystem#create} Creates an instance of the FMOD system.</span></li>
- *     <li><span>{@link FModSystem#init} Initialize the system object and prepare FMOD for playback.</span></li>
+ *     <li><span>{@link FModSystem#create} Creates an instance of the FMOD <a href="https://www.fmod.com/docs/2.03/api/glossary.html#system">system</a>.</span></li>
+ *     <li><span>{@link FModSystem#init} Initialize the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#system">system</a> object and prepare FMOD for playback.</span></li>
  *     <li><span>{@link FModSystem#close} Close the connection to the output and return to an uninitialized state without releasing the object.</span></li>
  *     <li><span>{@link FModSystem#release} Closes and frees this object and its resources.</span></li>
- *     <li><span>{@link FModSystem#update} Updates the FMOD system.</span></li>
+ *     <li><span>{@link FModSystem#update} Updates the FMOD <a href="https://www.fmod.com/docs/2.03/api/glossary.html#system">system</a>.</span></li>
  *     <li><span>{@link FModSystem#mixerSuspend} Suspend mixer thread and relinquish usage of audio hardware while maintaining internal state.</span></li>
  *     <li><span>{@link FModSystem#mixerResume} Resume mixer thread and reacquire access to audio hardware.</span></li>
  * </ul>
@@ -45,8 +45,8 @@ import org.lwjgl.fmod.FMOD;
  *     <li><span>{@link FModSystem#getDSPBufferSize} Retrieves the buffer size settings for the FMOD software mixing engine.</span></li>
  *     <li><span>{@link FModSystem#setStreamBufferSize} Sets the default file buffer size for newly opened streams.</span></li>
  *     <li><span>{@link FModSystem#getStreamBufferSize} Retrieves the default file buffer size for newly opened streams.</span></li>
- *     <li><span>{@link FModSystem#setAdvancedSettings} Sets advanced settings for the system object, typically to allow adjusting of settings related to resource usage or audio quality.</span></li>
- *     <li><span>{@link FModSystem#getAdvancedSettings} Retrieves the advanced settings for the system object.</span></li>
+ *     <li><span>{@link FModSystem#setAdvancedSettings} Sets advanced settings for the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#system">system</a> object, typically to allow adjusting of settings related to resource usage or audio quality.</span></li>
+ *     <li><span>{@link FModSystem#getAdvancedSettings} Retrieves the advanced settings for the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#system">system</a> object.</span></li>
  *     <li><span>{@link FModSystem#setSpeakerPosition} Sets the position of the specified speaker for the current speaker mode.</span></li>
  *     <li><span>{@link FModSystem#getSpeakerPosition} Retrieves the position of the specified speaker for the current speaker mode.</span></li>
  *     <li><span>{@link FModSystem#set3DSettings} Sets the global doppler scale, distance factor and log roll-off scale for all 3D sound in FMOD.</span></li>
@@ -78,30 +78,30 @@ import org.lwjgl.fmod.FMOD;
  *     <li><span><a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_file_asyncread_callback">FMOD_FILE_ASYNCREAD_CALLBACK</a> Callback for reading from a file asynchronously.</span></li>
  *     <li><span><a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_file_asynccancel_callback">FMOD_FILE_ASYNCCANCEL_CALLBACK</a> Callback for cancelling a pending asynchronous read.</span></li>
  * </ul>
- * <strong>Plugin support:</strong>
+ * <strong>Plug-in support:</strong>
  * <p>
  * <ul>
- *     <li><span>{@link FModSystem#setPluginPath} Specify a base search path for plugins so they can be placed somewhere else than the directory of the main executable.</span></li>
- *     <li><span>{@link FModSystem#loadPlugin} Loads an FMOD (DSP, Output or Codec) plugin from file.</span></li>
- *     <li><span>{@link FModSystem#unloadPlugin} Unloads an FMOD (DSP, Output or Codec) plugin.</span></li>
- *     <li><span>{@link FModSystem#getNumNestedPlugins} Retrieves the number of nested plugins from the selected plugin.</span></li>
- *     <li><span>{@link FModSystem#getNestedPlugin} Retrieves the handle of a nested plugin.</span></li>
- *     <li><span>{@link FModSystem#getNumPlugins} Retrieves the number of loaded plugins.</span></li>
- *     <li><span>{@link FModSystem#getPluginHandle} Retrieves the handle of a plugin based on its type and relative index.</span></li>
- *     <li><span>{@link FModSystem#getPluginInfo} Retrieves information for the selected plugin.</span></li>
- *     <li><span>{@link FModSystem#setOutputByPlugin} Selects an output type given a plugin handle.</span></li>
- *     <li><span>{@link FModSystem#getOutputByPlugin} Retrieves the plugin handle for the currently selected output type.</span></li>
- *     <li><span>{@link FModSystem#createDSPByPlugin} Create a DSP object given a plugin handle.</span></li>
- *     <li><span>{@link FModSystem#getDSPInfoByPlugin} Retrieve the description structure for a pre-existing DSP plugin.</span></li>
- *     <li><span>{@link FModSystem#registerCodec} Register a Codec plugin description structure for later use.</span></li>
- *     <li><span>{@link FModSystem#registerDSP} Register a DSP plugin description structure for later use.</span></li>
- *     <li><span>{@link FModSystem#registerOutput} Register an Output plugin description structure for later use.</span></li>
+ *     <li><span>{@link FModSystem#setPluginPath} Specify a base search path for plug-ins so they can be placed somewhere else than the directory of the main executable.</span></li>
+ *     <li><span>{@link FModSystem#loadPlugin} Loads an FMOD plug-in (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a>, output or codec) from a file.</span></li>
+ *     <li><span>{@link FModSystem#unloadPlugin} Unloads an FMOD (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a>, Output or Codec) plug-in.</span></li>
+ *     <li><span>{@link FModSystem#getNumNestedPlugins} Retrieves the number of nested plug-ins from the selected plug-in.</span></li>
+ *     <li><span>{@link FModSystem#getNestedPlugin} Retrieves the handle of a nested plug-in.</span></li>
+ *     <li><span>{@link FModSystem#getNumPlugins} Retrieves the number of loaded plug-ins.</span></li>
+ *     <li><span>{@link FModSystem#getPluginHandle} Retrieves the handle of a plug-in based on its type and relative index.</span></li>
+ *     <li><span>{@link FModSystem#getPluginInfo} Retrieves information for the selected plug-in.</span></li>
+ *     <li><span>{@link FModSystem#setOutputByPlugin} Selects an output type given a plug-in handle.</span></li>
+ *     <li><span>{@link FModSystem#getOutputByPlugin} Retrieves the plug-in handle for the currently selected output type.</span></li>
+ *     <li><span>{@link FModSystem#createDSPByPlugin} Create a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> with a specified plug-in handle.</span></li>
+ *     <li><span>{@link FModSystem#getDSPInfoByPlugin} Retrieve the description structure for a pre-existing <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> plug-in.</span></li>
+ *     <li><span>{@link FModSystem#registerCodec} Register a Codec plug-in description structure for later use.</span></li>
+ *     <li><span>{@link FModSystem#registerDSP} Register a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> plug-in description structure for later use.</span></li>
+ *     <li><span>{@link FModSystem#registerOutput} Register an Output plug-in description structure for later use.</span></li>
  * </ul>
  * <hr><ul>
- *     <li><span><a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_pluginlist">FMOD_PLUGINLIST</a> Used to support lists of plugins within the one dynamic library.</span></li>
+ *     <li><span><a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_pluginlist">FMOD_PLUGINLIST</a> Used to support lists of plug-ins within the one dynamic library.</span></li>
  * </ul>
  * <hr><ul>
- *     <li><span><a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_plugintype">FMOD_PLUGINTYPE</a> Types of plugin used to extend functionality.</span></li>
+ *     <li><span><a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_plugintype">FMOD_PLUGINTYPE</a> Types of plug-in used to extend functionality.</span></li>
  * </ul>
  * <strong>Network configuration:</strong>
  * <p>
@@ -117,7 +117,7 @@ import org.lwjgl.fmod.FMOD;
  *     <li><span>{@link FModSystem#getVersion} Retrieves the FMOD version and build number.</span></li>
  *     <li><span>{@link FModSystem#getOutputHandle} Retrieves an output type specific internal native interface.</span></li>
  *     <li><span>{@link FModSystem#getChannelsPlaying} Retrieves the number of currently playing Channels.</span></li>
- *     <li><span>{@link FModSystem#getCPUUsage} Retrieves the amount of CPU used for different parts of the Core engine.</span></li>
+ *     <li><span>{@link FModSystem#getCPUUsage} Retrieves the amount of CPU used for different parts of the Core API.</span></li>
  *     <li><span>{@link FModSystem#getFileUsage} Retrieves information about file reads.</span></li>
  *     <li><span>{@link FModSystem#getDefaultMixMatrix} Retrieves the default matrix used to convert from one speaker mode to another.</span></li>
  *     <li><span>{@link FModSystem#getSpeakerModeChannels} Retrieves the channel count for a given speaker mode.</span></li>
@@ -127,15 +127,16 @@ import org.lwjgl.fmod.FMOD;
  * <ul>
  *     <li><span>{@link FModSystem#createSound} Loads a sound into memory, opens it for streaming or sets it up for callback based sounds.</span></li>
  *     <li><span>{@link FModSystem#createStream} Opens a sound for streaming.</span></li>
- *     <li><span>{@link FModSystem#createDSP} Create a DSP object given a plugin description structure.</span></li>
- *     <li><span>{@link FModSystem#createDSPByType} Create a DSP object given a built in type index.</span></li>
+ *     <li><span>{@link FModSystem#createDSP} Create a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> given a plug-in description structure.</span></li>
+ *     <li><span>{@link FModSystem#createDSPByType} Create a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> with a specified built-in type index.</span></li>
+ *     <li><span>{@link FModSystem#createDSPConnection} Create a DSPConnection object.</span></li>
  *     <li><span>{@link FModSystem#createChannelGroup} Create a ChannelGroup object.</span></li>
  *     <li><span>{@link FModSystem#createSoundGroup} Creates a SoundGroup object.</span></li>
  *     <li><span>{@link FModSystem#createReverb3D} Creates a 'virtual reverb' object. This object reacts to 3D location and morphs the reverb environment based on how close it is to the reverb object's center.</span></li>
  *     <li><span>{@link FModSystem#playSound} Plays a Sound on a Channel.</span></li>
- *     <li><span>{@link FModSystem#playDSP} Plays a DSP along with any of its inputs on a Channel.</span></li>
+ *     <li><span>{@link FModSystem#playDSP} Plays a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> along with any of its inputs on a <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>.</span></li>
  *     <li><span>{@link FModSystem#getChannel} Retrieves a handle to a Channel by ID.</span></li>
- *     <li><span>{@link FModSystem#getDSPInfoByType} Retrieve the description structure for a built in DSP plugin.</span></li>
+ *     <li><span>{@link FModSystem#getDSPInfoByType} Retrieve the description structure for a built-in <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> plug-in.</span></li>
  *     <li><span>{@link FModSystem#getMasterChannelGroup} Retrieves the master ChannelGroup that all sounds ultimately route to.</span></li>
  *     <li><span>{@link FModSystem#getMasterSoundGroup} Retrieves the default SoundGroup, where all sounds are placed when they are created.</span></li>
  * </ul>
@@ -186,8 +187,8 @@ import org.lwjgl.fmod.FMOD;
  * <strong>General:</strong>
  * <p>
  * <ul>
- *     <li><span>{@link FModSystem#lockDSP} Mutual exclusion function to lock the FMOD DSP engine (which runs asynchronously in another thread), so that it will not execute.</span></li>
- *     <li><span>{@link FModSystem#unlockDSP} Mutual exclusion function to unlock the FMOD DSP engine (which runs asynchronously in another thread) and let it continue executing.</span></li>
+ *     <li><span>{@link FModSystem#lockDSP} Mutual exclusion function to lock the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-engine">DSP engine</a> (which runs asynchronously in another thread), so that it will not execute.</span></li>
+ *     <li><span>{@link FModSystem#unlockDSP} Mutual exclusion function to unlock the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-engine">DSP engine</a> (which runs asynchronously in another thread) and let it continue executing.</span></li>
  *     <li><span>{@link FModSystem#setCallback} Sets the callback for System level notifications.</span></li>
  *     <li><span>{@link FModSystem#setUserData} Sets a user value associated with a System object.</span></li>
  *     <li><span>{@link FModSystem#getUserData} Retrieves a user value associated with a System object.</span></li>
@@ -204,12 +205,12 @@ import org.lwjgl.fmod.FMOD;
  * @author FMOD team, autogenerated by Alcadrial
  */
 public class FModSystem {
-	
+
 	private FModSystem()
 	{
-		
+
 	}
-	
+
 	/**
 	 * Connect the output of the specified ChannelGroup to an audio port on the output driver.
 	 * <p>
@@ -224,7 +225,7 @@ public class FModSystem {
 	 * </code></pre>
 	 * <p>
 	 * Ports are additional outputs supported by some 
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_outputtype">FMOD_OUTPUTTYPE</a> plugins and can include things like controller headsets or dedicated background music streams. See the Port Support section (where applicable) of each platform's getting started guide found in the <a href="https://www.fmod.com/docs/2.03/api/platforms.html">platform details</a> chapter.
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_outputtype">FMOD_OUTPUTTYPE</a> plug-ins and can include things like controller headsets or dedicated background music streams. See the Port Support section (where applicable) of each platform's getting started guide found in the <a href="https://www.fmod.com/docs/2.03/api/platforms.html">platform details</a> chapter.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModSystem#detachChannelGroupFromPort}
 	 * <p>
@@ -233,13 +234,13 @@ public class FModSystem {
 	 * @param portType <dd>Port type (output mode specific). (<a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_port_type">FMOD_PORT_TYPE</a>)
 	 * @param portIndex <dd>Index to specify which instance of the specified <code>portType</code> to use (output mode specific) (<a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_port_index">FMOD_PORT_INDEX</a>)
 	 * @param channelgroup <dd>Group to attach the port to. (<a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>)
-	 * @param passThru <dd><p>Whether signal should additionally route to the existing <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> output.</p><ul><li><span class="label">Units:</span> Boolean</li></ul>
+	 * @param passThru <dd><p>Whether the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> should additionally route to the existing <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> output.</p><ul><li><span class="label">Units:</span> Boolean</li></ul>
 	 */
 	public static int attachChannelGroupToPort(long system, int portType, long portIndex, long channelgroup, int passThru)
 	{
 		return FMOD.FMOD_System_AttachChannelGroupToPort(system, portType, portIndex, channelgroup, passThru);
 	}
-	
+
 	/**
 	 * 'Piggyback' on FMOD file reading routines to capture data as it's read.
 	 * <p>
@@ -273,7 +274,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_AttachFileSystem(system, useropen, userclose, userread, userseek);
 	}
-	
+
 	/**
 	 * Close the connection to the output and return to an uninitialized state without releasing the object.
 	 * <p>
@@ -297,9 +298,10 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_Close(system);
 	}
-	
+
 	/**
-	 * Creates an instance of the FMOD system.
+	 * Creates an instance of the FMOD 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#system">system</a>.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_Create(
@@ -334,7 +336,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_Create(system, headerversion);
 	}
-	
+
 	/**
 	 * Create a ChannelGroup object.
 	 * <p>
@@ -349,7 +351,7 @@ public class FModSystem {
 	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>s can be used to assign / group <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s, for things such as volume scaling. <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>s are also used for sub-mixing. Any <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s that are assigned to a <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> get submixed into that <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>'s 'tail' <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>.  See <a href="https://www.fmod.com/docs/2.03/api/core-api-channelcontrol.html#fmod_channelcontrol_dsp_tail">FMOD_CHANNELCONTROL_DSP_TAIL</a>.
 	 * <p>
 	 * If a 
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> has an effect added to it, the effect is processed post-mix from the <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s and <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>s below it in the mix hierarchy. See the <a href="https://www.fmod.com/docs/2.03/api/white-papers-dsp-architecture.html">DSP architecture guide</a> for more information. 
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> has an <a href="https://www.fmod.com/docs/2.03/api/glossary.html#effect">effect</a> added to it, the effect is processed post-mix from the <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s and <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>s below it in the mix hierarchy. For more information, see the <a href="https://www.fmod.com/docs/2.03/api/using-dsp-effects-in-the-core-api.html#dsp-architecture-and-usage">DSP Architecture and Usage</a> section of the <a href="https://www.fmod.com/docs/2.03/api/using-dsp-effects-in-the-core-api.html">Using DSP Effects in the Core API</a> chapter. 
 	 * <p>
 	 * All 
 	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>s will initially output directly to the master <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> (See {@link FModSystem#getMasterChannelGroup}). <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>s can be re-parented this with {@link FModChannelGroup#addGroup}.
@@ -365,7 +367,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_CreateChannelGroup(system, name, channelgroup);
 	}
-	
+
 	/**
 	 * Create a ChannelGroup object.
 	 * <p>
@@ -380,7 +382,7 @@ public class FModSystem {
 	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>s can be used to assign / group <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s, for things such as volume scaling. <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>s are also used for sub-mixing. Any <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s that are assigned to a <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> get submixed into that <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>'s 'tail' <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>.  See <a href="https://www.fmod.com/docs/2.03/api/core-api-channelcontrol.html#fmod_channelcontrol_dsp_tail">FMOD_CHANNELCONTROL_DSP_TAIL</a>.
 	 * <p>
 	 * If a 
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> has an effect added to it, the effect is processed post-mix from the <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s and <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>s below it in the mix hierarchy. See the <a href="https://www.fmod.com/docs/2.03/api/white-papers-dsp-architecture.html">DSP architecture guide</a> for more information. 
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> has an <a href="https://www.fmod.com/docs/2.03/api/glossary.html#effect">effect</a> added to it, the effect is processed post-mix from the <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s and <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>s below it in the mix hierarchy. For more information, see the <a href="https://www.fmod.com/docs/2.03/api/using-dsp-effects-in-the-core-api.html#dsp-architecture-and-usage">DSP Architecture and Usage</a> section of the <a href="https://www.fmod.com/docs/2.03/api/using-dsp-effects-in-the-core-api.html">Using DSP Effects in the Core API</a> chapter. 
 	 * <p>
 	 * All 
 	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>s will initially output directly to the master <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a> (See {@link FModSystem#getMasterChannelGroup}). <a href="https://www.fmod.com/docs/2.03/api/core-api-channelgroup.html">ChannelGroup</a>s can be re-parented this with {@link FModChannelGroup#addGroup}.
@@ -396,9 +398,10 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_CreateChannelGroup(system, name, channelgroup);
 	}
-	
+
 	/**
-	 * Create a DSP object given a plugin description structure.
+	 * Create a 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> given a plug-in description structure.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_CreateDSP(
@@ -408,8 +411,8 @@ public class FModSystem {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * A DSP object is a module that can be inserted into the mixing graph to allow sound filtering or sound generation. See the 
-	 * <a href="https://www.fmod.com/docs/2.03/api/white-papers-dsp-architecture.html">DSP architecture guide</a> for more information.
+	 * A DSP unit is a module that can be inserted into the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-graph">DSP graph</a> to allow sound filtering or sound generation. For more information, see the <a href="https://www.fmod.com/docs/2.03/api/using-dsp-effects-in-the-core-api.html#dsp-architecture-and-usage">DSP Architecture and Usage</a> section of the <a href="https://www.fmod.com/docs/2.03/api/using-dsp-effects-in-the-core-api.html">Using DSP Effects in the Core API</a> chapter.
 	 * <p>
 	 * DSPs must be attached to the DSP graph before they become active, either via 
 	 * {@link FModChannel#addDSP} or {@link FModDSP#addInput}.
@@ -425,9 +428,10 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_CreateDSP(system, description, dsp);
 	}
-	
+
 	/**
-	 * Create a DSP object given a plugin handle.
+	 * Create a 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> with a specified plug-in handle.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_CreateDSPByPlugin(
@@ -437,11 +441,11 @@ public class FModSystem {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * A DSP object is a module that can be inserted into the mixing graph to allow sound filtering or sound generation. See the 
-	 * <a href="https://www.fmod.com/docs/2.03/api/white-papers-dsp-architecture.html">DSP architecture guide</a> for more information.
+	 * A DSP object is a module that can be inserted into the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-graph">DSP graph</a> to allow sound filtering or sound generation. For more information, see the <a href="https://www.fmod.com/docs/2.03/api/using-dsp-effects-in-the-core-api.html#dsp-architecture-and-usage">DSP Architecture and Usage</a> section of the <a href="https://www.fmod.com/docs/2.03/api/using-dsp-effects-in-the-core-api.html">Using DSP Effects in the Core API</a> chapter.
 	 * <p>
-	 * A handle can come from a newly loaded plugin with 
-	 * {@link FModSystem#loadPlugin} or an existing plugin with {@link FModSystem#getPluginHandle}.
+	 * A handle can come from a newly loaded plug-in with 
+	 * {@link FModSystem#loadPlugin} or an existing plug-in with {@link FModSystem#getPluginHandle}.
 	 * <p>
 	 * DSPs must be attached to the DSP graph before they become active, either via 
 	 * {@link FModChannel#addDSP} or {@link FModDSP#addInput}.
@@ -450,16 +454,17 @@ public class FModSystem {
 	 * <p>
 	 * 
 	 * @param system
-	 * @param handle <dd>Handle to an already loaded DSP plugin.
+	 * @param handle <dd>Handle to an already loaded DSP plug-in.
 	 * @param dsp <span>(<i>Out</i>) <dd>Newly created unit. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>)
 	 */
 	public static int createDSPByPlugin(long system, int handle, org.lwjgl.PointerBuffer dsp)
 	{
 		return FMOD.FMOD_System_CreateDSPByPlugin(system, handle, dsp);
 	}
-	
+
 	/**
-	 * Create a DSP object given a built in type index.
+	 * Create a 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> with a specified built-in type index.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_CreateDSPByType(
@@ -469,8 +474,8 @@ public class FModSystem {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * A DSP object is a module that can be inserted into the mixing graph to allow sound filtering or sound generation. See the 
-	 * <a href="https://www.fmod.com/docs/2.03/api/white-papers-dsp-architecture.html">DSP architecture guide</a> for more information.
+	 * A DSP unit (or "DSP") is a module that can be inserted into the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-graph">DSP graph</a> to allow sound filtering or sound generation. For more information, see the <a href="https://www.fmod.com/docs/2.03/api/using-dsp-effects-in-the-core-api.html#dsp-architecture-and-usage">DSP Architecture and Usage</a> section of the <a href="https://www.fmod.com/docs/2.03/api/using-dsp-effects-in-the-core-api.html">Using DSP Effects in the Core API</a> chapter.
 	 * <p>
 	 * DSPs must be attached to the DSP graph before they become active, either via 
 	 * {@link FModChannel#addDSP} or {@link FModDSP#addInput}.
@@ -486,7 +491,31 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_CreateDSPByType(system, type, dsp);
 	}
-	
+
+	/**
+	 * Create a DSPConnection object.
+	 * <p>
+	 * <pre><code>
+	 * FMOD_RESULT FMOD_System_CreateDSPConnection(
+	 *   FMOD_SYSTEM *system,
+	 *   FMOD_DSPCONNECTION_TYPE type,
+	 *   FMOD_DSP **connection
+	 * );
+	 * </code></pre>
+	 * <p>
+	 * Creating a DSP connection with this function allows you to configure its initial state before using it to connect two DSPs via 
+	 * {@link FModDSP#addInput}.
+	 * <p>
+	 * 
+	 * @param system
+	 * @param type <dd>Type of connection. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dspconnection.html#fmod_dspconnection_type">FMOD_DSPCONNECTION_TYPE</a>)
+	 * @param connection <span>(<i>Out</i>) <dd>Newly created connection. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dspconnection.html">DSPConnection</a>)
+	 */
+	public static int createDSPConnection(long system, int type, org.lwjgl.PointerBuffer connection)
+	{
+		return FMOD.FMOD_System_CreateDSPConnection(system, type, connection);
+	}
+
 	/**
 	 * Geometry creation function. This function will create a base geometry object which can then have polygons added to it.
 	 * <p>
@@ -520,7 +549,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_CreateGeometry(system, maxpolygons, maxvertices, geometry);
 	}
-	
+
 	/**
 	 * Creates a 'virtual reverb' object. This object reacts to 3D location and morphs the reverb environment based on how close it is to the reverb object's center.
 	 * <p>
@@ -535,8 +564,8 @@ public class FModSystem {
 	 * <p>
 	 * The 3D reverb object is a sphere having 3D attributes (position, minimum distance, maximum distance) and reverb properties.
 	 * <p>
-	 * The properties and 3D attributes of all reverb objects collectively determine, along with the listener's position, the settings of and input gains into a single 3D reverb 
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>.
+	 * The properties and 3D attributes of all reverb objects collectively determine, along with the listener's position, the settings of and input gains into a single 
+	 * <a href="https://www.fmod.com/docs/2.03/api/effects-reference.html#sfx-reverb">3D reverb DSP</a>.
 	 * <p>
 	 * When the listener is within the sphere of effect of one or more 3D reverbs, the listener's 3D reverb properties are a weighted combination of such 3D reverbs.
 	 * <p>
@@ -550,16 +579,16 @@ public class FModSystem {
 	 * Use 
 	 * {@link FModChannel#setReverbProperties} to turn off reverb for 2D sounds (ie set wet = 0).
 	 * <p>
-	 * Creating multiple reverb objects does not impact performance. These are 'virtual reverbs'. There will still be only one reverb 
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> running that just morphs between the different virtual reverbs.
+	 * Creating multiple reverb objects does not impact performance. This is because these reverb objects are 'virtual reverbs': There is only one reverb 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> running at a time, and its parameter values are morphed to those of each virtual reverb as needed.
 	 * <p>
-	 * Note about reverb 
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> unit allocation. To remove the <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> unit and the associated CPU cost, first make sure all 3D reverb objects are released. Then call {@link FModSystem#setReverbProperties} with the 3D reverb's slot ID (default is 0) with a property point of 0 or NULL, to signal that the reverb instance should be deleted.
+	 * To remove the reverb DSP unit and the associated CPU cost, first make sure all 3D reverb objects are released. Then, call 
+	 * {@link FModSystem#setReverbProperties} with the 3D reverb's slot ID (0 by default) with a property point of 0 or NULL, to signal that the reverb instance should be deleted.
 	 * <p>
 	 * If a 3D reverb is still present, and 
-	 * {@link FModSystem#setReverbProperties} function is called to free the reverb, the 3D reverb system will immediately recreate it upon the next {@link FModSystem#update} call.
+	 * {@link FModSystem#setReverbProperties} function is called to free the reverb, the 3D reverb system recreates it upon the next {@link FModSystem#update} call.
 	 * <p>
-	 * Note that the 3D reverb system will not affect Studio events unless it is explicitly enabled by calling 
+	 * The 3D reverb system does not affect Studio events unless it is explicitly enabled by calling 
 	 * <a href="https://www.fmod.com/docs/2.03/api/studio-api-eventinstance.html#studio_eventinstance_setreverblevel">Studio::EventInstance::setReverbLevel</a> on each event instance.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModReverb3D#release}
@@ -572,7 +601,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_CreateReverb3D(system, reverb);
 	}
-	
+
 	/**
 	 * Loads a sound into memory, opens it for streaming or sets it up for callback based sounds.
 	 * <p>
@@ -622,38 +651,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_CreateSound(system, name_or_data, mode, exinfo, sound);
 	}
-	
-	/**
-	 * Creates a SoundGroup object.
-	 * <p>
-	 * <pre><code>
-	 * FMOD_RESULT FMOD_System_CreateSoundGroup(
-	 *   FMOD_SYSTEM *system,
-	 *   const char *name,
-	 *   FMOD_SOUNDGROUP **soundgroup
-	 * );
-	 * </code></pre>
-	 * <p>
-	 * A 
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-soundgroup.html">SoundGroup</a> is a way to address multiple <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a>s at once with group level commands, such as:
-	 * <p>
-	 * <ul><li>Attributes of <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a>s that are playing or about to be played, such as volume. See ({@link FModSoundGroup#setVolume}).</li><li>Control of playback, such as stopping <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a>s. See ({@link FModSoundGroup#stop}).</li><li>Playback behavior such as 'max audible', to limit playback of certain types of <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a>s. See ({@link FModSoundGroup#setMaxAudible}).</li></ul>
-	 * <p>
-	 * Once a 
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-soundgroup.html">SoundGroup</a> is created, {@link FModSound#setSoundGroup} is used to put a <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a> in a <a href="https://www.fmod.com/docs/2.03/api/core-api-soundgroup.html">SoundGroup</a>.
-	 * <p>
-	 * <strong>See Also:</strong> {@link FModSoundGroup#release}, {@link FModSound#setSoundGroup}
-	 * <p>
-	 * 
-	 * @param system
-	 * @param name <dd>Name of <a href="https://www.fmod.com/docs/2.03/api/core-api-soundgroup.html">SoundGroup</a>. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
-	 * @param soundGroup <span>(<i>Out</i>) <dd>Newly created group. (<a href="https://www.fmod.com/docs/2.03/api/core-api-soundgroup.html">SoundGroup</a>)
-	 */
-	public static int createSoundGroup(long system, java.nio.ByteBuffer name, org.lwjgl.PointerBuffer soundGroup)
-	{
-		return FMOD.FMOD_System_CreateSoundGroup(system, name, soundGroup);
-	}
-	
+
 	/**
 	 * Creates a SoundGroup object.
 	 * <p>
@@ -684,7 +682,38 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_CreateSoundGroup(system, name, soundGroup);
 	}
-	
+
+	/**
+	 * Creates a SoundGroup object.
+	 * <p>
+	 * <pre><code>
+	 * FMOD_RESULT FMOD_System_CreateSoundGroup(
+	 *   FMOD_SYSTEM *system,
+	 *   const char *name,
+	 *   FMOD_SOUNDGROUP **soundgroup
+	 * );
+	 * </code></pre>
+	 * <p>
+	 * A 
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-soundgroup.html">SoundGroup</a> is a way to address multiple <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a>s at once with group level commands, such as:
+	 * <p>
+	 * <ul><li>Attributes of <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a>s that are playing or about to be played, such as volume. See ({@link FModSoundGroup#setVolume}).</li><li>Control of playback, such as stopping <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a>s. See ({@link FModSoundGroup#stop}).</li><li>Playback behavior such as 'max audible', to limit playback of certain types of <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a>s. See ({@link FModSoundGroup#setMaxAudible}).</li></ul>
+	 * <p>
+	 * Once a 
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-soundgroup.html">SoundGroup</a> is created, {@link FModSound#setSoundGroup} is used to put a <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a> in a <a href="https://www.fmod.com/docs/2.03/api/core-api-soundgroup.html">SoundGroup</a>.
+	 * <p>
+	 * <strong>See Also:</strong> {@link FModSoundGroup#release}, {@link FModSound#setSoundGroup}
+	 * <p>
+	 * 
+	 * @param system
+	 * @param name <dd>Name of <a href="https://www.fmod.com/docs/2.03/api/core-api-soundgroup.html">SoundGroup</a>. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
+	 * @param soundGroup <span>(<i>Out</i>) <dd>Newly created group. (<a href="https://www.fmod.com/docs/2.03/api/core-api-soundgroup.html">SoundGroup</a>)
+	 */
+	public static int createSoundGroup(long system, java.nio.ByteBuffer name, org.lwjgl.PointerBuffer soundGroup)
+	{
+		return FMOD.FMOD_System_CreateSoundGroup(system, name, soundGroup);
+	}
+
 	/**
 	 * Opens a sound for streaming.
 	 * <p>
@@ -714,7 +743,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_CreateStream(system, name_or_data, mode, exinfo, sound);
 	}
-	
+
 	/**
 	 * Disconnect the output of the specified ChannelGroup from an audio port on the output driver.
 	 * <p>
@@ -738,7 +767,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_DetachChannelGroupFromPort(system, channelgroup);
 	}
-	
+
 	/**
 	 * Retrieves the position, velocity and orientation of the specified 3D sound listener.
 	 * <p>
@@ -770,7 +799,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_Get3DListenerAttributes(system, listener, pos, vel, forward, up);
 	}
-	
+
 	/**
 	 * Retrieves the number of 3D listeners.
 	 * <p>
@@ -794,7 +823,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_Get3DNumListeners(system, numlisteners);
 	}
-	
+
 	/**
 	 * Retrieves the global doppler scale, distance factor and roll-off scale for all 3D sounds.
 	 * <p>
@@ -819,9 +848,10 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_Get3DSettings(system, dopplerscale, distancefactor, rolloffscale);
 	}
-	
+
 	/**
-	 * Retrieves the advanced settings for the system object.
+	 * Retrieves the advanced settings for the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#system">system</a> object.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_GetAdvancedSettings(
@@ -840,9 +870,9 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetAdvancedSettings(system, settings);
 	}
-	
+
 	/**
-	 * Retrieves the amount of CPU used for different parts of the Core engine.
+	 * Retrieves the amount of CPU used for different parts of the Core API.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_GetCPUUsage(
@@ -863,7 +893,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetCPUUsage(system, usage);
 	}
-	
+
 	/**
 	 * Retrieves a handle to a Channel by ID.
 	 * <p>
@@ -889,7 +919,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetChannel(system, channelid, channel);
 	}
-	
+
 	/**
 	 * Retrieves the number of currently playing Channels.
 	 * <p>
@@ -902,7 +932,7 @@ public class FModSystem {
 	 * </code></pre>
 	 * <p>
 	 * For differences between real and virtual voices see the 
-	 * <a href="https://www.fmod.com/docs/2.03/api/white-papers-virtual-voices.html">Virtual Voices</a> guide for more information.
+	 * <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html#virtual-voice-system">Virtual Voice System</a> section of the <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html">Managing Resources in the Core API</a> chapter for more information.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModChannel#isPlaying}, {@link FModChannel#isVirtual}
 	 * <p>
@@ -915,7 +945,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetChannelsPlaying(system, channels, realchannels);
 	}
-	
+
 	/**
 	 * Retrieves the buffer size settings for the FMOD software mixing engine.
 	 * <p>
@@ -931,7 +961,7 @@ public class FModSystem {
 	 * <code>bufferlength</code> in milliseconds, divide it by the output rate and multiply the result by 1000. For a <code>bufferlength</code> of 1024 and an output rate of 48khz (see {@link FModSystem#setSoftwareFormat}), milliseconds = 1024 / 48000 * 1000 = 21.33ms. This means the mixer updates every 21.33ms.
 	 * <p>
 	 * To get the total buffer size multiply the 
-	 * <code>bufferlength</code> by the <code>numbuffers</code> value. By default this would be 4<em>1024 = 4096 samples, or 4</em>21.33ms = 85.33ms. This would generally be the total latency of the software mixer, but in reality due to one of the buffers being written to constantly, and the cursor position of the buffer that is audible, the latency is typically more like the (number of buffers - 1.5) multiplied by the buffer length.
+	 * <code>bufferlength</code> by the <code>numbuffers</code> value. By default this would be 4 * 1024 = 4096 samples, or 4 * 21.33ms = 85.33ms. This would generally be the total latency of the software mixer, but in reality due to one of the buffers being written to constantly, and the cursor position of the buffer that is audible, the latency is typically more like the (number of buffers - 1.5) multiplied by the buffer length.
 	 * <p>
 	 * To convert from milliseconds back to 'samples', simply multiply the value in milliseconds by the sample rate of the output (ie 48000 if that is what it is set to), then divide by 1000.
 	 * <p>
@@ -946,9 +976,10 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetDSPBufferSize(system, bufferlength, numbuffers);
 	}
-	
+
 	/**
-	 * Retrieve the description structure for a pre-existing DSP plugin.
+	 * Retrieve the description structure for a pre-existing 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> plug-in.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_GetDSPInfoByPlugin(
@@ -962,16 +993,17 @@ public class FModSystem {
 	 * <p>
 	 * 
 	 * @param system
-	 * @param handle <dd>Handle to a pre-existing DSP plugin, loaded by {@link FModSystem#loadPlugin}.
+	 * @param handle <dd>Handle to a pre-existing DSP plug-in, loaded by {@link FModSystem#loadPlugin}.
 	 * @param description <span>(<i>Out</i>) <dd>Description structure for the DSP. (<a href="https://www.fmod.com/docs/2.03/api/plugin-api-dsp.html#fmod_dsp_description">FMOD_DSP_DESCRIPTION</a>)
 	 */
 	public static int getDSPInfoByPlugin(long system, int handle, org.lwjgl.PointerBuffer description)
 	{
 		return FMOD.FMOD_System_GetDSPInfoByPlugin(system, handle, description);
 	}
-	
+
 	/**
-	 * Retrieve the description structure for a built in DSP plugin.
+	 * Retrieve the description structure for a built-in 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> plug-in.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_GetDSPInfoByType(
@@ -994,7 +1026,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetDSPInfoByType(system, type, description);
 	}
-	
+
 	/**
 	 * Retrieves the default matrix used to convert from one speaker mode to another.
 	 * <p>
@@ -1026,7 +1058,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetDefaultMixMatrix(system, sourcespeakermode, targetspeakermode, matrix, matrixhop);
 	}
-	
+
 	/**
 	 * Retrieves the output driver for the selected output type.
 	 * <p>
@@ -1047,7 +1079,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetDriver(system, driver);
 	}
-	
+
 	/**
 	 * Retrieves identification information about a sound device specified by its index, and specific to the selected output mode.
 	 * <p>
@@ -1070,7 +1102,7 @@ public class FModSystem {
 	 * @param system
 	 * @param id <dd><p>Index of the sound driver device.</p><ul><li><span class="label">Range:</span> [0, {@link FModSystem#getNumDrivers})</li></ul>
 	 * @param name <span>(<i>Opt, Out</i>) <dd>Name of the device. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
-	 * @param guid <span>(<i>Opt, Out</i>) <dd>GUID that uniquely identifies the device. (<a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_guid">FMOD_GUID</a>)
+	 * @param guid <span>(<i>Opt, Out</i>) <dd>A <a href="https://www.fmod.com/docs/2.03/api/glossary.html#guid">GUID</a> that uniquely identifies the device. (<a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_guid">FMOD_GUID</a>)
 	 * @param systemrate <span>(<i>Opt, Out</i>) <dd>Sample rate this device operates at.
 	 * @param speakermode <span>(<i>Opt, Out</i>) <dd>Speaker setup this device is currently using. (<a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_speakermode">FMOD_SPEAKERMODE</a>)
 	 * @param speakermodechannels <span>(<i>Opt, Out</i>) <dd>Number of channels in the current speaker setup.
@@ -1079,7 +1111,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetDriverInfo(system, id, name, guid, systemrate, speakermode, speakermodechannels);
 	}
-	
+
 	/**
 	 * Retrieves information about file reads.
 	 * <p>
@@ -1098,13 +1130,13 @@ public class FModSystem {
 	 * @param system
 	 * @param sampleBytesRead <span>(<i>Opt, Out</i>) <dd><p>Total bytes read from file for loading sample data.</p><ul><li><span class="label">Units:</span> Bytes</li></ul>
 	 * @param streamBytesRead <span>(<i>Opt, Out</i>) <dd><p>Total bytes read from file for streaming sounds.</p><ul><li><span class="label">Units:</span> Bytes</li></ul>
-	 * @param otherBytesRead <span>(<i>Opt, Out</i>) <dd><p>Total bytes read for non-audio data such as FMOD Studio banks.</p><ul><li><span class="label">Units:</span> Bytes</li></ul>
+	 * @param otherBytesRead <span>(<i>Opt, Out</i>) <dd><p>Total bytes read for non-audio data such as <a href="https://www.fmod.com/docs/2.03/api/glossary.html#bank-file">bank files</a> created in <a href="https://www.fmod.com/docs/2.03/api/glossary.html#fmod-studio">FMOD Studio</a>.</p><ul><li><span class="label">Units:</span> Bytes</li></ul>
 	 */
 	public static int getFileUsage(long system, java.nio.LongBuffer sampleBytesRead, java.nio.LongBuffer streamBytesRead, java.nio.LongBuffer otherBytesRead)
 	{
 		return FMOD.FMOD_System_GetFileUsage(system, sampleBytesRead, streamBytesRead, otherBytesRead);
 	}
-	
+
 	/**
 	 * Calculates geometry occlusion between a listener and a sound source.
 	 * <p>
@@ -1134,7 +1166,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetGeometryOcclusion(system, listener, source, direct, reverb);
 	}
-	
+
 	/**
 	 * Retrieves the maximum world size for the geometry engine.
 	 * <p>
@@ -1158,7 +1190,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetGeometrySettings(system, maxworldsize);
 	}
-	
+
 	/**
 	 * Retrieves the master ChannelGroup that all sounds ultimately route to.
 	 * <p>
@@ -1182,7 +1214,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetMasterChannelGroup(system, channelgroup);
 	}
-	
+
 	/**
 	 * Retrieves the default SoundGroup, where all sounds are placed when they are created.
 	 * <p>
@@ -1206,9 +1238,9 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetMasterSoundGroup(system, soundGroup);
 	}
-	
+
 	/**
-	 * Retrieves the handle of a nested plugin.
+	 * Retrieves the handle of a nested plug-in.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_GetNestedPlugin(
@@ -1219,24 +1251,24 @@ public class FModSystem {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * This function is used to iterate handles for plugins that have a list of definitions.
+	 * This function is used to iterate handles for plug-ins that have a list of definitions.
 	 * <p>
-	 * Most plugins contain a single definition. If this is the case, only index 0 is valid, and the returned handle is the same as the handle passed in.
+	 * Most plug-ins contain a single definition. If this is the case, only index 0 is valid, and the returned handle is the same as the handle passed in.
 	 * <p>
 	 * See the 
-	 * <a href="https://www.fmod.com/docs/2.03/api/white-papers-dsp-plugin-api.html#multiple-plugins-within-one-file">DSP Plug-in API guide</a> for more information.
+	 * <a href="https://www.fmod.com/docs/2.03/api/dsp-plugin-api-guide.html#multiple-plug-ins-within-one-file">DSP Plug-in API guide</a> for more information.
 	 * <p>
 	 * 
 	 * @param system
 	 * @param handle <dd>Handle obtained from {@link FModSystem#loadPlugin}.
-	 * @param index <dd><p>Index into the list of plugin definitions.</p><ul><li><span class="label">Range:</span> [0, {@link FModSystem#getNumNestedPlugins})</li></ul>
-	 * @param nestedhandle <span>(<i>Out</i>) <dd>Handle used to represent the nested plugin.
+	 * @param index <dd><p>Index into the list of plug-in definitions.</p><ul><li><span class="label">Range:</span> [0, {@link FModSystem#getNumNestedPlugins})</li></ul>
+	 * @param nestedhandle <span>(<i>Out</i>) <dd>Handle used to represent the nested plug-in.
 	 */
 	public static int getNestedPlugin(long system, int handle, int index, java.nio.IntBuffer nestedhandle)
 	{
 		return FMOD.FMOD_System_GetNestedPlugin(system, handle, index, nestedhandle);
 	}
-	
+
 	/**
 	 * Retrieves the URL of the proxy server used in internet streaming.
 	 * <p>
@@ -1258,7 +1290,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetNetworkProxy(system, proxy);
 	}
-	
+
 	/**
 	 * Retrieve the timeout value for network streams.
 	 * <p>
@@ -1269,7 +1301,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetNetworkTimeout(system, timeout);
 	}
-	
+
 	/**
 	 * Retrieves the number of output drivers available for the selected output type.
 	 * <p>
@@ -1293,9 +1325,9 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetNumDrivers(system, numdrivers);
 	}
-	
+
 	/**
-	 * Retrieves the number of nested plugins from the selected plugin.
+	 * Retrieves the number of nested plug-ins from the selected plug-in.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_GetNumNestedPlugins(
@@ -1305,25 +1337,25 @@ public class FModSystem {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * Most plugins contain a single definition, in which case the count is 1, however some have a list of definitions. This function returns the number of plugins that have been defined.
+	 * Most plug-ins contain a single definition, in which case the count is 1, however some have a list of definitions. This function returns the number of plug-ins that have been defined.
 	 * <p>
 	 * See the 
-	 * <a href="https://www.fmod.com/docs/2.03/api/white-papers-dsp-plugin-api.html#multiple-plugins-within-one-file">DSP Plug-in API guide</a> for more information.
+	 * <a href="https://www.fmod.com/docs/2.03/api/dsp-plugin-api-guide.html#multiple-plug-ins-within-one-file">DSP Plug-in API guide</a> for more information.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModSystem#getNestedPlugin}
 	 * <p>
 	 * 
 	 * @param system
 	 * @param handle <dd>Handle obtained from {@link FModSystem#loadPlugin}.
-	 * @param count <dd>Returned number of plugins.
+	 * @param count <dd>Returned number of plug-ins.
 	 */
 	public static int getNumNestedPlugins(long system, int handle, java.nio.IntBuffer count)
 	{
 		return FMOD.FMOD_System_GetNumNestedPlugins(system, handle, count);
 	}
-	
+
 	/**
-	 * Retrieves the number of loaded plugins.
+	 * Retrieves the number of loaded plug-ins.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_GetNumPlugins(
@@ -1338,13 +1370,13 @@ public class FModSystem {
 	 * 
 	 * @param system
 	 * @param plugintype <dd>Plugin type. (<a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_plugintype">FMOD_PLUGINTYPE</a>)
-	 * @param numplugins <span>(<i>Out</i>) <dd>Number of loaded plugins for the selected <code>plugintype</code>.
+	 * @param numplugins <span>(<i>Out</i>) <dd>Number of loaded plug-ins for the selected <code>plugintype</code>.
 	 */
 	public static int getNumPlugins(long system, int plugintype, java.nio.IntBuffer numplugins)
 	{
 		return FMOD.FMOD_System_GetNumPlugins(system, plugintype, numplugins);
 	}
-	
+
 	/**
 	 * Retrieves the type of output interface used to run the mixer.
 	 * <p>
@@ -1365,9 +1397,9 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetOutput(system, output);
 	}
-	
+
 	/**
-	 * Retrieves the plugin handle for the currently selected output type.
+	 * Retrieves the plug-in handle for the currently selected output type.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_GetOutputByPlugin(
@@ -1380,13 +1412,13 @@ public class FModSystem {
 	 * <p>
 	 * 
 	 * @param system
-	 * @param handle <span>(<i>Out</i>) <dd>Handle to a pre-existing output plugin.
+	 * @param handle <span>(<i>Out</i>) <dd>Handle to a pre-existing output plug-in.
 	 */
 	public static int getOutputByPlugin(long system, java.nio.IntBuffer handle)
 	{
 		return FMOD.FMOD_System_GetOutputByPlugin(system, handle);
 	}
-	
+
 	/**
 	 * Retrieves an output type specific internal native interface.
 	 * <p>
@@ -1411,9 +1443,9 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetOutputHandle(system, handle);
 	}
-	
+
 	/**
-	 * Retrieves the handle of a plugin based on its type and relative index.
+	 * Retrieves the handle of a plug-in based on its type and relative index.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_GetPluginHandle(
@@ -1424,24 +1456,24 @@ public class FModSystem {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * All plugins whether built in or loaded can be enumerated using this and 
+	 * All plug-ins, whether built-in or loaded, can be enumerated using this and 
 	 * {@link FModSystem#getNumPlugins}.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModSystem#loadPlugin}
 	 * <p>
 	 * 
 	 * @param system
-	 * @param plugintype <dd>Plugin type. (<a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_plugintype">FMOD_PLUGINTYPE</a>)
-	 * @param index <dd>Index in the list of plugins for the given <code>plugintype</code>.
+	 * @param plugintype <dd>Plug-in type. (<a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_plugintype">FMOD_PLUGINTYPE</a>)
+	 * @param index <dd>Index in the list of plug-ins for the given <code>plugintype</code>.
 	 * @param handle <span>(<i>Out</i>) <dd>Handle used to represent the plugin.
 	 */
 	public static int getPluginHandle(long system, int plugintype, int index, java.nio.IntBuffer handle)
 	{
 		return FMOD.FMOD_System_GetPluginHandle(system, plugintype, index, handle);
 	}
-	
+
 	/**
-	 * Retrieves information for the selected plugin.
+	 * Retrieves information for the selected plug-in.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_GetPluginInfo(
@@ -1458,16 +1490,16 @@ public class FModSystem {
 	 * <p>
 	 * 
 	 * @param system
-	 * @param handle <dd>Handle to an already loaded plugin.
-	 * @param plugintype <span>(<i>Opt, Out</i>) <dd>Plugin type. (<a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_plugintype">FMOD_PLUGINTYPE</a>)
-	 * @param name <span>(<i>Opt, Out</i>) <dd>Name of the plugin. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
-	 * @param version <span>(<i>Opt, Out</i>) <dd>Version number of the plugin.
+	 * @param handle <dd>Handle to an already loaded plug-in.
+	 * @param plugintype <span>(<i>Opt, Out</i>) <dd>Plug-in type. (<a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_plugintype">FMOD_PLUGINTYPE</a>)
+	 * @param name <span>(<i>Opt, Out</i>) <dd>Name of the plug-in. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
+	 * @param version <span>(<i>Opt, Out</i>) <dd>Version number of the plug-in.
 	 */
 	public static int getPluginInfo(long system, int handle, java.nio.IntBuffer plugintype, java.nio.ByteBuffer name, java.nio.IntBuffer version)
 	{
 		return FMOD.FMOD_System_GetPluginInfo(system, handle, plugintype, name, version);
 	}
-	
+
 	/**
 	 * Retrieves identification information about an audio device specified by its index, and specific to the output mode.
 	 * <p>
@@ -1490,18 +1522,18 @@ public class FModSystem {
 	 * 
 	 * @param system
 	 * @param id <dd><p>Index of the recording device.</p><ul><li><span class="label">Range:</span> [0, {@link FModSystem#getRecordNumDrivers}]</li></ul>
-	 * @param name <span>(<i>Opt, Out</i>) <dd>Name of the device. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
-	 * @param guid <span>(<i>Opt, Out</i>) <dd>GUID that uniquely identifies the device. (<a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_guid">FMOD_GUID</a>)
-	 * @param systemrate <span>(<i>Opt, Out</i>) <dd>Sample rate the device operates at.
-	 * @param speakermode <span>(<i>Opt, Out</i>) <dd>Speaker configuration the device is currently using. (<a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_speakermode">FMOD_SPEAKERMODE</a>)
-	 * @param speakermodechannels <span>(<i>Opt, Out</i>) <dd>Number of channels in the current speaker setup.
-	 * @param state <span>(<i>Opt, Out</i>) <dd>flags that provide additional information about the driver. (<a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_driver_state">FMOD_DRIVER_STATE</a>)
+	 * @param name <span>(<i>Opt, Out</i>) <dd>The name of the device. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
+	 * @param guid <span>(<i>Opt, Out</i>) <dd>A <a href="https://www.fmod.com/docs/2.03/api/glossary.html#guid">GUID</a> that uniquely identifies the device. (<a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_guid">FMOD_GUID</a>)
+	 * @param systemrate <span>(<i>Opt, Out</i>) <dd>The sample rate the device operates at.
+	 * @param speakermode <span>(<i>Opt, Out</i>) <dd>The speaker configuration the device is currently using. (<a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_speakermode">FMOD_SPEAKERMODE</a>)
+	 * @param speakermodechannels <span>(<i>Opt, Out</i>) <dd>The number of channels in the current speaker setup.
+	 * @param state <span>(<i>Opt, Out</i>) <dd>Flags that provide additional information about the driver. (<a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_driver_state">FMOD_DRIVER_STATE</a>)
 	 */
 	public static int getRecordDriverInfo(long system, int id, java.nio.ByteBuffer name, org.lwjgl.fmod.FMOD_GUID guid, java.nio.IntBuffer systemrate, java.nio.IntBuffer speakermode, java.nio.IntBuffer speakermodechannels, java.nio.IntBuffer state)
 	{
 		return FMOD.FMOD_System_GetRecordDriverInfo(system, id, name, guid, systemrate, speakermode, speakermodechannels, state);
 	}
-	
+
 	/**
 	 * Retrieves the number of recording devices available for this output mode. Use this to enumerate all recording devices possible so that the user can select one.
 	 * <p>
@@ -1524,7 +1556,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetRecordNumDrivers(system, numdrivers, numconnected);
 	}
-	
+
 	/**
 	 * Retrieves the current recording position of the record buffer in PCM samples.
 	 * <p>
@@ -1555,7 +1587,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetRecordPosition(system, id, position);
 	}
-	
+
 	/**
 	 * Retrieves the current reverb environment for the specified reverb instance.
 	 * <p>
@@ -1578,7 +1610,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetReverbProperties(system, instance, prop);
 	}
-	
+
 	/**
 	 * Retrieves the maximum number of software mixed Channels possible.
 	 * <p>
@@ -1590,7 +1622,7 @@ public class FModSystem {
 	 * </code></pre>
 	 * <p>
 	 * Software 
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s refers to real voices that will play, with <code>numsoftwarechannels</code> refering to the maximum number of voices before successive voices start becoming virtual. For differences between real and virtual voices see the <a href="https://www.fmod.com/docs/2.03/api/white-papers-virtual-voices.html">Virtual Voices</a> guide.
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s refers to real voices that will play, with <code>numsoftwarechannels</code> refering to the maximum number of voices before successive voices start becoming virtual. For differences between real and virtual voices, see the <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html#virtual-voice-system">Virtual Voice System</a> section of the <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html">Managing Resources in the Core API</a> chapter.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModSystem#setSoftwareChannels}
 	 * <p>
@@ -1602,7 +1634,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetSoftwareChannels(system, numsoftwarechannels);
 	}
-	
+
 	/**
 	 * Retrieves the output format for the software mixer.
 	 * <p>
@@ -1627,7 +1659,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetSoftwareFormat(system, samplerate, speakermode, numrawspeakers);
 	}
-	
+
 	/**
 	 * Retrieves the channel count for a given speaker mode.
 	 * <p>
@@ -1639,7 +1671,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetSpeakerModeChannels(system, mode, channels);
 	}
-	
+
 	/**
 	 * Retrieves the position of the specified speaker for the current speaker mode.
 	 * <p>
@@ -1666,7 +1698,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetSpeakerPosition(system, speaker, x, y, active);
 	}
-	
+
 	/**
 	 * Retrieves the default file buffer size for newly opened streams.
 	 * <p>
@@ -1694,7 +1726,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetStreamBufferSize(system, filebuffersize, filebuffersizetype);
 	}
-	
+
 	/**
 	 * Retrieves a user value associated with a System object.
 	 * <p>
@@ -1716,7 +1748,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_GetUserData(system, userdata);
 	}
-	
+
 	/**
 	 * Retrieves the FMOD version and build number.
 	 * <p>
@@ -1738,14 +1770,16 @@ public class FModSystem {
 	 * 
 	 * @param system
 	 * @param version <span>(<i>Out, Opt</i>) <dd>Version number.
+	 * @param buildnumber <span>(<i>Out, Opt</i>) <dd>Build number.
 	 */
-	public static int getVersion(long system, java.nio.IntBuffer version)
+	public static int getVersion(long system, java.nio.IntBuffer version, java.nio.IntBuffer buildnumber)
 	{
-		return FMOD.FMOD_System_GetVersion(system, version);
+		return FMOD.FMOD_System_GetVersion(system, version, buildnumber);
 	}
-	
+
 	/**
-	 * Initialize the system object and prepare FMOD for playback.
+	 * Initialize the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#system">system</a> object and prepare FMOD for playback.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_Init(
@@ -1770,15 +1804,15 @@ public class FModSystem {
 	 * <p>
 	 * 
 	 * @param system
-	 * @param maxchannels <dd><p>Maximum number of <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> objects available for playback, also known as virtual voices. Virtual voices will play with minimal overhead, with a subset of 'real' voices that are mixed, and selected based on priority and audibility. See the <a href="https://www.fmod.com/docs/2.03/api/white-papers-virtual-voices.html">Virtual Voices</a> guide for more information.</p><ul><li><span class="label">Range:</span> [0, 4095]</li></ul>
+	 * @param maxchannels <dd><p>Maximum number of <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> objects available for playback, also known as virtual voices. Virtual voices will play with minimal overhead, with a subset of 'real' voices that are mixed, and selected based on priority and audibility. See the <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html#virtual-voice-system">Virtual Voice System</a> section of the <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html">Managing Resources in the Core API</a> chapter for more information.</p><ul><li><span class="label">Range:</span> [0, 4095]</li></ul>
 	 * @param flags <dd>Initialization flags. More than one mode can be set at once by combining them with the OR operator. (<a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_initflags">FMOD_INITFLAGS</a>)
-	 * @param extradriverdata <span>(<i>Opt</i>) <dd>Additional output specific initialization data. This will be passed to the output plugin. See <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_outputtype">FMOD_OUTPUTTYPE</a> for descriptions of data that can be passed in, based on the selected output mode.
+	 * @param extradriverdata <span>(<i>Opt</i>) <dd>Additional output specific initialization data. This will be passed to the output plug-in. See <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_outputtype">FMOD_OUTPUTTYPE</a> for descriptions of data that can be passed in, based on the selected output mode.
 	 */
 	public static int init(long system, int maxchannels, int flags, long extradriverdata)
 	{
 		return FMOD.FMOD_System_Init(system, maxchannels, flags, extradriverdata);
 	}
-	
+
 	/**
 	 * Retrieves the state of the FMOD recording API, ie if it is currently recording or not.
 	 * <p>
@@ -1809,7 +1843,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_IsRecording(system, id, recording);
 	}
-	
+
 	/**
 	 * Creates a geometry object from a block of memory which contains pre-saved geometry data.
 	 * <p>
@@ -1835,9 +1869,10 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_LoadGeometry(system, data, geometry);
 	}
-	
+
 	/**
-	 * Loads an FMOD (DSP, Output or Codec) plugin from file.
+	 * Loads an FMOD plug-in (
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a>, output or codec) from a file.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_LoadPlugin(
@@ -1848,13 +1883,13 @@ public class FModSystem {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * Once loaded DSP plugins can be used via 
-	 * {@link FModSystem#createDSPByPlugin}, output plugins can be use via {@link FModSystem#setOutputByPlugin} and codec plugins will be used automatically.
+	 * Once loaded, DSP plug-ins can be used via 
+	 * {@link FModSystem#createDSPByPlugin}, output plug-ins can be used via {@link FModSystem#setOutputByPlugin}, and codec plug-ins are used automatically.
 	 * <p>
 	 * When opening a file each codec tests whether it can support the file format in 
 	 * <code>priority</code> order.
 	 * <p>
-	 * The format of the plugin is dependant on the operating system:
+	 * The format of the plug-in is dependent on the operating system:
 	 * <p>
 	 * <ul><li>Windows / UWP / Xbox One: .dll</li><li>Linux / Android: .so</li><li>Macintosh: .dylib</li><li>PS4: .prx</li></ul>
 	 * <p>
@@ -1862,52 +1897,54 @@ public class FModSystem {
 	 * <p>
 	 * 
 	 * @param system
-	 * @param filename <dd>Path to the plugin file. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
-	 * @param handle <span>(<i>Out</i>) <dd>Handle used to represent the plugin.
-	 * @param priority <span>(<i>Opt</i>) <dd>Codec load priority where 0 represents most important and higher numbers represent less importance. <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_plugintype_codec">FMOD_PLUGINTYPE_CODEC</a> only.
-	 */
-	public static int loadPlugin(long system, java.nio.ByteBuffer filename, java.nio.IntBuffer handle, int priority)
-	{
-		return FMOD.FMOD_System_LoadPlugin(system, filename, handle, priority);
-	}
-	
-	/**
-	 * Loads an FMOD (DSP, Output or Codec) plugin from file.
-	 * <p>
-	 * <pre><code>
-	 * FMOD_RESULT FMOD_System_LoadPlugin(
-	 *   FMOD_SYSTEM *system,
-	 *   const char *filename,
-	 *   unsigned int *handle,
-	 *   unsigned int priority
-	 * );
-	 * </code></pre>
-	 * <p>
-	 * Once loaded DSP plugins can be used via 
-	 * {@link FModSystem#createDSPByPlugin}, output plugins can be use via {@link FModSystem#setOutputByPlugin} and codec plugins will be used automatically.
-	 * <p>
-	 * When opening a file each codec tests whether it can support the file format in 
-	 * <code>priority</code> order.
-	 * <p>
-	 * The format of the plugin is dependant on the operating system:
-	 * <p>
-	 * <ul><li>Windows / UWP / Xbox One: .dll</li><li>Linux / Android: .so</li><li>Macintosh: .dylib</li><li>PS4: .prx</li></ul>
-	 * <p>
-	 * <strong>See Also:</strong> {@link FModSystem#unloadPlugin}, {@link FModSystem#setPluginPath}, {@link FModSystem#getNumPlugins}, {@link FModSystem#getPluginHandle}, {@link FModSystem#getPluginInfo}
-	 * <p>
-	 * 
-	 * @param system
-	 * @param filename <dd>Path to the plugin file. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
-	 * @param handle <span>(<i>Out</i>) <dd>Handle used to represent the plugin.
+	 * @param filename <dd>Path to the plug-in file. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
+	 * @param handle <span>(<i>Out</i>) <dd>Handle used to represent the plug-in.
 	 * @param priority <span>(<i>Opt</i>) <dd>Codec load priority where 0 represents most important and higher numbers represent less importance. <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_plugintype_codec">FMOD_PLUGINTYPE_CODEC</a> only.
 	 */
 	public static int loadPlugin(long system, java.lang.CharSequence filename, java.nio.IntBuffer handle, int priority)
 	{
 		return FMOD.FMOD_System_LoadPlugin(system, filename, handle, priority);
 	}
-	
+
 	/**
-	 * Mutual exclusion function to lock the FMOD DSP engine (which runs asynchronously in another thread), so that it will not execute.
+	 * Loads an FMOD plug-in (
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a>, output or codec) from a file.
+	 * <p>
+	 * <pre><code>
+	 * FMOD_RESULT FMOD_System_LoadPlugin(
+	 *   FMOD_SYSTEM *system,
+	 *   const char *filename,
+	 *   unsigned int *handle,
+	 *   unsigned int priority
+	 * );
+	 * </code></pre>
+	 * <p>
+	 * Once loaded, DSP plug-ins can be used via 
+	 * {@link FModSystem#createDSPByPlugin}, output plug-ins can be used via {@link FModSystem#setOutputByPlugin}, and codec plug-ins are used automatically.
+	 * <p>
+	 * When opening a file each codec tests whether it can support the file format in 
+	 * <code>priority</code> order.
+	 * <p>
+	 * The format of the plug-in is dependent on the operating system:
+	 * <p>
+	 * <ul><li>Windows / UWP / Xbox One: .dll</li><li>Linux / Android: .so</li><li>Macintosh: .dylib</li><li>PS4: .prx</li></ul>
+	 * <p>
+	 * <strong>See Also:</strong> {@link FModSystem#unloadPlugin}, {@link FModSystem#setPluginPath}, {@link FModSystem#getNumPlugins}, {@link FModSystem#getPluginHandle}, {@link FModSystem#getPluginInfo}
+	 * <p>
+	 * 
+	 * @param system
+	 * @param filename <dd>Path to the plug-in file. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
+	 * @param handle <span>(<i>Out</i>) <dd>Handle used to represent the plug-in.
+	 * @param priority <span>(<i>Opt</i>) <dd>Codec load priority where 0 represents most important and higher numbers represent less importance. <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_plugintype_codec">FMOD_PLUGINTYPE_CODEC</a> only.
+	 */
+	public static int loadPlugin(long system, java.nio.ByteBuffer filename, java.nio.IntBuffer handle, int priority)
+	{
+		return FMOD.FMOD_System_LoadPlugin(system, filename, handle, priority);
+	}
+
+	/**
+	 * Mutual exclusion function to lock the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-engine">DSP engine</a> (which runs asynchronously in another thread), so that it will not execute.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_LockDSP(
@@ -1915,16 +1952,15 @@ public class FModSystem {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * If the FMOD DSP engine is already executing, this function will block until it has completed.
+	 * If the DSP engine is already executing, this function is blocked until it has completed.
 	 * <p>
-	 * The function may be used to synchronize DSP network operations carried out by the user.
+	 * The function may be used to synchronize 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-graph">DSP graph</a> operations carried out by your code. For example, you could use this to construct a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-sub-graph">DSP sub-graph</a> without the DSP engine executing in the background while the sub-graph is still under construction.
 	 * <p>
-	 * An example of using this function may be for when the user wants to construct a DSP sub-network, without the DSP engine executing in the background while the sub-network is still under construction.
-	 * <p>
-	 * Once the user no longer needs the DSP engine locked, it must be unlocked with 
+	 * Once you no longer need the DSP engine to be locked, it can be unlocked with 
 	 * {@link FModSystem#unlockDSP}.
 	 * <p>
-	 * Note that the DSP engine should not be locked for a significant amount of time, otherwise inconsistency in the audio output may result. (audio skipping / stuttering).
+	 * Note that if the DSP engine is locked for a significant amount of time, it may result in audible skipping or stuttering.
 	 * <p>
 	 * 
 	 * @param system
@@ -1933,7 +1969,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_LockDSP(system);
 	}
-	
+
 	/**
 	 * Resume mixer thread and reacquire access to audio hardware.
 	 * <p>
@@ -1962,7 +1998,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_MixerResume(system);
 	}
-	
+
 	/**
 	 * Suspend mixer thread and relinquish usage of audio hardware while maintaining internal state.
 	 * <p>
@@ -1986,9 +2022,10 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_MixerSuspend(system);
 	}
-	
+
 	/**
-	 * Plays a DSP along with any of its inputs on a Channel.
+	 * Plays a 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> along with any of its inputs on a <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_PlayDSP(
@@ -2003,10 +2040,13 @@ public class FModSystem {
 	 * Specifying a 
 	 * <code>channelgroup</code> as part of playDSP is more efficient than using {@link FModChannel#setChannelGroup} after playDSP, and could avoid audible glitches if the playDSP is not in a paused state.
 	 * <p>
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s are reference counted to handle dead or stolen <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> handles.  See the white paper on <a href="https://www.fmod.com/docs/2.03/api/white-papers-handle-system.html#core-api-channels">Channel handles</a> for more information.
+	 * If 
+	 * <code>dsp</code> returns <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_err_file_eof">FMOD_ERR_FILE_EOF</a> from its process or read callback, the channel will stop.
+	 * <p>
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s are reference counted to handle dead or stolen <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> handles.  See the <a href="https://www.fmod.com/docs/2.03/api/mixing-and-routing-in-the-core-api.html#channel-and-channel-group-handles">Channel and Channel Group Handles</a> section of the <a href="https://www.fmod.com/docs/2.03/api/mixing-and-routing-in-the-core-api.html">Mixing and Routing in the Core API</a> chapter for more information.
 	 * <p>
 	 * Playing more 
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a>s or <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>s than physical <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s allow is handled with virtual voices. See the white paper on <a href="https://www.fmod.com/docs/2.03/api/white-papers-virtual-voices.html">Virtual Voices</a> for more information.
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a>s or <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>s than physical <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s allow is handled with virtual voices. See the <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html#virtual-voice-system">Virtual Voice System</a> section of the <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html">Managing Resources in the Core API</a> chapter for more information.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModSystem#createDSP}, {@link FModSystem#createDSPByType}, {@link FModSystem#createDSPByPlugin}
 	 * <p>
@@ -2021,7 +2061,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_PlayDSP(system, dsp, channelgroup, paused, channel);
 	}
-	
+
 	/**
 	 * Plays a Sound on a Channel.
 	 * <p>
@@ -2044,10 +2084,10 @@ public class FModSystem {
 	 * Specifying a 
 	 * <code>channelgroup</code> as part of playSound is more efficient than using {@link FModChannel#setChannelGroup} after playSound, and could avoid audible glitches if the playSound is not in a paused state.
 	 * <p>
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s are reference counted to handle dead or stolen <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> handles.  See the white paper on <a href="https://www.fmod.com/docs/2.03/api/white-papers-handle-system.html#core-api-channels">Channel handles</a> for more information.
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s are reference counted to handle dead or stolen <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a> handles. For more information, see the <a href="https://www.fmod.com/docs/2.03/api/mixing-and-routing-in-the-core-api.html#channel-and-channel-group-handles">Channel and Channel Group Handles</a> section of the <a href="https://www.fmod.com/docs/2.03/api/mixing-and-routing-in-the-core-api.html">Mixing and Routing in the Core API</a> chapter.
 	 * <p>
 	 * Playing more 
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a>s than physical <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s allow is handled with virtual voices.  See the white paper on <a href="https://www.fmod.com/docs/2.03/api/white-papers-virtual-voices.html">Virtual Voices</a> for more information.
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-sound.html">Sound</a>s than physical <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s allow is handled with virtual voices.  See the <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html#virtual-voice-system">Virtual Voice System</a> section of the <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html">Managing Resources in the Core API</a> chapter for more information.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModSystem#createSound}, {@link FModSystem#createStream}
 	 * <p>
@@ -2062,7 +2102,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_PlaySound(system, sound, channelgroup, paused, channel);
 	}
-	
+
 	/**
 	 * Starts the recording engine recording to a pre-created Sound object.
 	 * <p>
@@ -2098,7 +2138,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_RecordStart(system, id, sound, loop);
 	}
-	
+
 	/**
 	 * Stops the recording engine from recording to a pre-created Sound object.
 	 * <p>
@@ -2121,9 +2161,9 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_RecordStop(system, id);
 	}
-	
+
 	/**
-	 * Register a Codec plugin description structure for later use.
+	 * Register a Codec plug-in description structure for later use.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_RegisterCodec(
@@ -2134,7 +2174,7 @@ public class FModSystem {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * To create an instances of this plugin use 
+	 * To create an instances of this plug-in use 
 	 * {@link FModSystem#createSound} and {@link FModSystem#createStream}.
 	 * <p>
 	 * When opening a file each Codec tests whether it can support the file format in 
@@ -2152,16 +2192,17 @@ public class FModSystem {
 	 * 
 	 * @param system
 	 * @param description <dd>Structure describing the Codec to register. (<a href="https://www.fmod.com/docs/2.03/api/plugin-api-codec.html#fmod_codec_description">FMOD_CODEC_DESCRIPTION</a>)
-	 * @param handle <span>(<i>Out</i>) <dd>Handle used to represent the plugin.
+	 * @param handle <span>(<i>Out</i>) <dd>Handle used to represent the plug-in.
 	 * @param priority <span>(<i>Opt</i>) <dd>Codec load priority where 0 represents most important and higher numbers represent less importance.
 	 */
 	public static int registerCodec(long system, org.lwjgl.fmod.FMOD_CODEC_DESCRIPTION description, java.nio.IntBuffer handle, int priority)
 	{
 		return FMOD.FMOD_System_RegisterCodec(system, description, handle, priority);
 	}
-	
+
 	/**
-	 * Register a DSP plugin description structure for later use.
+	 * Register a 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> plug-in description structure for later use.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_RegisterDSP(
@@ -2171,21 +2212,21 @@ public class FModSystem {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * To create an instances of this plugin use 
+	 * To create an instance of this plug-in, use 
 	 * {@link FModSystem#createDSPByPlugin}.
 	 * <p>
 	 * 
 	 * @param system
 	 * @param description <dd>Structure describing the DSP to register. (<a href="https://www.fmod.com/docs/2.03/api/plugin-api-dsp.html#fmod_dsp_description">FMOD_DSP_DESCRIPTION</a>)
-	 * @param handle <span>(<i>Out</i>) <dd>Handle used to represent the plugin.
+	 * @param handle <span>(<i>Out</i>) <dd>Handle used to represent the plug-in.
 	 */
 	public static int registerDSP(long system, org.lwjgl.fmod.FMOD_DSP_DESCRIPTION description, java.nio.IntBuffer handle)
 	{
 		return FMOD.FMOD_System_RegisterDSP(system, description, handle);
 	}
-	
+
 	/**
-	 * Register an Output plugin description structure for later use.
+	 * Register an Output plug-in description structure for later use.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_RegisterOutput(
@@ -2195,19 +2236,19 @@ public class FModSystem {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * To select this plugin for output use 
+	 * To select this plug-in for output use, use 
 	 * {@link FModSystem#setOutputByPlugin}.
 	 * <p>
 	 * 
 	 * @param system
 	 * @param description <dd>Structure describing the Output to register. (<a href="https://www.fmod.com/docs/2.03/api/plugin-api-output.html#fmod_output_description">FMOD_OUTPUT_DESCRIPTION</a>)
-	 * @param handle <span>(<i>Out</i>) <dd>Handle used to represent the plugin.
+	 * @param handle <span>(<i>Out</i>) <dd>Handle used to represent the plug-in.
 	 */
 	public static int registerOutput(long system, org.lwjgl.fmod.FMOD_OUTPUT_DESCRIPTION description, java.nio.IntBuffer handle)
 	{
 		return FMOD.FMOD_System_RegisterOutput(system, description, handle);
 	}
-	
+
 	/**
 	 * Closes and frees this object and its resources.
 	 * <p>
@@ -2236,7 +2277,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_Release(system);
 	}
-	
+
 	/**
 	 * Sets the position, velocity and orientation of the specified 3D sound listener.
 	 * <p>
@@ -2282,7 +2323,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_Set3DListenerAttributes(system, listener, pos, vel, forward, up);
 	}
-	
+
 	/**
 	 * Sets the number of 3D 'listeners' in the 3D sound scene.
 	 * <p>
@@ -2310,7 +2351,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_Set3DNumListeners(system, numlisteners);
 	}
-	
+
 	/**
 	 * Sets a callback to allow custom calculation of distance attenuation.
 	 * <p>
@@ -2334,7 +2375,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_Set3DRolloffCallback(system, callback);
 	}
-	
+
 	/**
 	 * Sets the global doppler scale, distance factor and log roll-off scale for all 3D sound in FMOD.
 	 * <p>
@@ -2368,9 +2409,10 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_Set3DSettings(system, dopplerscale, distancefactor, rolloffscale);
 	}
-	
+
 	/**
-	 * Sets advanced settings for the system object, typically to allow adjusting of settings related to resource usage or audio quality.
+	 * Sets advanced settings for the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#system">system</a> object, typically to allow adjusting of settings related to resource usage or audio quality.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_SetAdvancedSettings(
@@ -2392,7 +2434,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_SetAdvancedSettings(system, settings);
 	}
-	
+
 	/**
 	 * Sets the callback for System level notifications.
 	 * <p>
@@ -2417,7 +2459,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_SetCallback(system, callback, callbackmask);
 	}
-	
+
 	/**
 	 * Sets the buffer size for the FMOD software mixing engine.
 	 * <p>
@@ -2441,7 +2483,8 @@ public class FModSystem {
 	 * <p>
 	 * The FMOD software mixer mixes to a ringbuffer. The size of this ringbuffer is determined here. It mixes a block of sound data every 'bufferlength' number of samples, and there are 'numbuffers' number of these blocks that make up the entire ringbuffer. Adjusting these values can lead to extremely low latency performance (smaller values), or greater stability in sound output (larger values).
 	 * <p>
-	 * Warning!  The 'buffersize' is generally best left alone. Making the granularity smaller will just increase CPU usage (cache misses and DSP network overhead). Making it larger affects how often you hear commands update such as volume/pitch/pan changes. Anything above 20ms will be noticeable and sound parameter changes will be obvious instead of smooth.
+	 * Warning!  The 'buffersize' is generally best left alone. Making the granularity smaller will just increase CPU usage (cache misses and 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-graph">DSP graph</a> overhead). Making it larger affects how often you hear commands update such as volume/pitch/pan changes. Anything above 20ms will be noticeable and sound parameter changes will be obvious instead of smooth.
 	 * <p>
 	 * FMOD chooses the most optimal size by default for best stability, depending on the output type. It is not recommended changing this value unless you really need to. You may get worse performance than the default settings chosen by FMOD. If you do set the size manually, the 
 	 * <code>bufferlength</code> argument must be a multiple of four, typically 256, 480, 512, 1024 or 2048 depedning on your latency requirements.
@@ -2461,7 +2504,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_SetDSPBufferSize(system, bufferlength, numbuffers);
 	}
-	
+
 	/**
 	 * Sets the output driver for the selected output type.
 	 * <p>
@@ -2487,7 +2530,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_SetDriver(system, driver);
 	}
-	
+
 	/**
 	 * Set callbacks to implement all file I/O instead of using the platform native method.
 	 * <p>
@@ -2516,7 +2559,7 @@ public class FModSystem {
 	 * <p>
 	 * <strong>Asynchronous file access via <code>userasyncread</code> / <code>userasynccanel</code>.</strong>
 	 * <p>
-	 * <ul><li>it is recommended to consult the 'asyncio' example for reference implementation. There is also a tutorial on the subject, <a href="https://www.fmod.com/docs/2.03/api/white-papers-asynchronous-io.html">Asynchronous I/O</a>.</li><li><code>userasyncread</code> allows the user to return immediately before the data is ready. FMOD will either wait internally (see note below about thread safety), or continuously check in the streamer until data arrives. It is the user's responsibility to provide data in time in the stream case, or the stream may stutter. Data starvation can be detected with {@link FModSound#getOpenState}.</li><li><strong>Important:</strong> If <code>userasyncread</code> is processed in the main thread, then it will hang the application, because FMOD will wait internally until data is ready, and the main thread will not be able to supply the data. For this reason the user's file access should normally be from a separate thread.</li><li>A <code>userasynccancel</code> must either service or prevent an async read issued previously via <code>userasyncread</code> before returning.</li></ul>
+	 * <ul><li>We recommended consulting the 'asyncio' example for reference implementation. For more information, see the <a href="https://www.fmod.com/docs/2.03/api/loading-and-playing-sounds-in-the-core-api.html#asynchronous-io-and-deferred-file-reading">Asynchronous I/O and Deferred Fire Reading</a> section of the <a href="https://www.fmod.com/docs/2.03/api/loading-and-playing-sounds-in-the-core-api.html">Loading and Playing Sounds in the Core API</a> chapter.</li><li><code>userasyncread</code> allows the user to return immediately before the data is ready. FMOD will either wait internally (see note below about thread safety), or continuously check in the streamer until data arrives. It is the user's responsibility to provide data in time in the stream case, or the stream may stutter. Data starvation can be detected with {@link FModSound#getOpenState}.</li><li><strong>Important:</strong> If <code>userasyncread</code> is processed in the main thread, then it will hang the application, because FMOD will wait internally until data is ready, and the main thread will not be able to supply the data. For this reason the user's file access should normally be from a separate thread.</li><li>A <code>userasynccancel</code> must either service or prevent an async read issued previously via <code>userasyncread</code> before returning.</li></ul>
 	 * <p>
 	 * <strong>Implementation tips to avoid hangs / crashes.</strong>
 	 * <p>
@@ -2538,7 +2581,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_SetFileSystem(system, useropen, userclose, userread, userseek, userasyncread, userasynccancel, blockalign);
 	}
-	
+
 	/**
 	 * Sets the maximum world size for the geometry engine for performance / precision reasons.
 	 * <p>
@@ -2565,34 +2608,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_SetGeometrySettings(system, maxworldsize);
 	}
-	
-	/**
-	 * Set a proxy server to use for all subsequent internet connections.
-	 * <p>
-	 * <pre><code>
-	 * FMOD_RESULT FMOD_System_SetNetworkProxy(
-	 *   FMOD_SYSTEM *system,
-	 *   const char *proxy
-	 * );
-	 * </code></pre>
-	 * <p>
-	 * Specify the proxy in 
-	 * <code>host:port</code> format e.g. <code>www.fmod.com:8888</code> (defaults to port 80 if no port is specified).
-	 * <p>
-	 * Basic authentication is supported using 
-	 * <code>user:password@host:port</code> format e.g. <code>bob:sekrit123@www.fmod.com:8888</code>
-	 * <p>
-	 * <strong>See Also:</strong> {@link FModSystem#getNetworkProxy}
-	 * <p>
-	 * 
-	 * @param system
-	 * @param proxy <dd>Proxy server URL. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
-	 */
-	public static int setNetworkProxy(long system, java.nio.ByteBuffer proxy)
-	{
-		return FMOD.FMOD_System_SetNetworkProxy(system, proxy);
-	}
-	
+
 	/**
 	 * Set a proxy server to use for all subsequent internet connections.
 	 * <p>
@@ -2619,7 +2635,34 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_SetNetworkProxy(system, proxy);
 	}
-	
+
+	/**
+	 * Set a proxy server to use for all subsequent internet connections.
+	 * <p>
+	 * <pre><code>
+	 * FMOD_RESULT FMOD_System_SetNetworkProxy(
+	 *   FMOD_SYSTEM *system,
+	 *   const char *proxy
+	 * );
+	 * </code></pre>
+	 * <p>
+	 * Specify the proxy in 
+	 * <code>host:port</code> format e.g. <code>www.fmod.com:8888</code> (defaults to port 80 if no port is specified).
+	 * <p>
+	 * Basic authentication is supported using 
+	 * <code>user:password@host:port</code> format e.g. <code>bob:sekrit123@www.fmod.com:8888</code>
+	 * <p>
+	 * <strong>See Also:</strong> {@link FModSystem#getNetworkProxy}
+	 * <p>
+	 * 
+	 * @param system
+	 * @param proxy <dd>Proxy server URL. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
+	 */
+	public static int setNetworkProxy(long system, java.nio.ByteBuffer proxy)
+	{
+		return FMOD.FMOD_System_SetNetworkProxy(system, proxy);
+	}
+
 	/**
 	 * Set the timeout for network streams.
 	 * <p>
@@ -2640,7 +2683,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_SetNetworkTimeout(system, timeout);
 	}
-	
+
 	/**
 	 * Sets the type of output interface used to run the mixer.
 	 * <p>
@@ -2671,9 +2714,9 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_SetOutput(system, output);
 	}
-	
+
 	/**
-	 * Selects an output type given a plugin handle.
+	 * Selects an output type given a plug-in handle.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_SetOutputByPlugin(
@@ -2689,15 +2732,15 @@ public class FModSystem {
 	 * <p>
 	 * 
 	 * @param system
-	 * @param handle <dd>Handle to an already loaded output plugin.
+	 * @param handle <dd>Handle to an already loaded output plug-in.
 	 */
 	public static int setOutputByPlugin(long system, int handle)
 	{
 		return FMOD.FMOD_System_SetOutputByPlugin(system, handle);
 	}
-	
+
 	/**
-	 * Specify a base search path for plugins so they can be placed somewhere else than the directory of the main executable.
+	 * Specify a base search path for plug-ins so they can be placed somewhere else than the directory of the main executable.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_SetPluginPath(
@@ -2710,34 +2753,34 @@ public class FModSystem {
 	 * <p>
 	 * 
 	 * @param system
-	 * @param path <dd>A character string containing a correctly formatted path to load plugins from. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
-	 */
-	public static int setPluginPath(long system, java.lang.CharSequence path)
-	{
-		return FMOD.FMOD_System_SetPluginPath(system, path);
-	}
-	
-	/**
-	 * Specify a base search path for plugins so they can be placed somewhere else than the directory of the main executable.
-	 * <p>
-	 * <pre><code>
-	 * FMOD_RESULT FMOD_System_SetPluginPath(
-	 *   FMOD_SYSTEM *system,
-	 *   const char *path
-	 * );
-	 * </code></pre>
-	 * <p>
-	 * <strong>See Also:</strong> {@link FModSystem#loadPlugin}
-	 * <p>
-	 * 
-	 * @param system
-	 * @param path <dd>A character string containing a correctly formatted path to load plugins from. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
+	 * @param path <dd>A character string containing a correctly formatted path to load plug-ins from. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
 	 */
 	public static int setPluginPath(long system, java.nio.ByteBuffer path)
 	{
 		return FMOD.FMOD_System_SetPluginPath(system, path);
 	}
-	
+
+	/**
+	 * Specify a base search path for plug-ins so they can be placed somewhere else than the directory of the main executable.
+	 * <p>
+	 * <pre><code>
+	 * FMOD_RESULT FMOD_System_SetPluginPath(
+	 *   FMOD_SYSTEM *system,
+	 *   const char *path
+	 * );
+	 * </code></pre>
+	 * <p>
+	 * <strong>See Also:</strong> {@link FModSystem#loadPlugin}
+	 * <p>
+	 * 
+	 * @param system
+	 * @param path <dd>A character string containing a correctly formatted path to load plug-ins from. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
+	 */
+	public static int setPluginPath(long system, java.lang.CharSequence path)
+	{
+		return FMOD.FMOD_System_SetPluginPath(system, path);
+	}
+
 	/**
 	 * Sets parameters for the global reverb environment.
 	 * <p>
@@ -2752,7 +2795,8 @@ public class FModSystem {
 	 * To assist in defining reverb properties there are several presets available, see 
 	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_reverb_presets">FMOD_REVERB_PRESETS</a>
 	 * <p>
-	 * When using each instance for the first time, FMOD will create an SFX reverb DSP unit that takes up several hundred kilobytes of memory and some CPU.
+	 * When using each instance for the first time, FMOD will create an SFX reverb 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> that takes up several hundred kilobytes of memory and some CPU.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModSystem#getReverbProperties}, {@link FModChannel#setReverbProperties}, {@link FModChannel#getReverbProperties}, <a href="https://www.fmod.com/docs/2.03/api/effects-reference.html#sfx-reverb">Effects Reference: SFX Reverb</a>
 	 * <p>
@@ -2765,7 +2809,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_SetReverbProperties(system, instance, prop);
 	}
-	
+
 	/**
 	 * Sets the maximum number of software mixed Channels possible.
 	 * <p>
@@ -2777,7 +2821,7 @@ public class FModSystem {
 	 * </code></pre>
 	 * <p>
 	 * This function cannot be called after FMOD is already activated, it must be called before 
-	 * {@link FModSystem#init}, or after {@link FModSystem#close}.<br>'Software Channels' refers to real <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s that will play, with <code>numsoftwarechannels</code> refering to the maximum number of <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s before successive <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s start becoming virtual. For differences between real and virtual <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s see the <a href="https://www.fmod.com/docs/2.03/api/white-papers-virtual-voices.html">Virtual Voices</a> guide.
+	 * {@link FModSystem#init}, or after {@link FModSystem#close}.<br>'Software Channels' refers to real <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s that will play, with <code>numsoftwarechannels</code> refering to the maximum number of <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s before successive <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s start becoming virtual. For differences between real and virtual <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s see the <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html#virtual-voice-system">Virtual Voice System</a> section of the <a href="https://www.fmod.com/docs/2.03/api/managing-resources-in-the-core-api.html">Managing Resources in the Core API</a> chapter.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModSystem#getSoftwareChannels}, {@link FModSystem#init}, {@link FModSystem#close}
 	 * <p>
@@ -2789,7 +2833,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_SetSoftwareChannels(system, numsoftwarechannels);
 	}
-	
+
 	/**
 	 * Sets the output format for the software mixer.
 	 * <p>
@@ -2802,8 +2846,8 @@ public class FModSystem {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * If loading Studio banks, this must be called with 
-	 * <code>speakermode</code> corresponding to the project output format if there is a possibility of the output audio device not matching the project format. Any differences between the project format and <code>speakermode</code> will cause the mix to sound wrong.
+	 * If loading 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#bank-file">banks</a> made in <a href="https://www.fmod.com/docs/2.03/api/glossary.html#fmod-studio">FMOD Studio</a>, this must be called with <code>speakermode</code> corresponding to the project output format if there is a possibility of the output audio device not matching the project format. Any differences between the project format and <code>speakermode</code> will cause the mix to sound wrong.
 	 * <p>
 	 * By default 
 	 * <code>speakermode</code> will assume the setup the OS / output prefers.
@@ -2829,7 +2873,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_SetSoftwareFormat(system, samplerate, speakermode, numrawspeakers);
 	}
-	
+
 	/**
 	 * Sets the position of the specified speaker for the current speaker mode.
 	 * <p>
@@ -2847,7 +2891,7 @@ public class FModSystem {
 	 * </code></pre>
 	 * <p>
 	 * This allows you to customize the position of the speakers for the current 
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_speakermode">FMOD_SPEAKERMODE</a> by giving X (left to right) and Y (front to back) coordinates.<br>When disabling a speaker, 3D spatialization will be redistributed around the missing speaker so signal isn't lost.
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_speakermode">FMOD_SPEAKERMODE</a> by giving X (left to right) and Y (front to back) coordinates.<br>When disabling a speaker, 3D spatialization is redistributed around the missing speaker so that <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> isn't lost.
 	 * <p>
 	 * Stereo setup would look like this:
 	 * <p>
@@ -2948,8 +2992,8 @@ public class FModSystem {
 	 * Calling 
 	 * {@link FModSystem#setSoftwareFormat} will override any customization made with this function.
 	 * <p>
-	 * Users of the Studio API should be aware this function does not affect the speaker positions used by the Spatializer DSPs, it is purely for Core API spatialization via 
-	 * {@link FModChannel#set3DAttributes}.
+	 * Users of the Studio API should be aware this function does not affect the speaker positions used by the spatializer 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSPs</a> such as the <a href="https://www.fmod.com/docs/2.03/api/effects-reference.html#pan">pan</a> and <a href="https://www.fmod.com/docs/2.03/api/effects-reference.html#object-panner">object panner</a> DSPs. It is purely for Core API spatialization via {@link FModChannel#set3DAttributes}.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModSystem#getSpeakerPosition}
 	 * <p>
@@ -2964,7 +3008,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_SetSpeakerPosition(system, speaker, x, y, active);
 	}
-	
+
 	/**
 	 * Sets the default file buffer size for newly opened streams.
 	 * <p>
@@ -3014,7 +3058,7 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_SetStreamBufferSize(system, filebuffersize, filebuffersizetype);
 	}
-	
+
 	/**
 	 * Sets a user value associated with a System object.
 	 * <p>
@@ -3038,9 +3082,10 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_SetUserData(system, userdata);
 	}
-	
+
 	/**
-	 * Unloads an FMOD (DSP, Output or Codec) plugin.
+	 * Unloads an FMOD (
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a>, Output or Codec) plug-in.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_UnloadPlugin(
@@ -3053,15 +3098,16 @@ public class FModSystem {
 	 * <p>
 	 * 
 	 * @param system
-	 * @param handle <dd>Handle to an already loaded plugin.
+	 * @param handle <dd>Handle to an already loaded plug-in.
 	 */
 	public static int unloadPlugin(long system, int handle)
 	{
 		return FMOD.FMOD_System_UnloadPlugin(system, handle);
 	}
-	
+
 	/**
-	 * Mutual exclusion function to unlock the FMOD DSP engine (which runs asynchronously in another thread) and let it continue executing.
+	 * Mutual exclusion function to unlock the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-engine">DSP engine</a> (which runs asynchronously in another thread) and let it continue executing.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_UnlockDSP(
@@ -3079,9 +3125,10 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_UnlockDSP(system);
 	}
-	
+
 	/**
-	 * Updates the FMOD system.
+	 * Updates the FMOD 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#system">system</a>.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_System_Update(
@@ -3091,10 +3138,10 @@ public class FModSystem {
 	 * <p>
 	 * Should be called once per 'game' tick, or once per frame in your application to perform actions such as:
 	 * <p>
-	 * <ul><li>Panning and reverb from 3D attributes changes.</li><li>Virtualization of <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s based on their audibility.</li><li>Mixing for non-realtime output types. See comment below.</li><li>Streaming if using <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_init_stream_from_update">FMOD_INIT_STREAM_FROM_UPDATE</a>.</li><li>Mixing if using <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_init_mix_from_update">FMOD_INIT_MIX_FROM_UPDATE</a></li><li>Firing callbacks that are deferred until Update.</li><li>DSP cleanup.</li></ul>
+	 * <ul><li>Panning and reverb from 3D attributes changes.</li><li>Virtualization of <a href="https://www.fmod.com/docs/2.03/api/core-api-channel.html">Channel</a>s based on their audibility.</li><li>Mixing for non-realtime output types. See comment below.</li><li>Streaming if using <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_init_stream_from_update">FMOD_INIT_STREAM_FROM_UPDATE</a>.</li><li>Mixing if using <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_init_mix_from_update">FMOD_INIT_MIX_FROM_UPDATE</a></li><li>Firing callbacks that are deferred until Update.</li><li><a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> cleanup.</li></ul>
 	 * <p>
 	 * If 
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_outputtype_nosound_nrt">FMOD_OUTPUTTYPE_NOSOUND_NRT</a> or <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_outputtype_wavwriter_nrt">FMOD_OUTPUTTYPE_WAVWRITER_NRT</a> output modes are used, this function also drives the software / DSP engine, instead of it running asynchronously in a thread as is the default behavior.<br>This can be used for faster than realtime updates to the decoding or DSP engine which might be useful if the output is the wav writer for example.
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_outputtype_nosound_nrt">FMOD_OUTPUTTYPE_NOSOUND_NRT</a> or <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_outputtype_wavwriter_nrt">FMOD_OUTPUTTYPE_WAVWRITER_NRT</a> output modes are used, this function also drives the software / <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-engine">DSP engine</a>, instead of it running asynchronously in a thread as is the default behavior.<br>This can be used for faster than realtime updates to the decoding or DSP engine which might be useful if the output is the wav writer for example.
 	 * <p>
 	 * If 
 	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_init_stream_from_update">FMOD_INIT_STREAM_FROM_UPDATE</a> is used, this function will update the stream engine. Combining this with the non realtime output will mean smoother captured output.
@@ -3107,5 +3154,5 @@ public class FModSystem {
 	{
 		return FMOD.FMOD_System_Update(system);
 	}
-	
+
 }

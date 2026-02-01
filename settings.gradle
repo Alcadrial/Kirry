@@ -7,7 +7,7 @@ pluginManagement {
 				url = localMaven
 			}
 		}
-		if (remoteMaven != null) {
+		if (settings.hasProperty("remoteMaven")) {
 			maven {
 				name = "RemoveMaven"
 				url = remoteMaven

@@ -16,7 +16,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class StreamUtils {
+@SuppressWarnings("null")
+class StreamUtils {
 	
 	public static class EchoInputStream extends InputStream {
 		
@@ -63,7 +64,7 @@ public class StreamUtils {
 			bufferedInput = "";
 		}
 		
-		public MappingInputStream addControlCharacters(Function<Character, String> factory)
+		public MappingInputStream addControlCharacters( Function<Character, String> factory)
 		{
 			for (char i = 0; i < 10; i++) addMapping(i, factory.apply(i));
 			for (char i = 11; i < 13; i++) addMapping(i, factory.apply(i));
@@ -90,7 +91,7 @@ public class StreamUtils {
 		{
 			if (from > 0 && from < map.length) map[from] = null;
 		}
-		
+
 		@Override
 		public int read() throws IOException
 		{

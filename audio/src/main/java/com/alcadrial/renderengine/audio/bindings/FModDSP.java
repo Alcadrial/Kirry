@@ -3,20 +3,21 @@ package com.alcadrial.renderengine.audio.bindings;
 import org.lwjgl.fmod.FMOD;
 
 /**
- * <div class="manual-content api"><h1>7. Core API Reference | DSP</h1>The Digital Signal Processor is one node within a graph that transforms input audio signals to an output stream.
+ * <div class="manual-content api"><h1>11. Core API Reference | DSP</h1>A digital signal processor is one node within a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-graph">graph</a> that transforms input audio <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signals</a> into an output stream.
  * <p>
  * Create with {@link FModSystem#createDSP}, {@link FModSystem#createDSPByType} or {@link FModSystem#createDSPByPlugin}.
  * <p>
  * <strong>Connections:</strong>
  * <p>
  * <ul>
- *     <li><span>{@link FModDSP#addInput} Adds a DSP unit as an input to this object.</span></li>
- *     <li><span>{@link FModDSP#getInput} Retrieves the DSP unit at the specified index in the input list.</span></li>
- *     <li><span>{@link FModDSP#getOutput} Retrieves the DSP unit at the specified index in the output list.</span></li>
- *     <li><span>{@link FModDSP#getNumInputs} Retrieves the number of DSP units in the input list.</span></li>
- *     <li><span>{@link FModDSP#getNumOutputs} Retrieves the number of DSP units in the output list.</span></li>
+ *     <li><span>{@link FModDSP#addInput} Adds a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> as an input to this object.</span></li>
+ *     <li><span>{@link FModDSP#addInputPreallocated} Adds a preallocated <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> as an input to this object.</span></li>
+ *     <li><span>{@link FModDSP#getInput} Retrieves the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> at the specified index in the input list.</span></li>
+ *     <li><span>{@link FModDSP#getOutput} Retrieves the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> at the specified index in the output list.</span></li>
+ *     <li><span>{@link FModDSP#getNumInputs} Retrieves the number of <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP units</a> in the input list.</span></li>
+ *     <li><span>{@link FModDSP#getNumOutputs} Retrieves the number of <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP units</a> in the output list.</span></li>
  *     <li><span>{@link FModDSP#disconnectAll} Disconnects all inputs and/or outputs.</span></li>
- *     <li><span>{@link FModDSP#disconnectFrom} Disconnect the specified input DSP.</span></li>
+ *     <li><span>{@link FModDSP#disconnectFrom} Disconnect the specified input <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a>.</span></li>
  * </ul>
  * <strong>Parameters:</strong>
  * <p>
@@ -36,16 +37,16 @@ import org.lwjgl.fmod.FMOD;
  * <strong>Channel format:</strong>
  * <p>
  * <ul>
- *     <li><span>{@link FModDSP#setChannelFormat} Sets the PCM input format this DSP will receive when processing.</span></li>
- *     <li><span>{@link FModDSP#getChannelFormat} Retrieves the PCM input format this DSP will receive when processing.</span></li>
- *     <li><span>{@link FModDSP#getOutputChannelFormat} Retrieves the output format this DSP will produce when processing based on the input specified.</span></li>
+ *     <li><span>{@link FModDSP#setChannelFormat} Sets the PCM input format this <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> is to receive when processing.</span></li>
+ *     <li><span>{@link FModDSP#getChannelFormat} Retrieves the PCM input format this <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> will receive when processing.</span></li>
+ *     <li><span>{@link FModDSP#getOutputChannelFormat} Retrieves the output format this <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> produces when processing based on the input specified.</span></li>
  * </ul>
  * <strong>Metering:</strong>
  * <p>
  * <ul>
- *     <li><span>{@link FModDSP#getMeteringInfo} Retrieve the signal metering information.</span></li>
- *     <li><span>{@link FModDSP#setMeteringEnabled} Sets the input and output signal metering enabled states.</span></li>
- *     <li><span>{@link FModDSP#getMeteringEnabled} Retrieves the input and output signal metering enabled states.</span></li>
+ *     <li><span>{@link FModDSP#getMeteringInfo} Retrieve the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> metering enabled metering information.</span></li>
+ *     <li><span>{@link FModDSP#setMeteringEnabled} Sets the input and output <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> metering enabled states.</span></li>
+ *     <li><span>{@link FModDSP#getMeteringEnabled} Retrieves the input and output <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> metering enabled states.</span></li>
  * </ul>
  * <strong>Processing:</strong>
  * <p>
@@ -54,41 +55,42 @@ import org.lwjgl.fmod.FMOD;
  *     <li><span>{@link FModDSP#getActive} Retrieves the processing active state.</span></li>
  *     <li><span>{@link FModDSP#setBypass} Sets the processing bypass state.</span></li>
  *     <li><span>{@link FModDSP#getBypass} Retrieves the processing bypass state.</span></li>
- *     <li><span>{@link FModDSP#setWetDryMix} Sets the scale of the wet and dry signal components.</span></li>
- *     <li><span>{@link FModDSP#getWetDryMix} Retrieves the scale of the wet and dry signal components.</span></li>
+ *     <li><span>{@link FModDSP#setWetDryMix} Sets the scale of the wet and dry <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> components.</span></li>
+ *     <li><span>{@link FModDSP#getWetDryMix} Retrieves the scale of the wet and dry <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> components.</span></li>
  *     <li><span>{@link FModDSP#getIdle} Retrieves the idle state.</span></li>
  * </ul>
  * <strong>General:</strong>
  * <p>
  * <ul>
- *     <li><span>{@link FModDSP#showConfigDialog} Display or hide a DSP unit configuration dialog box inside the target window.</span></li>
- *     <li><span>{@link FModDSP#reset} Reset a DSPs internal state ready for new input signal.</span></li>
- *     <li><span>{@link FModDSP#release} Frees a DSP object.</span></li>
- *     <li><span>{@link FModDSP#getType} Retrieves the pre-defined type of a FMOD registered DSP unit.</span></li>
- *     <li><span>{@link FModDSP#getInfo} Retrieves information about this DSP unit.</span></li>
+ *     <li><span>{@link FModDSP#showConfigDialog} Display or hide a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> configuration dialog box inside the target window.</span></li>
+ *     <li><span>{@link FModDSP#reset} Reset a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a>'s internal state, making it ready for a new input <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a>.</span></li>
+ *     <li><span>{@link FModDSP#release} Releases a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a>, freeing the memory used by that object.</span></li>
+ *     <li><span>{@link FModDSP#getType} Retrieves the pre-defined type of a FMOD registered <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a>.</span></li>
+ *     <li><span>{@link FModDSP#getInfo} Retrieves information about this <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a>.</span></li>
  *     <li><span>{@link FModDSP#getCPUUsage} Retrieves statistics on the mixer thread CPU usage for this unit.</span></li>
  *     <li><span>{@link FModDSP#setUserData} Sets a user value associated with this object.</span></li>
  *     <li><span>{@link FModDSP#getUserData} Retrieves a user value associated with this object.</span></li>
- *     <li><span>{@link FModDSP#setCallback} Sets the callback for DSP notifications.</span></li>
+ *     <li><span>{@link FModDSP#setCallback} Sets the callback for <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> notifications.</span></li>
  *     <li><span>{@link FModDSP#getSystemObject} Retrieves the parent System object.</span></li>
  * </ul>
  * <hr><ul>
- *     <li><span><a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html#fmod_dsp_callback">FMOD_DSP_CALLBACK</a> Callback for DSP notifications.</span></li>
- *     <li><span><a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html#fmod_dsp_callback_type">FMOD_DSP_CALLBACK_TYPE</a> Types of callbacks called by DSPs.</span></li>
- *     <li><span><a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html#fmod_dsp_data_parameter_info">FMOD_DSP_DATA_PARAMETER_INFO</a> Describes the value of a DSP data parameter.</span></li>
+ *     <li><span><a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html#fmod_dsp_callback">FMOD_DSP_CALLBACK</a> Callback for <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> notifications.</span></li>
+ *     <li><span><a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html#fmod_dsp_callback_type">FMOD_DSP_CALLBACK_TYPE</a> Types of callback called by a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a>.</span></li>
+ *     <li><span><a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html#fmod_dsp_data_parameter_info">FMOD_DSP_DATA_PARAMETER_INFO</a> Describes the value of a <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a>'s data parameter.</span></li>
  * </ul>
  * 
  * @author FMOD team, autogenerated by Alcadrial
  */
 public class FModDSP {
-	
+
 	private FModDSP()
 	{
-		
+
 	}
-	
+
 	/**
-	 * Adds a DSP unit as an input to this object.
+	 * Adds a 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> as an input to this object.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_AddInput(
@@ -99,11 +101,14 @@ public class FModDSP {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * When a 
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a> has multiple inputs the signals are automatically mixed together, sent to the unit's output(s).
+	 * When a DSP has multiple inputs the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signals</a> are automatically mixed together, sent to the unit's output(s).
 	 * <p>
 	 * The returned 
 	 * <code>connection</code> will remain valid until the units are disconnected.
+	 * <p>
+	 * When 
+	 * <code>type</code> is <a href="https://www.fmod.com/docs/2.03/api/core-api-dspconnection.html#fmod_dspconnection_type_preallocated">FMOD_DSPCONNECTION_TYPE_PREALLOCATED</a> (or when calling {@link FModDSP#addInputPreallocated} in C#), you should use the <code>connection</code> parameter to provide a valid <a href="https://www.fmod.com/docs/2.03/api/core-api-dspconnection.html">DSPConnection</a> handle that was created by {@link FModSystem#createDSPConnection}. In this case, the input will be connected using the provided connection rather than a newly allocated one.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModDSP#getInput}, {@link FModDSP#getNumInputs}, {@link FModDSP#getOutput}, {@link FModDSP#getNumOutputs}
 	 * <p>
@@ -117,7 +122,40 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_AddInput(dSP, input, connection, type);
 	}
-	
+
+	/**
+	 * Adds a preallocated 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> as an input to this object.
+	 * <p>
+	 * <pre><code>
+	 * FMOD_RESULT FMOD_DSP_AddInputPreallocated(
+	 *   FMOD_DSP *dsp,
+	 *   FMOD_DSP *input,
+	 *   FMOD_DSPCONNECTION **connection
+	 * );
+	 * </code></pre>
+	 * <p>
+	 * When a DSP has multiple inputs the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signals</a> are automatically mixed together, sent to the unit's output(s).
+	 * <p>
+	 * The returned 
+	 * <code>connection</code> will remain valid until the units are disconnected.
+	 * <p>
+	 * You should use the 
+	 * <code>connection</code> parameter to provide a valid <a href="https://www.fmod.com/docs/2.03/api/core-api-dspconnection.html">DSPConnection</a> handle that was created by {@link FModSystem#createDSPConnection}. In this case, the input will be connected using the provided connection rather than a newly allocated one.
+	 * <p>
+	 * <strong>See Also:</strong> {@link FModDSP#getInput}, {@link FModDSP#getNumInputs}, {@link FModDSP#getOutput}, {@link FModDSP#getNumOutputs}, {@link FModDSP#addInput}
+	 * <p>
+	 * 
+	 * @param dSP
+	 * @param input <dd>DSP unit to be added. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>)
+	 * @param connection <span>(<i>Out, Opt</i>) <dd>Connection between the two units. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dspconnection.html">DSPConnection</a>)
+	 */
+	public static int addInputPreallocated(long dSP, long input, org.lwjgl.PointerBuffer connection)
+	{
+		return FMOD.FMOD_DSP_AddInputPreallocated(dSP, input, connection);
+	}
+
 	/**
 	 * Disconnects all inputs and/or outputs.
 	 * <p>
@@ -142,9 +180,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_DisconnectAll(dSP, inputs, outputs);
 	}
-	
+
 	/**
-	 * Disconnect the specified input DSP.
+	 * Disconnect the specified input 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a>.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_DisconnectFrom(
@@ -155,7 +194,7 @@ public class FModDSP {
 	 * </code></pre>
 	 * <p>
 	 * If 
-	 * <code>target</code> had only one output, after this operation that entire sub graph will no longer be connected to the DSP network.
+	 * <code>target</code> had only one output, after this operation that entire sub graph will no longer be connected to the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-graph">DSP graph</a>.
 	 * <p>
 	 * After this operation 
 	 * <code>connection</code> is no longer valid.
@@ -164,14 +203,14 @@ public class FModDSP {
 	 * <p>
 	 * 
 	 * @param dSP
-	 * @param target <span>(<i>Opt</i>) <dd>Input unit to disconnect, if not specified all inputs and outputs are disconnected from this unit. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>)
+	 * @param target <span>(<i>Opt</i>) <dd>Input DSP unit to disconnect. If an input DSP unit is not specified, all inputs and outputs are disconnected from this unit. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dsp.html">DSP</a>)
 	 * @param connection <span>(<i>Opt</i>) <dd>When there is more than one connection between two units this can be used to define which of the connections should be disconnected. (<a href="https://www.fmod.com/docs/2.03/api/core-api-dspconnection.html">DSPConnection</a>)
 	 */
 	public static int disconnectFrom(long dSP, long target, long connection)
 	{
 		return FMOD.FMOD_DSP_DisconnectFrom(dSP, target, connection);
 	}
-	
+
 	/**
 	 * Retrieves the processing active state.
 	 * <p>
@@ -185,8 +224,8 @@ public class FModDSP {
 	 * If 
 	 * <code>active</code> is False, processing of this unit and its inputs are stopped.
 	 * <p>
-	 * When created a DSP is inactive.   If 
-	 * {@link FModChannel#addDSP} is used it will automatically be activated, otherwise it must be set to active manually.
+	 * A 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> is inactive when first created. It is automatically activated when {@link FModChannel#addDSP} is used; otherwise, it must be set to active manually.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModDSP#setActive}, {@link FModDSP#setBypass}
 	 * <p>
@@ -198,7 +237,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetActive(dSP, active);
 	}
-	
+
 	/**
 	 * Retrieves the processing bypass state.
 	 * <p>
@@ -222,7 +261,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetBypass(dSP, bypass);
 	}
-	
+
 	/**
 	 * Retrieves statistics on the mixer thread CPU usage for this unit.
 	 * <p>
@@ -245,9 +284,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetCPUUsage(dSP, exclusive, inclusive);
 	}
-	
+
 	/**
-	 * Retrieves the PCM input format this DSP will receive when processing.
+	 * Retrieves the PCM input format this 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> will receive when processing.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_GetChannelFormat(
@@ -270,7 +310,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetChannelFormat(dSP, channelmask, numchannels, source_speakermode);
 	}
-	
+
 	/**
 	 * Retrieve the index of the first data parameter of a particular data type.
 	 * <p>
@@ -283,10 +323,10 @@ public class FModDSP {
 	 * </code></pre>
 	 * <p>
 	 * This function returns 
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_ok">FMOD_OK</a> if a parmeter of matching type is found and <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_err_invalid_param">FMOD_ERR_INVALID_PARAM</a> if no matches were found.
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_ok">FMOD_OK</a> if a parameter of matching type is found and <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_err_invalid_param">FMOD_ERR_INVALID_PARAM</a> if no matches were found.
 	 * <p>
-	 * The return code can be used to check whether the DSP supports specific functionality through data parameters of certain types without the need to provide 
-	 * <code>index</code>.
+	 * The return code can be used to check whether the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> supports specific functionality through data parameters of certain types without the need to provide <code>index</code>.
 	 * <p>
 	 * 
 	 * @param dSP
@@ -297,7 +337,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetDataParameterIndex(dSP, datatype, index);
 	}
-	
+
 	/**
 	 * Retrieves the idle state.
 	 * <p>
@@ -308,9 +348,11 @@ public class FModDSP {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * A DSP is considered idle when it stops receiving input signal and all internal processing of stored input has been exhausted.
+	 * A 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> is considered idle when it stops receiving input <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signals</a> and all internal processing of stored input has been exhausted.
 	 * <p>
-	 * Each DSP type has the potential to have differing idle behaviour based on the type of effect.  A reverb or echo may take a longer time to go idle after it stops receiving a valid signal, compared to an effect with a shorter tail length like an EQ filter.
+	 * Different DSP types can have different idle behavior. A 
+	 * <a href="https://www.fmod.com/docs/2.03/api/effects-reference.html#sfx-reverb">reverb</a> or <a href="https://www.fmod.com/docs/2.03/api/effects-reference.html#echo">echo DSP</a> may take longer to go idle after it stops receiving a valid signal than a DSP with a shorter tail length, such as an <a href="https://www.fmod.com/docs/2.03/api/effects-reference.html#multiband-equalizer">EQ filter</a>.
 	 * <p>
 	 * 
 	 * @param dSP
@@ -320,9 +362,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetIdle(dSP, idle);
 	}
-	
+
 	/**
-	 * Retrieves information about this DSP unit.
+	 * Retrieves information about this 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a>.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_GetInfo(
@@ -340,7 +383,7 @@ public class FModDSP {
 	 * 
 	 * @param dSP
 	 * @param name <span>(<i>Out, Opt</i>) <dd>The name of this unit will be written (null terminated) to the provided 32 byte buffer. (<a href="https://www.fmod.com/docs/2.03/api/glossary.html#string-format">UTF-8 string</a>)
-	 * @param version <span>(<i>Out, Opt</i>) <dd>Version number of this unit, usually formated as hex AAAABBBB where the AAAA is the major version number and the BBBB is the minor version number.
+	 * @param version <span>(<i>Out, Opt</i>) <dd>Version number of this unit, usually formatted as hex AAAABBBB where the AAAA is the major version number and the BBBB is the minor version number.
 	 * @param channels <span>(<i>Out, Opt</i>) <dd>Number of channels this unit processes where 0 represents "any".
 	 * @param configwidth <span>(<i>Out, Opt</i>) <dd>Configuration dialog box width where 0 represents "no dialog box".
 	 * @param configheight <span>(<i>Out, Opt</i>) <dd>Configuration dialog box height where 0 represents "no dialog box".
@@ -349,9 +392,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetInfo(dSP, name, version, channels, configwidth, configheight);
 	}
-	
+
 	/**
-	 * Retrieves the DSP unit at the specified index in the input list.
+	 * Retrieves the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> at the specified index in the input list.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_GetInput(
@@ -379,9 +423,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetInput(dSP, index, input, inputconnection);
 	}
-	
+
 	/**
-	 * Retrieves the input and output signal metering enabled states.
+	 * Retrieves the input and output 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> metering enabled states.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_GetMeteringEnabled(
@@ -396,7 +441,7 @@ public class FModDSP {
 	 * Enabled metering allows 
 	 * {@link FModDSP#getMeteringInfo} to return metering information and allows FMOD profiling tools to visualize the levels.
 	 * <p>
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_init_profile_meter_all">FMOD_INIT_PROFILE_METER_ALL</a> with {@link FModSystem#init} will automatically turn on metering for all DSP units inside the mixer graph.
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_init_profile_meter_all">FMOD_INIT_PROFILE_METER_ALL</a> with {@link FModSystem#init} will automatically turn on metering for all <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP units</a> inside the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-graph">dsp graph</a>.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModDSP#setMeteringEnabled}
 	 * <p>
@@ -409,9 +454,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetMeteringEnabled(dSP, inputEnabled, outputEnabled);
 	}
-	
+
 	/**
-	 * Retrieve the signal metering information.
+	 * Retrieve the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> metering enabled metering information.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_GetMeteringInfo(
@@ -430,16 +476,17 @@ public class FModDSP {
 	 * <p>
 	 * 
 	 * @param dSP
-	 * @param inputInfo <span>(<i>Out, Opt</i>) <dd>Input metering information before the DSP has processed. (<a href="https://www.fmod.com/docs/2.03/api/plugin-api-dsp.html#fmod_dsp_metering_info">FMOD_DSP_METERING_INFO</a>)
+	 * @param inputInfo <span>(<i>Out, Opt</i>) <dd>Input metering information before the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> has processed. (<a href="https://www.fmod.com/docs/2.03/api/plugin-api-dsp.html#fmod_dsp_metering_info">FMOD_DSP_METERING_INFO</a>)
 	 * @param outputInfo <span>(<i>Out, Opt</i>) <dd>Output metering information after the DSP has processed. (<a href="https://www.fmod.com/docs/2.03/api/plugin-api-dsp.html#fmod_dsp_metering_info">FMOD_DSP_METERING_INFO</a>)
 	 */
 	public static int getMeteringInfo(long dSP, org.lwjgl.fmod.FMOD_DSP_METERING_INFO inputInfo, org.lwjgl.fmod.FMOD_DSP_METERING_INFO outputInfo)
 	{
 		return FMOD.FMOD_DSP_GetMeteringInfo(dSP, inputInfo, outputInfo);
 	}
-	
+
 	/**
-	 * Retrieves the number of DSP units in the input list.
+	 * Retrieves the number of 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP units</a> in the input list.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_GetNumInputs(
@@ -448,7 +495,7 @@ public class FModDSP {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * This will flush the DSP queue (which blocks against the mixer) to ensure the input list is correct, avoid this during time sensitive operations.
+	 * This flushes the DSP queue (which blocks against the mixer) to ensure the input list is correct. You should avoid doing this during time-sensitive operations.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModDSP#getNumOutputs}, {@link FModDSP#getInput}
 	 * <p>
@@ -460,9 +507,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetNumInputs(dSP, numinputs);
 	}
-	
+
 	/**
-	 * Retrieves the number of DSP units in the output list.
+	 * Retrieves the number of 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP units</a> in the output list.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_GetNumOutputs(
@@ -471,7 +519,7 @@ public class FModDSP {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * This will flush the DSP queue (which blocks against the mixer) to ensure the output list is correct, avoid this during time sensitive operations.
+	 * This flushes the DSP queue (which blocks against the mixer) to ensure the output list is correct. You should avoid doing this during time-sensitive operations.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModDSP#getNumInputs}, {@link FModDSP#getOutput}
 	 * <p>
@@ -483,7 +531,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetNumOutputs(dSP, numoutputs);
 	}
-	
+
 	/**
 	 * Retrieves the number of parameters exposed by this unit.
 	 * <p>
@@ -494,8 +542,8 @@ public class FModDSP {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * Use this to enumerate all parameters of a DSP unit with 
-	 * {@link FModDSP#getParameterInfo}.
+	 * Use this to enumerate all parameters of a 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> with {@link FModDSP#getParameterInfo}.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModDSP#setParameterFloat}, {@link FModDSP#setParameterInt}, {@link FModDSP#setParameterBool}, {@link FModDSP#setParameterData}
 	 * <p>
@@ -507,9 +555,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetNumParameters(dSP, numparams);
 	}
-	
+
 	/**
-	 * Retrieves the DSP unit at the specified index in the output list.
+	 * Retrieves the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> at the specified index in the output list.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_GetOutput(
@@ -520,7 +569,7 @@ public class FModDSP {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * This will flush the DSP queue (which blocks against the mixer) to ensure the output list is correct, avoid this during time sensitive operations.
+	 * This flushes the DSP queue (which blocks against the mixer) to ensure the output list is correct. You should avoid doing this during time-sensitive operations.
 	 * <p>
 	 * The returned 
 	 * <code>connection</code> will remain valid until the units are disconnected.
@@ -537,9 +586,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetOutput(dSP, index, output, outputconnection);
 	}
-	
+
 	/**
-	 * Retrieves the output format this DSP will produce when processing based on the input specified.
+	 * Retrieves the output format this 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> produces when processing based on the input specified.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_GetOutputChannelFormat(
@@ -558,7 +608,7 @@ public class FModDSP {
 	 * 
 	 * @param dSP
 	 * @param inmask <dd>Deprecated. (<a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_channelmask">FMOD_CHANNELMASK</a>)
-	 * @param inchannels <dd>Number of channels for the input signal.
+	 * @param inchannels <dd>Number of channels for the input <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a>.
 	 * @param inspeakermode <dd>Speaker mode for the input signal. (<a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_speakermode">FMOD_SPEAKERMODE</a>)
 	 * @param outmask <span>(<i>Out, Opt</i>) <dd>Deprecated. (<a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_channelmask">FMOD_CHANNELMASK</a>)
 	 * @param outchannels <span>(<i>Out, Opt</i>) <dd>Number of channels for the output signal.
@@ -568,7 +618,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetOutputChannelFormat(dSP, inmask, inchannels, inspeakermode, outmask, outchannels, outspeakermode);
 	}
-	
+
 	/**
 	 * Retrieves a boolean parameter by index.
 	 * <p>
@@ -594,7 +644,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetParameterBool(dSP, index, value, valuestr);
 	}
-	
+
 	/**
 	 * Retrieves a binary data parameter by index.
 	 * <p>
@@ -622,7 +672,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetParameterData(dSP, index, data, length, valuestr);
 	}
-	
+
 	/**
 	 * Retrieves a floating point parameter by index.
 	 * <p>
@@ -648,7 +698,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetParameterFloat(dSP, index, value, valuestr);
 	}
-	
+
 	/**
 	 * Retrieve information about a specified parameter.
 	 * <p>
@@ -671,7 +721,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetParameterInfo(dSP, index, desc);
 	}
-	
+
 	/**
 	 * Retrieves an integer parameter by index.
 	 * <p>
@@ -697,7 +747,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetParameterInt(dSP, index, value, valuestr);
 	}
-	
+
 	/**
 	 * Retrieves the parent System object.
 	 * <p>
@@ -718,9 +768,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetSystemObject(dSP, system);
 	}
-	
+
 	/**
-	 * Retrieves the pre-defined type of a FMOD registered DSP unit.
+	 * Retrieves the pre-defined type of a FMOD registered 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a>.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_GetType(
@@ -729,7 +780,7 @@ public class FModDSP {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * This is only valid for built in FMOD effects.  Any user plugins will simply return 
+	 * This is only valid for the DSP types built in to the FMOD Engine. For user-created plug-in DSPs, it instead returns 
 	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-common-dsp-effects.html#fmod_dsp_type_unknown">FMOD_DSP_TYPE_UNKNOWN</a>.
 	 * <p>
 	 * 
@@ -740,7 +791,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetType(dSP, type);
 	}
-	
+
 	/**
 	 * Retrieves a user value associated with this object.
 	 * <p>
@@ -762,9 +813,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetUserData(dSP, userdata);
 	}
-	
+
 	/**
-	 * Retrieves the scale of the wet and dry signal components.
+	 * Retrieves the scale of the wet and dry 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> components.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_GetWetDryMix(
@@ -787,9 +839,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_GetWetDryMix(dSP, prewet, postwet, dry);
 	}
-	
+
 	/**
-	 * Frees a DSP object.
+	 * Releases a 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a>, freeing the memory used by that object.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_Release(
@@ -797,8 +850,8 @@ public class FModDSP {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * If DSP is not removed from the network with 
-	 * {@link FModChannel#removeDSP} after being added with {@link FModChannel#addDSP}, it will not release and will instead return <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_err_dsp_inuse">FMOD_ERR_DSP_INUSE</a>.
+	 * If DSP is not removed from the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-graph">graph</a> with {@link FModChannel#removeDSP} after being added with {@link FModChannel#addDSP}, it will not release and will instead return <a href="https://www.fmod.com/docs/2.03/api/core-api-common.html#fmod_err_dsp_inuse">FMOD_ERR_DSP_INUSE</a>.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModSystem#createDSP}
 	 * <p>
@@ -809,9 +862,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_Release(dSP);
 	}
-	
+
 	/**
-	 * Reset a DSPs internal state ready for new input signal.
+	 * Reset a 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a>'s internal state, making it ready for a new input <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a>.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_Reset(
@@ -819,7 +873,8 @@ public class FModDSP {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * This will clear all internal state derived from input signal while retaining any set parameter values.  The intended use of the function is to avoid audible artifacts if moving the DSP from one part of the DSP network to another.
+	 * This will clear all internal state derived from input signal while retaining any set parameter values.  The intended use of the function is to avoid audible artifacts if moving the DSP from one part of the 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-graph">DSP graph</a> to another.
 	 * <p>
 	 * 
 	 * @param dSP
@@ -828,7 +883,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_Reset(dSP);
 	}
-	
+
 	/**
 	 * Sets the processing active state.
 	 * <p>
@@ -842,8 +897,8 @@ public class FModDSP {
 	 * If 
 	 * <code>active</code> is false, processing of this unit and its inputs are stopped.
 	 * <p>
-	 * When created a DSP is inactive.   If 
-	 * {@link FModChannel#addDSP} is used it will automatically be activated, otherwise it must be set to active manually.
+	 * When created, a 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> is inactive. It is automatically activated when {@link FModChannel#addDSP} is used; otherwise, it must be set to active manually.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModDSP#getActive}, {@link FModDSP#setBypass}, {@link FModDSP#getBypass}
 	 * <p>
@@ -855,7 +910,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_SetActive(dSP, active);
 	}
-	
+
 	/**
 	 * Sets the processing bypass state.
 	 * <p>
@@ -879,9 +934,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_SetBypass(dSP, bypass);
 	}
-	
+
 	/**
-	 * Sets the callback for DSP notifications.
+	 * Sets the callback for 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> notifications.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_SetCallback(
@@ -900,9 +956,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_SetCallback(dSP, callback);
 	}
-	
+
 	/**
-	 * Sets the PCM input format this DSP will receive when processing.
+	 * Sets the PCM input format this 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> is to receive when processing.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_SetChannelFormat(
@@ -913,7 +970,7 @@ public class FModDSP {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * Setting the number of channels on a unit will force either a down or up mix to that channel count before processing the DSP read/process callback.
+	 * Setting the number of channels on a unit forces either a down or up mix to that channel count before processing the DSP read/process callback.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModDSP#getChannelFormat}
 	 * <p>
@@ -927,9 +984,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_SetChannelFormat(dSP, channelmask, numchannels, source_speakermode);
 	}
-	
+
 	/**
-	 * Sets the input and output signal metering enabled states.
+	 * Sets the input and output 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> metering enabled states.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_SetMeteringEnabled(
@@ -944,10 +1002,10 @@ public class FModDSP {
 	 * Enabled metering allows 
 	 * {@link FModDSP#getMeteringInfo} to return metering information and allows FMOD profiling tools to visualize the levels.
 	 * <p>
-	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_init_profile_meter_all">FMOD_INIT_PROFILE_METER_ALL</a> with {@link FModSystem#init} will automatically turn on metering for all DSP units inside the mixer graph.
+	 * <a href="https://www.fmod.com/docs/2.03/api/core-api-system.html#fmod_init_profile_meter_all">FMOD_INIT_PROFILE_METER_ALL</a> with {@link FModSystem#init} will automatically turn on metering for all <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP units</a> inside the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-graph">DSP graph</a>.
 	 * <p>
 	 * This function must have 
-	 * <code>inputEnabled</code> and <code>outputEnabled</code> set to <code>true</code> if being used by the FMOD Studio API, such as in the Unity or Unreal Engine integrations, in order to avoid conflict with FMOD Studio's live update feature.
+	 * <code>inputEnabled</code> and <code>outputEnabled</code> set to <code>true</code> if being used by the Studio API, such as in the Unity or Unreal Engine integrations, in order to avoid conflict with <a href="https://www.fmod.com/docs/2.03/api/glossary.html#fmod-studio">FMOD Studio</a>'s live update feature.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModDSP#getMeteringEnabled}
 	 * <p>
@@ -960,7 +1018,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_SetMeteringEnabled(dSP, inputEnabled, outputEnabled);
 	}
-	
+
 	/**
 	 * Sets a boolean parameter by index.
 	 * <p>
@@ -983,7 +1041,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_SetParameterBool(dSP, index, value);
 	}
-	
+
 	/**
 	 * Sets a binary data parameter by index.
 	 * <p>
@@ -1010,7 +1068,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_SetParameterData(dSP, index, data);
 	}
-	
+
 	/**
 	 * Sets a floating point parameter by index.
 	 * <p>
@@ -1033,7 +1091,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_SetParameterFloat(dSP, index, value);
 	}
-	
+
 	/**
 	 * Sets an integer parameter by index.
 	 * <p>
@@ -1056,7 +1114,7 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_SetParameterInt(dSP, index, value);
 	}
-	
+
 	/**
 	 * Sets a user value associated with this object.
 	 * <p>
@@ -1080,9 +1138,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_SetUserData(dSP, userdata);
 	}
-	
+
 	/**
-	 * Sets the scale of the wet and dry signal components.
+	 * Sets the scale of the wet and dry 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#signal">signal</a> components.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_SetWetDryMix(
@@ -1093,13 +1152,14 @@ public class FModDSP {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * The dry signal path is silent by default, because dsp effects transform the input and pass the newly processed result to the output.
+	 * The dry signal path is silent by default, because 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp-effect">DSP effects</a> transform the input and pass the newly processed result to the output.
 	 * <p>
 	 * <strong>See Also:</strong> {@link FModDSP#getWetDryMix}
 	 * <p>
 	 * 
 	 * @param dSP
-	 * @param prewet <dd><p>Level of the 'Dry' (pre-processed signal) mix that is processed by the DSP. 0 = silent, 1 = full. Negative level inverts the signal.  Values larger than 1 amplify the signal.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> (-inf, inf)</li><li><span class="label">Default:</span> 1</li></ul>
+	 * @param prewet <dd><p>Level of the 'Dry' (pre-processed signal) mix that is processed by the <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a>. 0 = silent, 1 = full. Negative level inverts the signal.  Values larger than 1 amplify the signal.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> (-inf, inf)</li><li><span class="label">Default:</span> 1</li></ul>
 	 * @param postwet <dd><p>Level of the 'Wet' (post-processed signal) mix that is output. 0 = silent, 1 = full. Negative level inverts the signal.  Values larger than 1 amplify the signal.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> (-inf, inf)</li><li><span class="label">Default:</span> 1</li></ul>
 	 * @param dry <dd><p>Level of the 'Dry' (pre-processed signal) mix that is output. 0 = silent, 1 = full. Negative level inverts the signal.  Values larger than 1 amplify the signal.</p><ul><li><span class="label">Units:</span> Linear</li><li><span class="label">Range:</span> (-inf, inf)</li><li><span class="label">Default:</span> 0</li></ul>
 	 */
@@ -1107,9 +1167,10 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_SetWetDryMix(dSP, prewet, postwet, dry);
 	}
-	
+
 	/**
-	 * Display or hide a DSP unit configuration dialog box inside the target window.
+	 * Display or hide a 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP unit</a> configuration dialog box inside the target window.
 	 * <p>
 	 * <pre><code>
 	 * FMOD_RESULT FMOD_DSP_ShowConfigDialog(
@@ -1119,10 +1180,10 @@ public class FModDSP {
 	 * );
 	 * </code></pre>
 	 * <p>
-	 * Dialog boxes are used by DSP plugins that prefer to use a graphical user interface to modify their parameters rather than using the other method of enumerating the parameters and using 
-	 * {@link FModDSP#setParameterFloat} / {@link FModDSP#setParameterInt} / {@link FModDSP#setParameterBool} / {@link FModDSP#setParameterData}.
+	 * Some 
+	 * <a href="https://www.fmod.com/docs/2.03/api/glossary.html#dsp">DSP</a> plug-ins (especially VST plug-ins) use dialog boxes to display graphical user interfaces for modifying their parameters, rather than using the other method of enumerating their parameters and setting them with {@link FModDSP#setParameterFloat}, {@link FModDSP#setParameterInt}, {@link FModDSP#setParameterBool}, or {@link FModDSP#setParameterData}.
 	 * <p>
-	 * FMOD Studio plugins do not have configuration dialog boxes. To find out what size window to create to store the configuration screen, use 
+	 * To find out what size window to create to store the configuration screen, use 
 	 * {@link FModDSP#getInfo} where you can get the width and height.
 	 * <p>
 	 * @param dSP
@@ -1133,5 +1194,5 @@ public class FModDSP {
 	{
 		return FMOD.FMOD_DSP_ShowConfigDialog(dSP, hwnd, show);
 	}
-	
+
 }

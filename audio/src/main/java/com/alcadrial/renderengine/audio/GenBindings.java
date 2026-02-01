@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.fmod.FMOD;
 
 public class GenBindings {
@@ -81,18 +82,32 @@ public class GenBindings {
 			if ((method.getModifiers() & Modifier.PUBLIC) == 0) continue;
 			if (!method.getName().startsWith("FMOD")) continue;
 			
+			String methodReturnType = method.getReturnType().toString();
+			List<String> methodParameters = new ArrayList<>(method.getParameters().length);
+			
 			String fullName = method.getName();
 			String name = fullName.substring(5);
-			String clazzName = name.substring(0, name.indexOf("_"));
+			int clazzNameEnd = name.indexOf("_");
+			if (clazzNameEnd == -1)
+			{
+				try
+				{
+					processMethod(classData, method, fullName, "Common", "common", name, methodReturnType, methodParameters);
+					continue;
+				}
+				catch (IOException e)
+				{
+					e.printStackTrace(System.out);
+					break;
+				}
+			}
+			String clazzName = name.substring(0, clazzNameEnd);
 			String clazzVarName = clazzName.substring(0, 1).toLowerCase() + clazzName.substring(1);
-			String methodName = name.substring(name.indexOf("_") + 1);
+			String methodName = name.substring(clazzNameEnd + 1);
 			methodName = methodName.substring(0, 1).toLowerCase() + methodName.substring(1);
-			String methodReturnType = method.getReturnType().toString();
 			
 			System.out.println(method);
 			System.out.println(clazzName + " ".repeat(20 - clazzName.length()) + methodName);
-			
-			List<String> methodParameters = new ArrayList<>(method.getParameters().length);
 			
 			if (!method.getName().equals("FMOD_System_Create")) methodParameters.add(clazzVarName);
 			else clazzVarName = null;
@@ -122,7 +137,7 @@ public class GenBindings {
 		}
 	}
 	
-	private static void processMethod(Map<String, Data> classData, Method method, String fullName, String clazzName, String clazzVarName, String methodName, String methodReturnType, List<String> methodParameters) throws IOException, FileNotFoundException
+	private static void processMethod(Map<String, Data> classData, Method method, String fullName, String clazzName, @Nullable String clazzVarName, String methodName, String methodReturnType, List<String> methodParameters) throws IOException, FileNotFoundException
 	{
 		RandomAccessFile clazzFile;
 		Map<String, StringBuilder> functions;
@@ -182,12 +197,15 @@ public class GenBindings {
 		String javadocString = s == null ? "" : buildJavadoc(s, clazzVarName, methodParameters).toString().replaceAll("\\n", "\n\t");
 		
 		String methodParameterNames = "";
-		for (int i = 0; i < methodParameters.size() && i < method.getParameters().length; i++) methodParameterNames += methodParameters.get(i) + ", ";
-		methodParameterNames = methodParameterNames.substring(0, methodParameterNames.length() - 2);
-		
 		String methodParameters0 = "";
-		for (int i = 0; i < methodParameters.size() && i < method.getParameters().length; i++) methodParameters0 += method.getParameters()[i].getType().getCanonicalName() + " " + methodParameters.get(i) + ", ";
-		methodParameters0 = methodParameters0.substring(0, methodParameters0.length() - 2);
+		
+		if (!methodParameters.isEmpty())
+		{
+			for (int i = 0; i < methodParameters.size() && i < method.getParameters().length; i++) methodParameterNames += methodParameters.get(i) + ", ";
+			methodParameterNames = methodParameterNames.substring(0, methodParameterNames.length() - 2);
+			for (int i = 0; i < methodParameters.size() && i < method.getParameters().length; i++) methodParameters0 += method.getParameters()[i].getType().getCanonicalName() + " " + methodParameters.get(i) + ", ";
+			methodParameters0 = methodParameters0.substring(0, methodParameters0.length() - 2);
+		}
 		
 		clazzFile.write("""
 			\t/**%6$s
@@ -203,7 +221,9 @@ public class GenBindings {
 	private static void parseDocs(String clazzName, Map<String, StringBuilder> functions) throws IOException, FileNotFoundException
 	{
 		//https://d1s9dnlmdewoh1.cloudfront.net/2.03/api/core-api-<clazzName.toLowerCase()>.html
-		try (RandomAccessFile docsFile = new RandomAccessFile("docs/FMod" + clazzName + "Docs.html", "rwd"))
+		String path = "docs/FMod" + clazzName + "Docs.html";
+		if (!Files.isRegularFile(Path.of(path))) return;
+		try (RandomAccessFile docsFile = new RandomAccessFile(path, "rwd"))
 		{
 			String functionName = "clazz";
 			functions.put(functionName, new StringBuilder(0));
@@ -238,7 +258,7 @@ public class GenBindings {
 		}
 	}
 	
-	public static StringBuilder buildJavadoc(StringBuilder functionDocs, String clazzVarName, List<String> methodParameters)
+	public static StringBuilder buildJavadoc(StringBuilder functionDocs, @Nullable String clazzVarName, List<String> methodParameters)
 	{
 		StringBuilder javadoc = new StringBuilder();
 		StringBuilder javadocParams = clazzVarName != null ? new StringBuilder("\n * @param ").append(clazzVarName) : new StringBuilder();
@@ -382,7 +402,8 @@ public class GenBindings {
 				}
 			}
 		}
-		return javadoc.append(javadocParams);
+		javadoc.append(javadocParams);
+		return javadoc;
 	}
 	
 	public static StringBuilder buildCode(StringBuilder functionDocs, int tagStartIndex, int[] nextDataEndIndex)
@@ -474,7 +495,7 @@ public class GenBindings {
 		return line;
 	}
 	
-	public static StringBuilder buildParamTag(StringBuilder functionDocs, int tagStartIndex, int[] nextDataEndIndex)
+	public static StringBuilder buildParamTag(StringBuilder functionDocs, int tagStartIndex, int @Nullable[] nextDataEndIndex)
 	{
 		StringBuilder tokens = new StringBuilder();
 		StringBuilder line = new StringBuilder();
