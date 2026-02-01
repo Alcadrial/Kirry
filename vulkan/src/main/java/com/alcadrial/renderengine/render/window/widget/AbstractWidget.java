@@ -24,7 +24,7 @@ public abstract class AbstractWidget implements Widget {
 	protected Vector3i pos;
 	protected Vector2i size;
 	private byte internalStates;
-	private Object transformation;
+	//private Object transformation;
 	
 	public AbstractWidget(VulkanWindow window, Vector3i pos, Vector2i size)
 	{
@@ -62,7 +62,6 @@ public abstract class AbstractWidget implements Widget {
 	@Override
 	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer manager, float partialFrame) throws VulkanException
 	{
-		
 	}
 	
 	@Override
@@ -141,7 +140,6 @@ public abstract class AbstractWidget implements Widget {
 	@EmptyImplementation
 	protected void move(Vector3i newPos)
 	{
-		
 	}
 	
 	@Override
@@ -156,7 +154,6 @@ public abstract class AbstractWidget implements Widget {
 	@EmptyImplementation
 	protected void resize(Vector2i newSize)
 	{
-		
 	}
 	
 	@Override
@@ -213,13 +210,11 @@ public abstract class AbstractWidget implements Widget {
 	@EmptyImplementation
 	protected void onMove(Vector3i oldPos, Vector3i newPos)
 	{
-		
 	}
 	
 	@EmptyImplementation
 	protected void onResize(Vector2i oldSize, Vector2i newSize)
 	{
-		
 	}
 	
 	@Override

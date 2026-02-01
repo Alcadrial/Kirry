@@ -2,6 +2,7 @@ package com.alcadrial.renderengine.render.commandbuffer;
 
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -20,7 +21,6 @@ import org.lwjgl.vulkan.VkViewport;
 
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.renderengine.core.util.NotYetImplementedException;
-import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -81,7 +81,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		VK10.vkCmdBindPipeline(vk, pipeline.bindPoint(), pipeline.getVk());
 	}
 	
-	public void bindDescriptorSets(Pipeline pipeline, long[] descriptorSets, int[] dynamicOffsets)
+	public void bindDescriptorSets(Pipeline pipeline, long[] descriptorSets, int @Nullable[] dynamicOffsets)
 	{
 		VK10.vkCmdBindDescriptorSets(vk, pipeline.bindPoint(), pipeline.getLayout().getVk(), 0, descriptorSets, dynamicOffsets);
 	}
@@ -264,7 +264,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		VK10.vkCmdNextSubpass(vk, subpassContents);
 	}
 	
-	public void pipelineBarrier(int srcStageMask, int dstStageMask, int dependencyFlags, @Nullable VkMemoryBarrier.Buffer memoryBarriers, @Nullable VkBufferMemoryBarrier.Buffer bufferMemoryBarriers, @Nullable VkImageMemoryBarrier.Buffer imageMemoryBarriers)
+	public void pipelineBarrier(int srcStageMask, int dstStageMask, int dependencyFlags,  VkMemoryBarrier.@Nullable Buffer memoryBarriers, VkBufferMemoryBarrier.@Nullable Buffer bufferMemoryBarriers, VkImageMemoryBarrier.@Nullable Buffer imageMemoryBarriers)
 	{
 		VK10.vkCmdPipelineBarrier(vk, srcStageMask, dstStageMask, dependencyFlags, memoryBarriers, bufferMemoryBarriers, imageMemoryBarriers);
 	}

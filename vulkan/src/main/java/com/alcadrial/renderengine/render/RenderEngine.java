@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -23,6 +24,8 @@ import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWVulkan;
@@ -35,11 +38,11 @@ import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackEXTI;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCreateInfoEXT;
 import org.lwjgl.vulkan.VkInstanceCreateInfo;
 
-import com.alcadrial.kurvilinear.SequentialMultiList;
 import com.alcadrial.renderengine.core.RenderEngineCore;
 import com.alcadrial.renderengine.render.util.DebugMessengerSeverity;
 import com.alcadrial.renderengine.render.util.DebugMessengerType;
 import com.alcadrial.renderengine.render.util.Version;
+import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.ExternalException;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -52,17 +55,18 @@ public class RenderEngine extends RenderEngineCore {
 	
 	private static final Lock LOCK = new ReentrantLock();
 	
-	private static volatile SequentialMultiList<String> instanceLayers = new SequentialMultiList<>();
-	private static volatile SequentialMultiList<String> instanceExtensions = new SequentialMultiList<>();
+	private static volatile List<String> instanceLayers = List.of();
+	private static volatile List<String> instanceExtensions = List.of();
 	
 	private static volatile boolean debug = false;
 	private static volatile boolean initializated = false;
-	private static volatile Exception initException = null;
-	private static volatile Vulkan vulkan = null;
-	private static volatile ExecutorService executor = null;
+	
+	private static volatile @Nullable Exception initException = null;
+	private static volatile @Nullable Vulkan vulkan = null;
+	private static volatile @Nullable ExecutorService executor = null;
 	private static volatile boolean multiThreading = false;
-	private static volatile Thread mainThread = null;
-	private static volatile LinkedBlockingQueue<Runnable> mainThreadActions = null;
+	private static volatile @Nullable Thread mainThread = null;
+	private static volatile @Nullable LinkedBlockingQueue<Runnable> mainThreadActions = null;
 	
 	/**
 	 * Creates a builder that can be used to choose various aspects of the engine.
@@ -91,22 +95,21 @@ public class RenderEngine extends RenderEngineCore {
 	 * 
 	 * @param applicationName 
 	 * @param version 
-	 * @return true if the library is initialized, false otherwise
+	 * @throws VulkanException 
 	 * @see #create(String, Version)
 	 * 
 	 */
-	public static boolean initialize(String applicationName, Version version)
+	public static void initialize(String applicationName, Version version) throws VulkanException
 	{
-		return new Builder(applicationName, version).initialize();
+		new Builder(applicationName, version).initialize();
 	}
 	
-	private static boolean initialize(Builder builder)
+	private static void initialize(Builder builder) throws VulkanException
 	{
-		if (!initializated) return (builder.useWindowSystem ? GLFW.glfwInit() : true) && initVulkan(builder);
-		return true;
+		if (!initializated && (builder.useWindowSystem ? GLFW.glfwInit() : true)) initVulkan(builder);
 	}
 	
-	private static boolean initVulkan(Builder builder)
+	private static void initVulkan(Builder builder) throws VulkanException
 	{
 		LOCK.lock();
 		try (MemoryStack stack = MemoryStack.stackPush())
@@ -114,9 +117,7 @@ public class RenderEngine extends RenderEngineCore {
 			mainThreadActions = new LinkedBlockingQueue<>();
 			multiThreading = builder.multiThreading;
 			instanceLayers = builder.instanceLayers;
-			if (instanceLayers.listsSize() == 0) instanceLayers.addList();
 			instanceExtensions = builder.instanceExtensions;
-			if (instanceExtensions.listsSize() == 0) instanceExtensions.addList();
 			
 			VkApplicationInfo applicationInfo = VkApplicationInfo.calloc(stack);
 			
@@ -137,43 +138,31 @@ public class RenderEngine extends RenderEngineCore {
 			{
 				PointerBuffer requiredInstances = builder.useWindowSystem ? GLFWVulkan.glfwGetRequiredInstanceExtensions() : null;
 				
-				int size = debug ? instanceExtensions.size() : instanceExtensions.size() - instanceExtensions.getList(0).size();
 				PointerBuffer enlargedBuffer;
 				
 				if (requiredInstances == null)
 				{
-					enlargedBuffer = stack.mallocPointer(size);
+					enlargedBuffer = stack.mallocPointer(instanceExtensions.size());
 				}
 				else
 				{
-					enlargedBuffer = stack.mallocPointer(size + requiredInstances.remaining());
+					enlargedBuffer = stack.mallocPointer(instanceExtensions.size() + requiredInstances.remaining());
 					while (requiredInstances.remaining() > 0) enlargedBuffer.put(requiredInstances.get());
 				}
-				if (debug)
+				for (String name : instanceExtensions)
 				{
-					for (String name : instanceExtensions)
-					{
-						if (EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME.equals(name)) debugUtilsExtensionEnabled = true;
-						enlargedBuffer.put(stack.UTF8(name));
-					}
-				}
-				else
-				{
-					for (String name : instanceExtensions.subLists(1, instanceExtensions.listsSize()))
-					{
-						if (EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME.equals(name)) debugUtilsExtensionEnabled = true;
-						enlargedBuffer.put(stack.UTF8(name));
-					}
+					if (EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME.equals(name)) debugUtilsExtensionEnabled = true;
+					enlargedBuffer.put(stack.UTF8(name));
 				}
 				enlargedBuffer.rewind();
 				
 				createInfo.ppEnabledExtensionNames(enlargedBuffer);
 				createInfo.ppEnabledLayerNames(getInstanceLayers(stack));
 				
-				if (builder.messengerCallback != null)
+				VkDebugUtilsMessengerCallbackEXTI messengerCallback = builder.messengerCallback;
+				if (messengerCallback != null)
 				{
 					VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo = VkDebugUtilsMessengerCreateInfoEXT.calloc(stack);
-					VkDebugUtilsMessengerCallbackEXTI callback = builder.messengerCallback;
 					int severity = 0;
 					int type = 0;
 					for (DebugMessengerSeverity s : builder.messengerSeverities) severity |= s.getBit();
@@ -183,7 +172,7 @@ public class RenderEngine extends RenderEngineCore {
 					messengerCreateInfo.messageSeverity(severity);
 					messengerCreateInfo.messageType(type);
 					messengerCreateInfo.pfnUserCallback((VkDebugUtilsMessengerCallbackEXTI) (messageSeverity, messageType, callbackDataId, userDataId) -> {
-						if (debug) return callback.invoke(messageSeverity, messageType, callbackDataId, userDataId);
+						if (debug) return messengerCallback.invoke(messageSeverity, messageType, callbackDataId, userDataId);
 						return VK10.VK_FALSE;
 					});
 					
@@ -193,14 +182,15 @@ public class RenderEngine extends RenderEngineCore {
 			initializated = true;
 			vulkan = new Vulkan(createInfo, debugUtilsExtensionEnabled);
 			executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("VirtualTask-", 0).factory());
-			return true;
 		}
 		catch (Exception e)
 		{
 			mainThreadActions = null;
 			initException = e;
 			initializated = false;
-			return false;
+			if (e instanceof VulkanException ve) throw ve;
+			if (e instanceof RuntimeException re) throw re;
+			throw new RuntimeException(e);
 		}
 		finally
 		{
@@ -210,8 +200,8 @@ public class RenderEngine extends RenderEngineCore {
 	
 	static PointerBuffer getInstanceLayers(MemoryStack stack)
 	{
-		PointerBuffer array = stack.mallocPointer(debug ? instanceLayers.size() : instanceLayers.size() - instanceLayers.getList(0).size());
-		for (String string : debug ? instanceLayers : instanceLayers.subLists(1, instanceLayers.listsSize())) array.put(stack.UTF8(string));
+		PointerBuffer array = stack.mallocPointer(instanceLayers.size());
+		for (String string : instanceLayers) array.put(stack.UTF8(string));
 		return array.rewind();
 	}
 	
@@ -228,7 +218,7 @@ public class RenderEngine extends RenderEngineCore {
 		{
 			if (initializated)
 			{
-				vulkan.close();
+				((@NonNull Vulkan) vulkan).close();
 				if (executor != null) executor.shutdown();
 				vulkan = null;
 				f = requestMainThread(() -> {
@@ -241,7 +231,7 @@ public class RenderEngine extends RenderEngineCore {
 						}
 						catch (InterruptedException e)
 						{}
-						executor.shutdownNow();
+						((@NonNull ExecutorService) executor).shutdownNow();
 						executor = null;
 					}
 					mainThreadActions = null;
@@ -276,7 +266,12 @@ public class RenderEngine extends RenderEngineCore {
 	
 	public static void assertLoaded()
 	{
-		if (!initializated) throw new RuntimeException("Using RenderEngine Vulkan without initialization, use RenderEngine#initialize before anything");
+		if (!initializated) throw new RuntimeException(initializationErrorMessage());
+	}
+	
+	public static String initializationErrorMessage()
+	{
+		return "Using RenderEngine Vulkan without initialization, use RenderEngine#initialize before anything";
 	}
 	
 	public static void setWindowHint(int hint, boolean value)
@@ -306,19 +301,29 @@ public class RenderEngine extends RenderEngineCore {
 		debug = false;
 	}
 	
-	public static Exception getLastInitializationException()
+	public static @Nullable Exception getLastInitializationException()
 	{
 		return initException;
 	}
 	
 	public static Vulkan getVulkan()
 	{
+		return VulkanErrorUtils.nonNull(vulkan, initializationErrorMessage());
+	}
+	
+	public static @Nullable Vulkan getUnsafeVulkan()
+	{
 		return vulkan;
 	}
 	
 	public static ExecutorService getExecutor()
 	{
-		return executor;
+		return Objects.requireNonNull(executor, initializationErrorMessage());
+	}
+	
+	private static LinkedBlockingQueue<Runnable> getMainThreadActions()
+	{
+		return (@NonNull LinkedBlockingQueue<Runnable>) mainThreadActions;
 	}
 	
 	public static VulkanFuture<?> completedTask()
@@ -395,7 +400,9 @@ public class RenderEngine extends RenderEngineCore {
 	public static class CompletableTaskHandler<V> implements VulkanFuture<V> {
 		
 		private CountDownLatch termination;
+		@Nullable
 		private VulkanException exception;
+		@Nullable
 		private V value;
 		private boolean isCompleted;
 		
@@ -441,7 +448,9 @@ public class RenderEngine extends RenderEngineCore {
 	private static abstract class AsyncTaskHandler<V> implements VulkanFuture<V> {
 		
 		private CountDownLatch termination;
+		@Nullable
 		private V result;
+		@Nullable
 		private VulkanException exception;
 		private StackTraceElement[] callerStackTrace;
 		
@@ -468,21 +477,22 @@ public class RenderEngine extends RenderEngineCore {
 			}
 			catch (VulkanException e)
 			{
-				exception = e;
 				StackTraceElement[] errorStackTrace = e.getStackTrace();
 				StackTraceElement[] stackTrace = new StackTraceElement[errorStackTrace.length + callerStackTrace.length - 2];
 				System.arraycopy(errorStackTrace, 0, stackTrace, 0, errorStackTrace.length);
 				System.arraycopy(callerStackTrace, 2, stackTrace, errorStackTrace.length, callerStackTrace.length - 2);
-				exception.setStackTrace(stackTrace);
-				exception.printStackTrace();
+				e.setStackTrace(stackTrace);
+				e.printStackTrace();
+				exception = e;
 			}
 			catch (Throwable e)
 			{
-				exception = new ExternalException(e);
+				VulkanException exception = new ExternalException(e);
 				StackTraceElement[] stackTrace = new StackTraceElement[callerStackTrace.length - 2];
 				System.arraycopy(callerStackTrace, 2, stackTrace, 0, callerStackTrace.length - 2);
 				exception.setStackTrace(stackTrace);
 				exception.printStackTrace();
+				this.exception = exception;
 			}
 			finally
 			{
@@ -505,7 +515,7 @@ public class RenderEngine extends RenderEngineCore {
 		}
 	}
 	
-	private static class AsyncRunnableTaskHandler extends AsyncTaskHandler<Object> {
+	private static class AsyncRunnableTaskHandler extends AsyncTaskHandler<@Nullable Void> {
 		
 		private VulkanRunnable action;
 		
@@ -516,7 +526,7 @@ public class RenderEngine extends RenderEngineCore {
 		}
 		
 		@Override
-		protected Object execute() throws VulkanException
+		protected @Nullable Void execute() throws VulkanException
 		{
 			action.run();
 			return null;
@@ -547,7 +557,7 @@ public class RenderEngine extends RenderEngineCore {
 		
 		public AsyncDependentTaskHandler(VulkanFuture<V> other, VulkanFunction<V, W> action)
 		{
-			this.other = Objects.requireNonNull(other);
+			this.other = other;
 			this.action = action;
 			start();
 		}
@@ -571,7 +581,7 @@ public class RenderEngine extends RenderEngineCore {
 		if (multiThreading && mainThread != Thread.currentThread())
 		{
 			CompletableFuture<?> f = new CompletableFuture<>();
-			mainThreadActions.add(() -> {
+			getMainThreadActions().add(() -> {
 				action.run();
 				f.complete(null);
 			});
@@ -602,7 +612,7 @@ public class RenderEngine extends RenderEngineCore {
 		if (multiThreading && mainThread != Thread.currentThread())
 		{
 			CompletableTaskHandler<?> f = completableTask();
-			mainThreadActions.add(() -> {
+			getMainThreadActions().add(() -> {
 				action.run();
 				f.complete(null);
 			});
@@ -641,7 +651,7 @@ public class RenderEngine extends RenderEngineCore {
 		if (!multiThreading || mainThread == Thread.currentThread()) return action.get();
 		
 		CompletableFuture<T> f = new CompletableFuture<>();
-		mainThreadActions.add(() -> f.complete(action.get()));
+		getMainThreadActions().add(() -> f.complete(action.get()));
 		boolean interrupted = false;
 		try
 		{
@@ -679,7 +689,7 @@ public class RenderEngine extends RenderEngineCore {
 	{
 		assertLoaded();
 		CompletableFuture<T> f = new CompletableFuture<>();
-		if (multiThreading && mainThread != Thread.currentThread()) mainThreadActions.add(() -> f.complete(action.get()));
+		if (multiThreading && mainThread != Thread.currentThread()) getMainThreadActions().add(() -> f.complete(action.get()));
 		else f.complete(action.get());
 		return f;
 	}
@@ -702,7 +712,7 @@ public class RenderEngine extends RenderEngineCore {
 					try
 					{
 						LOCK.unlock();
-						mainThreadActions.take().run();
+						getMainThreadActions().take().run();
 						LOCK.lock();
 					}
 					catch (InterruptedException e)
@@ -730,7 +740,8 @@ public class RenderEngine extends RenderEngineCore {
 			{
 				if (mainThread != null) throw new DuplicateMainThreadException();
 				mainThread = Thread.currentThread();
-				while (initializated && mainThreadActions.peek() != null) mainThreadActions.poll().run();
+				LinkedBlockingQueue<Runnable> actions = getMainThreadActions();
+				while (initializated && actions.peek() != null) actions.poll().run();
 				mainThread = null;
 			}
 		}
@@ -746,23 +757,24 @@ public class RenderEngine extends RenderEngineCore {
 		private Version version;
 		private boolean multiThreading;
 		private boolean useWindowSystem;
-		private VkDebugUtilsMessengerCallbackEXTI messengerCallback;
+		private @Nullable VkDebugUtilsMessengerCallbackEXTI messengerCallback;
 		private EnumSet<DebugMessengerSeverity> messengerSeverities;
 		private EnumSet<DebugMessengerType> messengerTypes;
-		private SequentialMultiList<String> instanceLayers;
-		private SequentialMultiList<String> instanceExtensions;
+		private List<String> instanceLayers;
+		private List<String> instanceExtensions;
+		private int debugLayersCount;
+		private int debugExtensionsCount;
 		
 		private Builder(String applicationName, Version version)
 		{
 			this.applicationName = applicationName;
 			this.version = version;
 			multiThreading = true;
-			instanceLayers = new SequentialMultiList<>();
-			instanceLayers.addList();
-			instanceLayers.addList();
-			instanceExtensions = new SequentialMultiList<>();
-			instanceExtensions.addList();
-			instanceExtensions.addList();
+			useWindowSystem = false;
+			instanceLayers = new LinkedList<>();
+			debugLayersCount = 0;
+			instanceExtensions = new LinkedList<>();
+			debugExtensionsCount = 0;
 			messengerSeverities = EnumSet.range(DebugMessengerSeverity.ERROR, DebugMessengerSeverity.INFO);
 			messengerTypes = EnumSet.range(DebugMessengerType.PERFORMANCE, DebugMessengerType.VALIDATION);
 		}
@@ -804,9 +816,8 @@ public class RenderEngine extends RenderEngineCore {
 		
 		public Builder instanceExtensions(Collection<String> extensions)
 		{
-			List<String> list = instanceExtensions.getList(1);
-			list.clear();
-			list.addAll(extensions);
+			for (int i = debugExtensionsCount; i < instanceExtensions.size(); i++) instanceExtensions.removeFirst();
+			instanceExtensions.addAll(0, extensions);
 			return this;
 		}
 		
@@ -820,9 +831,9 @@ public class RenderEngine extends RenderEngineCore {
 		{
 			if (debug)
 			{
-				List<String> list = instanceExtensions.getList(0);
-				list.clear();
-				list.addAll(extensions);
+				for (int i = 0; i < debugExtensionsCount; i++) instanceExtensions.removeLast();
+				instanceExtensions.addAll(extensions);
+				debugExtensionsCount = extensions.size();
 			}
 			return this;
 		}
@@ -834,9 +845,8 @@ public class RenderEngine extends RenderEngineCore {
 		
 		public Builder instanceLayers(Collection<String> extensions)
 		{
-			List<String> list = instanceLayers.getList(1);
-			list.clear();
-			list.addAll(extensions);
+			for (int i = debugLayersCount; i < instanceLayers.size(); i++) instanceLayers.removeFirst();
+			instanceLayers.addAll(0, extensions);
 			return this;
 		}
 		
@@ -849,9 +859,9 @@ public class RenderEngine extends RenderEngineCore {
 		{
 			if (debug)
 			{
-				List<String> list = instanceLayers.getList(0);
-				list.clear();
-				list.addAll(extensions);
+				for (int i = 0; i < debugLayersCount; i++) instanceLayers.removeLast();
+				instanceLayers.addAll(extensions);
+				debugLayersCount = extensions.size();
 			}
 			return this;
 		}
@@ -868,11 +878,9 @@ public class RenderEngine extends RenderEngineCore {
 			return this;
 		}
 		
-		public boolean initialize()
+		public void initialize() throws VulkanException
 		{
-			Objects.requireNonNull(applicationName);
-			Objects.requireNonNull(version);
-			return RenderEngine.initialize(this);
+			RenderEngine.initialize(this);
 		}
 	}
 }

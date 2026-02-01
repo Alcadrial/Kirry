@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 
+import org.jspecify.annotations.Nullable;
+
 import com.alcadrial.renderengine.render.util.VulkanDebug;
 
 public abstract class VulkanObject implements AutoCloseable, VulkanDebug {
@@ -25,28 +27,29 @@ public abstract class VulkanObject implements AutoCloseable, VulkanDebug {
 	@Override
 	public void close()
 	{
-		if(!VULKAN_INSTANCE_LIST.remove(this) && Debug.isEnabledDeallocationFail())
-			throw new IllegalStateException(("Failed to remove resource " + this + "," + VULKAN_INSTANCE_LIST.toString()).replaceAll("[\\[,\\]]", "\n"));
+		if (!VULKAN_INSTANCE_LIST.remove(this) && Debug.isEnabledDeallocationFail()) throw new IllegalStateException(("Failed to remove resource " + this + "," + VULKAN_INSTANCE_LIST.toString()).replaceAll("[\\[,\\]]", "\n"));
 	}
 	
 	private static final class ConcurrentStack<E> extends AbstractSequentialList<E> {
 		
 		private class Node {
 			
+			@Nullable
 			Node next;
 			E data;
 			
-			public Node(ConcurrentStack<E>.Node next)
+			public Node(ConcurrentStack<E>.@Nullable Node next)
 			{
 				this.next = next;
 			}
 		}
 		
+		@Nullable
 		private Node head;
 		private int size;
 		
 		@Override
-		public boolean remove(Object o)
+		public boolean remove(@Nullable Object o)
 		{
 			if (o == null) return false;
 			Iterator it = new Iterator();
@@ -60,21 +63,25 @@ public abstract class VulkanObject implements AutoCloseable, VulkanDebug {
 		
 		private class Iterator implements ListIterator<E> {
 			
+			@Nullable
 			Node p = null;
-			Node n = new Node(head);
+			@Nullable
+			Node n = head;
 			
 			@Override
 			public boolean hasNext()
 			{
-				return n.next != null;
+				return n != null;
 			}
 			
+			@SuppressWarnings("null")
 			@Override
 			public E next()
 			{
 				p = n;
+				E e = n.data;
 				n = n.next;
-				return n.data;
+				return e;
 			}
 			
 			@Override
@@ -82,7 +89,8 @@ public abstract class VulkanObject implements AutoCloseable, VulkanDebug {
 			{
 				return 0;
 			}
-			
+
+			@SuppressWarnings("null")
 			@Override
 			public void remove()
 			{
@@ -90,27 +98,27 @@ public abstract class VulkanObject implements AutoCloseable, VulkanDebug {
 				synchronized (ConcurrentStack.this)
 				{
 					if (n == head) head = next;
-					p.next = next;
 					size--;
 				}
 				n = next;
 			}
-			
+
+			@SuppressWarnings("null")
 			@Override
 			public void set(E e)
 			{
-				n.data = e;
+				p.data = e;
 			}
 			
 			@Override
 			public void add(E e)
 			{
-				Node m = new Node(n.next);
+				Node m = new Node(n);
 				m.data = e;
+				p = m;
 				synchronized (ConcurrentStack.this)
 				{
-					if (n.next == head) head = m;
-					n.next = m;
+					if (n == head) head = m;
 					size++;
 				}
 			}

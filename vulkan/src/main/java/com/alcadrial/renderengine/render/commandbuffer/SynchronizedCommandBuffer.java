@@ -2,6 +2,7 @@ package com.alcadrial.renderengine.render.commandbuffer;
 
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -20,7 +21,6 @@ import org.lwjgl.vulkan.VkViewport;
 
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.renderengine.core.util.NotYetImplementedException;
-import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -92,7 +92,7 @@ public class SynchronizedCommandBuffer extends CommandBuffer {
 	}
 	
 	@Override
-	public synchronized void bindDescriptorSets(Pipeline pipeline, long[] descriptorSets, int[] dynamicOffsets)
+	public synchronized void bindDescriptorSets(Pipeline pipeline, long[] descriptorSets, int @Nullable[] dynamicOffsets)
 	{
 		synchronized (pool)
 		{
@@ -347,7 +347,7 @@ public class SynchronizedCommandBuffer extends CommandBuffer {
 	}
 	
 	@Override
-	public synchronized void pipelineBarrier(int srcStageMask, int dstStageMask, int dependencyFlags, @Nullable VkMemoryBarrier.Buffer memoryBarriers, @Nullable VkBufferMemoryBarrier.Buffer bufferMemoryBarriers, @Nullable VkImageMemoryBarrier.Buffer imageMemoryBarriers)
+	public synchronized void pipelineBarrier(int srcStageMask, int dstStageMask, int dependencyFlags, VkMemoryBarrier.@Nullable Buffer memoryBarriers, VkBufferMemoryBarrier.@Nullable Buffer bufferMemoryBarriers, VkImageMemoryBarrier.@Nullable Buffer imageMemoryBarriers)
 	{
 		synchronized (pool)
 		{

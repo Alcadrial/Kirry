@@ -2,6 +2,7 @@ package com.alcadrial.renderengine.render.util;
 
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.NonNull;
 import org.lwjgl.vulkan.EXTDebugReport;
 import org.lwjgl.vulkan.EXTFullScreenExclusive;
 import org.lwjgl.vulkan.EXTImageCompressionControl;
@@ -35,13 +36,13 @@ public class VulkanErrorUtils {
 		if (!obj.equals(other)) throw new DataIncosistenceException(error);
 	}
 	
-	public static <O> O nonNull(O obj)
+	public static <O> @NonNull O nonNull(O obj)
 	{
 		if (obj == null) throw new NullPointerException();
 		return obj;
 	}
 	
-	public static <O> O nonNull(O obj, String error)
+	public static <O> @NonNull O nonNull(O obj, String error)
 	{
 		if (obj == null) throw new NullPointerException(error);
 		return obj;

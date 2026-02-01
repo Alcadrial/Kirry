@@ -10,7 +10,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.EXTDebugUtils;
@@ -27,7 +29,6 @@ import org.lwjgl.vulkan.VkFenceCreateInfo;
 import org.lwjgl.vulkan.VkMemoryRequirements;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 
-import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.buffer.Memory;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
@@ -63,12 +64,12 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	private Queue graphicsQueue;
 	private Queue computeQueue;
 	private Queue graphicsComputeQueue;
-	private PresentQueue presentQueue;
+	private @Nullable PresentQueue presentQueue;
 	private CommandPool multiUseCommandPool;
 	private CommandPool singleUseCommandPool;
 	private Set<Queue> queues;
 	
-	private Map<Object, String> debugNames;
+	private @Nullable Map<Object, String> debugNames;
 	
 	public Device(VkDevice device, PhysicalDevice physicalDevice, QueueFamily graphicsQueueFamily, QueueFamily computeQueueFamily, QueueFamily graphicsComputeQueueFamily, @Nullable QueueFamily presentQueueFamily) throws VulkanException
 	{
@@ -105,7 +106,8 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		queues.add(computeQueue);
 		graphicsComputeQueue = Queue.createQueue(this, graphicsComputeQueueFamily.getIndex());
 		queues.add(graphicsComputeQueue);
-		if (presentQueueFamily != null) {
+		if (presentQueueFamily != null)
+		{
 			presentQueue = Queue.createPresentQueue(this, presentQueueFamily.getIndex());
 			queues.add(presentQueue);
 		}
@@ -141,7 +143,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		return graphicsComputeQueue;
 	}
 	
-	public PresentQueue getPresentQueue()
+	public @Nullable PresentQueue getPresentQueue()
 	{
 		return presentQueue;
 	}
@@ -325,7 +327,8 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	private Device waitIdle0(Iterator<Queue> iterator)
 	{
-		if (!iterator.hasNext()) {
+		if (!iterator.hasNext())
+		{
 			VK10.vkDeviceWaitIdle(vk);
 			return this;
 		}
@@ -461,7 +464,8 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 				Debug.debug("Warning: too much unclosed resources (" + destructionList.size() + "), logging the first " + limit);
 				
 				Iterator<AbstractDeviceResource<?>> iterator = destructionList.iterator();
-				for (int i = 0; i < limit; i++) {
+				for (int i = 0; i < limit; i++)
+				{
 					AbstractDeviceResource<?> resource = iterator.next();
 					Debug.print(i + " " + resource.getClass(), resource);
 				}
@@ -492,13 +496,19 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	// DEBUG
 	
-	public String getObjectDebugName(Object object)
+	private <@Nullable T> T applyDebugNames(Function<Map<Object, String>, T> action)
 	{
 		if (RenderEngine.isDebug() && RenderEngine.getVulkan().isDebugUtilsExtensionEnabled())
 		{
-			return debugNames.get(object);
+			if (debugNames == null) debugNames = new HashMap<>(1024);
+			return action.apply(debugNames);
 		}
 		return null;
+	}
+	
+	public @Nullable String getObjectDebugName(Object object)
+	{
+		return applyDebugNames(debugNames -> debugNames.get(object));
 	}
 	
 	public void setObjectDebugName(Vulkan object, String name)
@@ -588,15 +598,15 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	public void setObjectDebugName(int objectType, long object, String name)
 	{
-		if (RenderEngine.isDebug() && RenderEngine.getVulkan().isDebugUtilsExtensionEnabled())
-		{
+		applyDebugNames(debugNames -> {
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
 				VkDebugUtilsObjectNameInfoEXT info = VkDebugUtilsObjectNameInfoEXT.malloc(stack);
 				info.set(EXTDebugUtils.VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, 0, objectType, object, stack.UTF8(name));
 				EXTDebugUtils.vkSetDebugUtilsObjectNameEXT(vk, info);
 				debugNames.put(object, name);
+				return null;
 			}
-		}
+		});
 	}
 }

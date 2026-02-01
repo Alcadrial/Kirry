@@ -1,5 +1,7 @@
 package com.alcadrial.renderengine.render.window;
 
+import org.jspecify.annotations.NonNull;
+
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -128,6 +130,7 @@ public class BlackScreen implements Screen {
 	@Override
 	public RenderPass getRenderPass()
 	{
-		return null;
+		//Not used if #isOnScreen() is always true
+		return (@NonNull RenderPass) null;
 	}
 }

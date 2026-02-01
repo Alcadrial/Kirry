@@ -2,6 +2,8 @@ package com.alcadrial.renderengine.render.util;
 
 import java.util.Objects;
 
+import org.jspecify.annotations.Nullable;
+
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -14,7 +16,7 @@ public abstract class AbstractDeviceResource<VK> extends AbstractVulkanResource<
 	}
 	
 	protected final Device device;
-	protected String name;
+	protected @Nullable String name;
 	
 	public AbstractDeviceResource(Device device)
 	{

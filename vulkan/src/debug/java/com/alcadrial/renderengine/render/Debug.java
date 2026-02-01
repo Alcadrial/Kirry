@@ -8,8 +8,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
+import org.eclipse.collections.impl.utility.LazyIterate;
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.system.Pointer;
 import org.lwjgl.system.Struct;
@@ -67,7 +68,7 @@ public class Debug {
 		return idMap.compute(obj, (k, v) -> v == null ? 0L : v + 1);
 	}
 	
-	public static void printState(String name, VulkanDebug vk)
+	public static void printState(String name, @Nullable VulkanDebug vk)
 	{
 		if (vk == null)
 		{
@@ -113,7 +114,7 @@ public class Debug {
 		prefix = prefix.substring(0, prefix.length() - 1);
 	}
 	
-	public static void print(String name, String s)
+	public static void print(String name, @Nullable String s)
 	{
 		print(name + ": " + s);
 	}
@@ -128,7 +129,7 @@ public class Debug {
 		print(name + ": " + address(vk));
 	}
 	
-	public static void print(String name, VulkanDebug vk)
+	public static void print(String name, @Nullable VulkanDebug vk)
 	{
 		if (vk == null)
 		{
@@ -142,7 +143,7 @@ public class Debug {
 		print("}");
 	}
 	
-	public static void print(String name, Collection<?> collection)
+	public static void print(String name, @Nullable Collection<?> collection)
 	{
 		if (collection == null)
 		{
@@ -156,7 +157,7 @@ public class Debug {
 		print("}");
 	}
 	
-	public static void print(Object obj)
+	public static void print(@Nullable Object obj)
 	{
 		debugOutput.println(prefix + obj);
 	}
@@ -168,7 +169,7 @@ public class Debug {
 	
 	public static String validity(StructBuffer<?, ?> p, int type)
 	{
-		return p.stream().map(s -> Debug.validity(s, type)).collect(Collectors.joining(", ", "[", "]"));
+		return LazyIterate.collect(p, s -> Debug.validity(s, type)).makeString("[", ", ", "]");
 	}
 	
 	public static String address(Pointer p)
@@ -188,7 +189,7 @@ public class Debug {
 	
 	public static void debug(Object x)
 	{
-		Vulkan vulkan = RenderEngine.getVulkan();
+		Vulkan vulkan = RenderEngine.getUnsafeVulkan();
 		if (vulkan != null) debugOutput.println(time() + "[DEBUG|" + Thread.currentThread().getName() + "/" + vulkan.getData().threadId + "] " + x);
 		else debugOutput.println(time() + "[DEBUG] " + x);
 	}

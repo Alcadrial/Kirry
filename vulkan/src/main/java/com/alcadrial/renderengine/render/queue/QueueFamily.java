@@ -1,5 +1,6 @@
 package com.alcadrial.renderengine.render.queue;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
 
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -11,7 +12,7 @@ public class QueueFamily {
 		RenderEngine.assertLoaded();
 	}
 	
-	private VkQueueFamilyProperties properties;
+	private @Nullable VkQueueFamilyProperties properties;
 	private int index;
 	
 	public QueueFamily()
@@ -19,13 +20,13 @@ public class QueueFamily {
 		this(null, -1);
 	}
 	
-	public QueueFamily(VkQueueFamilyProperties properties, int index)
+	public QueueFamily(@Nullable VkQueueFamilyProperties properties, int index)
 	{
 		this.properties = properties;
 		this.index = index;
 	}
 	
-	public VkQueueFamilyProperties getProperties()
+	public @Nullable VkQueueFamilyProperties getProperties()
 	{
 		return properties;
 	}
@@ -35,7 +36,7 @@ public class QueueFamily {
 		return index;
 	}
 	
-	void setProperties(VkQueueFamilyProperties properties)
+	void setProperties(@Nullable VkQueueFamilyProperties properties)
 	{
 		if (properties == null) index = -1;
 		this.properties = properties;

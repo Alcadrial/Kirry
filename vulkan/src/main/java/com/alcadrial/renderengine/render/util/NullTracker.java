@@ -1,5 +1,7 @@
 package com.alcadrial.renderengine.render.util;
 
+import org.jspecify.annotations.Nullable;
+
 import com.alcadrial.renderengine.render.RenderEngine;
 
 class NullTracker implements Tracker<Object> {
@@ -15,7 +17,7 @@ class NullTracker implements Tracker<Object> {
 	{}
 	
 	@Override
-	public void modify(Object data)
+	public void modify(@Nullable Object data)
 	{}
 	
 	@Override

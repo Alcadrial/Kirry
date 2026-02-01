@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.Future;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.vulkan.VkBufferImageCopy;
 
 import com.alcadrial.kector.matrix.Matrix4f;
@@ -13,9 +14,9 @@ import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
-import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.buffer.Memory.Mapping;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.VulkanFuture;
@@ -31,7 +32,7 @@ public class ImageWriter implements AutoCloseable {
 	private class Work {
 		
 		private VulkanFuture<?> work;
-		private Work next;
+		private @Nullable Work next;
 		
 		public Work(VulkanFuture<?> work)
 		{
@@ -56,8 +57,8 @@ public class ImageWriter implements AutoCloseable {
 	private int bufferCopyCount;
 	
 	private @Nullable CommandBuffer flushCommandBuffer;
-	private Work firstWork;
-	private Work lastWork;
+	private @Nullable Work firstWork;
+	private @Nullable Work lastWork;
 	
 	public ImageWriter(VulkanBuffer srcBuffer, int srcOffset, Texture dstTexture, Vector3i imageOffset, Vector3i imageExtent, @Nullable CommandBuffer flushCommandBuffer) throws VulkanException
 	{
@@ -66,6 +67,8 @@ public class ImageWriter implements AutoCloseable {
 	
 	public ImageWriter(VulkanBuffer srcBuffer, int srcOffset, Texture dstTexture, int xOffset, int yOffset, int zOffset, int xExtent, int yExtent, int zExtent, @Nullable CommandBuffer flushCommandBuffer) throws VulkanException
 	{
+		Mapping srcBufferMapping = srcBuffer.getMemory().getMapping();
+		if (srcBufferMapping == null) throw new VulkanException("Memory of srcBuffer " + srcBuffer + " is not mapped");
 		this.srcBuffer = srcBuffer;
 		this.srcOffset = srcOffset;
 		this.dstTexture = dstTexture;
@@ -77,7 +80,7 @@ public class ImageWriter implements AutoCloseable {
 		this.zExtent = zExtent;
 		this.flushCommandBuffer = flushCommandBuffer;
 		cursor = 0;
-		buffer = srcBuffer.getMemory().getMapping().getBuffer();
+		buffer = srcBufferMapping.getBuffer();
 		buffer = buffer.slice(srcOffset, xExtent * yExtent * zExtent * 4).order(buffer.order());
 		vkBufferCopy = VkBufferImageCopy.malloc(MAX_COPY_COUNT);
 		firstWork = lastWork = null;
@@ -204,13 +207,14 @@ public class ImageWriter implements AutoCloseable {
 			Device device = srcBuffer.getDevice();
 			Work work = new Work(device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), this::flush));
 			
-			if (firstWork == null)
+			Work w = lastWork;
+			if (w == null)
 			{
 				firstWork = lastWork = work;
 			}
 			else
 			{
-				lastWork.next = work;
+				w.next = work;
 				lastWork = work;
 			}
 		}

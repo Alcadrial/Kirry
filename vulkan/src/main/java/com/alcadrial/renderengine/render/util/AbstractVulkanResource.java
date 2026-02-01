@@ -1,5 +1,7 @@
 package com.alcadrial.renderengine.render.util;
 
+import org.jspecify.annotations.Nullable;
+
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.VulkanObject;
@@ -26,12 +28,20 @@ public abstract class AbstractVulkanResource<VK> extends VulkanObject {
 	@Override
 	public int hashCode()
 	{
+		VK vk = this.vk;
+		if (vk == null) return 0;
 		return vk.hashCode();
 	}
 	
 	@Override
-	public boolean equals(Object obj)
+	public boolean equals(@Nullable Object obj)
 	{
+		VK vk = this.vk;
+		if (vk == null)
+		{
+			if (obj == null) return true;
+			return obj instanceof AbstractVulkanResource r && r.vk == null;
+		}
 		return obj instanceof AbstractVulkanResource r && vk.equals(r.vk);
 	}
 	

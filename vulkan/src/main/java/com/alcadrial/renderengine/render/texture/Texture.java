@@ -6,7 +6,6 @@ import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkImageCreateInfo;
 import org.lwjgl.vulkan.VkImageMemoryBarrier;
 
-import com.alcadrial.renderengine.core.util.Nonnull;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -24,32 +23,32 @@ public class Texture extends RawDeviceResource {
 		RenderEngine.assertLoaded();
 	}
 	
-	public static @Nonnull Texture create1dTexture(Device device, int width, int format, int usage, int aspectMask) throws VulkanException
+	public static Texture create1dTexture(Device device, int width, int format, int usage, int aspectMask) throws VulkanException
 	{
 		return new Texture(device, width, 1, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, 1, VK10.VK_IMAGE_TYPE_1D);
 	}
 	
-	public static @Nonnull Texture create1dTexture(Device device, int width, int format, int usage, int aspectMask, int mipLevels) throws VulkanException
+	public static Texture create1dTexture(Device device, int width, int format, int usage, int aspectMask, int mipLevels) throws VulkanException
 	{
 		return new Texture(device, width, 1, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_1D);
 	}
 	
-	public static @Nonnull Texture create2dTexture(Device device, int width, int height, int format, int usage, int aspectMask) throws VulkanException
+	public static Texture create2dTexture(Device device, int width, int height, int format, int usage, int aspectMask) throws VulkanException
 	{
 		return new Texture(device, width, height, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, 1, VK10.VK_IMAGE_TYPE_2D);
 	}
 	
-	public static @Nonnull Texture create2dTexture(Device device, int width, int height, int format, int usage, int aspectMask, int mipLevels) throws VulkanException
+	public static Texture create2dTexture(Device device, int width, int height, int format, int usage, int aspectMask, int mipLevels) throws VulkanException
 	{
 		return new Texture(device, width, height, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_2D);
 	}
 	
-	public static @Nonnull Texture create3dTexture(Device device, int width, int height, int depth, int format, int usage, int aspectMask) throws VulkanException
+	public static Texture create3dTexture(Device device, int width, int height, int depth, int format, int usage, int aspectMask) throws VulkanException
 	{
 		return new Texture(device, width, height, depth, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, 1, VK10.VK_IMAGE_TYPE_3D);
 	}
 	
-	public static @Nonnull Texture create3dTexture(Device device, int width, int height, int depth, int format, int usage, int aspectMask, int mipLevels) throws VulkanException
+	public static Texture create3dTexture(Device device, int width, int height, int depth, int format, int usage, int aspectMask, int mipLevels) throws VulkanException
 	{
 		return new Texture(device, width, height, depth, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_3D);
 	}
@@ -252,7 +251,7 @@ public class Texture extends RawDeviceResource {
 	@Override
 	public void close()
 	{
-		if (view != null && view.getVk() != 0) view.close();
+		if (view.getVk() != 0) view.close();
 		if (vk != null) VK10.vkDestroyImage(device.getVk(), vk, null);
 		if (memory.getVk() != 0) memory.close();
 		super.close();

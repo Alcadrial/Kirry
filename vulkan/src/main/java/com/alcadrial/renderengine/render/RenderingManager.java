@@ -1,6 +1,5 @@
 package com.alcadrial.renderengine.render;
 
-import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
@@ -11,18 +10,18 @@ public class RenderingManager {
 		RenderEngine.assertLoaded();
 	}
 	
-	private CommandBuffer commandBufferData;
+	//private CommandBuffer commandBufferData;
 	
-	private Renderer defaultRenderer;
+	//private Renderer defaultRenderer;
 	
 	public RenderingManager(VulkanWindow window)
 	{
-		//	defaultRenderer = RendererUtils.getTriangleRenderer(window.getDevice(), shaderProgram, uniformBuffer, renderpass, size);
-		window.addSurfaceUpdateActions(s -> defaultRenderer.startModificationPlan().size(s.getSize()).submit());
+		//defaultRenderer = RendererUtils.getTriangleRenderer(window.getDevice(), shaderProgram, uniformBuffer, renderpass, size);
+		//window.addSurfaceUpdateActions(s -> defaultRenderer.startModificationPlan().size(s.getSize()).submit());
 	}
 	
 	public void drawTexture() throws VulkanException
 	{
-		defaultRenderer.draw(commandBufferData);
+		//defaultRenderer.draw(commandBufferData);
 	}
 }

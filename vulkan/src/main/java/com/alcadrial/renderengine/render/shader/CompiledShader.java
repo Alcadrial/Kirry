@@ -1,37 +1,17 @@
 package com.alcadrial.renderengine.render.shader;
 
-public class CompiledShader {
+public record CompiledShader(boolean hasErrors, byte[] binary) {
 	
-	private static final CompiledShader FAIL = new CompiledShader();
-	
-	static
-	{
-		FAIL.hasErrors = true;
-	}
+	private static final CompiledShader FAIL = new CompiledShader(true, new byte[0]);
 	
 	static CompiledShader ofSuccess(String[] code, byte[] binary)
 	{
-		CompiledShader compiled = new CompiledShader();
-		compiled.hasErrors = false;
-		compiled.binary = binary;
+		CompiledShader compiled = new CompiledShader(false, binary);
 		return compiled;
 	}
 	
 	public static CompiledShader ofFail()
 	{
 		return FAIL;
-	}
-	
-	private boolean hasErrors;
-	private byte[] binary;
-	
-	public boolean hasErrors()
-	{
-		return hasErrors;
-	}
-	
-	public byte[] getBinary()
-	{
-		return binary;
 	}
 }

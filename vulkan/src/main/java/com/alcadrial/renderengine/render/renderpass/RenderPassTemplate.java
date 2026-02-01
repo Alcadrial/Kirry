@@ -256,7 +256,7 @@ public class RenderPassTemplate implements AutoCloseable {
 			private Map<Integer, Integer> inputAttachments;
 			private Map<Integer, Integer> colorAttachments;
 			private Map<Integer, Integer> resolveAttachments;
-			private Integer depthStencilAttachment;
+			private int depthStencilAttachment;
 			private int depthStencilLayout;
 			private List<Integer> preserveAttachments;
 			
@@ -266,6 +266,7 @@ public class RenderPassTemplate implements AutoCloseable {
 				colorAttachments = new HashMap<>();
 				resolveAttachments = new HashMap<>();
 				preserveAttachments = new LinkedList<>();
+				depthStencilAttachment = -1;
 			}
 			
 			public SubpassConfigurator flags(int flags)
@@ -343,7 +344,7 @@ public class RenderPassTemplate implements AutoCloseable {
 					for (Integer attachment : preserveAttachments) preserve.put(attachment);
 					preserve = preserve.rewind();
 				}
-				if (depthStencilAttachment != null)
+				if (depthStencilAttachment != -1)
 				{
 					depthStencil = VkAttachmentReference.malloc();
 					depthStencil.set(depthStencilAttachment, depthStencilLayout);
