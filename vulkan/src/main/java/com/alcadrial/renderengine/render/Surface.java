@@ -1,7 +1,11 @@
 package com.alcadrial.renderengine.render;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFWVulkan;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
@@ -26,104 +30,128 @@ public class Surface extends AbstractVulkanResource<Long> {
 		RenderEngine.assertLoaded();
 	}
 	
+	public static class Builder {
+		
+		private int format;
+		private int colorspace;
+		private int targetPresentMode;
+		private long windowVk;
+		private long vk;
+		private @Nullable VulkanWindow window;
+		
+		public Builder()
+		{
+			format = VK10.VK_FORMAT_B8G8R8A8_UNORM;
+			colorspace = KHRSurface.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+			targetPresentMode = KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR;
+			windowVk = 0;
+			vk = 0;
+			window = null;
+		}
+		
+		public Builder windowVk(long windowVk)
+		{
+			this.windowVk = windowVk;
+			return this;
+		}
+		
+		public long getVk()
+		{
+			return vk;
+		}
+		
+		public Builder create() throws VulkanException
+		{
+			long windowVk;
+			if (window != null)
+			{
+				windowVk = window.getVk();
+			}
+			else
+			{
+				windowVk = VulkanErrorUtils.nonNull(this.windowVk, "Window must be set before creating a surface");
+			}
+			long[] p = new long[1];
+			VulkanErrorUtils.assertNoError(GLFWVulkan.glfwCreateWindowSurface(((@NonNull Vulkan) RenderEngine.getUnsafeVulkan()).getInstance(), windowVk, null, p), "Failed to create surface");
+			vk = p[0];
+			return this;
+		}
+		
+		public Builder window(VulkanWindow window)
+		{
+			this.window = window;
+			return this;
+		}
+		
+		public Surface build() throws VulkanException
+		{
+			return new Surface(this, VulkanErrorUtils.nonNull(vk, "Surface must be created before building"), VulkanErrorUtils.nonNull(this.window, "Window must be built before building a surface"));
+		}
+	}
+	
+	public static Builder builder()
+	{
+		return new Builder();
+	}
+	
+	private static record InitData(PhysicalDevice physicalDevice, Pair<VkSurfaceFormatKHR, ByteBuffer> format, int mode, Pair<VkExtent2D, ByteBuffer> extent, Vector2i maxSize, Vector2i minSize, Vector2i size) {}
+	
+	private static final VarHandle DATA_HANDLE;
+	static {
+		try
+		{
+			DATA_HANDLE = MethodHandles.lookup().findVarHandle(Surface.class, "data", InitData.class);
+		}
+		catch (Exception e)
+		{
+			throw new ExceptionInInitializerError(e);
+		}
+	}
 	private final VulkanWindow window;
-	private PhysicalDevice physicalDevice;
-	private Pair<VkSurfaceFormatKHR, ByteBuffer> format;
-	private int mode;
-	private Pair<VkExtent2D, ByteBuffer> extent;
-	private Vector2i maxSize;
-	private Vector2i minSize;
-	private Vector2i size;
+	private final int format;
+	private final int colorspace;
+	private final int targetPresentMode;
+	private InitData data;
 	
-	public Surface(VulkanWindow window) throws VulkanException
+	private Surface(Builder builder, long vk, VulkanWindow window) throws VulkanException
 	{
-		this.window = window;
-		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(GLFWVulkan.glfwCreateWindowSurface(RenderEngine.getVulkan().getInstance(), window.getVk(), null, p), "Failed to create surface");
-		vk = p[0];
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			this.vk = vk;
+			this.window = window;
+			format = builder.format;
+			colorspace = builder.colorspace;
+			targetPresentMode = builder.targetPresentMode;
+			data = init();
+		}
 	}
-	
-	public synchronized void init(PhysicalDevice physicalDevice, MemoryStack stack) throws VulkanException
+
+	private InitData init() throws VulkanException
 	{
-		this.physicalDevice = physicalDevice;
-		int[] p = new int[1];
-		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.getVk(), vk, p, null), "Failed to initialize surface");
-		VulkanErrorUtils.nonNull(p[0], "Failed to initialize surface");
-		VkSurfaceFormatKHR.Buffer formats = VkSurfaceFormatKHR.malloc(p[0], stack);
-		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.getVk(), vk, p, formats), "Failed to initialize surface");
-		
-		VkSurfaceFormatKHR format = null;
-		for (VkSurfaceFormatKHR format0 : formats) if (format0.format() == VK10.VK_FORMAT_B8G8R8A8_UNORM && format0.colorSpace() == KHRSurface.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			format = format0;
-			break;
-		}
-		VulkanErrorUtils.nonNull(format, "Valid format not found");
-		this.format = VulkanUtils.copy(format, VkSurfaceFormatKHR::create);
-		
-		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.getVk(), vk, p, null), "Failed to initialize surface");
-		int[] presentModes = new int[p[0]];
-		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.getVk(), vk, p, presentModes), "Failed to initialize surface");
-		
-		mode = KHRSurface.VK_PRESENT_MODE_FIFO_KHR;
-		for (int i : presentModes) if (i == KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR)
-		{
-			mode = i;
-			break;
-		}
-		
-		VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
-		VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.getVk(), vk, capabilities), "Failed to initialize surface");
-		
-		if (capabilities.currentExtent().width() != -1)
-		{
-			extent = VulkanUtils.copy(capabilities.currentExtent(), VkExtent2D::create);
-		}
-		else
-		{
-			extent = VulkanUtils.allocate(VkExtent2D.SIZEOF, VkExtent2D::create);
-			VkExtent2D e = extent.l();
+			PhysicalDevice physicalDevice = window.getDevice().getPhysicalDevice();
 			
-			VkExtent2D minExtent = capabilities.minImageExtent();
-			VkExtent2D maxExtent = capabilities.maxImageExtent();
-			
-			maxSize = Vector2i.ofImmutable(minExtent.width(), minExtent.height());
-			minSize = Vector2i.ofImmutable(maxExtent.width(), maxExtent.height());
-			
-			if (e.width() < minExtent.width()) e.width(minExtent.width());
-			else if (e.width() > maxExtent.width()) e.width(maxExtent.width());
-			
-			if (e.height() < minExtent.height()) e.height(minExtent.height());
-			else if (e.height() > maxExtent.height()) e.height(maxExtent.height());
-		}
-		size = Vector2i.ofImmutable(extent.l().width(), extent.l().height());
-	}
-	
-	public synchronized void reinit(MemoryStack stack) throws VulkanException
-	{
-		if (physicalDevice != null)
-		{
 			int[] p = new int[1];
 			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.getVk(), vk, p, null), "Failed to initialize surface");
 			VulkanErrorUtils.nonNull(p[0], "Failed to initialize surface");
 			VkSurfaceFormatKHR.Buffer formats = VkSurfaceFormatKHR.malloc(p[0], stack);
 			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.getVk(), vk, p, formats), "Failed to initialize surface");
 			
-			VkSurfaceFormatKHR format = null;
-			for (VkSurfaceFormatKHR format0 : formats) if (format0.format() == VK10.VK_FORMAT_B8G8R8A8_UNORM && format0.colorSpace() == KHRSurface.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			VkSurfaceFormatKHR vkFormat = null;
+			for (VkSurfaceFormatKHR format0 : formats) if (format0.format() == format && format0.colorSpace() == colorspace)
 			{
-				format = format0;
+				vkFormat = format0;
 				break;
 			}
-			VulkanErrorUtils.nonNull(format, "Valid format not found");
-			this.format = VulkanUtils.copy(format, VkSurfaceFormatKHR::create);
+			Pair<VkSurfaceFormatKHR, ByteBuffer> format = VulkanUtils.copy(VulkanErrorUtils.nonNull(vkFormat, "Valid format not found"), VkSurfaceFormatKHR::create);
 			
 			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.getVk(), vk, p, null), "Failed to initialize surface");
 			int[] presentModes = new int[p[0]];
 			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.getVk(), vk, p, presentModes), "Failed to initialize surface");
 			
-			mode = KHRSurface.VK_PRESENT_MODE_FIFO_KHR;
-			for (int i : presentModes) if (i == KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR)
+			int mode = KHRSurface.VK_PRESENT_MODE_FIFO_KHR;
+			for (int i : presentModes) if (i == targetPresentMode)
 			{
 				mode = i;
 				break;
@@ -132,7 +160,12 @@ public class Surface extends AbstractVulkanResource<Long> {
 			VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
 			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.getVk(), vk, capabilities), "Failed to initialize surface");
 			
-			if (capabilities.currentExtent().width() != -1)
+			Pair<VkExtent2D, ByteBuffer> extent;
+			VkExtent2D minExtent = capabilities.minImageExtent();
+			VkExtent2D maxExtent = capabilities.maxImageExtent();
+			Vector2i maxSize = Vector2i.ofImmutable(minExtent.width(), minExtent.height());
+			Vector2i minSize = Vector2i.ofImmutable(maxExtent.width(), maxExtent.height());
+			if (capabilities.currentExtent().width() != 0xFFFFFFFF)
 			{
 				extent = VulkanUtils.copy(capabilities.currentExtent(), VkExtent2D::create);
 			}
@@ -141,25 +174,20 @@ public class Surface extends AbstractVulkanResource<Long> {
 				extent = VulkanUtils.allocate(VkExtent2D.SIZEOF, VkExtent2D::create);
 				VkExtent2D e = extent.l();
 				
-				VkExtent2D minExtent = capabilities.minImageExtent();
-				VkExtent2D maxExtent = capabilities.maxImageExtent();
-				
-				maxSize = Vector2i.ofImmutable(minExtent.width(), minExtent.height());
-				minSize = Vector2i.ofImmutable(maxExtent.width(), maxExtent.height());
-				
 				if (e.width() < minExtent.width()) e.width(minExtent.width());
 				else if (e.width() > maxExtent.width()) e.width(maxExtent.width());
 				
 				if (e.height() < minExtent.height()) e.height(minExtent.height());
 				else if (e.height() > maxExtent.height()) e.height(maxExtent.height());
 			}
-			size = Vector2i.ofImmutable(extent.l().width(), extent.l().height());
+			Vector2i size = Vector2i.ofImmutable(extent.l().width(), extent.l().height());
+			return new InitData(physicalDevice, format, mode, extent, maxSize, minSize, size);
 		}
 	}
-	
-	public boolean isInitialized()
+	public void reinit() throws VulkanException
 	{
-		return physicalDevice != null;
+		InitData data = init();
+		DATA_HANDLE.compareAndSet(this.data, data);
 	}
 	
 	@Override
@@ -175,49 +203,40 @@ public class Surface extends AbstractVulkanResource<Long> {
 	
 	public VkSurfaceFormatKHR getFormat()
 	{
-		return format.l();
-	}
-	
-	public void setFormat(VkSurfaceFormatKHR format)
-	{
-		VulkanErrorUtils.nonNull(format);
-		MemoryUtil.memFree(this.format.r());
-		this.format = VulkanUtils.copy(format, VkSurfaceFormatKHR::create);
+		return data.format.l();
 	}
 	
 	public int getMode()
 	{
-		return mode;
+		return data.mode;
 	}
 	
 	public VkExtent2D getExtent()
 	{
-		return extent.l();
+		return data.extent.l();
 	}
 	
 	public Vector2i getMaxSize()
 	{
-		return maxSize;
+		return data.maxSize;
 	}
 	
 	public Vector2i getMinSize()
 	{
-		return minSize;
+		return data.minSize;
 	}
 	
 	public Vector2i getSize()
 	{
-		return size;
+		return data.size;
 	}
 	
 	@Override
 	public void close()
 	{
-		if (isInitialized())
-		{
-			MemoryUtil.memFree(format.r());
-			MemoryUtil.memFree(extent.r());
-		}
+		InitData data = this.data;
+		MemoryUtil.memFree(data.format.r());
+		MemoryUtil.memFree(data.extent.r());
 		KHRSurface.vkDestroySurfaceKHR(RenderEngine.getVulkan().getInstance(), vk, null);
 		vk = 0L;
 		super.close();
@@ -226,9 +245,10 @@ public class Surface extends AbstractVulkanResource<Long> {
 	@Override
 	public void debug()
 	{
+		InitData data = this.data;
 		Debug.print("Vk: " + Debug.address(vk));
-		if (maxSize != null) Debug.print("MaxSize: " + maxSize.x() + "x" + maxSize.y());
-		if (minSize != null) Debug.print("MinSize: " + minSize.x() + "x" + minSize.y());
-		Debug.print("Size: " + size.x() + "x" + size.y());
+		Debug.print("MaxSize: " + data.maxSize.x() + "x" + data.maxSize.y());
+		Debug.print("MinSize: " + data.minSize.x() + "x" + data.minSize.y());
+		Debug.print("Size: " + data.size.x() + "x" + data.size.y());
 	}
 }

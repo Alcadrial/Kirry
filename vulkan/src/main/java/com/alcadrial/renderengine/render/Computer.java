@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDescriptorBufferInfo;
@@ -17,7 +18,6 @@ import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
 import com.alcadrial.kector.Math;
 import com.alcadrial.kector.vector.Vector3i;
-import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.buffer.BufferLayout;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
@@ -63,40 +63,15 @@ public class Computer implements AutoCloseable, VulkanDebug {
 			layout = new BufferLayout(device, new ReentrantLock());
 			layout.setWriter(writer);
 		}
-		
-		public @Nullable BufferWriter getWriter()
-		{
-			return writer;
-		}
-		
-		public VulkanBuffer getBuffer()
-		{
-			return buffer;
-		}
-		
-		public int getOffset()
-		{
-			return offset;
-		}
-		
-		public int getSize()
-		{
-			return size;
-		}
-		
-		public BufferLayout getLayout()
-		{
-			return layout;
-		}
 	}
 	
 	private Device device;
-	private ComputePipeline computePipeline;
+	private @Nullable ComputePipeline computePipeline;
 	private Vector3i groupCount;
 	
 	private long computeDescriptorPool;
 	private long computeDescriptorSetLayout;
-	private long[] computeDescriptorSet;
+	private long @Nullable[] computeDescriptorSet;
 	private PreparedShader computeShader;
 	private Map<Integer, Binding> bindings;
 	
@@ -109,7 +84,7 @@ public class Computer implements AutoCloseable, VulkanDebug {
 		{
 			groupCount = ((ShaderLocalSizeLayout) layout).getLocalSize();
 		}
-		VulkanErrorUtils.nonNull(groupCount, "Missing localsize in shader info");
+		groupCount = VulkanErrorUtils.nonNull(groupCount, "Missing localsize in shader info");
 		bindings = new HashMap<>();
 	}
 	
@@ -186,8 +161,8 @@ public class Computer implements AutoCloseable, VulkanDebug {
 						ShaderUniformBufferLayout shaderUniformBufferLayout = (ShaderUniformBufferLayout) shaderLayout;
 						
 						Binding binding = bindings.get(shaderUniformBufferLayout.getBinding());
-						VulkanBuffer buffer = binding.getBuffer();
-						BufferLayout layout = binding.getLayout();
+						VulkanBuffer buffer = binding.buffer;
+						BufferLayout layout = binding.layout;
 						
 						layout.setWriteDescriptorSets(writeDescriptorSets.slice(0, 1));
 						VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
@@ -201,8 +176,8 @@ public class Computer implements AutoCloseable, VulkanDebug {
 						
 						VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.malloc(1);
 						descriptorBufferInfo.buffer(buffer.getVk());
-						descriptorBufferInfo.offset(binding.getOffset());
-						descriptorBufferInfo.range(binding.getSize());
+						descriptorBufferInfo.offset(binding.offset);
+						descriptorBufferInfo.range(binding.size);
 						
 						writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
 						writeDescriptorSet.pImageInfo(null);
@@ -227,8 +202,8 @@ public class Computer implements AutoCloseable, VulkanDebug {
 						ShaderStorageBufferLayout shaderStorageBufferLayout = (ShaderStorageBufferLayout) shaderLayout;
 						
 						Binding binding = bindings.get(shaderStorageBufferLayout.getBinding());
-						VulkanBuffer buffer = binding.getBuffer();
-						BufferLayout layout = binding.getLayout();
+						VulkanBuffer buffer = binding.buffer;
+						BufferLayout layout = binding.layout;
 						
 						layout.setWriteDescriptorSets(writeDescriptorSets.slice(0, 1));
 						VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
@@ -242,8 +217,8 @@ public class Computer implements AutoCloseable, VulkanDebug {
 						
 						VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.malloc(1);
 						descriptorBufferInfo.buffer(buffer.getVk());
-						descriptorBufferInfo.offset(binding.getOffset());
-						descriptorBufferInfo.range(binding.getSize());
+						descriptorBufferInfo.offset(binding.offset);
+						descriptorBufferInfo.range(binding.size);
 						
 						writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
 						writeDescriptorSet.pImageInfo(null);
@@ -256,7 +231,7 @@ public class Computer implements AutoCloseable, VulkanDebug {
 		}
 	}
 	
-	public ComputePipeline getComputePipeline()
+	public @Nullable ComputePipeline getComputePipeline()
 	{
 		return computePipeline;
 	}

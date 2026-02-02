@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.VK10;
@@ -17,7 +19,6 @@ import org.lwjgl.vulkan.VkPhysicalDeviceLimits;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
 
-import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.queue.QueueFamily;
 import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
 
@@ -61,29 +62,95 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 		}
 	}
 	
-	/**
-	 * BestMatcher for {@link Vulkan#pickPhysicalDevices(Comparator)} that use the device type
-	 * <table class="striped" style="text-align:center">
-	 *     <caption><b>Device Types hierarchy</b></caption>
-	 *     <thead><tr><th scope="col">Priority</th><th scope="col">Device Type</th></tr></thead>
-	 *     <tbody>
-	 *         <tr><th scope="row">4</th><td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU DISCRETE GPU}</td></tr>
-	 *         <tr><th scope="row">3</th><td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU VIRTUAL GPU}</td></tr>
-	 *         <tr><th scope="row">2</th><td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU INTEGRATED GPU}</td></tr>
-	 *         <tr><th scope="row">1</th><td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_CPU CPU}</td></tr>
-	 *         <tr><th scope="row">0</th><td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_OTHER OTHER}</td></tr>
-	 *     </tbody>
-	 * </table>
-	 * 
-	 * @return a Comparator
-	 */
-	public static Comparator<PhysicalDevice> typeBestMatcher()
-	{
-		return Comparator.comparingInt(device -> {
-			int deviceType = device.getProperties().deviceType();
-			if (deviceType < 0 || deviceType >= BEST_MATCHER_MAP.length) return -1;
-			return BEST_MATCHER_MAP[deviceType];
-		});
+	@FunctionalInterface
+	public static interface PhysicalDevicePickFilter {
+		
+		boolean filter(PhysicalDevice device, Surface.Builder surface);
+	}
+	
+	public static final class Filter {
+		
+		public static PhysicalDevicePickFilter withSurfaceGraphics()
+		{
+			return (physicalDevice, surface) -> physicalDevice.getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT, surface) != null;
+		}
+		
+		public static PhysicalDevicePickFilter withSurfaceGraphicsAndCompute()
+		{
+			return (physicalDevice, surface) -> physicalDevice.getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT | VK10.VK_QUEUE_COMPUTE_BIT, surface) != null;
+		}
+		
+		public static PhysicalDevicePickFilter withCompute()
+		{
+			return (physicalDevice, surface) -> physicalDevice.getQueueFamily(VK10.VK_QUEUE_COMPUTE_BIT) != null;
+		}
+		
+		public static PhysicalDevicePickFilter any()
+		{
+			return (physicalDevice, surface) -> true;
+		}
+	}
+	
+	@FunctionalInterface
+	public static interface PhysicalDevicePickStrategy {
+		
+		PhysicalDevice pick(List<PhysicalDevice> devices);
+	}
+	
+	public static final class Strategy {
+		
+		/**
+		 * BestMatcher for {@link Vulkan#pickPhysicalDevices(Comparator)} that use the device type
+		 * <table class="striped" style="text-align:center">
+		 *     <caption><b>Device Types hierarchy</b></caption>
+		 *     <thead><tr><th scope="col">Priority</th><th scope="col">Device Type</th></tr></thead>
+		 *     <tbody>
+		 *         <tr><th scope="row">4</th><td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU DISCRETE GPU}</td></tr>
+		 *         <tr><th scope="row">3</th><td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU VIRTUAL GPU}</td></tr>
+		 *         <tr><th scope="row">2</th><td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU INTEGRATED GPU}</td></tr>
+		 *         <tr><th scope="row">1</th><td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_CPU CPU}</td></tr>
+		 *         <tr><th scope="row">0</th><td>{@link VK10#VK_PHYSICAL_DEVICE_TYPE_OTHER OTHER}</td></tr>
+		 *     </tbody>
+		 * </table>
+		 * 
+		 * @return a Comparator
+		 */
+		public static Comparator<PhysicalDevice> typeBestMatcher()
+		{
+			return Comparator.comparingInt(device -> {
+				int deviceType = device.getProperties().deviceType();
+				if (deviceType < 0 || deviceType >= BEST_MATCHER_MAP.length) return -1;
+				return BEST_MATCHER_MAP[deviceType];
+			});
+		}
+
+		public static PhysicalDevicePickStrategy findBest()
+		{
+			return findBest(typeBestMatcher());
+		}
+		
+		public static PhysicalDevicePickStrategy findBest(Comparator<PhysicalDevice> comparator)
+		{
+			return devices -> {
+				Iterator<PhysicalDevice> i = devices.iterator();
+				PhysicalDevice bestMatch = i.next();
+				while (i.hasNext())
+				{
+					PhysicalDevice candidate = i.next();
+					if (comparator.compare(bestMatch, candidate) < 0) bestMatch = candidate;
+				}
+				return bestMatch;
+			};
+		}
+		
+		public static PhysicalDevicePickStrategy atIndexOrElse(int index, PhysicalDevicePickStrategy fallback)
+		{
+			if (index < 0) return fallback;
+			return devices -> {
+				if (index < devices.size()) return devices.get(index);
+				return fallback.pick(devices);
+			};
+		}
 	}
 	
 	public static String queueFlagsToString(int flag)
@@ -147,35 +214,50 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	
 	public QueueFamily getGraphicsQueueFamily()
 	{
-		return getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT, null, null);
+		return (@NonNull QueueFamily) getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT, 0, null);
 	}
 	
-	@Nullable
-	public QueueFamily getGraphicsQueueFamily(@Nullable Surface surface)
+	public @Nullable QueueFamily getGraphicsQueueFamily(Surface.Builder surface)
 	{
-		return getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT, surface, null);
+		return getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT, surface.getVk(), null);
 	}
 	
-	@Nullable
-	public QueueFamily getQueueFamily(int flags)
+	public @Nullable QueueFamily getGraphicsQueueFamily(Surface surface)
 	{
-		return getQueueFamily(flags, null, null);
+		return getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT, surface.getVk(), null);
 	}
 	
-	@Nullable
-	public QueueFamily getQueueFamily(int flags, @Nullable Surface surface)
+	public @Nullable QueueFamily getQueueFamily(int flags)
 	{
-		return getQueueFamily(flags, surface, null);
+		return getQueueFamily(flags, 0, null);
 	}
 	
-	@Nullable
-	public QueueFamily getQueueFamily(int flags, @Nullable Comparator<QueueFamily> preference)
+	public @Nullable QueueFamily getQueueFamily(int flags, Surface.Builder surface)
 	{
-		return getQueueFamily(flags, null, preference);
+		return getQueueFamily(flags, surface.getVk(), null);
 	}
 	
-	@Nullable
-	public QueueFamily getQueueFamily(int flags, @Nullable Surface surface, @Nullable Comparator<QueueFamily> preference)
+	public @Nullable QueueFamily getQueueFamily(int flags, Surface surface)
+	{
+		return getQueueFamily(flags, surface.getVk(), null);
+	}
+	
+	public @Nullable QueueFamily getQueueFamily(int flags, @Nullable Comparator<QueueFamily> preference)
+	{
+		return getQueueFamily(flags, 0, preference);
+	}
+	
+	public @Nullable QueueFamily getQueueFamily(int flags, @Nullable Surface surface, @Nullable Comparator<QueueFamily> preference)
+	{
+		return getQueueFamily(flags, surface == null ? 0 : surface.getVk(), preference);
+	}
+	
+	public @Nullable QueueFamily getQueueFamily(int flags, Surface.@Nullable Builder surface, @Nullable Comparator<QueueFamily> preference)
+	{
+		return getQueueFamily(flags, surface == null ? 0 : surface.getVk(), preference);
+	}
+	
+	public @Nullable QueueFamily getQueueFamily(int flags, long surfaceVk, @Nullable Comparator<QueueFamily> preference)
 	{
 		if (flags >= 16) throw new IllegalArgumentException("Unsupported flag: " + flags);
 		
@@ -189,7 +271,7 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 		QueueFamily bestFamily = null;
 		Iterator<List<QueueFamily>> i = families.iterator();
 		List<QueueFamily> l = null;
-		if (surface != null)
+		if (surfaceVk != 0)
 		{
 			int[] p = new int[1];
 			out:
@@ -198,7 +280,7 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 				l = i.next();
 				for (QueueFamily family : l)
 				{
-					KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(vk, family.getIndex(), surface.getVk(), p);
+					KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(vk, family.getIndex(), surfaceVk, p);
 					if (p[0] == VK10.VK_TRUE)
 					{
 						bestFamily = l.get(0);
@@ -222,7 +304,7 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 		}
 		if (preference == null) return bestFamily;
 		
-		if (surface != null)
+		if (surfaceVk != 0)
 		{
 			int[] p = new int[1];
 			while (i.hasNext())
@@ -230,7 +312,7 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 				l = i.next();
 				for (QueueFamily family : l)
 				{
-					KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(vk, family.getIndex(), surface.getVk(), p);
+					KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(vk, family.getIndex(), surfaceVk, p);
 					if (p[0] == VK10.VK_TRUE && preference.compare(family, bestFamily) > 0) bestFamily = family;
 				}
 			}

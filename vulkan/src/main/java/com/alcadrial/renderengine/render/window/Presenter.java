@@ -5,6 +5,7 @@ import java.nio.LongBuffer;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.KHRSurface;
@@ -21,7 +22,6 @@ import org.lwjgl.vulkan.VkSubmitInfo;
 import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 
-import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
@@ -155,12 +155,12 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 	private boolean isSwapchainValid;
 	private ReentrantLock swapchainRecreationLock;
 	
-	private FrameData[] frames;
+	private FrameData @Nullable [] frames;
 	
 	private Semaphore graphicsQueueSemaphor;
 	
 	private int frameIndex;
-	private String name;
+	private @Nullable String name;
 	
 	public Presenter(Device device, VulkanWindow window, RenderPass renderPass, int swappingBuffers) throws VulkanException
 	{
@@ -225,54 +225,50 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 			long[] p0 = new long[p[0]];
 			VulkanErrorUtils.assertNoError(KHRSwapchain.vkGetSwapchainImagesKHR(device.getVk(), swapchain.getVk(), p, p0));
 			
-			frames = new FrameData[p[0]];
+			FrameData[] frames = new FrameData[p[0]];
 			
-			for (int i = 0; i < p0.length; i++) frames[i] = new FrameData(p0[i]);
-			
-			p0 = new long[1];
+			long[] p1 = new long[1];
 			
 			LongBuffer attachments = stack.mallocLong(depthTexture != null ? 2 : 1);
 			if (depthTexture != null) attachments.put(1, depthTexture.getView().getVk());
 			
-			VkFramebufferCreateInfo framebufferCreateInfo = VkFramebufferCreateInfo.malloc(stack);
-			framebufferCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO);
-			framebufferCreateInfo.pNext(0);
-			framebufferCreateInfo.flags(0);
-			framebufferCreateInfo.renderPass(renderPass.getVk());
-			framebufferCreateInfo.width(surface.getExtent().width());
-			framebufferCreateInfo.height(surface.getExtent().height());
+			VkFramebufferCreateInfo framebufferCreateInfo = VkFramebufferCreateInfo.malloc(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO)
+				.pNext(0)
+				.flags(0)
+				.renderPass(renderPass.getVk())
+				.width(surface.getExtent().width())
+				.height(surface.getExtent().height())
+				.layers(1);
 			
-			framebufferCreateInfo.layers(1);
-			
-			VkImageViewCreateInfo imageViewCreateInfo = VkImageViewCreateInfo.malloc(stack);
-			
-			imageViewCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO);
-			imageViewCreateInfo.pNext(0);
-			imageViewCreateInfo.flags(0);
-			imageViewCreateInfo.viewType(VK10.VK_IMAGE_VIEW_TYPE_2D);
-			imageViewCreateInfo.format(surface.getFormat().format());
-			
-			imageViewCreateInfo.components().r(VK10.VK_COMPONENT_SWIZZLE_IDENTITY);
-			imageViewCreateInfo.components().g(VK10.VK_COMPONENT_SWIZZLE_IDENTITY);
-			imageViewCreateInfo.components().b(VK10.VK_COMPONENT_SWIZZLE_IDENTITY);
-			imageViewCreateInfo.components().a(VK10.VK_COMPONENT_SWIZZLE_IDENTITY);
-			
-			imageViewCreateInfo.subresourceRange().aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT);
-			imageViewCreateInfo.subresourceRange().baseMipLevel(0);
-			imageViewCreateInfo.subresourceRange().levelCount(1);
-			imageViewCreateInfo.subresourceRange().baseArrayLayer(0);
-			imageViewCreateInfo.subresourceRange().layerCount(1);
+			VkImageViewCreateInfo imageViewCreateInfo = VkImageViewCreateInfo.malloc(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
+				.pNext(0)
+				.flags(0)
+				.viewType(VK10.VK_IMAGE_VIEW_TYPE_2D)
+				.format(surface.getFormat().format());
+			imageViewCreateInfo.components()
+				.r(VK10.VK_COMPONENT_SWIZZLE_IDENTITY)
+				.g(VK10.VK_COMPONENT_SWIZZLE_IDENTITY)
+				.b(VK10.VK_COMPONENT_SWIZZLE_IDENTITY)
+				.a(VK10.VK_COMPONENT_SWIZZLE_IDENTITY);
+			imageViewCreateInfo.subresourceRange()
+				.aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT)
+				.baseMipLevel(0)
+				.levelCount(1)
+				.baseArrayLayer(0)
+				.layerCount(1);
 			
 			for (int i = 0; i < frames.length; i++)
 			{
-				FrameData frame = frames[i];
-				imageViewCreateInfo.image(frame.getImage());
+				imageViewCreateInfo.image(p0[i]);
 				
-				VulkanErrorUtils.assertNoError(VK10.vkCreateImageView(device.getVk(), imageViewCreateInfo, null, p0), "Failed to create image views");
-				frame.setImageView(p0[0]);
-				if (name != null) device.setObjectDebugName(VK10.VK_OBJECT_TYPE_IMAGE_VIEW, p0[0], "Frame" + i + " ImageView (" + name + ")");
+				VulkanErrorUtils.assertNoError(VK10.vkCreateImageView(device.getVk(), imageViewCreateInfo, null, p1), "Failed to create image views");
+				FrameData frame = frames[i] = new FrameData(p0[i]);
+				frame.setImageView(p1[0]);
+				if (name != null) device.setObjectDebugName(VK10.VK_OBJECT_TYPE_IMAGE_VIEW, p1[0], "Frame" + i + " ImageView (" + name + ")");
 				
-				attachments.put(0, p0[0]);
+				attachments.put(0, p1[0]);
 				framebufferCreateInfo.pAttachments(attachments);
 				FrameBuffer frameBuffer = new FrameBuffer(device, framebufferCreateInfo);
 				if (name != null) frameBuffer.setName("Frame" + i + " FrameBuffer (" + name + ")");
@@ -286,18 +282,19 @@ public class Presenter implements AutoCloseable, VulkanDebug {
 			fenceInfo.sType(VK10.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO);
 			fenceInfo.flags(VK10.VK_FENCE_CREATE_SIGNALED_BIT);
 			
-			long[][] p1 = new long[3][1];
+			long[][] p2 = new long[3][1];
 			for (int i = 0; i < p[0]; i++)
 			{
-				VulkanErrorUtils.assertNoError(VK10.vkCreateSemaphore(device.getVk(), semaphoreInfo, null, p1[0]), "Failed to create synchronization objects for the frame " + i);
-				VulkanErrorUtils.assertNoError(VK10.vkCreateSemaphore(device.getVk(), semaphoreInfo, null, p1[1]), "Failed to create synchronization objects for the frame " + i);
-				VulkanErrorUtils.assertNoError(VK10.vkCreateFence(device.getVk(), fenceInfo, null, p1[2]), "Failed to create synchronization objects for the frame " + i);
+				VulkanErrorUtils.assertNoError(VK10.vkCreateSemaphore(device.getVk(), semaphoreInfo, null, p2[0]), "Failed to create synchronization objects for the frame " + i);
+				VulkanErrorUtils.assertNoError(VK10.vkCreateSemaphore(device.getVk(), semaphoreInfo, null, p2[1]), "Failed to create synchronization objects for the frame " + i);
+				VulkanErrorUtils.assertNoError(VK10.vkCreateFence(device.getVk(), fenceInfo, null, p2[2]), "Failed to create synchronization objects for the frame " + i);
 				
 				FrameData frame = frames[i];
-				frame.setImageAvailable(p1[0][0]);
-				frame.setRenderFinished(p1[1][0]);
-				frame.setFence(p1[2][0]);
+				frame.setImageAvailable(p2[0][0]);
+				frame.setRenderFinished(p2[1][0]);
+				frame.setFence(p2[2][0]);
 			}
+			this.frames = frames;
 			isSwapchainValid = true;
 		}
 	}

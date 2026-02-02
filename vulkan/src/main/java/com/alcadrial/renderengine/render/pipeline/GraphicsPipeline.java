@@ -1,12 +1,12 @@
 package com.alcadrial.renderengine.render.pipeline;
 
 import java.io.File;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
@@ -16,7 +16,6 @@ import org.lwjgl.vulkan.VkVertexInputAttributeDescription;
 import org.lwjgl.vulkan.VkVertexInputBindingDescription;
 
 import com.alcadrial.renderengine.core.util.NotYetImplementedException;
-import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -120,7 +119,7 @@ public class GraphicsPipeline extends Pipeline {
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo = VkPipelineVertexInputStateCreateInfo.calloc(stack);
 			vertexInputInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
 			
-			inputs = shaderProgram.getshaders().stream().filter(ps -> ps.info().getType() == ShaderType.VERTEX).map(this::extractInputs).collect(LinkedList::new, List::addAll, List::addAll);
+			inputs = shaderProgram.getshaders().select(ps -> ps.info().getType() == ShaderType.VERTEX).flatCollect(this::extractInputs);
 			
 			int size = 0;
 			int locationSize = 0;

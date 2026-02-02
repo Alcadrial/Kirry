@@ -19,7 +19,6 @@ import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkClearValue;
 import org.lwjgl.vulkan.VkExtent2D;
-import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
@@ -33,11 +32,11 @@ import com.alcadrial.kector.vector.axis.Axis;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
+import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
-import com.alcadrial.renderengine.render.Vulkan;
-import com.alcadrial.renderengine.render.buffer.BigVulkanBuffer.PhysicalDeviceTranferState;
+import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTranferState;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
@@ -64,7 +63,7 @@ public class InstancingTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, InstancingTest::start, () -> defaultLoop(InstancingTest::loop), InstancingTest::end);
+		mainTest(args, InstancingTest::start, () -> defaultLoop(InstancingTest::loop), InstancingTest::end, false);
 	}
 	
 	private static RenderPass renderPass;
@@ -117,22 +116,24 @@ public class InstancingTest extends RenderTest {
 			return;
 		}
 		
-		Vulkan vulkan = RenderEngine.getVulkan();
-		
 		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
-		VulkanWindow window = new VulkanWindow(1080, 720, "Test");
-		vulkan.setWindow(window);
+		VulkanWindow window = VulkanWindow.builder()
+			.physicalDeviceFilter(PhysicalDevice.Filter.withSurfaceGraphicsAndCompute())
+			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
+			.deviceFeatures(v -> v
+				.wideLines(true)
+				.samplerAnisotropy(true)
+			)
+			.deviceExtensions(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME)
+			.asDefaultPrimary()
+			.size(1080, 720)
+			.title("Test")
+			.build();
 		
-		if (!pickPhysicalDevice(window)) return;
-		
-		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
-		deviceFeatures.wideLines(true);
-		deviceFeatures.samplerAnisotropy(true);
-		Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-		window.init(device);
+		Device device = window.getDevice();
 		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
 			System.out.println(iconified ? "Iconified" : "Restored");
@@ -314,7 +315,8 @@ public class InstancingTest extends RenderTest {
 				RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, i * 128 + 64 + 4, 1, true, "F");
 			}
 		}
-		for (int i = 0; i < renderersCount; i++) {
+		for (int i = 0; i < renderersCount; i++)
+		{
 			uniformUpdateFutures.get(i).join();
 			commandBuffers.get(i).reset();
 		}
