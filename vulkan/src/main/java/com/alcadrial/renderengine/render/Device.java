@@ -39,6 +39,9 @@ import com.alcadrial.renderengine.render.queue.PresentQueue;
 import com.alcadrial.renderengine.render.queue.Queue;
 import com.alcadrial.renderengine.render.queue.QueueFamily;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
+import com.alcadrial.renderengine.render.shader.descriptor.DescriptorPool;
+import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSet;
+import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSetLayout;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
 import com.alcadrial.renderengine.render.texture.TextureView;
@@ -594,6 +597,21 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	public void setObjectDebugName(CommandPool object, String name)
 	{
 		setObjectDebugName(VK10.VK_OBJECT_TYPE_COMMAND_POOL, object.getVk(), name);
+	}
+	
+	public void setObjectDebugName(DescriptorPool object, String name)
+	{
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_DESCRIPTOR_POOL, object.getVk(), name);
+	}
+	
+	public void setObjectDebugName(DescriptorSetLayout object, String name)
+	{
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, object.getVk(), name);
+	}
+	
+	public void setObjectDebugName(DescriptorSet object, String name)
+	{
+		setObjectDebugName(VK10.VK_OBJECT_TYPE_DESCRIPTOR_SET, object.getVk(), name);
 	}
 	
 	public void setObjectDebugName(int objectType, long object, String name)

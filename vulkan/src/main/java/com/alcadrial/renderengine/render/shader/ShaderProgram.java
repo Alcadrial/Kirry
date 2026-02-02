@@ -75,7 +75,7 @@ public class ShaderProgram {
 		throw new IllegalStateException("A ShaderProgram must have at least 1 VertexShader");
 	}
 	
-	public MutableList<PreparedShader> getshaders()
+	public MutableList<PreparedShader> getShaders()
 	{
 		return shaders;
 	}

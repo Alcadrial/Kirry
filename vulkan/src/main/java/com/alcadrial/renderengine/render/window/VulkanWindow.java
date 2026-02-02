@@ -770,6 +770,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		Debug.print("Surface: ", surface);
 		Debug.print("Presenter: ", presenter);
 		Debug.print("Renderer: ", renderer);
-		Debug.print("ShaderProgram: " + shaderProgram.getshaders());
+		Debug.print("ShaderProgram: " + shaderProgram.getShaders());
 	}
 }

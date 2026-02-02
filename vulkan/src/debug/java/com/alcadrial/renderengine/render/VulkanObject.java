@@ -27,7 +27,7 @@ public abstract class VulkanObject implements AutoCloseable, VulkanDebug {
 	@Override
 	public void close()
 	{
-		if (!VULKAN_INSTANCE_LIST.remove(this) && Debug.isEnabledDeallocationFail()) throw new IllegalStateException(("Failed to remove resource " + this + "," + VULKAN_INSTANCE_LIST.toString()).replaceAll("[\\[,\\]]", "\n"));
+		if (!VULKAN_INSTANCE_LIST.remove(this) && Debug.isEnabledDeallocationFail()) throw new IllegalStateException(("Failed to remove resource " + this + "," + VULKAN_INSTANCE_LIST).replaceAll("[\\[,\\]]", "\n"));
 	}
 	
 	private static final class ConcurrentStack<E> extends AbstractSequentialList<E> {

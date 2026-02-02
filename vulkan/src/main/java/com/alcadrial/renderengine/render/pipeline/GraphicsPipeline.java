@@ -119,7 +119,7 @@ public class GraphicsPipeline extends Pipeline {
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo = VkPipelineVertexInputStateCreateInfo.calloc(stack);
 			vertexInputInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
 			
-			inputs = shaderProgram.getshaders().select(ps -> ps.info().getType() == ShaderType.VERTEX).flatCollect(this::extractInputs);
+			inputs = shaderProgram.getShaders().select(ps -> ps.info().getType() == ShaderType.VERTEX).flatCollect(this::extractInputs);
 			
 			int size = 0;
 			int locationSize = 0;
@@ -139,7 +139,7 @@ public class GraphicsPipeline extends Pipeline {
 			vertexInputInfo.pVertexBindingDescriptions(bindingDescription);
 			vertexInputInfo.pVertexAttributeDescriptions(attributeDescriptions.rewind());
 			
-			Map<ShaderType, List<PreparedShader>> shaderStagesMap = shaderProgram.getshaders().stream().collect(Collectors.groupingBy(ps -> ps.info().getType()));
+			Map<ShaderType, List<PreparedShader>> shaderStagesMap = shaderProgram.getShaders().stream().collect(Collectors.groupingBy(ps -> ps.info().getType()));
 			
 			VkPipelineShaderStageCreateInfo.Buffer shaderStages = VkPipelineShaderStageCreateInfo.calloc(shaderStagesMap.size(), stack);
 			try
@@ -217,7 +217,7 @@ public class GraphicsPipeline extends Pipeline {
 		Debug.print("Inputs", inputs);
 		Debug.print("Shaders {");
 		Debug.indent();
-		for (Entry<ShaderType, List<PreparedShader>> e : shaderProgram.getshaders().stream().collect(Collectors.groupingBy(ps -> ps.info().getType())).entrySet())
+		for (Entry<ShaderType, List<PreparedShader>> e : shaderProgram.getShaders().stream().collect(Collectors.groupingBy(ps -> ps.info().getType())).entrySet())
 		{
 			Debug.print(e.getKey() + " {");
 			Debug.indent();
