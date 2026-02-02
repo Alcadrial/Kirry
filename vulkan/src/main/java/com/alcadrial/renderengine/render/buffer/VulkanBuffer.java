@@ -1,5 +1,6 @@
 package com.alcadrial.renderengine.render.buffer;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 
@@ -24,7 +25,7 @@ public class VulkanBuffer extends RawDeviceResource {
 	}
 	
 	protected Memory memory;
-	private VulkanBuffer parent;
+	private @Nullable VulkanBuffer parent;
 	
 	protected final long offset;
 	protected final int size;
@@ -161,7 +162,7 @@ public class VulkanBuffer extends RawDeviceResource {
 	@Override
 	public String toString()
 	{
-		return (name != null ? name + "{" : "VulkanBuffer{") + Debug.address(vk) + ", " + (offset != 0 ? "offset=" + offset + ", " : "") + size + " bytes, (" + DataUtils.getBufferUsage(usage) + ")" + (memory != null ? ", mem=" + Debug.address(memory.getVk()) : "") + "}";
+		return (name != null ? name + "{" : "VulkanBuffer{") + Debug.address(vk) + ", " + (offset != 0 ? "offset=" + offset + ", " : "") + size + " bytes, (" + DataUtils.getBufferUsage(usage) + "), mem=" + Debug.address(memory.getVk()) + "}";
 	}
 	
 	@Override

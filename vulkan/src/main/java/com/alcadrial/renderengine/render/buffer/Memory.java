@@ -2,6 +2,7 @@ package com.alcadrial.renderengine.render.buffer;
 
 import java.nio.ByteBuffer;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -48,7 +49,7 @@ public class Memory extends RawDeviceResource {
 		}
 	}
 	
-	private Mapping mapping;
+	private @Nullable Mapping mapping;
 	private int size;
 	
 	public Memory(Device device, long vk, int size)
@@ -58,7 +59,7 @@ public class Memory extends RawDeviceResource {
 		this.size = size;
 	}
 	
-	public Mapping getMapping()
+	public @Nullable Mapping getMapping()
 	{
 		return mapping;
 	}
@@ -82,6 +83,7 @@ public class Memory extends RawDeviceResource {
 	
 	public Mapping remapMemory(long offset, int size) throws VulkanException
 	{
+		Mapping mapping = this.mapping;
 		if (mapping == null) throw new IllegalStateException("Missing mapped memory " + Debug.address(vk));
 		if (mapping.offset == offset && mapping.size == size) return mapping;
 		mapping.valid = false;
@@ -98,11 +100,12 @@ public class Memory extends RawDeviceResource {
 	
 	public void unmapMemory()
 	{
+		Mapping mapping = this.mapping;
 		if (mapping != null)
 		{
 			mapping.valid = false;
 			VK10.vkUnmapMemory(device.getVk(), vk);
-			mapping = null;
+			this.mapping = null;
 		}
 	}
 	

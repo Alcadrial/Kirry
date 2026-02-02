@@ -5,7 +5,11 @@ import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
+import java.util.regex.Pattern;
+
+import org.jspecify.annotations.Nullable;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -21,10 +25,18 @@ public class Shader {
 	
 	public static final File GLSLC = new File(Properties.SHADER_COMPILER_PATH.getValue(), "glslc");
 	public static final String GLSLC_PATH = GLSLC.toString();
+	public static final Pattern SHADER_FILE_EXTENSION = Pattern.compile(".*(\\.vert|\\.tesc|\\.tese|\\.geom|\\.frag|\\.comp)");
 	
-	private File file;
+	public static boolean isShaderFile(Path path)
+	{
+		Path name = path.getFileName();
+		if (name == null) return false;
+		return SHADER_FILE_EXTENSION.matcher(name.toString()).matches();
+	}
+	
+	private @Nullable File file;
 	private String[] code;
-	private CompiledShader compiled;
+	private @Nullable CompiledShader compiled;
 	
 	public Shader(File file) throws IOException
 	{
@@ -58,6 +70,7 @@ public class Shader {
 		Process process;
 		try
 		{
+			File file = this.file;
 			if (file != null)
 			{
 				process = new ProcessBuilder(GLSLC_PATH, "-O", "-o", "-", "-fshader-stage=" + info.getType().toString().toLowerCase(), file.toPath().toAbsolutePath().toString()).redirectError(Redirect.INHERIT).start();
@@ -73,14 +86,13 @@ public class Shader {
 				process.getOutputStream().close();
 			}
 			byte[] data = process.getInputStream().readAllBytes();
-			compiled = process.waitFor() == 0 ? CompiledShader.ofSuccess(code, data) : CompiledShader.ofFail();
+			return compiled = process.waitFor() == 0 ? CompiledShader.ofSuccess(code, data) : CompiledShader.ofFail();
 		}
 		catch (InterruptedException | IOException e)
 		{
 			Debug.printStackTrace(e);
-			compiled = CompiledShader.ofFail();
+			return compiled = CompiledShader.ofFail();
 		}
-		return compiled;
 	}
 	
 	public Optional<CompiledShader> getLastCompilation()
@@ -93,7 +105,7 @@ public class Shader {
 		return compiled != null && !compiled.hasErrors();
 	}
 	
-	public File getFile()
+	public @Nullable File getFile()
 	{
 		return file;
 	}

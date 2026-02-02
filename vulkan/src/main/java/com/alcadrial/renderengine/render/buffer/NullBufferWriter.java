@@ -148,36 +148,6 @@ final class NullBufferWriter extends BufferWriter {
 	}
 	
 	@Override
-	public int getSrcOffset()
-	{
-		return 0;
-	}
-	
-	@Override
-	public int getDstOffset()
-	{
-		return 0;
-	}
-	
-	@Override
-	public VulkanBuffer getSrcBuffer()
-	{
-		return null;
-	}
-	
-	@Override
-	public VulkanBuffer getDstBuffer()
-	{
-		return null;
-	}
-	
-	@Override
-	public int getSize()
-	{
-		return 0;
-	}
-	
-	@Override
 	public void setCommandBuffer(CommandBuffer commandBuffer)
 	{
 		

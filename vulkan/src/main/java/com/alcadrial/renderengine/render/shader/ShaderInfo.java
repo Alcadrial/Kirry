@@ -5,10 +5,10 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.LinkedList;
 import java.util.List;
 
+import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderCombinedImageSamplerLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderInputLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
@@ -16,136 +16,110 @@ import com.alcadrial.renderengine.render.shader.layouts.ShaderLocalSizeLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderStorageBufferLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderUniformBufferLayout;
 import com.alcadrial.renderengine.render.util.FileUtils;
-import com.alcadrial.renderengine.render.util.JsonUtils;
-import com.google.gson.stream.JsonReader;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 public class ShaderInfo {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	/**
 	 * 
 	 * @param json
 	 * @throws FileNotFoundException
 	 * @throws IOException
-	 * @see #fromJson(InputStream)
+	 * @see #fromJson(ObjectMapper, InputStream)
 	 */
 	public static ShaderInfo fromJson(File json) throws FileNotFoundException, IOException
 	{
 		FileUtils.assertExtension(json, "json");
-		return fromJson(new FileInputStream(json));
+		return fromJson(RenderEngine.getVulkan().getObjectMapper(), new FileInputStream(json));
 	}
 	
 	/**
 	 * The json must be as follows:
 	 * <pre>
 	 * {
-	 *     "type": "{vert|tesc|tese|geom|frag|comp}",                                             [REQUIRED FIRST]
-	 *     "entryPoint": "main",                      // The starting point of the shader         [REQUIRED]
-	 *     "layouts": [                               // A list of 0 or more layouts              [REQUIRED]
+	 *     "type": "{vert|tesc|tese|geom|frag|comp}",                                                          [REQUIRED]
+	 *     "entryPoint": "main",                                   // The starting point of the shader         [REQUIRED]
+	 *     "layouts": [                                            // A list of 0 or more layouts              [REQUIRED]
 	 *         {
-	 *             "type": "uniformBuffer",           // The type of a uniform block              [REQUIRED FIRST]
-	 *             "binding": 0,                      // The binding of the block                 [REQUIRED]
-	 *             "name": "uniformBlock"             // The name of the block                    [OPTIONAL]
-	 *             "variables": [                     // A list of uniform variables              [REQUIRED]
+	 *             "type": "uniformBuffer",                        // The type of a uniform block              [REQUIRED]
+	 *             "binding": 0,                                   // The binding of the block                 [REQUIRED]
+	 *             "name": "uniformBlock"                          // The name of the block                    [OPTIONAL]
+	 *             "variables": [                                  // A list of variables                      [REQUIRED]
+	 *                 "mat4 TRANSFORMATION"                       // The declaration of a variable            [REQUIRED]
+	 *             ]
+	 *         },
+	 *         {
+	 *             "type": "storageBuffer",                        // The type of a storage block              [REQUIRED]
+	 *             "binding": 1,                                   // The binding of the block                 [REQUIRED]
+	 *             "name": "storageBlock"                          // The name of the block                    [OPTIONAL]
+	 *             "usage": "{input|output|other}"                                                             [REQUIRED]
+	 *             "variables": [                                  // A list of variables                      [OPTIONAL]
+	 *                 "vec3 position"                             // The declaration of a variable            [REQUIRED]
+	 *             ]
+	 *         },
+	 *         {
+	 *             "type": "input",                                // The type of a buffer used in rendering   [REQUIRED]
+	 *             "binding": 2,                                   // The binding of the block                 [REQUIRED]
+	 *             "name": "inputBlock"                            // The name of the block                    [OPTIONAL]
+	 *             "variables": [                                  // A list of variables                      [REQUIRED]
 	 *                 {
-	 *                     "type": "mat4",            // The type of the uniform variable         [REQUIRED]
-	 *                     "name": "TRANSFORMATION"   // The name of the uniform variable         [REQUIRED]
+	 *                     "location": "0",                        // The location of the variable             [REQUIRED]
+	 *                     "declaration": "vec3 vertexPosition"    // The declaration of the variable          [REQUIRED]
 	 *                 }
 	 *             ]
 	 *         },
 	 *         {
-	 *             "type": "storageBuffer",           // The type of a storage block              [REQUIRED FIRST]
-	 *             "binding": 1,                      // The binding of the block                 [REQUIRED]
-	 *             "name": "storageBlock"             // The name of the block                    [OPTIONAL]
-	 *             "usage": "{input|output|other}"                                                [REQUIRED]
-	 *             "variables": [                     // A list of uniform variables              [OPTIONAL]
-	 *                 {
-	 *                     "type": "vec3",            // The type of the uniform variable         [REQUIRED]
-	 *                     "name": "position"         // The name of the uniform variable         [REQUIRED]
-	 *                 }
-	 *             ]
-	 *         },
-	 *         {
-	 *             "type": "input",                   // The type of a buffer used in rendering   [REQUIRED FIRST]
-	 *             "binding": 2,                      // The binding of the block                 [REQUIRED]
-	 *             "name": "inputBlock"               // The name of the block                    [OPTIONAL]
-	 *             "variables": [                     // A list of uniform variables              [REQUIRED]
-	 *                 {
-	 *                     "type": "vec4",            // The type of the shader's input variable  [REQUIRED]
-	 *                     "name": "color"            // The name of the shader's input variable  [REQUIRED]
-	 *                 }
-	 *             ]
-	 *         },
-	 *         {
-	 *             "type": "localSize",               // The type of localSize used in computing   [REQUIRED FIRST]
-	 *             "xSize": 64,                       // The x size                                [REQUIRED]
-	 *             "ySize": 64,                       // The y size                                [REQUIRED]
-	 *             "zSize": 64                        // The z size                                [REQUIRED]
+	 *             "type": "localSize",                            // The type of localSize used in computing  [REQUIRED]
+	 *             "xSize": 64,                                    // The x size                               [REQUIRED]
+	 *             "ySize": 64,                                    // The y size                               [REQUIRED]
+	 *             "zSize": 64                                     // The z size                               [REQUIRED]
 	 *         }
 	 *     ]
 	 * }
 	 * </pre>
 	 * 
-	 * @param json
+	 * The declaration of a variable must be as follows:
+	 * <pre>"&lt;type&gt; &lt;name&gt;"</pre>
+	 * where &lt;type&gt; is a valid shader type and &lt;name&gt; is blank or a valid identifier, if &lt;name&gt;
+	 * is blank then it is interpreted as padding of the same size of the &lt;type&gt;
+	 * 
 	 * @throws IOException
 	 */
-	public static ShaderInfo fromJson(InputStream json) throws IOException
+	public static ShaderInfo fromJson(ObjectMapper mapper, InputStream stream) throws IOException
 	{
-		ShaderType shaderType = null;
-		String entryPoint = null;
-		List<ShaderLayout> layouts = null;
+		JsonNode json = mapper.readTree(stream);
 		
-		try (JsonReader reader = new JsonReader(new InputStreamReader(json)))
+		ShaderType shaderType = ShaderType.fromExtension(json.get("type").requireNonNull().stringValue());
+		if (shaderType == ShaderType.UNKNOWN) throw new IOException("Shader type must be of a known type");
+		
+		String entryPoint = json.get("entryPoint").requireNonNull().stringValue();
+		
+		JsonNode layoutsNode = json.get("layouts").requireNonNull();
+		List<ShaderLayout> layouts = new LinkedList<>();
+		
+		for (JsonNode layoutNode : layoutsNode)
 		{
-			reader.beginObject();
-			JsonUtils.require(reader.hasNext(), "type");
-			JsonUtils.require(reader.nextName().equals("type"), "type as first item");
-			JsonUtils.require((shaderType = ShaderType.fromExtension(reader.nextString())) != ShaderType.UNKNOWN, "Shader type must be a known type");
+			ShaderLayout.Type type = ShaderLayout.Type.of(layoutNode.get("type").requireNonNull().stringValue());
 			
-			while (reader.hasNext())
+			layouts.add(switch (type)
 			{
-				switch (reader.nextName())
-				{
-					case "entryPoint" -> entryPoint = reader.nextString();
-					case "layouts" -> {
-						if (layouts != null) layouts.clear();
-						layouts = new LinkedList<>();
-						
-						reader.beginArray();
-						while (reader.hasNext())
-						{
-							ShaderLayout.Type type;
-							reader.beginObject();
-							if (!reader.hasNext()) throw new IOException(JsonUtils.missing(reader, "type"));
-							if (!reader.nextName().equals("type")) throw new IOException(JsonUtils.missing(reader, "type as first item"));
-							type = ShaderLayout.Type.of(reader.nextString());
-							
-							layouts.add(switch (type)
-							{
-								case COMBINED_IMAGE_SAMPLER -> ShaderCombinedImageSamplerLayout.parseJson(reader);
-								case UNIFORM_BUFFER -> ShaderUniformBufferLayout.parseJson(reader);
-								case STORAGE_BUFFER -> ShaderStorageBufferLayout.parseJson(reader);
-								case INPUT -> ShaderInputLayout.parseJson(reader);
-								case LOCAL_SIZE -> ShaderLocalSizeLayout.parseJson(reader);
-								default -> throw new IOException(JsonUtils.invalid(reader, "type"));
-							});
-							reader.endObject();
-						}
-						reader.endArray();
-					}
-					default -> reader.skipValue();
-				}
-			}
-			reader.endObject();
+				case COMBINED_IMAGE_SAMPLER -> ShaderCombinedImageSamplerLayout.parse(layoutNode);
+				case UNIFORM_BUFFER -> ShaderUniformBufferLayout.parse(layoutNode);
+				case STORAGE_BUFFER -> ShaderStorageBufferLayout.parse(layoutNode);
+				case INPUT -> ShaderInputLayout.parse(layoutNode);
+				case LOCAL_SIZE -> ShaderLocalSizeLayout.parse(layoutNode);
+				default -> throw new IOException("Unknown layout type: " + type);
+			});
 		}
-		catch (IOException e)
-		{
-			throw e;
-		}
-		catch (Exception e)
-		{
-			throw new IOException(e);
-		}
-		return new ShaderInfo(JsonUtils.require(shaderType, "type"), JsonUtils.require(entryPoint, "entryPoint"), JsonUtils.require(layouts, "layouts"));
+		
+		return new ShaderInfo(shaderType, entryPoint, layouts);
 	}
 	
 	private ShaderType type;

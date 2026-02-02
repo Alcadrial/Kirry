@@ -1,9 +1,9 @@
 package com.alcadrial.renderengine.render.shader;
 
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.eclipse.collections.api.factory.Sets;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding.Buffer;
@@ -23,34 +23,23 @@ public class ShaderUtils {
 	
 	public static void extractData(PreparedShader shader, Map<Integer, ShaderLayoutBinding> bindingFlags)
 	{
-		if (shader != null)
+		ShaderInfo info = shader.info();
+		for (ShaderLayout layout : info.getLayouts())
 		{
-			ShaderInfo info = shader.info();
-			for (ShaderLayout layout : info.getLayouts())
+			int stageBit = info.getType().getStageBit();
+			switch (layout.getType())
 			{
-				ShaderLayoutBinding layoutBinding = new ShaderLayoutBinding(info.getType().getStageBit(), null, null);
-				switch (layout.getType())
-				{
-					case COMBINED_IMAGE_SAMPLER -> {
-						ShaderCombinedImageSamplerLayout combinedImageSamplerLayout = (ShaderCombinedImageSamplerLayout) layout;
-						layoutBinding.setLayoutsVariables(new LinkedHashSet<>(combinedImageSamplerLayout.getVariables()));
-						layoutBinding.setDescriptorType(layout.getType());
-						
-						bindingFlags.merge(combinedImageSamplerLayout.getBinding(), layoutBinding, ShaderUtils::merge);
-					}
-					case UNIFORM_BUFFER -> {
-						ShaderUniformBufferLayout uniformBufferLayout = (ShaderUniformBufferLayout) layout;
-						layoutBinding.setLayoutsVariables(new LinkedHashSet<>(uniformBufferLayout.getVariables()));
-						layoutBinding.setDescriptorType(layout.getType());
-						bindingFlags.merge(uniformBufferLayout.getBinding(), layoutBinding, ShaderUtils::merge);
-					}
-					case STORAGE_BUFFER -> {
-						ShaderStorageBufferLayout storageBufferLayout = (ShaderStorageBufferLayout) layout;
-						layoutBinding.setLayoutsVariables(new LinkedHashSet<>(storageBufferLayout.getVariables()));
-						layoutBinding.setDescriptorType(layout.getType());
-						
-						bindingFlags.merge(storageBufferLayout.getBinding(), layoutBinding, ShaderUtils::merge);
-					}
+				case COMBINED_IMAGE_SAMPLER -> {
+					ShaderCombinedImageSamplerLayout combinedImageSamplerLayout = (ShaderCombinedImageSamplerLayout) layout;
+					bindingFlags.merge(combinedImageSamplerLayout.getBinding(), new ShaderLayoutBinding(stageBit, layout.getType(), Sets.mutable.ofAll(combinedImageSamplerLayout.getVariables())), ShaderUtils::merge);
+				}
+				case UNIFORM_BUFFER -> {
+					ShaderUniformBufferLayout uniformBufferLayout = (ShaderUniformBufferLayout) layout;
+					bindingFlags.merge(uniformBufferLayout.getBinding(), new ShaderLayoutBinding(stageBit, layout.getType(), Sets.mutable.ofAll(uniformBufferLayout.getVariables())), ShaderUtils::merge);
+				}
+				case STORAGE_BUFFER -> {
+					ShaderStorageBufferLayout storageBufferLayout = (ShaderStorageBufferLayout) layout;
+					bindingFlags.merge(storageBufferLayout.getBinding(), new ShaderLayoutBinding(stageBit, layout.getType(), Sets.mutable.ofAll(storageBufferLayout.getVariables())), ShaderUtils::merge);
 				}
 			}
 		}

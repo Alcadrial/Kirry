@@ -1,5 +1,6 @@
 package com.alcadrial.renderengine.render.shader;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -53,7 +54,7 @@ public enum ShaderInputType {
 		RenderEngine.assertLoaded();
 	}
 	
-	public static ShaderInputType of(String typeName)
+	public static @Nullable ShaderInputType of(String typeName)
 	{
 		if (typeName.isBlank()) return null;
 		return switch (typeName)

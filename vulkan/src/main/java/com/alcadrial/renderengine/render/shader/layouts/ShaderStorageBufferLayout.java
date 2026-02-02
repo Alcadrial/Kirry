@@ -3,14 +3,13 @@ package com.alcadrial.renderengine.render.shader.layouts;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
 
-import com.alcadrial.renderengine.core.util.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
-import com.alcadrial.renderengine.render.util.JsonUtils;
-import com.google.gson.stream.JsonReader;
+
+import tools.jackson.databind.JsonNode;
 
 public final class ShaderStorageBufferLayout extends ShaderBufferLayout {
 	
@@ -19,48 +18,31 @@ public final class ShaderStorageBufferLayout extends ShaderBufferLayout {
 		RenderEngine.assertLoaded();
 	}
 	
-	public static ShaderStorageBufferLayout parseJson(JsonReader reader) throws IOException
+	public static ShaderStorageBufferLayout parse(JsonNode json) throws IOException
 	{
-		Integer binding = null;
-		String name = null;
-		Usage usage = Usage.OTHER;
-		List<ShaderVariable> variables = null;
+		return parse(json, "$");
+	}
+	
+	public static ShaderStorageBufferLayout parse(JsonNode json, String location) throws IOException
+	{
+		int binding = json.get("binding").intValue();
+		String name = json.get("name").stringValue(null);
+		JsonNode variablesNode = json.get("variables").requireNonNull();
+		Usage usage = Usage.of(json.get("usage").requireNonNull().stringValue());
+		if (usage == null) throw new IOException("Invalid usage of " + location + ".usage");
 		
-		while (reader.hasNext())
-		{
-			switch (reader.nextName())
-			{
-				case "binding" -> binding = reader.nextInt();
-				case "name" -> name = reader.nextString();
-				case "usage" -> JsonUtils.require((usage = Usage.of(reader.nextString())) != null, JsonUtils.invalid(reader, "usage"));
-				case "variables" -> {
-					if (variables != null) throw new IOException(JsonUtils.duplicate(reader, "variables"));
-					variables = new LinkedList<>();
-					
-					reader.beginArray();
-					while (reader.hasNext())
-					{
-						String[] declaration = reader.nextString().split(" ");
-						if (declaration.length != 2) throw new IOException(JsonUtils.invalid(reader, "variables[" + variables.size() + "]"));
-						variables.add(new ShaderVariable(ShaderInputType.of(declaration[0].trim()), declaration[1].trim()));
-					}
-					reader.endArray();
-				}
-				default -> reader.skipValue();
-			}
-		}
-		if (binding == null) throw new IOException(JsonUtils.missing(reader, "binding"));
+		List<ShaderVariable> variables = new LinkedList<>();
+		for (JsonNode variableNode : variablesNode) variables.add(ShaderVariable.parse(variableNode, location + ".variables[" + variables.size() + "]"));
 		
 		return new ShaderStorageBufferLayout(binding, name, usage, variables);
 	}
 	
 	public enum Usage {
-		
 		INPUT,
 		OUTPUT,
 		OTHER;
 		
-		public static Usage of(String name)
+		public static @Nullable Usage of(String name)
 		{
 			return switch (name)
 			{
@@ -74,10 +56,10 @@ public final class ShaderStorageBufferLayout extends ShaderBufferLayout {
 	
 	private Usage usage;
 	
-	public ShaderStorageBufferLayout(int binding, @Nullable String name, Usage usage, @Nullable List<ShaderVariable> variables)
+	public ShaderStorageBufferLayout(int binding, @Nullable String name, Usage usage, List<ShaderVariable> variables)
 	{
 		super(Type.STORAGE_BUFFER, binding, name, variables);
-		this.usage = Objects.requireNonNull(usage);
+		this.usage = usage;
 	}
 	
 	public Usage getUsage()

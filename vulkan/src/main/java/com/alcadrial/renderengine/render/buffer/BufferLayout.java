@@ -1,13 +1,17 @@
 package com.alcadrial.renderengine.render.buffer;
 
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Consumer;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDescriptorBufferInfo;
 import org.lwjgl.vulkan.VkDescriptorImageInfo;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
+import org.lwjgl.vulkan.VkWriteDescriptorSet.Buffer;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
@@ -35,6 +39,48 @@ public class BufferLayout implements VulkanDebug {
 		RenderEngine.assertLoaded();
 	}
 	
+	public static class Builder {
+		
+		public static Builder of(Device device)
+		{
+			return new Builder(device);
+		}
+		
+		public static Builder of(BufferLayout layout)
+		{
+			Builder builder = new Builder(layout.device);
+			builder.writer = layout.writer;
+			return builder;
+		}
+		
+		private Device device;
+		private @Nullable BufferWriter writer;
+		private @Nullable Buffer writeDescriptorSets;
+		private @Nullable Map<String, Pair<ShaderVariable, Integer>> marks;
+		
+		private Builder(Device device)
+		{
+			this.device = device;
+		}
+		
+		public Builder writer(BufferWriter writer)
+		{
+			this.writer = writer;
+			return this;
+		}
+		
+		public Builder writeDescriptorSets(Buffer writeDescriptorSets)
+		{
+			this.writeDescriptorSets = writeDescriptorSets;
+			return this;
+		}
+		
+		public BufferLayout build(Lock lock)
+		{
+			return new BufferLayout(this, lock);
+		}
+	}
+	
 	private Lock lock;
 	private Device device;
 	private ConcurrentHashMap<String, Pair<ShaderVariable, Integer>> marks;
@@ -42,21 +88,13 @@ public class BufferLayout implements VulkanDebug {
 	private boolean updated;
 	private BufferWriter writer;
 	
-	public BufferLayout(Device device, /*Remove*/Lock lock)
+	private BufferLayout(Builder builder, Lock lock)
 	{
-		this.device = device;
-		marks = new ConcurrentHashMap<>();
+		device = builder.device;
+		marks = new ConcurrentHashMap<>(Objects.requireNonNull(builder.marks));
+		writeDescriptorSets = Objects.requireNonNull(builder.writeDescriptorSets);
 		this.lock = lock;
-		updated = true;
-	}
-	
-	public BufferLayout(BufferLayout other)
-	{
-		device = other.device;
-		marks = new ConcurrentHashMap<>(other.marks);
-		writeDescriptorSets = other.writeDescriptorSets;
-		lock = other.lock;
-		writer = other.writer;
+		writer = Objects.requireNonNull(builder.writer);
 		updated = true;
 	}
 	
@@ -85,7 +123,7 @@ public class BufferLayout implements VulkanDebug {
 		return marks.containsKey(variable.getName());
 	}
 	
-	public Pair<ShaderVariable, Integer> getOffset(String variableName)
+	public @Nullable Pair<ShaderVariable, Integer> getOffset(String variableName)
 	{
 		return marks.get(variableName);
 	}

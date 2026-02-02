@@ -6,7 +6,7 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
-public class DynamicBigBuffer extends BigVulkanBuffer {
+public class DynamicBigBuffer extends AbstractBigVulkanBuffer<AbstractBigVulkanBuffer.Data> {
 	
 	static
 	{
@@ -21,6 +21,12 @@ public class DynamicBigBuffer extends BigVulkanBuffer {
 		super(device, size, 0);
 		maxAllocableBufferSize = size;
 		slots = new TreeSet<>();
+	}
+	
+	@Override
+	protected Data allocateData(VulkanBuffer buffer)
+	{
+		return new Data(buffer);
 	}
 	
 	@Override

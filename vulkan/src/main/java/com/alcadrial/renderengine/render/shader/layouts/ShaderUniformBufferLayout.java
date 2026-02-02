@@ -4,12 +4,12 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.alcadrial.renderengine.core.util.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
-import com.alcadrial.renderengine.render.util.JsonUtils;
-import com.google.gson.stream.JsonReader;
+
+import tools.jackson.databind.JsonNode;
 
 public final class ShaderUniformBufferLayout extends ShaderBufferLayout {
 	
@@ -17,37 +17,20 @@ public final class ShaderUniformBufferLayout extends ShaderBufferLayout {
 	{
 		RenderEngine.assertLoaded();
 	}
-	
-	public static ShaderUniformBufferLayout parseJson(JsonReader reader) throws IOException
+
+	public static ShaderUniformBufferLayout parse(JsonNode json) throws IOException
 	{
-		Integer binding = null;
-		String name = null;
-		List<ShaderVariable> variables = null;
+		return parse(json, "$");
+	}
+	
+	public static ShaderUniformBufferLayout parse(JsonNode json, String location) throws IOException
+	{
+		int binding = json.get("binding").intValue();
+		String name = json.get("name").stringValue(null);
+		JsonNode variablesNode = json.get("variables").requireNonNull();
 		
-		while (reader.hasNext())
-		{
-			switch (reader.nextName())
-			{
-				case "binding" -> binding = reader.nextInt();
-				case "name" -> name = reader.nextString();
-				case "variables" -> {
-					if (variables != null) throw new IOException(JsonUtils.duplicate(reader, "variables"));
-					variables = new LinkedList<>();
-					
-					reader.beginArray();
-					while (reader.hasNext())
-					{
-						String[] declaration = reader.nextString().split(" ");
-						if (declaration.length != 2) throw new IOException(JsonUtils.invalid(reader, "variables[" + variables.size() + "]"));
-						variables.add(new ShaderVariable(ShaderInputType.of(declaration[0].trim()), declaration[1].trim()));
-					}
-					reader.endArray();
-				}
-				default -> reader.skipValue();
-			}
-		}
-		if (binding == null) throw new IOException(JsonUtils.missing(reader, "binding"));
-		if (variables == null) throw new IOException(JsonUtils.missing(reader, "variables"));
+		List<ShaderVariable> variables = new LinkedList<>();
+		for (JsonNode variableNode : variablesNode) variables.add(ShaderVariable.parse(variableNode, location + ".variables[" + variables.size() + "]"));
 		
 		return new ShaderUniformBufferLayout(binding, name, variables);
 	}
@@ -55,11 +38,5 @@ public final class ShaderUniformBufferLayout extends ShaderBufferLayout {
 	public ShaderUniformBufferLayout(int binding, @Nullable String name, List<ShaderVariable> variables)
 	{
 		super(Type.UNIFORM_BUFFER, binding, name, variables);
-	}
-	
-	@Override
-	public List<ShaderVariable> getVariables()
-	{
-		return super.getVariables();
 	}
 }

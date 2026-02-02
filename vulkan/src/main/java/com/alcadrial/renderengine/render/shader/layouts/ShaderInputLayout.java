@@ -4,12 +4,13 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
-import com.alcadrial.renderengine.render.util.JsonUtils;
-import com.google.gson.stream.JsonReader;
+
+import tools.jackson.databind.JsonNode;
 
 public final class ShaderInputLayout extends ShaderLayout {
 	
@@ -17,75 +18,53 @@ public final class ShaderInputLayout extends ShaderLayout {
 	{
 		RenderEngine.assertLoaded();
 	}
-	
-	public static ShaderInputLayout parseJson(JsonReader reader) throws IOException
+
+	public static ShaderInputLayout parse(JsonNode json) throws IOException
 	{
-		Integer binding = null;
-		List<Pair<Integer, ShaderVariable>> variables = null;
-		
-		while (reader.hasNext())
-		{
-			switch (reader.nextName())
-			{
-				case "binding" -> binding = reader.nextInt();
-				case "variables" ->
-				{
-					if (variables != null) throw new IOException(JsonUtils.duplicate(reader, "variables"));
-					variables = new LinkedList<>();
-					
-					reader.beginArray();
-					while (reader.hasNext())
-					{
-						reader.beginObject();
-						
-						Integer location = null;
-						String[] declaration = null;
-						
-						while (reader.hasNext())
-						{
-							switch (reader.nextName())
-							{
-								case "location" -> location = reader.nextInt();
-								case "declaration" -> declaration = reader.nextString().split(" +");
-								default -> reader.skipValue();
-							}
-						}
-						if (declaration == null) throw new IOException(JsonUtils.missing(reader, "declaration"));
-						if (location == null) throw new IOException(JsonUtils.missing(reader, "location"));
-						if (declaration.length != 2) throw new IOException(JsonUtils.invalid(reader, "declaration"));
-						if (location < 0) throw new IOException(JsonUtils.invalid(reader, "location"));
-						
-						ShaderInputType type = ShaderInputType.of(declaration[0].trim());
-						if (type == null) throw new IOException(JsonUtils.invalid(reader, "declaration"));
-						
-						variables.add(new Pair<>(location, ShaderVariable.of(type, declaration[1].trim())));
-						
-						reader.endObject();
-					}
-					reader.endArray();
-				}
-				default -> reader.skipValue();
-			}
-		}
-		if (binding == null) throw new IOException(JsonUtils.missing(reader, "binding"));
-		if (variables == null) throw new IOException(JsonUtils.missing(reader, "variables"));
-		
-		return new ShaderInputLayout(binding, variables);
+		return parse(json, "$");
 	}
 	
-	private int binding;
-	private List<Pair<Integer, ShaderVariable>> variables;
+	public static ShaderInputLayout parse(JsonNode json, String location) throws IOException
+	{
+		int binding = json.get("binding").intValue();
+		String name = json.get("name").stringValue(null);
+		JsonNode variablesNode = json.get("variables").requireNonNull();
+		
+		List<Pair<Integer, ShaderVariable>> variables = new LinkedList<>();
+		
+		for (JsonNode variableNode : variablesNode)
+		{
+			String newLocation = location + ".variables[" + variables.size() + "]";
+			int variableLocation = variableNode.get("location").intValue();
+			if (variableLocation < 0) throw new IOException("Invalid value of " + newLocation + ".location");
+			ShaderVariable variable = ShaderVariable.parse(variableNode.get("declaration"), newLocation + ".declaration");
+			
+			variables.add(new Pair<>(variableLocation, variable));
+		}
+		
+		return new ShaderInputLayout(binding, name, variables);
+	}
 	
-	public ShaderInputLayout(int binding, List<Pair<Integer, ShaderVariable>> variables)
+	private final int binding;
+	private final @Nullable String name;
+	private final List<Pair<Integer, ShaderVariable>> variables;
+	
+	public ShaderInputLayout(int binding, @Nullable String name, List<Pair<Integer, ShaderVariable>> variables)
 	{
 		super(Type.INPUT);
 		this.binding = binding;
+		this.name = name;
 		this.variables = List.copyOf(variables);
 	}
 	
 	public int getBinding()
 	{
 		return binding;
+	}
+	
+	public @Nullable String getName()
+	{
+		return name;
 	}
 	
 	public List<Pair<Integer, ShaderVariable>> getVariables()

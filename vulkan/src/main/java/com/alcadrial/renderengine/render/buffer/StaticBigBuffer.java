@@ -12,24 +12,35 @@ import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.OverflowException;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
-public class StaticBigBuffer extends BigVulkanBuffer {
+public class StaticBigBuffer extends AbstractBigVulkanBuffer<StaticBigBuffer.Data> {
 	
 	static
 	{
 		RenderEngine.assertLoaded();
 	}
 	
-	private int remoteAllocationOffset;
-	private int localAllocationOffset;
-	protected LinkedList<Slot<? extends VulkanBuffer>> localSlots;
-	protected LinkedList<Slot<? extends VulkanBuffer>> remoteSlots;
+	public static class Data extends AbstractBigVulkanBuffer.Data {
+		
+		protected int allocationOffset;
+		protected LinkedList<Slot<? extends VulkanBuffer>> slots;
+		
+		public Data(VulkanBuffer buffer, int allocationOffset, LinkedList<AbstractBigVulkanBuffer<Data>.Slot<? extends VulkanBuffer>> slots)
+		{
+			super(buffer);
+			this.allocationOffset = allocationOffset;
+			this.slots = slots;
+		}
+	}
 	
 	public StaticBigBuffer(Device device, int size) throws VulkanException
 	{
 		super(device, size, 0);
-		remoteAllocationOffset = 0;
-		localSlots = new LinkedList<>();
-		remoteSlots = new LinkedList<>();
+	}
+	
+	@Override
+	protected Data allocateData(VulkanBuffer buffer)
+	{
+		return new Data(buffer, 0, new LinkedList<>());
 	}
 	
 	@Override
@@ -37,22 +48,9 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 	{
 		if (size == 0) throw new IllegalStateException("Size must be positive");
 		
-		VulkanBuffer bigBuffer;
-		int allocationOffset;
-		LinkedList<Slot<?>> slots;
-		
-		if (isLocalBufferingActive())
-		{
-			bigBuffer = localBigBuffer;
-			allocationOffset = localAllocationOffset;
-			slots = localSlots;
-		}
-		else
-		{
-			bigBuffer = remoteBigBuffer;
-			allocationOffset = remoteAllocationOffset;
-			slots = remoteSlots;
-		}
+		Data data = getActiveData();
+		int allocationOffset = data.allocationOffset;
+		VulkanBuffer bigBuffer = data.buffer;
 		
 		if (bigBuffer.size >= allocationOffset + size)
 		{
@@ -69,66 +67,37 @@ public class StaticBigBuffer extends BigVulkanBuffer {
 			
 			VulkanBuffer buffer = new VulkanBuffer(bigBuffer, bufferVk, allocationOffset, size, usage);
 			Debug.debugAllocation(() -> "Allocate " + (isLocalBufferingActive() ? "Local" : "Remote") + " " + buffer);
-			slots.addLast(new Slot<>(buffer));
-
+			data.slots.addLast(new Slot<>(buffer));
+			
 			allocationOffset += size;
-			if (isLocalBufferingActive()) localAllocationOffset = allocationOffset;
-			else remoteAllocationOffset = allocationOffset;
+			data.allocationOffset = allocationOffset;
 			return buffer;
 		}
 		throw new OverflowException("Missing " + (allocationOffset + size - bigBuffer.size) + " bytes of " + size + " requested (" + allocationOffset + "/" + bigBuffer.size + ")");
 	}
 	
-	public VulkanBuffer getRemoteBuffer()
-	{
-		return remoteBigBuffer;
-	}
-	
-	@Override
-	public synchronized PhysicalDeviceTranferState startLocalBuffering() throws VulkanException
-	{
-		PhysicalDeviceTranferState t = super.startLocalBuffering();
-		localAllocationOffset = 0;
-		return t;
-	}
-	
 	@Override
 	public int getMaxAllocableSize()
 	{
-		if (isLocalBufferingActive()) return localBigBuffer.size - localAllocationOffset;
-		return remoteBigBuffer.size - remoteAllocationOffset;
+		Data data = getActiveData();
+		return data.buffer.size - data.allocationOffset;
 	}
 	
 	@Override
 	public void sync()
-	{
-		
-	}
+	{}
 	
 	@Override
 	public void clear()
 	{
-		if (isLocalBufferingActive())
+		Data data = getActiveData();
+		data.allocationOffset = 0;
+		for (Slot<? extends VulkanBuffer> slot : data.slots)
 		{
-			localAllocationOffset = 0;
-			for (Slot<? extends VulkanBuffer> slot : localSlots)
-			{
-				VulkanBuffer buffer = slot.getBuffer();
-				Debug.debugAllocation(() -> "Deallocated Local " + buffer + " of " + this);
-				buffer.close();
-			}
-			localSlots.clear();
+			VulkanBuffer buffer = slot.getBuffer();
+			Debug.debugAllocation(() -> "Deallocated " + (isLocalBufferingActive() ? "Local " : "Remote ") + buffer + " of " + this);
+			buffer.close();
 		}
-		else
-		{
-			remoteAllocationOffset = 0;
-			for (Slot<? extends VulkanBuffer> slot : remoteSlots)
-			{
-				VulkanBuffer buffer = slot.getBuffer();
-				Debug.debugAllocation(() -> "Deallocated Remote " + buffer + " of " + this);
-				buffer.close();
-			}
-			remoteSlots.clear();
-		}
+		data.slots.clear();
 	}
 }

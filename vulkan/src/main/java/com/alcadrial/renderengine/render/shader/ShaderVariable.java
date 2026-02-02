@@ -1,8 +1,12 @@
 package com.alcadrial.renderengine.render.shader;
 
-import java.util.Objects;
+import java.io.IOException;
+
+import org.jspecify.annotations.Nullable;
 
 import com.alcadrial.renderengine.render.RenderEngine;
+
+import tools.jackson.databind.JsonNode;
 
 public class ShaderVariable {
 	
@@ -42,6 +46,22 @@ public class ShaderVariable {
 	public static final ShaderVariable MODEL = of(ShaderInputType.MATRIX_FLOAT_4X4, "MODEL");
 	public static final ShaderVariable TRANSFORMATION = of(ShaderInputType.MATRIX_FLOAT_4X4, "TRANSFORMATION");
 	
+	public static ShaderVariable parse(JsonNode json) throws IOException
+	{
+		return parse(json, "$");
+	}
+	
+	public static ShaderVariable parse(JsonNode json, String location) throws IOException
+	{
+		String[] declaration = json.requireNonNull().stringValue().split(" ");
+		if (declaration.length != 2) throw new IOException("Invalid variable definition of " + location);
+		
+		ShaderInputType type = ShaderInputType.of(declaration[0].trim());
+		if (type == null) throw new IOException("Unknown variable type of " + location);
+		
+		return of(type, declaration[1].trim());
+	}
+	
 	public static ShaderVariable of(ShaderInputType type, String name)
 	{
 		return new ShaderVariable(type, name);
@@ -52,8 +72,8 @@ public class ShaderVariable {
 	
 	public ShaderVariable(ShaderInputType type, String name)
 	{
-		this.type = Objects.requireNonNull(type, "ShaderVariable type must not be null");
-		this.name = Objects.requireNonNull(name, "ShaderVariable name must not be null");
+		this.type = type;
+		this.name = name;
 	}
 	
 	public ShaderInputType getType()
@@ -73,7 +93,7 @@ public class ShaderVariable {
 	}
 	
 	@Override
-	public boolean equals(Object obj)
+	public boolean equals(@Nullable Object obj)
 	{
 		return this == obj || obj instanceof ShaderVariable s && equals(s);
 	}

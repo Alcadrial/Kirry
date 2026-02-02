@@ -2,6 +2,8 @@ package com.alcadrial.renderengine.render.buffer;
 
 import java.nio.ByteBuffer;
 
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.vulkan.VkBufferCopy;
 
 import com.alcadrial.kector.matrix.Matrix4f;
@@ -11,10 +13,10 @@ import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
-import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.buffer.Memory.Mapping;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -34,7 +36,7 @@ public class BufferWriter implements AutoCloseable {
 	private class Work {
 		
 		private VulkanFuture<?> work;
-		private Work next;
+		private @Nullable Work next;
 		
 		public Work(VulkanFuture<?> work)
 		{
@@ -60,8 +62,8 @@ public class BufferWriter implements AutoCloseable {
 	private int bufferCopyCount;
 	
 	private @Nullable CommandBuffer flushCommandBuffer;
-	private Work firstWork;
-	private Work lastWork;
+	private @Nullable Work firstWork;
+	private @Nullable Work lastWork;
 	
 	public BufferWriter(VulkanBuffer srcBuffer, VulkanBuffer dstBuffer) throws VulkanException
 	{
@@ -80,7 +82,8 @@ public class BufferWriter implements AutoCloseable {
 	
 	public BufferWriter(VulkanBuffer srcBuffer, int srcOffset, VulkanBuffer dstBuffer, int dstOffset, int size, @Nullable CommandBuffer flushCommandBuffer) throws VulkanException
 	{
-		if (srcBuffer.getMemory().getMapping() == null) throw new VulkanException("Memory of srcBuffer " + srcBuffer + " is not mapped");
+		Mapping srcBufferMapping = srcBuffer.getMemory().getMapping();
+		if (srcBufferMapping == null) throw new VulkanException("Memory of srcBuffer " + srcBuffer + " is not mapped");
 		this.srcBuffer = srcBuffer;
 		this.srcOffset = srcOffset;
 		this.dstBuffer = dstBuffer;
@@ -88,16 +91,32 @@ public class BufferWriter implements AutoCloseable {
 		this.flushCommandBuffer = flushCommandBuffer;
 		this.size = size;
 		cursor = 0;
-		buffer = srcBuffer.getMemory().getMapping().getBuffer();
+		buffer = srcBufferMapping.getBuffer();
 		buffer = buffer.slice((int) srcBuffer.getOffset() + srcOffset, size).order(buffer.order());
 		vkBufferCopy = VkBufferCopy.malloc(MAX_COPY_COUNT);
 		firstWork = lastWork = null;
 		lastSetCursor = 0;
 		isModified = false;
 	}
-	
+
+	/**
+	 * Null instance for {@link NullBufferWriter}
+	 */
 	BufferWriter()
-	{}
+	{
+		this.srcBuffer = (@NonNull VulkanBuffer) null;
+		this.srcOffset = 0;
+		this.dstBuffer = (@NonNull VulkanBuffer) null;
+		this.dstOffset = 0;
+		this.flushCommandBuffer = null;
+		this.size = 0;
+		cursor = 0;
+		buffer = (@NonNull ByteBuffer) null;
+		vkBufferCopy = (VkBufferCopy.@NonNull Buffer) null;
+		firstWork = lastWork = null;
+		lastSetCursor = 0;
+		isModified = false;
+	}
 	
 	public BufferWriter resetCursor() throws VulkanException
 	{
@@ -265,10 +284,11 @@ public class BufferWriter implements AutoCloseable {
 			Device device = srcBuffer.getDevice();
 			Work work = new Work(device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), this::flush));
 			
-			if (firstWork == null) firstWork = lastWork = work;
+			Work w = lastWork;
+			if (w == null) firstWork = lastWork = work;
 			else
 			{
-				lastWork.next = work;
+				w.next = work;
 				lastWork = work;
 			}
 		}
