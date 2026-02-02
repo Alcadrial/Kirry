@@ -26,17 +26,19 @@ public final class ShaderCombinedImageSamplerLayout extends ShaderBufferLayout {
 	public static ShaderCombinedImageSamplerLayout parse(JsonNode json, String location) throws IOException
 	{
 		int binding = json.get("binding").intValue();
+		int descriptorCount = json.get("descriptorCount").asInt(1);
+		if (descriptorCount <= 0) throw new IOException("Invalid descriptorCount of " + location);
 		String name = json.get("name").stringValue(null);
 		JsonNode variablesNode = json.get("variables").requireNonNull();
 		
 		List<ShaderVariable> variables = new LinkedList<>();
 		for (JsonNode variableNode : variablesNode) variables.add(ShaderVariable.parse(variableNode, location + ".variables[" + variables.size() + "]"));
 		
-		return new ShaderCombinedImageSamplerLayout(binding, name, variables);
+		return new ShaderCombinedImageSamplerLayout(binding, name, descriptorCount, variables);
 	}
 	
-	public ShaderCombinedImageSamplerLayout(int binding, @Nullable String name, List<ShaderVariable> variables)
+	public ShaderCombinedImageSamplerLayout(int binding, @Nullable String name, int descriptorCount, List<ShaderVariable> variables)
 	{
-		super(Type.COMBINED_IMAGE_SAMPLER, binding, name, variables);
+		super(Type.COMBINED_IMAGE_SAMPLER, binding, name, descriptorCount, variables);
 	}
 }

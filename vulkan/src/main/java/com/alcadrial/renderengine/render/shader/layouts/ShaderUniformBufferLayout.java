@@ -26,17 +26,19 @@ public final class ShaderUniformBufferLayout extends ShaderBufferLayout {
 	public static ShaderUniformBufferLayout parse(JsonNode json, String location) throws IOException
 	{
 		int binding = json.get("binding").intValue();
+		int descriptorCount = json.get("descriptorCount").asInt(1);
+		if (descriptorCount <= 0) throw new IOException("Invalid descriptorCount of " + location);
 		String name = json.get("name").stringValue(null);
 		JsonNode variablesNode = json.get("variables").requireNonNull();
 		
 		List<ShaderVariable> variables = new LinkedList<>();
 		for (JsonNode variableNode : variablesNode) variables.add(ShaderVariable.parse(variableNode, location + ".variables[" + variables.size() + "]"));
 		
-		return new ShaderUniformBufferLayout(binding, name, variables);
+		return new ShaderUniformBufferLayout(binding, name, descriptorCount, variables);
 	}
 	
-	public ShaderUniformBufferLayout(int binding, @Nullable String name, List<ShaderVariable> variables)
+	public ShaderUniformBufferLayout(int binding, @Nullable String name, int descriptorCount, List<ShaderVariable> variables)
 	{
-		super(Type.UNIFORM_BUFFER, binding, name, variables);
+		super(Type.UNIFORM_BUFFER, binding, name, descriptorCount, variables);
 	}
 }

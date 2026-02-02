@@ -14,12 +14,14 @@ public class ShaderLayoutBinding {
 	
 	private int stages;
 	private ShaderLayout.Type descriptorType;
+	private int descriptorCount;
 	private Set<ShaderVariable> layoutsVariables;
 	
-	public ShaderLayoutBinding(int stages, ShaderLayout.Type descriptorType, Set<ShaderVariable> layoutsVariables)
+	public ShaderLayoutBinding(int stages, ShaderLayout.Type descriptorType, int descriptorCount, Set<ShaderVariable> layoutsVariables)
 	{
 		this.stages = stages;
 		this.descriptorType = descriptorType;
+		this.descriptorCount = descriptorCount;
 		this.layoutsVariables = layoutsVariables;
 	}
 	
@@ -38,19 +40,14 @@ public class ShaderLayoutBinding {
 		return descriptorType;
 	}
 	
-	public void setDescriptorType(ShaderLayout.Type descriptorType)
+	public int getDescriptorCount()
 	{
-		this.descriptorType = descriptorType;
+		return descriptorCount;
 	}
 	
 	public Set<ShaderVariable> getLayoutsVariables()
 	{
 		return layoutsVariables;
-	}
-	
-	public void setLayoutsVariables(Set<ShaderVariable> layoutsVariables)
-	{
-		this.layoutsVariables = layoutsVariables;
 	}
 	
 	@Override

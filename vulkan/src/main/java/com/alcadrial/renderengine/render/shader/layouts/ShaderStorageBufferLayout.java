@@ -26,6 +26,8 @@ public final class ShaderStorageBufferLayout extends ShaderBufferLayout {
 	public static ShaderStorageBufferLayout parse(JsonNode json, String location) throws IOException
 	{
 		int binding = json.get("binding").intValue();
+		int descriptorCount = json.get("descriptorCount").asInt(1);
+		if (descriptorCount <= 0) throw new IOException("Invalid descriptorCount of " + location);
 		String name = json.get("name").stringValue(null);
 		JsonNode variablesNode = json.get("variables").requireNonNull();
 		Usage usage = Usage.of(json.get("usage").requireNonNull().stringValue());
@@ -34,7 +36,7 @@ public final class ShaderStorageBufferLayout extends ShaderBufferLayout {
 		List<ShaderVariable> variables = new LinkedList<>();
 		for (JsonNode variableNode : variablesNode) variables.add(ShaderVariable.parse(variableNode, location + ".variables[" + variables.size() + "]"));
 		
-		return new ShaderStorageBufferLayout(binding, name, usage, variables);
+		return new ShaderStorageBufferLayout(binding, name, descriptorCount, usage, variables);
 	}
 	
 	public enum Usage {
@@ -56,9 +58,9 @@ public final class ShaderStorageBufferLayout extends ShaderBufferLayout {
 	
 	private Usage usage;
 	
-	public ShaderStorageBufferLayout(int binding, @Nullable String name, Usage usage, List<ShaderVariable> variables)
+	public ShaderStorageBufferLayout(int binding, @Nullable String name, int descriptorCount, Usage usage, List<ShaderVariable> variables)
 	{
-		super(Type.STORAGE_BUFFER, binding, name, variables);
+		super(Type.STORAGE_BUFFER, binding, name, descriptorCount, variables);
 		this.usage = usage;
 	}
 	

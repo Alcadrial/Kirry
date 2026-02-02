@@ -18,9 +18,9 @@ public abstract sealed class ShaderBufferLayout extends ShaderLayout permits Sha
 	private final @Nullable String name;
 	private final List<ShaderVariable> variables;
 	
-	protected ShaderBufferLayout(Type type, int binding, @Nullable String name, List<ShaderVariable> variables)
+	protected ShaderBufferLayout(Type type, int binding, @Nullable String name, int descriptorCount, List<ShaderVariable> variables)
 	{
-		super(type);
+		super(type, descriptorCount);
 		this.binding = binding;
 		this.name = name;
 		this.variables = List.copyOf(variables);

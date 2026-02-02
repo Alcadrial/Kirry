@@ -36,13 +36,13 @@ public final class ShaderLocalSizeLayout extends ShaderLayout {
 	
 	public ShaderLocalSizeLayout(int x, int y, int z)
 	{
-		super(Type.LOCAL_SIZE);
+		super(Type.LOCAL_SIZE, 0);
 		localSize = Vector3i.ofImmutable(x, y, z);
 	}
 	
 	public ShaderLocalSizeLayout(Vector3i localSize)
 	{
-		super(Type.LOCAL_SIZE);
+		super(Type.LOCAL_SIZE, 0);
 		this.localSize = Vector3i.copyOfImmutable(localSize);
 	}
 	

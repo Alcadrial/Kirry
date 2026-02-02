@@ -8,6 +8,9 @@ import java.io.InputStream;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.list.ImmutableList;
+
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderCombinedImageSamplerLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderInputLayout;
@@ -50,6 +53,7 @@ public class ShaderInfo {
 	 *         {
 	 *             "type": "uniformBuffer",                        // The type of a uniform block              [REQUIRED]
 	 *             "binding": 0,                                   // The binding of the block                 [REQUIRED]
+	 *             "descriptorCount": "1"                          // The number of copies of this layout      [OPTIONAL (default 1)]
 	 *             "name": "uniformBlock"                          // The name of the block                    [OPTIONAL]
 	 *             "variables": [                                  // A list of variables                      [REQUIRED]
 	 *                 "mat4 TRANSFORMATION"                       // The declaration of a variable            [REQUIRED]
@@ -58,6 +62,7 @@ public class ShaderInfo {
 	 *         {
 	 *             "type": "storageBuffer",                        // The type of a storage block              [REQUIRED]
 	 *             "binding": 1,                                   // The binding of the block                 [REQUIRED]
+	 *             "descriptorCount": "1"                          // The number of copies of this layout      [OPTIONAL (default 1)]
 	 *             "name": "storageBlock"                          // The name of the block                    [OPTIONAL]
 	 *             "usage": "{input|output|other}"                                                             [REQUIRED]
 	 *             "variables": [                                  // A list of variables                      [OPTIONAL]
@@ -94,43 +99,50 @@ public class ShaderInfo {
 	 */
 	public static ShaderInfo fromJson(ObjectMapper mapper, InputStream stream) throws IOException
 	{
+		return fromJson(mapper, stream, "$");
+	}
+	
+	public static ShaderInfo fromJson(ObjectMapper mapper, InputStream stream, String location) throws IOException
+	{
 		JsonNode json = mapper.readTree(stream);
 		
 		ShaderType shaderType = ShaderType.fromExtension(json.get("type").requireNonNull().stringValue());
-		if (shaderType == ShaderType.UNKNOWN) throw new IOException("Shader type must be of a known type");
+		if (shaderType == ShaderType.UNKNOWN) throw new IOException("Shader type is unknown at " + location);
 		
 		String entryPoint = json.get("entryPoint").requireNonNull().stringValue();
 		
 		JsonNode layoutsNode = json.get("layouts").requireNonNull();
 		List<ShaderLayout> layouts = new LinkedList<>();
 		
-		for (JsonNode layoutNode : layoutsNode)
+		for (int i = 0; i < layoutsNode.size(); i++)
 		{
+			JsonNode layoutNode = layoutsNode.get(i);
 			ShaderLayout.Type type = ShaderLayout.Type.of(layoutNode.get("type").requireNonNull().stringValue());
 			
+			String newLocation = location + ".layouts[" + i + "]";
 			layouts.add(switch (type)
 			{
-				case COMBINED_IMAGE_SAMPLER -> ShaderCombinedImageSamplerLayout.parse(layoutNode);
-				case UNIFORM_BUFFER -> ShaderUniformBufferLayout.parse(layoutNode);
-				case STORAGE_BUFFER -> ShaderStorageBufferLayout.parse(layoutNode);
-				case INPUT -> ShaderInputLayout.parse(layoutNode);
-				case LOCAL_SIZE -> ShaderLocalSizeLayout.parse(layoutNode);
-				default -> throw new IOException("Unknown layout type: " + type);
+				case COMBINED_IMAGE_SAMPLER -> ShaderCombinedImageSamplerLayout.parse(layoutNode, newLocation);
+				case UNIFORM_BUFFER -> ShaderUniformBufferLayout.parse(layoutNode, newLocation);
+				case STORAGE_BUFFER -> ShaderStorageBufferLayout.parse(layoutNode, newLocation);
+				case INPUT -> ShaderInputLayout.parse(layoutNode, newLocation);
+				case LOCAL_SIZE -> ShaderLocalSizeLayout.parse(layoutNode, newLocation);
+				default -> throw new IOException("Unknown layout type at " + newLocation);
 			});
 		}
 		
 		return new ShaderInfo(shaderType, entryPoint, layouts);
 	}
 	
-	private ShaderType type;
-	private String entryPoint;
-	private List<ShaderLayout> layouts;
+	private final ShaderType type;
+	private final String entryPoint;
+	private final ImmutableList<ShaderLayout> layouts;
 	
 	public ShaderInfo(ShaderType type, String entryPoint, List<ShaderLayout> layouts)
 	{
 		this.type = type;
 		this.entryPoint = entryPoint;
-		this.layouts = List.copyOf(layouts);
+		this.layouts = Lists.immutable.ofAll(layouts);
 	}
 	
 	public ShaderType getType()
@@ -143,7 +155,7 @@ public class ShaderInfo {
 		return entryPoint;
 	}
 	
-	public List<ShaderLayout> getLayouts()
+	public ImmutableList<ShaderLayout> getLayouts()
 	{
 		return layouts;
 	}

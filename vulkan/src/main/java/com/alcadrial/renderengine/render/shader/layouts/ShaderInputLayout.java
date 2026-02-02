@@ -51,7 +51,7 @@ public final class ShaderInputLayout extends ShaderLayout {
 	
 	public ShaderInputLayout(int binding, @Nullable String name, List<Pair<Integer, ShaderVariable>> variables)
 	{
-		super(Type.INPUT);
+		super(Type.INPUT, 0);
 		this.binding = binding;
 		this.name = name;
 		this.variables = List.copyOf(variables);

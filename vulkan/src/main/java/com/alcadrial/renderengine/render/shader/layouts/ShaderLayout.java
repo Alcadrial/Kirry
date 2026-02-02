@@ -99,14 +99,21 @@ public abstract sealed class ShaderLayout permits ShaderBufferLayout, ShaderLoca
 	}
 	
 	private final Type type;
+	private final int descriptorCount;
 	
-	protected ShaderLayout(Type type)
+	protected ShaderLayout(Type type, int descriptorCount)
 	{
 		this.type = type;
+		this.descriptorCount = descriptorCount;
 	}
 	
 	public Type getType()
 	{
 		return type;
+	}
+	
+	public int getDescriptorCount()
+	{
+		return descriptorCount;
 	}
 }
