@@ -2,13 +2,11 @@ package com.alcadrial.renderengine.render;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.nio.ByteBuffer;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFWVulkan;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkExtent2D;
@@ -16,7 +14,6 @@ import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSurfaceFormatKHR;
 
 import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
@@ -94,13 +91,14 @@ public class Surface extends AbstractVulkanResource<Long> {
 		return new Builder();
 	}
 	
-	private static record InitData(PhysicalDevice physicalDevice, Pair<VkSurfaceFormatKHR, ByteBuffer> format, int mode, Pair<VkExtent2D, ByteBuffer> extent, Vector2i maxSize, Vector2i minSize, Vector2i size) {}
+	public static record SurfaceData(PhysicalDevice physicalDevice, VkSurfaceFormatKHR format, int mode, VkExtent2D extent, Vector2i maxSize, Vector2i minSize, Vector2i size) {}
 	
 	private static final VarHandle DATA_HANDLE;
-	static {
+	static
+	{
 		try
 		{
-			DATA_HANDLE = MethodHandles.lookup().findVarHandle(Surface.class, "data", InitData.class);
+			DATA_HANDLE = MethodHandles.lookup().findVarHandle(Surface.class, "data", SurfaceData.class);
 		}
 		catch (Exception e)
 		{
@@ -111,7 +109,7 @@ public class Surface extends AbstractVulkanResource<Long> {
 	private final int format;
 	private final int colorspace;
 	private final int targetPresentMode;
-	private InitData data;
+	private SurfaceData data;
 	
 	private Surface(Builder builder, long vk, VulkanWindow window) throws VulkanException
 	{
@@ -125,8 +123,8 @@ public class Surface extends AbstractVulkanResource<Long> {
 			data = init();
 		}
 	}
-
-	private InitData init() throws VulkanException
+	
+	private SurfaceData init() throws VulkanException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -144,7 +142,7 @@ public class Surface extends AbstractVulkanResource<Long> {
 				vkFormat = format0;
 				break;
 			}
-			Pair<VkSurfaceFormatKHR, ByteBuffer> format = VulkanUtils.copy(VulkanErrorUtils.nonNull(vkFormat, "Valid format not found"), VkSurfaceFormatKHR::create);
+			VkSurfaceFormatKHR format = VulkanUtils.copy(VulkanErrorUtils.nonNull(vkFormat, "Valid format not found"), VkSurfaceFormatKHR::create);
 			
 			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.getVk(), vk, p, null), "Failed to initialize surface");
 			int[] presentModes = new int[p[0]];
@@ -160,7 +158,7 @@ public class Surface extends AbstractVulkanResource<Long> {
 			VkSurfaceCapabilitiesKHR capabilities = VkSurfaceCapabilitiesKHR.calloc(stack);
 			VulkanErrorUtils.assertNoError(KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice.getVk(), vk, capabilities), "Failed to initialize surface");
 			
-			Pair<VkExtent2D, ByteBuffer> extent;
+			VkExtent2D extent = VkExtent2D.malloc();
 			VkExtent2D minExtent = capabilities.minImageExtent();
 			VkExtent2D maxExtent = capabilities.maxImageExtent();
 			Vector2i maxSize = Vector2i.ofImmutable(minExtent.width(), minExtent.height());
@@ -171,23 +169,27 @@ public class Surface extends AbstractVulkanResource<Long> {
 			}
 			else
 			{
-				extent = VulkanUtils.allocate(VkExtent2D.SIZEOF, VkExtent2D::create);
-				VkExtent2D e = extent.l();
+				if (extent.width() < minExtent.width()) extent.width(minExtent.width());
+				else if (extent.width() > maxExtent.width()) extent.width(maxExtent.width());
 				
-				if (e.width() < minExtent.width()) e.width(minExtent.width());
-				else if (e.width() > maxExtent.width()) e.width(maxExtent.width());
-				
-				if (e.height() < minExtent.height()) e.height(minExtent.height());
-				else if (e.height() > maxExtent.height()) e.height(maxExtent.height());
+				if (extent.height() < minExtent.height()) extent.height(minExtent.height());
+				else if (extent.height() > maxExtent.height()) extent.height(maxExtent.height());
 			}
-			Vector2i size = Vector2i.ofImmutable(extent.l().width(), extent.l().height());
-			return new InitData(physicalDevice, format, mode, extent, maxSize, minSize, size);
+			Vector2i size = Vector2i.ofImmutable(extent.width(), extent.height());
+			return new SurfaceData(physicalDevice, format, mode, extent, maxSize, minSize, size);
 		}
 	}
-	public void reinit() throws VulkanException
+	
+	public SurfaceData reinit() throws VulkanException
 	{
-		InitData data = init();
-		DATA_HANDLE.compareAndSet(this.data, data);
+		SurfaceData oldData = this.data;
+		SurfaceData data = init();
+		if (DATA_HANDLE.compareAndSet(oldData, data))
+		{
+			oldData.format.free();
+			oldData.extent.free();
+		}
+		return data;
 	}
 	
 	@Override
@@ -201,42 +203,17 @@ public class Surface extends AbstractVulkanResource<Long> {
 		return window;
 	}
 	
-	public VkSurfaceFormatKHR getFormat()
+	public SurfaceData getData()
 	{
-		return data.format.l();
-	}
-	
-	public int getMode()
-	{
-		return data.mode;
-	}
-	
-	public VkExtent2D getExtent()
-	{
-		return data.extent.l();
-	}
-	
-	public Vector2i getMaxSize()
-	{
-		return data.maxSize;
-	}
-	
-	public Vector2i getMinSize()
-	{
-		return data.minSize;
-	}
-	
-	public Vector2i getSize()
-	{
-		return data.size;
+		return data;
 	}
 	
 	@Override
 	public void close()
 	{
-		InitData data = this.data;
-		MemoryUtil.memFree(data.format.r());
-		MemoryUtil.memFree(data.extent.r());
+		SurfaceData data = this.data;
+		data.format.free();
+		data.extent.free();
 		KHRSurface.vkDestroySurfaceKHR(RenderEngine.getVulkan().getInstance(), vk, null);
 		vk = 0L;
 		super.close();
@@ -245,7 +222,7 @@ public class Surface extends AbstractVulkanResource<Long> {
 	@Override
 	public void debug()
 	{
-		InitData data = this.data;
+		SurfaceData data = this.data;
 		Debug.print("Vk: " + Debug.address(vk));
 		Debug.print("MaxSize: " + data.maxSize.x() + "x" + data.maxSize.y());
 		Debug.print("MinSize: " + data.minSize.x() + "x" + data.minSize.y());

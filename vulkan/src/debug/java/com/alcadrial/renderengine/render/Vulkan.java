@@ -5,7 +5,9 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.NonNull;
@@ -44,6 +46,7 @@ public class Vulkan implements AutoCloseable {
 		
 		@Nullable
 		VulkanWindow window;
+		ConcurrentLinkedDeque<VulkanWindow> newWindows;
 		Predicate<PhysicalDevice> physicalDeviceFilter;
 		@Nullable
 		List<PhysicalDevice> validPhysicalDevices;
@@ -56,6 +59,7 @@ public class Vulkan implements AutoCloseable {
 		public ThreadData()
 		{
 			window = defaultWindow;
+			newWindows = new ConcurrentLinkedDeque<>();
 			physicalDeviceFilter = defaultPhysicalDeviceFilter;
 			threadId = switch (OperativeSystem.OS)
 			{
@@ -101,6 +105,22 @@ public class Vulkan implements AutoCloseable {
 	public void setObjectMapper(ObjectMapper mapper)
 	{
 		this.mapper = mapper;
+	}
+	
+	/**
+	 * Thread-unsafe, concurrent access with the same oldWindow must be externally synchronized
+	 */
+	public void replaceWindow(VulkanWindow oldWindow, VulkanWindow newWindow)
+	{
+		if (defaultWindow == oldWindow) defaultWindow = newWindow;
+		ThreadData localData = getData();
+		if (localData.window == oldWindow) localData.window = newWindow;
+		data.forEachValue(2048, data -> {
+			if (data.newWindows.peekLast() == oldWindow)
+			{
+				data.newWindows.addLast(newWindow);
+			}
+		});
 	}
 	
 	public void setDefaultWindow(VulkanWindow defaultWindow)
@@ -216,7 +236,7 @@ public class Vulkan implements AutoCloseable {
 	
 	public void createDevice() throws VulkanException
 	{
-		createDevice(VkPhysicalDeviceFeatures.calloc());
+		createDevice(VkPhysicalDeviceFeatures.calloc(), null);
 	}
 	
 	/**
@@ -227,7 +247,7 @@ public class Vulkan implements AutoCloseable {
 	 * @param deviceFeatures
 	 * @throws VulkanException
 	 */
-	public Device createDevice(VkPhysicalDeviceFeatures deviceFeatures, String... deviceExtensions) throws VulkanException
+	public Device createDevice(VkPhysicalDeviceFeatures deviceFeatures, Surface.@Nullable Builder surface, String... deviceExtensions) throws VulkanException
 	{
 		ThreadData threadData = getData();
 		if (threadData.device == null)
@@ -240,9 +260,9 @@ public class Vulkan implements AutoCloseable {
 				QueueFamily graphicsComputeQueue = (@NonNull QueueFamily) physicalDevice.getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT | VK10.VK_QUEUE_COMPUTE_BIT);
 				QueueFamily presentationQueue = null;
 				
-				if (threadData.window != null)
+				if (surface != null)
 				{
-					presentationQueue = VulkanErrorUtils.nonNull(physicalDevice.getQueueFamily(0, threadData.window.getSurface()), "Missing valid presentation queue family");
+					presentationQueue = VulkanErrorUtils.nonNull(physicalDevice.getQueueFamily(0, surface), "Missing valid presentation queue family");
 				}
 				VkDeviceQueueCreateInfo.Buffer queueCreateInfos = VkDeviceQueueCreateInfo.calloc(physicalDevice.indices(), stack);
 				
@@ -286,11 +306,6 @@ public class Vulkan implements AutoCloseable {
 		return (@NonNull Device) getData().device;
 	}
 	
-	public void swapBuffers()
-	{
-		//
-	}
-	
 	public VkInstance getInstance()
 	{
 		return instance;
@@ -308,7 +323,15 @@ public class Vulkan implements AutoCloseable {
 	
 	public VulkanWindow getWindow()
 	{
-		return (@NonNull VulkanWindow) getData().window;
+		ThreadData localData = getData();
+		VulkanWindow window = (@NonNull VulkanWindow) localData.window;
+		if (window.isLost())
+		{
+			Queue<VulkanWindow> newWindows = localData.newWindows;
+			for (VulkanWindow newWindow = newWindows.poll(); newWindow != null; newWindow = newWindows.poll()) window = newWindow;
+			localData.window = window;
+		}
+		return window;
 	}
 	
 	public ObjectMapper getObjectMapper()

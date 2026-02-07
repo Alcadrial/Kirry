@@ -8,7 +8,7 @@ import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 /**
- * Describes all the data and how is used during the entire rendering process
+ * Describes all the data and how is used during the entire presentation process
  * and the operation of it.
  * 
  * @author Alcadrial
@@ -20,12 +20,12 @@ public class Swapchain extends RawDeviceResource {
 		RenderEngine.assertLoaded();
 	}
 	
-	public Swapchain(Device device, Surface surface, VkSwapchainCreateInfoKHR createInfo) throws VulkanException
+	public Swapchain(Device device, VkSwapchainCreateInfoKHR createInfo) throws VulkanException
 	{
 		super(device);
 		
 		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(KHRSwapchain.vkCreateSwapchainKHR(device.getVk(), createInfo, null, p), "Failed to create swap chain");
+		VulkanErrorUtils.assertNoError(KHRSwapchain.vkCreateSwapchainKHR(device.getVk(), createInfo, null, p), "Failed to create swapchain");
 		vk = p[0];
 		Debug.runOnDebug(() -> device.setObjectDebugName(this, "Swapchain " + Debug.getIncrementalId(getClass())));
 	}
