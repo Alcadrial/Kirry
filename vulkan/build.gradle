@@ -11,7 +11,7 @@ apply from: rootProject.file("pre.gradle")
 dependencies {
 	implementation(project(":core"))
 	
-	implementation(libs.kector)
+	implementation(libs.kector.new)
 	implementation(libs.kroperties)
 	
 	implementation(libs.bundles.jackson.and.eclipse.collections)
