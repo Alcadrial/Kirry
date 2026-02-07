@@ -8,7 +8,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Consumer;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryUtil;
+import org.lwjgl.system.NativeResource;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkAttachmentDescription;
@@ -22,6 +24,11 @@ import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class RenderPassTemplate implements AutoCloseable {
+	
+	static
+	{
+		RenderEngine.assertLoaded();
+	}
 	
 	public static Builder create()
 	{
@@ -74,6 +81,29 @@ public class RenderPassTemplate implements AutoCloseable {
 			.build();
 	}
 	
+	public static RenderPassTemplate transformColorTextureTemplate(int format)
+	{
+		return create()
+			.addAttachment(config -> config
+				.format(format)
+				.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
+				.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_LOAD)
+				.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE)
+				.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+				.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE)
+				.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
+				.finalLayout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
+			.addSubpass(config -> config
+				.pipelineBindPoint(VK10.VK_PIPELINE_BIND_POINT_GRAPHICS)
+				.addColor(0, VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
+			.addSubpassDependency(config -> config
+				.srcSubpass(VK10.VK_SUBPASS_EXTERNAL)
+				.srcStageMask(VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
+				.dstStageMask(VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
+				.dstAccessMask(VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT))
+			.build();
+	}
+	
 	public static RenderPassTemplate colorDepthTextureTemplate(int format)
 	{
 		return create()
@@ -94,6 +124,39 @@ public class RenderPassTemplate implements AutoCloseable {
 				.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE)
 				.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE)
 				.initialLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+				.finalLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+			).addSubpass(config -> config
+				.pipelineBindPoint(VK10.VK_PIPELINE_BIND_POINT_GRAPHICS)
+				.addColor(0, VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+				.depthStencil(1, VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+			).addSubpassDependency(config -> config
+				.srcSubpass(VK10.VK_SUBPASS_EXTERNAL)
+				.srcStageMask(VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT)
+				.dstStageMask(VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT)
+				.dstAccessMask(VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+			).build();
+	}
+	
+	public static RenderPassTemplate transformColorDepthTextureTemplate(int format)
+	{
+		return create()
+			.addAttachment(config -> config
+				.format(format)
+				.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
+				.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR)
+				.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE)
+				.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+				.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE)
+				.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
+				.finalLayout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+			).addAttachment(config -> config
+				.format(VK10.VK_FORMAT_D24_UNORM_S8_UINT)
+				.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
+				.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR)
+				.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE)
+				.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+				.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE)
+				.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
 				.finalLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
 			).addSubpass(config -> config
 				.pipelineBindPoint(VK10.VK_PIPELINE_BIND_POINT_GRAPHICS)
@@ -157,22 +220,26 @@ public class RenderPassTemplate implements AutoCloseable {
 		return new RenderPass(device, createInfo);
 	}
 	
-	@SuppressWarnings("null")
+	private void free(@Nullable NativeResource struct)
+	{
+		if (struct != null) struct.free();
+	}
+	
 	@Override
 	public void close()
 	{
-		for (VkAttachmentDescription attachment : createInfo.pAttachments()) attachment.clear();
+		free(createInfo.pAttachments());
 		for (VkSubpassDescription subpass : createInfo.pSubpasses())
 		{
-			for (VkAttachmentReference input : subpass.pInputAttachments()) input.clear();
-			for (VkAttachmentReference color : subpass.pColorAttachments()) color.clear();
-			for (VkAttachmentReference resolve : subpass.pResolveAttachments()) resolve.clear();
-			subpass.pDepthStencilAttachment().clear();
-			subpass.pPreserveAttachments().clear();
-			subpass.clear();
+			free(subpass.pInputAttachments());
+			free(subpass.pColorAttachments());
+			free(subpass.pResolveAttachments());
+			free(subpass.pDepthStencilAttachment());
+			MemoryUtil.memFree(subpass.pPreserveAttachments());
 		}
-		for (VkSubpassDependency dependency : createInfo.pDependencies()) dependency.clear();
-		createInfo.close();
+		createInfo.pSubpasses().free();
+		free(createInfo.pDependencies());
+		createInfo.free();
 	}
 	
 	public static class Builder {
@@ -449,22 +516,34 @@ public class RenderPassTemplate implements AutoCloseable {
 		
 		public RenderPassTemplate build()
 		{
-			VkRenderPassCreateInfo createInfo = VkRenderPassCreateInfo.malloc();
-			createInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO);
-			createInfo.pNext(0);
-			createInfo.flags(0);
+			if (subpassConfigurators.isEmpty()) throw new IllegalStateException("Missing subpass");
 			
-			VkAttachmentDescription.Buffer attachments = VkAttachmentDescription.malloc(attachmentConfigurators.size());
+			VkAttachmentDescription.Buffer attachments = null;
+			if (!attachmentConfigurators.isEmpty())
+			{
+				attachments = VkAttachmentDescription.malloc(attachmentConfigurators.size());
+				for (AttachmentConfigurator configurator : attachmentConfigurators) attachments.put(configurator.attachment());
+				attachments.rewind();
+			}
+			
 			VkSubpassDescription.Buffer subpasses = VkSubpassDescription.malloc(subpassConfigurators.size());
-			VkSubpassDependency.Buffer dependencies = VkSubpassDependency.malloc(dependencyConfigurators.size());
-			
-			for (AttachmentConfigurator configurator : attachmentConfigurators) attachments.put(configurator.attachment());
 			for (SubpassConfigurator configurator : subpassConfigurators) subpasses.put(configurator.subpass());
-			for (SubpassDependencyConfigurator configurator : dependencyConfigurators) dependencies.put(configurator.dependency());
 			
-			createInfo.pAttachments(attachments.rewind());
-			createInfo.pSubpasses(subpasses.rewind());
-			createInfo.pDependencies(dependencies.rewind());
+			VkSubpassDependency.Buffer dependencies = null;
+			if (!dependencyConfigurators.isEmpty())
+			{
+				dependencies = VkSubpassDependency.malloc(dependencyConfigurators.size());
+				for (SubpassDependencyConfigurator configurator : dependencyConfigurators) dependencies.put(configurator.dependency());
+				dependencies.rewind();
+			}
+			
+			VkRenderPassCreateInfo createInfo = VkRenderPassCreateInfo.malloc()
+				.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO)
+				.pNext(0)
+				.flags(0)
+				.pAttachments(attachments)
+				.pSubpasses(subpasses.rewind())
+				.pDependencies(dependencies);
 			
 			return new RenderPassTemplate(createInfo);
 		}

@@ -47,19 +47,19 @@ public class VulkanUtils {
 		RenderEngine.assertLoaded();
 	}
 	
-	public static <S extends Struct<S>> Pair<S, ByteBuffer> copy(S struct, Function<Long, S> builder)
+	public static <S extends Struct<S>> S copy(S struct, Function<Long, S> builder)
 	{
 		ByteBuffer buffer = MemoryUtil.memByteBuffer(struct.address(), struct.sizeof());
 		ByteBuffer copyBuffer = MemoryUtil.memAlloc(struct.sizeof());
 		S copyStruct = builder.apply(MemoryUtil.memAddress(copyBuffer));
 		copyBuffer.put(buffer);
-		return new Pair<>(copyStruct, copyBuffer);
+		return copyStruct;
 	}
 	
-	public static <S extends Struct<S>> Pair<S, ByteBuffer> allocate(int size, Function<Long, S> builder)
+	public static <S extends Struct<S>> S allocate(int size, Function<Long, S> builder)
 	{
 		ByteBuffer buffer = MemoryUtil.memAlloc(size);
-		return new Pair<>(builder.apply(MemoryUtil.memAddress(buffer)), buffer);
+		return builder.apply(MemoryUtil.memAddress(buffer));
 	}
 	
 	public static <S extends Struct<S>> Pair<S, ByteBuffer> clearAllocate(int size, Function<Long, S> builder)

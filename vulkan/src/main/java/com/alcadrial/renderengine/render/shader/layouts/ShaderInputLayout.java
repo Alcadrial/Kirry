@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.list.ImmutableList;
 import org.jspecify.annotations.Nullable;
 
 import com.alcadrial.renderengine.core.util.Pair;
@@ -47,14 +49,14 @@ public final class ShaderInputLayout extends ShaderLayout {
 	
 	private final int binding;
 	private final @Nullable String name;
-	private final List<Pair<Integer, ShaderVariable>> variables;
+	private final ImmutableList<Pair<Integer, ShaderVariable>> variables;
 	
 	public ShaderInputLayout(int binding, @Nullable String name, List<Pair<Integer, ShaderVariable>> variables)
 	{
 		super(Type.INPUT, 0);
 		this.binding = binding;
 		this.name = name;
-		this.variables = List.copyOf(variables);
+		this.variables = Lists.immutable.ofAll(variables);
 	}
 	
 	public int getBinding()
@@ -67,7 +69,7 @@ public final class ShaderInputLayout extends ShaderLayout {
 		return name;
 	}
 	
-	public List<Pair<Integer, ShaderVariable>> getVariables()
+	public ImmutableList<Pair<Integer, ShaderVariable>> getVariables()
 	{
 		return variables;
 	}

@@ -365,7 +365,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	public long createFence(MemoryStack stack, boolean signaled) throws VulkanException
 	{
 		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(VK10.vkCreateFence(vk, VkFenceCreateInfo.calloc(stack).set(VK10.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, 0, signaled ? VK10.VK_FENCE_CREATE_SIGNALED_BIT : 0), null, p), "Failed to create fence");
+		VulkanErrorUtils.assertNoError(VK10.vkCreateFence(vk, VkFenceCreateInfo.malloc(stack).set(VK10.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, 0, signaled ? VK10.VK_FENCE_CREATE_SIGNALED_BIT : 0), null, p), "Failed to create fence");
 		return p[0];
 	}
 	

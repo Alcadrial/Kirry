@@ -28,6 +28,12 @@ public class ShaderProgram {
 			shaders = new LinkedList<>();
 		}
 		
+		public Builder add(PreparedShader shader)
+		{
+			this.shaders.add(shader);
+			return this;
+		}
+		
 		public Builder add(PreparedShader... shaders)
 		{
 			this.shaders.addAll(Arrays.asList(shaders));

@@ -57,7 +57,7 @@ public class Sprite extends AbstractWidget {
 	@Override
 	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame) throws VulkanException
 	{
-		renderer.setVertexBuffers(0, vertexBuffer);
+		renderer.setBuffer(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
 		renderer.draw(commandBuffer);
 	}
