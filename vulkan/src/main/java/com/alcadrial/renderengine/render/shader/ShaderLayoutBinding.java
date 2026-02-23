@@ -1,6 +1,6 @@
 package com.alcadrial.renderengine.render.shader;
 
-import java.util.Set;
+import java.util.List;
 
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
@@ -15,9 +15,9 @@ public class ShaderLayoutBinding {
 	private int stages;
 	private ShaderLayout.Type descriptorType;
 	private int descriptorCount;
-	private Set<ShaderVariable> layoutsVariables;
+	private List<ShaderBufferView> layoutsVariables;
 	
-	public ShaderLayoutBinding(int stages, ShaderLayout.Type descriptorType, int descriptorCount, Set<ShaderVariable> layoutsVariables)
+	public ShaderLayoutBinding(int stages, ShaderLayout.Type descriptorType, int descriptorCount, List<ShaderBufferView> layoutsVariables)
 	{
 		this.stages = stages;
 		this.descriptorType = descriptorType;
@@ -45,7 +45,7 @@ public class ShaderLayoutBinding {
 		return descriptorCount;
 	}
 	
-	public Set<ShaderVariable> getLayoutsVariables()
+	public List<ShaderBufferView> getLayoutsVariables()
 	{
 		return layoutsVariables;
 	}

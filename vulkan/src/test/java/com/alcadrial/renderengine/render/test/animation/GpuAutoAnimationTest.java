@@ -59,7 +59,7 @@ public class GpuAutoAnimationTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, GpuAutoAnimationTest::start, () -> defaultLoop(GpuAutoAnimationTest::loop), GpuAutoAnimationTest::end);
+		mainTest(args, GpuAutoAnimationTest::start, () -> defaultLoop(GpuAutoAnimationTest::loop), GpuAutoAnimationTest::end, false);
 	}
 	
 	private static RenderPass renderPass;

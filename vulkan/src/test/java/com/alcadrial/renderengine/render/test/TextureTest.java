@@ -3,6 +3,7 @@ package com.alcadrial.renderengine.render.test;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.math.RoundingMode;
+import java.util.Map;
 
 import javax.imageio.ImageIO;
 
@@ -16,31 +17,42 @@ import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.vulkan.EXTDepthRangeUnrestricted;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkClearValue;
 import org.lwjgl.vulkan.VkExtent2D;
-import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
+import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.matrix.Matrix4f;
+import com.alcadrial.kector.shape.OrthoShape;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.Renderer.Builder;
-import com.alcadrial.renderengine.render.Vulkan;
+import com.alcadrial.renderengine.render.buffer.BufferLayout;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
+import com.alcadrial.renderengine.render.pipeline.GraphicsPipelineTemplate;
+import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
-import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
+import com.alcadrial.renderengine.render.shader.ShaderInputType;
+import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
+import com.alcadrial.renderengine.render.shader.ShaderUtils;
+import com.alcadrial.renderengine.render.shader.ShaderVariable;
+import com.alcadrial.renderengine.render.shader.descriptor.DescriptorPool;
+import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSet;
+import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSetLayout;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
 import com.alcadrial.renderengine.render.texture.ImageWriter;
@@ -54,22 +66,22 @@ import com.alcadrial.renderengine.render.window.VulkanWindow;
 @Test
 public class TextureTest extends RenderTest {
 	
-	private static final String SHADER = "shader0";
+	private static final String SHADER = "shader";
 	private static final String TRANSFORMATION_UNIFORM = "TRANSFORMATION";
 	private static final String TEXTURE_SAMPLER_UNIFORM = "TEXTURE_SAMPLER";
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, TextureTest::start, () -> defaultLoop(TextureTest::loop), TextureTest::end);
+		mainTest(args, TextureTest::start, () -> defaultLoop(TextureTest::loop), TextureTest::end, false);
 	}
 	
 	private static Renderer renderer;
 	private static RenderPass renderPass;
+	private static GraphicsPipeline graphicsPipeline;
 	private static Texture texture;
 	private static VulkanBuffer vertexBuffer;
 	private static VulkanBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
-	private static VulkanBuffer localUniformBuffer;
 	private static Vector2i panelPos;
 	
 	private static boolean isModifiedMatrix;
@@ -77,25 +89,21 @@ public class TextureTest extends RenderTest {
 	
 	public static void start() throws VulkanException
 	{
-		Vulkan vulkan = RenderEngine.getVulkan();
-		
 		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
-		VulkanWindow window = new VulkanWindow(1080, 720, "Test");
-		window.setUseDepthTexture(false);
-		vulkan.setWindow(window);
-		if (!pickPhysicalDevice(window)) throw new VulkanException("Physical device not found");
+		VulkanWindow window = VulkanWindow.builder()
+			.deviceExtensions(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME, EXTDepthRangeUnrestricted.VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME)
+			.deviceFeatures(f -> f
+				.samplerAnisotropy(true)
+			)
+			.useDepthTexture(false)
+			.size(1080, 720)
+			.title("Test")
+			.build();
 		
-		VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
-		deviceFeatures.samplerAnisotropy(true);
-		Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-		window.init(device);
-		
-		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> {
-			System.out.println(iconified ? "Iconified" : "Restored");
-		});
+		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> { System.out.println(iconified ? "Iconified" : "Restored"); });
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			System.out.println("Resized " + width + "x" + height);
 			isModifiedMatrix = true;
@@ -104,12 +112,8 @@ public class TextureTest extends RenderTest {
 			System.out.println("Refresh");
 			isModified = true;
 		});
-		window.setCallback((GLFWWindowCloseCallbackI) w -> {
-			System.out.println("Closed");
-		});
-		window.setCallback((GLFWWindowMaximizeCallbackI) (w, maximized) -> {
-			System.out.println(maximized ? "Maximized" : "Restored");
-		});
+		window.setCallback((GLFWWindowCloseCallbackI) w -> { System.out.println("Closed"); });
+		window.setCallback((GLFWWindowMaximizeCallbackI) (w, maximized) -> { System.out.println(maximized ? "Maximized" : "Restored"); });
 		
 		Vector2i[] oldPos = new Vector2i[] {Vector2i.of(0, 0)};
 		Vector2f[] oldMousePos = new Vector2f[] {Vector2f.of(0, 0), Vector2f.of(0, 0)};
@@ -158,7 +162,7 @@ public class TextureTest extends RenderTest {
 				}
 			}
 		});
-
+		
 		VulkanFuture<BufferedImage> future = RenderEngine.submitAsync(() -> {
 			try
 			{
@@ -182,11 +186,12 @@ public class TextureTest extends RenderTest {
 			}
 		});
 		
+		Device device = window.getDevice();
+		
 		vertexBuffer = new VulkanBuffer(device, 28 * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		indexBuffer = new VulkanBuffer(device, 6 * 4 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-		uniformBuffer = new VulkanBuffer(device, 64, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-		localUniformBuffer = new VulkanBuffer(device, uniformBuffer.getSize(), VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0);
-		localUniformBuffer.getMemory().mapMemory();
+		uniformBuffer = new VulkanBuffer(device, 256, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+		uniformBuffer.getMemory().mapMemory();
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -196,14 +201,14 @@ public class TextureTest extends RenderTest {
 			localVertexBuffer.getMemory().mapMemory();
 			localIndexBuffer.getMemory().mapMemory();
 			
-			BufferWriter vertexBufferWriter = new BufferWriter(localVertexBuffer, 0, vertexBuffer, 0, vertexBuffer.getSize(), null);
-			BufferWriter indexBufferWriter = new BufferWriter(localIndexBuffer, 0, indexBuffer, 0, indexBuffer.getSize(), null);
+			BufferWriter vertexBufferWriter = new BufferWriter(localVertexBuffer, vertexBuffer);
+			BufferWriter indexBufferWriter = new BufferWriter(localIndexBuffer, indexBuffer);
 			
-			RenderingDataUtils.loadRectangleUv(vertexBufferWriter, indexBufferWriter, 0, -256, -256, 256, 256, 0, 0, 0, 1, 1);
+			RenderingDataUtils.loadRectangleUv(vertexBufferWriter, indexBufferWriter, 0, -1, -1, 1, 1, 0, 0, 0, 1, 1);
 			vertexBufferWriter.close();
 			indexBufferWriter.close();
 			
-			renderPass = RenderPassTemplate.initColorTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
+			renderPass = window.getRenderPass();
 			
 			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
 			
@@ -213,9 +218,9 @@ public class TextureTest extends RenderTest {
 			
 			VulkanBuffer localTextureBuffer = new VulkanBuffer(device, texture.getLength() * 4, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0);
 			localTextureBuffer.getMemory().mapMemory();
-			ImageWriter textureBufferwriter = new ImageWriter(localTextureBuffer, 0, texture, 0, 0, 0, texture.getWidth(), texture.getHeight(), texture.getDepth(), commandBuffer);
-			textureBufferwriter.put(image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth()));
-			textureBufferwriter.close();
+			ImageWriter textureBufferWriter = new ImageWriter(localTextureBuffer, 0, texture, 0, 0, 0, texture.getWidth(), texture.getHeight(), texture.getDepth(), commandBuffer);
+			textureBufferWriter.put(image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth()));
+			textureBufferWriter.close();
 			
 			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			
@@ -226,21 +231,68 @@ public class TextureTest extends RenderTest {
 			localIndexBuffer.getMemory().unmapMemory();
 			localTextureBuffer.getMemory().unmapMemory();
 			
-			Builder builder = Renderer.create();
-			builder.shaderProgram(shaderProgramFuture.forceGet());
-			builder.cullMode(VK10.VK_CULL_MODE_BACK_BIT);
-			builder.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-			builder.bufferBindings(
-					new BufferWriter(localUniformBuffer, 0, uniformBuffer, 0, uniformBuffer.getSize()),
-					new BufferWriter(localUniformBuffer, 0, uniformBuffer, 0, 0)//texture sampler
-			);
-			builder.dynamicViewport(false).dynamicScissor(false);
-			renderer = builder.build(device, window.getSurface().getSize(), renderPass);
-			renderer.setVertexBuffers(0, vertexBuffer);
-			renderer.setIndexBuffer(indexBuffer);
-			renderer.updateUniform(TEXTURE_SAMPLER_UNIFORM, l -> l.set(texture.getView(), new TextureSampler(device)));
+			ShaderProgram shaderProgram = shaderProgramFuture.forceGet();
+			Map<Integer, ShaderLayoutBinding> bindingFlags = ShaderUtils.extractData(shaderProgram);
+			DescriptorPool descriptorPool = DescriptorPool.ofShaderProgram(device, shaderProgram, 1);
+			DescriptorSetLayout descriptorSetLayout = DescriptorSetLayout.ofBindings(device, bindingFlags);
+			DescriptorSet descriptorSet = descriptorPool.allocate(descriptorSetLayout);
+			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
+				.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
+			PipelineLayout layout = new PipelineLayout(device, pipelineLayoutInfo);
 			
-			window.addSurfaceUpdateActions(surface -> renderer.startModificationPlan().size(surface.getSize()).submit());
+			try (GraphicsPipelineTemplate template = GraphicsPipelineTemplate.create3dRenderingPipeline()
+				.configureVertexInputState(s -> s
+					.addBinding(0, 20, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
+					.addAttribute(0, 0, 0)
+					.addAttribute(1, 0, 12)
+				)
+				.configureViewportState(s -> s
+					.addViewport(OrthoShape.byEnd(Vector3f.of(-1024, -1024, -1024), Vector3f.of(1024, 1024, 1024)))
+					.addFullScissor()
+				)
+				.configureDepthStencilState(s -> s
+					.depthTestEnable(false)
+					.stencilTestEnable(false)
+				)
+				.configureRasterizationState(s -> s
+					.cullMode(VK10.VK_CULL_MODE_NONE)
+				)
+				.build())
+			{
+				graphicsPipeline = template.createPipeline(device, shaderProgram, window.getSurface().getData().size(), layout, renderPass, 0);
+			}
+			renderer = Renderer.builder()
+				.graphicsPipeline(graphicsPipeline)
+				.descriptorSets(descriptorSet)
+				.shaderProgram(shaderProgram)
+				.buffersCount(1)
+				.writers(i -> new BufferWriter[] {
+					new BufferWriter(uniformBuffer, uniformBuffer, 0, 256),
+					BufferWriter.nullWriter()//texture
+				})
+				.bindingsLayout(
+						new ShaderVariable[] {
+							ShaderVariable.TRANSFORMATION
+						},
+						new ShaderVariable[] {
+							ShaderVariable.of(ShaderInputType.SAMPLER_2D, TEXTURE_SAMPLER_UNIFORM)
+						})
+				.build();
+			
+			renderer.setBuffer(0, vertexBuffer);
+			renderer.setIndexBuffer(indexBuffer);
+			BufferLayout bufferLayout = renderer.getBufferLayout(0)[1];
+			bufferLayout.set(TEXTURE_SAMPLER_UNIFORM, texture.getView(), new TextureSampler(device));
+			bufferLayout.updateDescriptorSets();
+			
+			Matrix4f transformation = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
+			Matrix4f model = new Matrix4f().translateYTo(-10 * panelPos.y()).translateXTo(-10 * panelPos.x());
+			transformation.multiply(model);
+			transformation.identity();
+			bufferLayout = renderer.getBufferLayout(0)[0];
+			bufferLayout.set(TRANSFORMATION_UNIFORM, transformation);
+			bufferLayout.flushAndInvalidate();
+			
 			isModifiedMatrix = true;
 			isModified = true;
 			textureFuture.join();
@@ -258,6 +310,18 @@ public class TextureTest extends RenderTest {
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
 				isModified = false;
+				if (isModifiedMatrix)
+				{
+					isModifiedMatrix = false;
+					/*
+					Matrix4f transformation = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
+					Matrix4f model = new Matrix4f().translateYTo(-10 * panelPos.y()).translateXTo(-10 * panelPos.x());
+					transformation.multiply(model);
+					BufferLayout bufferLayout = renderer.getBufferLayout(0)[0];
+					bufferLayout.set(TRANSFORMATION_UNIFORM, transformation);
+					bufferLayout.flushAndInvalidate();*/
+				}
+				window.startPresentation();
 				
 				FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
 				CommandBuffer commandBuffer = window.getDevice().createSingleUseCommandBuffer();
@@ -277,23 +341,12 @@ public class TextureTest extends RenderTest {
 				clearValues.get().depthStencil().depth(1).stencil(0);
 				renderPassBeginInfo.pClearValues(clearValues.rewind());
 				
-				if (isModifiedMatrix)
-				{
-					isModifiedMatrix = false;
-					renderer.updateUniform(TRANSFORMATION_UNIFORM, l -> {
-						Matrix4f orthographic = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
-						Matrix4f model = new Matrix4f().translateYTo(-10 * panelPos.y()).translateXTo(-10 * panelPos.x());
-						l.set(orthographic.multiply(model).transpose());
-					}, commandBuffer);
-				}
-				
 				commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 				renderer.draw(commandBuffer);
 				commandBuffer.endRenderPass();
 				commandBuffer.endRecording();
 				
-				window.swapBuffers(commandBuffer);
-				window.update();
+				window.endPresentation(commandBuffer);
 			}
 		}
 		window.pollEvents();
@@ -301,7 +354,7 @@ public class TextureTest extends RenderTest {
 	
 	public static void end()
 	{
-		renderer.close();
+		graphicsPipeline.close();
 		RenderEngine.getVulkan().getWindow().hide();
 		synchronized (MONITOR)
 		{

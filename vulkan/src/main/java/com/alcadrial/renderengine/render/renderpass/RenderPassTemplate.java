@@ -87,7 +87,7 @@ public class RenderPassTemplate implements AutoCloseable {
 			.addAttachment(config -> config
 				.format(format)
 				.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
-				.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_LOAD)
+				.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR)
 				.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE)
 				.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE)
 				.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE)

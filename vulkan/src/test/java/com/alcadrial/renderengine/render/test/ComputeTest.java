@@ -45,7 +45,7 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Vulkan;
-import com.alcadrial.renderengine.render.buffer.BigVulkanBuffer.PhysicalDeviceTranferState;
+import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
 import com.alcadrial.renderengine.render.buffer.BufferLayout;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
@@ -79,7 +79,7 @@ public class ComputeTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, ComputeTest::start, () -> defaultLoop(ComputeTest::loop), ComputeTest::end);
+		mainTest(args, ComputeTest::start, () -> defaultLoop(ComputeTest::loop), ComputeTest::end, false);
 	}
 	
 	private static final int DIM = 8;
@@ -241,7 +241,7 @@ public class ComputeTest extends RenderTest {
 							CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
 							renderer.updateUniform(PARTICLE_RADIUS, l -> l.set(0.01F), commandBuffer);
 							commandBuffer.endRecording();
-							device.submitSingleUseCommandBuffer(null, commandBuffer);
+							device.submitSingleUseCommandBuffer(stack, commandBuffer);
 						}
 						catch (VulkanException e)
 						{
@@ -288,39 +288,14 @@ public class ComputeTest extends RenderTest {
 		}
 		
 		Color[] colors = new Color[] {
-			Color.VERY_LIGHT_YELLOW,
-			Color.VERY_LIGHT_RED,
-			Color.VERY_LIGHT_MAGENTA,
-			Color.VERY_LIGHT_GREEN,
-			Color.VERY_LIGHT_CYAN,
-			Color.VERY_LIGHT_BLUE,
-			Color.LIGHT_YELLOW,
-			Color.LIGHT_RED,
-			Color.LIGHT_MAGENTA,
-			Color.LIGHT_GREEN,
-			Color.LIGHT_CYAN,
-			Color.LIGHT_BLUE,
-			Color.YELLOW,
-			Color.RED,
-			Color.MAGENTA,
-			Color.GREEN,
-			Color.CYAN,
-			Color.BLUE,
-			Color.DARK_YELLOW,
-			Color.DARK_RED,
-			Color.DARK_MAGENTA,
-			Color.DARK_GREEN,
-			Color.DARK_CYAN,
-			Color.DARK_BLUE,
-			Color.VERY_DARK_YELLOW,
-			Color.VERY_DARK_RED,
-			Color.VERY_DARK_MAGENTA,
-			Color.VERY_DARK_GREEN,
-			Color.VERY_DARK_CYAN,
-			Color.VERY_DARK_BLUE
+			Color.VERY_LIGHT_YELLOW, Color.VERY_LIGHT_RED, Color.VERY_LIGHT_MAGENTA, Color.VERY_LIGHT_GREEN, Color.VERY_LIGHT_CYAN, Color.VERY_LIGHT_BLUE,
+			Color.LIGHT_YELLOW, Color.LIGHT_RED, Color.LIGHT_MAGENTA, Color.LIGHT_GREEN, Color.LIGHT_CYAN, Color.LIGHT_BLUE,
+			Color.YELLOW, Color.RED, Color.MAGENTA, Color.GREEN, Color.CYAN, Color.BLUE,
+			Color.DARK_YELLOW, Color.DARK_RED, Color.DARK_MAGENTA, Color.DARK_GREEN, Color.DARK_CYAN, Color.DARK_BLUE,
+			Color.VERY_DARK_YELLOW, Color.VERY_DARK_RED, Color.VERY_DARK_MAGENTA, Color.VERY_DARK_GREEN, Color.VERY_DARK_CYAN, Color.VERY_DARK_BLUE
 		};
 		
-		try (PhysicalDeviceTranferState transfert = staticBigBuffer.startLocalBuffering())
+		try (PhysicalDeviceTransferState transfert = staticBigBuffer.startLocalBuffering())
 		{
 			BufferWriter vertexBufferWriter = transfert.beginTransfer(vertexBuffer);
 			BufferWriter storageBuffer0Writer = transfert.beginTransfer(storageBuffer0);
@@ -510,8 +485,8 @@ public class ComputeTest extends RenderTest {
 		commandBuffer = window.getDevice().createMultiUseCommandBuffer();
 		commandBuffer.setName("Frame CommandBuffer");
 		
-		renderer.setVertexBuffers(0, vertexBuffer);
-		renderer.setVertexBuffers(1, storageBuffer0);
+		renderer.setBuffer(0, vertexBuffer);
+		renderer.setBuffer(1, storageBuffer0);
 		renderer.setIndexBuffer(indexBuffer);
 		rebuildProjectionMatrix = true;
 		
@@ -613,6 +588,10 @@ public class ComputeTest extends RenderTest {
 				commandBuffer.dispatch(PARTICLE_COUNT / 256, 1, 1);
 				commandBuffer.endRecording();
 				
+				computeStorageBufferLayout.update(sets -> {
+					sets.get(I++ % 2).pBufferInfo().buffer(storageBuffer0.getVk());
+					sets.get(I % 2).pBufferInfo().buffer(storageBuffer1.getVk());
+				});
 				window.swapBuffers(commandBuffer, () -> {
 					computeStorageBufferLayout.update(sets -> {
 						sets.get(I++ % 2).pBufferInfo().buffer(storageBuffer0.getVk());

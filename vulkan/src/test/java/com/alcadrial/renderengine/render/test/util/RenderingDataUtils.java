@@ -2,12 +2,12 @@ package com.alcadrial.renderengine.render.test.util;
 
 import java.util.function.BiFunction;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector3f;
-import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
@@ -138,11 +138,16 @@ public class RenderingDataUtils {
 	
 	public static void printBufferContent(StaticBigBuffer bigBuffer, VulkanBuffer buffer, int offset, int length, boolean floats, String alphabet) throws VulkanException
 	{
-		Device device = bigBuffer.getDevice();
+		printBufferContent(bigBuffer.getRemoteBuffer(), buffer, offset, length, floats, alphabet);
+	}
+	
+	public static void printBufferContent(VulkanBuffer remoteBuffer, VulkanBuffer buffer, int offset, int length, boolean floats, String alphabet) throws VulkanException
+	{
+		Device device = remoteBuffer.getDevice();
 		try (VulkanBuffer b = new VulkanBuffer(device, buffer.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0))
 		{
 			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), c -> {
-				c.copyBuffer(bigBuffer.getRemoteBuffer(), buffer.getOffset(), b, 0, b.getSize());
+				c.copyBuffer(remoteBuffer, buffer.getOffset(), b, 0, b.getSize());
 			}).join();
 			
 			int rowSize = alphabet.length();

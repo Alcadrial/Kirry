@@ -171,9 +171,10 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			return this;
 		}
 		
-		public void useDepthTexture(boolean useDepthTexture)
+		public Builder useDepthTexture(boolean useDepthTexture)
 		{
 			this.useDepthTexture = useDepthTexture;
+			return this;
 		}
 		
 		/**
@@ -390,7 +391,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		depthTexture = builder.useDepthTexture ? createDepthTexture(surfaceData) : null;
 		
 		int format = surfaceData.format().format();
-		try (RenderPassTemplate renderPassTemplate = depthTexture != null ? RenderPassTemplate.transformColorDepthTextureTemplate(format) : RenderPassTemplate.transformColorTextureTemplate(format))
+		try (RenderPassTemplate renderPassTemplate = depthTexture != null ? RenderPassTemplate.initColorDepthTextureTemplate(format) : RenderPassTemplate.initColorTextureTemplate(format))
 		{
 			renderPass = renderPassTemplate.createRenderPass(device);
 		}
@@ -606,6 +607,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		{
 			Swapchain swapchain = this.swapchain;
 			FrameData frame = frames[frameIndex];
+			device.waitForFences(frame.getFence());
 			switch (KHRSwapchain.vkAcquireNextImageKHR(device.getVk(), swapchain.getVk(), Integer.MAX_VALUE, frame.getImageAvailable(), 0, frame.getImageIndex()))
 			{
 				case VK10.VK_SUCCESS, VK10.VK_NOT_READY, VK10.VK_TIMEOUT, KHRSwapchain.VK_SUBOPTIMAL_KHR -> {
@@ -669,6 +671,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				.sType(KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
 				.pNext(0)
 				.pWaitSemaphores(p1)
+				.swapchainCount(1)
 				.pSwapchains(stack.longs(frame.getSwapchain().getVk()))
 				.pImageIndices(frame.getImageIndex())
 				.pResults(null);
@@ -945,15 +948,30 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			this.title = title;
 		});
 	}
+
+	public RenderPass getRenderPass()
+	{
+		return renderPass;
+	}
 	
 	public int getFrameIndex()
 	{
 		return frameIndex;
 	}
+
+	public int getFramesCount()
+	{
+		return frames.length;
+	}
 	
 	public FrameBuffer getCurrentFrameBuffer()
 	{
 		return frames[frameIndex].getFrameBuffer();
+	}
+	
+	public CommandBuffer getCurrentCommandBuffer()
+	{
+		return commandBuffers.get(frameIndex);
 	}
 	
 	public void setShaderProgram(ShaderProgram shaderProgram)

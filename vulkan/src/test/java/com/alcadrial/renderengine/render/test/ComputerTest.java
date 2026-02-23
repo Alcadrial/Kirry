@@ -40,7 +40,7 @@ import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.Vulkan;
-import com.alcadrial.renderengine.render.buffer.BigVulkanBuffer.PhysicalDeviceTranferState;
+import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
 import com.alcadrial.renderengine.render.buffer.BufferLayout;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
@@ -67,7 +67,7 @@ public class ComputerTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, ComputerTest::start, () -> defaultLoop(ComputerTest::loop), ComputerTest::end);
+		mainTest(args, ComputerTest::start, () -> defaultLoop(ComputerTest::loop), ComputerTest::end, false);
 	}
 	
 	private static final int DIM = 8;
@@ -290,7 +290,7 @@ public class ComputerTest extends RenderTest {
 			Color.VERY_DARK_BLUE
 		};
 		
-		try (PhysicalDeviceTranferState transfert = staticBigBuffer.startLocalBuffering())
+		try (PhysicalDeviceTransferState transfert = staticBigBuffer.startLocalBuffering())
 		{
 			BufferWriter vertexBufferWriter = transfert.beginTransfer(vertexBuffer);
 			BufferWriter storageBuffer0Writer = transfert.beginTransfer(storageBuffer0);
@@ -335,8 +335,8 @@ public class ComputerTest extends RenderTest {
 		builder.minDepth(-1000F).maxDepth(1000F);
 		
 		renderer = builder.build(device, window.getSurface().getSize(), renderPass, ComputeCustomGraphicsPipeline::new);
-		renderer.setVertexBuffers(0, vertexBuffer);
-		renderer.setVertexBuffers(1, storageBuffer0);
+		renderer.setBuffer(0, vertexBuffer);
+		renderer.setBuffer(1, storageBuffer0);
 		renderer.setIndexBuffer(indexBuffer);
 		rebuildProjectionMatrix = true;
 		

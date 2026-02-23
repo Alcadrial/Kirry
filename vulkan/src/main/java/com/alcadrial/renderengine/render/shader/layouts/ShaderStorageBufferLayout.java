@@ -26,9 +26,9 @@ public final class ShaderStorageBufferLayout extends ShaderBufferLayout {
 	public static ShaderStorageBufferLayout parse(JsonNode json, String location) throws IOException
 	{
 		int binding = json.get("binding").intValue();
-		int descriptorCount = json.get("descriptorCount").asInt(1);
+		int descriptorCount = json.optional("descriptorCount").map(n -> n.asInt(1)).orElse(1);
 		if (descriptorCount <= 0) throw new IOException("Invalid descriptorCount of " + location);
-		String name = json.get("name").stringValue(null);
+		String name = json.optional("name").map(n -> n.stringValue(null)).orElse(null);
 		JsonNode variablesNode = json.get("variables").requireNonNull();
 		Usage usage = Usage.of(json.get("usage").requireNonNull().stringValue());
 		if (usage == null) throw new IOException("Invalid usage of " + location + ".usage");

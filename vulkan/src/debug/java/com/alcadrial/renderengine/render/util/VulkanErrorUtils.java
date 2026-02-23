@@ -79,17 +79,17 @@ public class VulkanErrorUtils {
 	
 	public static void assertNoError(int error, Supplier<String> details) throws VulkanException
 	{
-		if (error < 0) throw new VulkanException(details.get() + ": " + getErrorString(error));
+		if (error < 0) throw new VulkanException(error, details.get() + ": " + getErrorString(error));
 	}
 	
 	public static void assertNoError(int error, String details) throws VulkanException
 	{
-		if (error < 0) throw new VulkanException(details + ": " + getErrorString(error));
+		if (error < 0) throw new VulkanException(error, details + ": " + getErrorString(error));
 	}
 	
 	public static void assertNoError(int error) throws VulkanException
 	{
-		if (error < 0) throw new VulkanException(getErrorString(error));
+		if (error < 0) throw new VulkanException(error, getErrorString(error));
 	}
 	
 	public static String getErrorString(int error)

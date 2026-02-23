@@ -37,7 +37,7 @@ import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.Vulkan;
-import com.alcadrial.renderengine.render.buffer.BigVulkanBuffer.PhysicalDeviceTranferState;
+import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
@@ -62,7 +62,7 @@ public class DepthBufferTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, DepthBufferTest::start, () -> defaultLoop(DepthBufferTest::loop), DepthBufferTest::end);
+		mainTest(args, DepthBufferTest::start, () -> defaultLoop(DepthBufferTest::loop), DepthBufferTest::end, false);
 	}
 	
 	private static RenderPass renderPass;
@@ -220,7 +220,7 @@ public class DepthBufferTest extends RenderTest {
 			Color.VERY_LIGHT_BLUE
 		};
 		
-		try (PhysicalDeviceTranferState transfert = staticBigBuffer.startLocalBuffering())
+		try (PhysicalDeviceTransferState transfert = staticBigBuffer.startLocalBuffering())
 		{
 			BufferWriter vertexBufferWriter = transfert.beginTransfer(vertexBuffer);
 			BufferWriter indexBufferWriter = transfert.beginTransfer(indexBuffer);
@@ -246,7 +246,7 @@ public class DepthBufferTest extends RenderTest {
 				new BufferWriter(localUniformBuffer, uniformBuffer, 256, 256)
 		);
 		renderer = builder.build(device, window.getSurface().getSize(), renderPass);
-		renderer.setVertexBuffers(0, vertexBuffer);
+		renderer.setBuffer(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{

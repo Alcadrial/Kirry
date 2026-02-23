@@ -9,7 +9,6 @@ import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
-import com.alcadrial.renderengine.render.window.widget.ActionResult;
 
 public class BlackScreen implements Screen {
 	

@@ -1,4 +1,4 @@
-package com.alcadrial.renderengine.render.window.widget;
+package com.alcadrial.renderengine.render.window;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;

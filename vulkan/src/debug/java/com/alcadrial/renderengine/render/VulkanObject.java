@@ -64,6 +64,8 @@ public abstract class VulkanObject implements AutoCloseable, VulkanDebug {
 		private class Iterator implements ListIterator<E> {
 			
 			@Nullable
+			Node pp = null;
+			@Nullable
 			Node p = null;
 			@Nullable
 			Node n = head;
@@ -78,6 +80,7 @@ public abstract class VulkanObject implements AutoCloseable, VulkanDebug {
 			@Override
 			public E next()
 			{
+				pp = p;
 				p = n;
 				E e = n.data;
 				n = n.next;
@@ -94,13 +97,15 @@ public abstract class VulkanObject implements AutoCloseable, VulkanDebug {
 			@Override
 			public void remove()
 			{
-				Node next = n.next;
+				Node next = p.next;
+				Node pp = this.pp;
 				synchronized (ConcurrentStack.this)
 				{
-					if (n == head) head = next;
+					if (pp == null) head = next;
+					else pp.next = next;
 					size--;
 				}
-				n = next;
+				p = next;
 			}
 
 			@SuppressWarnings("null")
@@ -114,13 +119,15 @@ public abstract class VulkanObject implements AutoCloseable, VulkanDebug {
 			public void add(E e)
 			{
 				Node m = new Node(n);
+				Node p = this.p;
 				m.data = e;
-				p = m;
 				synchronized (ConcurrentStack.this)
 				{
-					if (n == head) head = m;
+					if (p == null) head = m;
+					else p.next = m;
 					size++;
 				}
+				this.p = m;
 			}
 			
 			@Override

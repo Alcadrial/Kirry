@@ -59,8 +59,8 @@ public class ComputeCustomGraphicsPipeline extends GraphicsPipeline {
 			
 			VkPipelineShaderStageCreateInfo.Buffer shaderStages = VkPipelineShaderStageCreateInfo.calloc(2, stack);
 			{
-				List<PreparedShader> vertexShaders = shaderProgram.getshaders().stream().filter(ps -> ps.info().getType() == ShaderType.VERTEX).toList();
-				List<PreparedShader> fragmentShaders = shaderProgram.getshaders().stream().filter(ps -> ps.info().getType() == ShaderType.FRAGMENT).toList();
+				List<PreparedShader> vertexShaders = shaderProgram.getShaders().stream().filter(ps -> ps.info().getType() == ShaderType.VERTEX).toList();
+				List<PreparedShader> fragmentShaders = shaderProgram.getShaders().stream().filter(ps -> ps.info().getType() == ShaderType.FRAGMENT).toList();
 				VkPipelineShaderStageCreateInfo stage = shaderStages.get();
 				for (PreparedShader prepared : vertexShaders)
 				{

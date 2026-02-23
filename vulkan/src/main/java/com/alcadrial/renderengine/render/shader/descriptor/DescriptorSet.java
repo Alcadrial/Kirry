@@ -30,7 +30,7 @@ public class DescriptorSet extends RawDeviceResource {
 	@Override
 	public void close()
 	{
-		VK10.vkFreeDescriptorSets(device.getVk(), pool.getVk(), vk);
+		if ((pool.getFlags() & VK10.VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) != 0) VK10.vkFreeDescriptorSets(device.getVk(), pool.getVk(), vk);
 		super.close();
 	}
 

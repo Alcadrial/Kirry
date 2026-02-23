@@ -69,6 +69,8 @@ public class DescriptorPool extends RawDeviceResource {
 		}
 	}
 	
+	private final int flags;
+	
 	public DescriptorPool(Device device, VkDescriptorPoolCreateInfo createInfo) throws VulkanException
 	{
 		super(device);
@@ -76,6 +78,12 @@ public class DescriptorPool extends RawDeviceResource {
 		long[] p0 = new long[1];
 		VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorPool(device.getVk(), createInfo, null, p0), "Failed to create descriptor pool");
 		vk = p0[0];
+		flags = createInfo.flags();
+	}
+
+	public int getFlags()
+	{
+		return flags;
 	}
 	
 	public DescriptorSet allocate(DescriptorSetLayout layout) throws VulkanException
@@ -90,6 +98,24 @@ public class DescriptorPool extends RawDeviceResource {
 				.pSetLayouts(pp);
 			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), allocateInfo, p), "Failed to allocate descriptor sets!");
 			return new DescriptorSet(device, p[0], this);
+		}
+	}
+	
+	public DescriptorSet[] allocates(DescriptorSetLayout layout, int count) throws VulkanException
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			long[] p = new long[count];
+			LongBuffer pp = stack.callocLong(count);
+			for (int i = 0; i < count; i++) pp.put(layout.getVk());
+			VkDescriptorSetAllocateInfo allocateInfo = VkDescriptorSetAllocateInfo.calloc(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
+				.descriptorPool(vk)
+				.pSetLayouts(pp.rewind());
+			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), allocateInfo, p), "Failed to allocate descriptor sets!");
+			DescriptorSet[] sets = new DescriptorSet[count];
+			for (int i = 0; i < count; i++) sets[i] = new DescriptorSet(device, p[i], this);
+			return sets;
 		}
 	}
 	
@@ -155,7 +181,7 @@ public class DescriptorPool extends RawDeviceResource {
 	@Override
 	public void close()
 	{
-		VK10.vkDestroyCommandPool(device.getVk(), vk, null);
+		VK10.vkDestroyDescriptorPool(device.getVk(), vk, null);
 		super.close();
 	}
 	

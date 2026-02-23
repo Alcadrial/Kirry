@@ -11,6 +11,6 @@ layout (location = 0) out vec4 color0;
 
 void main()
 {
-	gl_Position = TRANSFORMATION * vec4(vertexPosition, 1);
+	gl_Position = /*TRANSFORMATION * */vec4(vertexPosition, 1);
 	color0 = color;
 }

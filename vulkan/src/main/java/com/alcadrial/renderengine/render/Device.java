@@ -260,22 +260,33 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	public CommandBuffer createSingleUseCommandBuffer() throws VulkanException
 	{
+		return createSingleUseCommandBuffer(1)[0];
+	}
+	
+	public CommandBuffer[] createSingleUseCommandBuffer(int count) throws VulkanException
+	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			PointerBuffer p = stack.callocPointer(1);
+			PointerBuffer p = stack.callocPointer(count);
 			useShortLivedCommandPool(pool -> {
 				VkCommandBufferAllocateInfo commandBufferAllocateInfo = VkCommandBufferAllocateInfo.calloc(stack)
 					.sType(VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
 					.commandPool(pool.getVk())
 					.level(VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-					.commandBufferCount(1);
+					.commandBufferCount(count);
 				VulkanErrorUtils.assertNoError(VK10.vkAllocateCommandBuffers(vk, commandBufferAllocateInfo, p), "Failed to create single use command buffer");
 			});
-			CommandBuffer commandBuffer = new CommandBuffer(this, singleUseCommandPool, new VkCommandBuffer(p.get(), vk));
-			Debug.runOnDebug(() -> commandBuffer.setName("SingleUse CommandBuffer " + Debug.getIncrementalId(this)));
 			
-			commandBuffer.beginRecording();
-			return commandBuffer;
+			CommandBuffer[] commandBuffers = new CommandBuffer[count];
+			
+			for (int i = 0; i < count; i++)
+			{
+				CommandBuffer commandBuffer = new CommandBuffer(this, singleUseCommandPool, new VkCommandBuffer(p.get(), vk));
+				commandBuffer.beginRecording();
+				Debug.runOnDebug(() -> commandBuffer.setName("SingleUse CommandBuffer " + Debug.getIncrementalId(this)));
+				commandBuffers[i] = commandBuffer;
+			}
+			return commandBuffers;
 		}
 	}
 	
@@ -427,23 +438,29 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		
 		int minimal = requiredProperties;
 		int optimal = minimal | optimalProperties;
+		int result = 0;
 		
 		int index;
 		for (index = 0; index < memoryProperties.memoryTypeCount(); index++)
 		{
 			if ((memoryRequirements.memoryTypeBits() & (1 << index)) != 0 && (memoryProperties.memoryTypes(index).propertyFlags() & optimal) == optimal)
 			{
+				result = memoryRequirements.memoryTypeBits();
 				break;
 			}
 		}
 		
 		if (index == memoryProperties.memoryTypeCount())
 		{
-			for (index = 0; index < memoryProperties.memoryTypeCount(); index++)
+			if (minimal != optimal)
 			{
-				if ((memoryRequirements.memoryTypeBits() & (1 << index)) != 0 && (memoryProperties.memoryTypes(index).propertyFlags() & minimal) == minimal)
+				for (index = 0; index < memoryProperties.memoryTypeCount(); index++)
 				{
-					break;
+					if ((memoryRequirements.memoryTypeBits() & (1 << index)) != 0 && (memoryProperties.memoryTypes(index).propertyFlags() & minimal) == minimal)
+					{
+						result = memoryRequirements.memoryTypeBits();
+						break;
+					}
 				}
 			}
 			if (index == memoryProperties.memoryTypeCount()) throw new OverflowException("Failed to find suitable memory type");
@@ -451,7 +468,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		
 		LongBuffer p = stack.mallocLong(1);
 		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(vk, VulkanUtils.memoryAllocateInfo(stack, memoryRequirements.size(), index), null, p), () -> "Failed to allocate image memory (" + memoryRequirements.size() + " bytes)");
-		return new Memory(this, p.get(), (int) memoryRequirements.size());
+		return new Memory(this, p.get(), (int) memoryRequirements.size(), result);
 	}
 	
 	@Override

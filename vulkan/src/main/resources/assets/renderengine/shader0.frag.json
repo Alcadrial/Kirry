@@ -14,7 +14,7 @@
 			"binding": 0,
 			"variables": [
 				{
-					"location": "0",
+					"location": 0,
 					"declaration": "vec2 uv"
 				}
 			]

@@ -37,7 +37,7 @@ import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.Vulkan;
-import com.alcadrial.renderengine.render.buffer.BigVulkanBuffer.PhysicalDeviceTranferState;
+import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
@@ -65,7 +65,7 @@ public class AnimationTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, AnimationTest::start, () -> defaultLoop(AnimationTest::loop), AnimationTest::end);
+		mainTest(args, AnimationTest::start, () -> defaultLoop(AnimationTest::loop), AnimationTest::end, false);
 	}
 	
 	private static RenderPass renderPass;
@@ -260,7 +260,7 @@ public class AnimationTest extends RenderTest {
 		
 		instancingVertexBufferWriter = new BufferWriter(localInstancingVertexBuffer, instancingVertexBuffer);
 		
-		try (PhysicalDeviceTranferState transfert = staticBigBuffer.startLocalBuffering())
+		try (PhysicalDeviceTransferState transfert = staticBigBuffer.startLocalBuffering())
 		{
 			BufferWriter vertexBufferWriter = transfert.beginTransfer(vertexBuffer);
 			BufferWriter instancingVertexBufferWriter = transfert.beginTransfer(instancingVertexBuffer);
@@ -312,8 +312,8 @@ public class AnimationTest extends RenderTest {
 			{
 				CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
 				
-				renderer.setVertexBuffers(0, vertexBuffer);
-				renderer.setVertexBuffers(1, instancingVertexBuffer);
+				renderer.setBuffer(0, vertexBuffer);
+				renderer.setBuffer(1, instancingVertexBuffer);
 				renderer.setIndexBuffer(indexBuffer);
 				renderer.updateUniform(PROJECTION, l -> l.set(buildProjectionMatrix(window)), commandBuffer);
 				renderer.updateUniform(MODEL, l -> l.set(buildModelMatrix()), commandBuffer);
@@ -387,7 +387,7 @@ public class AnimationTest extends RenderTest {
 			clearValues.get().depthStencil().depth(1).stencil(0);
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
 
-			instancingVertexBufferWriter.flush(commandBuffer);
+			instancingVertexBufferWriter.transfer(commandBuffer);
 			commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
 			commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), 0, 1);
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);

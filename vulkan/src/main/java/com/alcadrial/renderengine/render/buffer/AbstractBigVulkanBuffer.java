@@ -76,7 +76,7 @@ public abstract class AbstractBigVulkanBuffer<D extends AbstractBigVulkanBuffer.
 	 */
 	public abstract VulkanBuffer allocate(int size, int usage) throws OverflowException, VulkanException;
 	
-	public synchronized PhysicalDeviceTranferState startLocalBuffering() throws VulkanException
+	public synchronized PhysicalDeviceTransferState startLocalBuffering() throws VulkanException
 	{
 		if (localData == null)
 		{
@@ -84,14 +84,14 @@ public abstract class AbstractBigVulkanBuffer<D extends AbstractBigVulkanBuffer.
 			buffer.getMemory().mapMemory();
 			localData = allocateData(buffer);
 			Debug.debugCreate(() -> "Created BigBuffer Local " + localData + " of " + remoteData);
-			return new PhysicalDeviceTranferState(this, buffer);
+			return new PhysicalDeviceTransferState(this, buffer);
 		}
 		throw new IllegalStateException("Local buffering already started");
 	}
 	
-	public void startLocalBuffering(Consumer<PhysicalDeviceTranferState> action) throws VulkanException
+	public void startLocalBuffering(Consumer<PhysicalDeviceTransferState> action) throws VulkanException
 	{
-		try (PhysicalDeviceTranferState tranferState = startLocalBuffering())
+		try (PhysicalDeviceTransferState tranferState = startLocalBuffering())
 		{
 			action.accept(tranferState);
 		}
@@ -150,14 +150,14 @@ public abstract class AbstractBigVulkanBuffer<D extends AbstractBigVulkanBuffer.
 		super.close();
 	}
 	
-	public static class PhysicalDeviceTranferState implements AutoCloseable {
+	public static class PhysicalDeviceTransferState implements AutoCloseable {
 
 		private AbstractBigVulkanBuffer<?> bigVulkanBuffer;
 		private VulkanBuffer localBuffer;
 		private List<BufferWriter> writers;
 		private @Nullable CommandBuffer commandBuffer;
 		
-		private PhysicalDeviceTranferState(AbstractBigVulkanBuffer<?> bigVulkanBuffer, VulkanBuffer buffer)
+		private PhysicalDeviceTransferState(AbstractBigVulkanBuffer<?> bigVulkanBuffer, VulkanBuffer buffer)
 		{
 			this.bigVulkanBuffer = bigVulkanBuffer;
 			localBuffer = buffer;
@@ -196,7 +196,7 @@ public abstract class AbstractBigVulkanBuffer<D extends AbstractBigVulkanBuffer.
 		
 		public void flush() throws VulkanException
 		{
-			for (BufferWriter writer : writers) writer.flush();
+			for (BufferWriter writer : writers) writer.transfer();
 		}
 		
 		public VulkanFuture<?> waitIdle()

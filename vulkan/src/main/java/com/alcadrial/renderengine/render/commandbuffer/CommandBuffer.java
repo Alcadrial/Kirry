@@ -356,6 +356,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	public void reset()
 	{
 		VK10.vkResetCommandBuffer(vk, 0);
+		isRecording = false;
 	}
 	
 	public boolean isRecording()

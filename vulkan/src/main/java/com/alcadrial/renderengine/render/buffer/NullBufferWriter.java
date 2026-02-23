@@ -130,13 +130,13 @@ final class NullBufferWriter extends BufferWriter {
 	}
 	
 	@Override
-	public void flush()
+	public void transfer()
 	{
 		
 	}
 	
 	@Override
-	public void flush(CommandBuffer commandBuffer)
+	public void transfer(CommandBuffer commandBuffer)
 	{
 		
 	}

@@ -1,4 +1,4 @@
-package com.alcadrial.renderengine.render.window.widget;
+package com.alcadrial.renderengine.render.window;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
@@ -10,7 +10,6 @@ import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
-import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public abstract class AbstractWidget implements Widget {
 	
@@ -20,7 +19,7 @@ public abstract class AbstractWidget implements Widget {
 	private static final byte HOVERED_BIT = 0x04;
 	private static final byte DRAGGING_BIT = 0x08;
 	
-	protected VulkanWindow window;
+	protected final VulkanWindow window;
 	protected Vector3i pos;
 	protected Vector2i size;
 	private byte internalStates;

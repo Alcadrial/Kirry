@@ -4,7 +4,10 @@ import java.nio.ByteBuffer;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.lwjgl.system.MemoryStack;
+import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkBufferCopy;
+import org.lwjgl.vulkan.VkMappedMemoryRange;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
@@ -65,6 +68,11 @@ public class BufferWriter implements AutoCloseable {
 	private @Nullable Work firstWork;
 	private @Nullable Work lastWork;
 	
+	public BufferWriter(VulkanBuffer srcDstBuffer) throws VulkanException
+	{
+		this(srcDstBuffer, srcDstBuffer);
+	}
+	
 	public BufferWriter(VulkanBuffer srcBuffer, VulkanBuffer dstBuffer) throws VulkanException
 	{
 		this(srcBuffer, dstBuffer, 0, dstBuffer.getSize());
@@ -98,7 +106,7 @@ public class BufferWriter implements AutoCloseable {
 		lastSetCursor = 0;
 		isModified = false;
 	}
-
+	
 	/**
 	 * Null instance for {@link NullBufferWriter}
 	 */
@@ -122,7 +130,7 @@ public class BufferWriter implements AutoCloseable {
 	{
 		registerCopy();
 		cursor = lastSetCursor = 0;
-		if (bufferCopyCount == MAX_COPY_COUNT) flush();
+		if (bufferCopyCount == MAX_COPY_COUNT) transfer();
 		return this;
 	}
 	
@@ -133,7 +141,7 @@ public class BufferWriter implements AutoCloseable {
 		{
 			registerCopy();
 			cursor = lastSetCursor = index;
-			if (bufferCopyCount == MAX_COPY_COUNT) flush();
+			if (bufferCopyCount == MAX_COPY_COUNT) transfer();
 		}
 		return this;
 	}
@@ -274,15 +282,110 @@ public class BufferWriter implements AutoCloseable {
 	
 	public void flush() throws VulkanException
 	{
+		Mapping dstBufferMapping = dstBuffer.getMemory().getMapping();
+		boolean isMapped = dstBufferMapping != null;
+		
+		if (isModified)
+		{
+			registerCopy();
+			if (!dstBuffer.getMemory().isHostCoherent())
+			{
+				vkBufferCopy.rewind();
+				if (!isMapped)
+				{
+					int startRegion = dstBuffer.getSize();
+					int endRegion = 0;
+					
+					for (VkBufferCopy bufferCopy : vkBufferCopy)
+					{
+						int offset = (int) ((bufferCopy.dstOffset() - dstOffset) / 4);
+						int end = (int) (offset + bufferCopy.size() / 4);
+						if (startRegion > offset) startRegion = offset;
+						if (endRegion < end) endRegion = end;
+					}
+					
+					dstBufferMapping = dstBuffer.getMemory().mapMemory(startRegion, endRegion - startRegion);
+				}
+				
+				try (MemoryStack stack = MemoryStack.stackPush())
+				{
+					VkMappedMemoryRange.Buffer ranges = VkMappedMemoryRange.malloc(vkBufferCopy.remaining(), stack);
+					for (VkBufferCopy bufferCopy : vkBufferCopy) ranges.get()
+						.sType(VK10.VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE)
+						.pNext(0)
+						.memory(dstBuffer.getMemory().getVk())
+						.offset(bufferCopy.dstOffset())
+						.size(bufferCopy.size());
+					VK10.vkFlushMappedMemoryRanges(dstBuffer.getDevice().getVk(), ranges.rewind());
+				}
+			}
+			
+			vkBufferCopy.clear();
+			bufferCopyCount = 0;
+			isModified = false;
+			if (!isMapped && !dstBuffer.getMemory().isHostCoherent()) dstBuffer.getMemory().unmapMemory();
+		}
+	}
+	
+	public void flushAndInvalidate() throws VulkanException
+	{
+		Mapping dstBufferMapping = dstBuffer.getMemory().getMapping();
+		boolean isMapped = dstBufferMapping != null;
+		
+		if (isModified)
+		{
+			registerCopy();
+			if (!dstBuffer.getMemory().isHostCoherent())
+			{
+				vkBufferCopy.rewind();
+				if (!isMapped)
+				{
+					int startRegion = dstBuffer.getSize();
+					int endRegion = 0;
+					
+					for (VkBufferCopy bufferCopy : vkBufferCopy)
+					{
+						int offset = (int) ((bufferCopy.dstOffset() - dstOffset) / 4);
+						int end = (int) (offset + bufferCopy.size() / 4);
+						if (startRegion > offset) startRegion = offset;
+						if (endRegion < end) endRegion = end;
+					}
+					
+					dstBufferMapping = dstBuffer.getMemory().mapMemory(startRegion, endRegion - startRegion);
+				}
+				
+				try (MemoryStack stack = MemoryStack.stackPush())
+				{
+					VkMappedMemoryRange.Buffer ranges = VkMappedMemoryRange.malloc(vkBufferCopy.remaining(), stack);
+					for (VkBufferCopy bufferCopy : vkBufferCopy) ranges.get()
+						.sType(VK10.VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE)
+						.pNext(0)
+						.memory(dstBuffer.getMemory().getVk())
+						.offset(bufferCopy.dstOffset())
+						.size(bufferCopy.size());
+					VK10.vkFlushMappedMemoryRanges(dstBuffer.getDevice().getVk(), ranges.rewind());
+					VK10.vkInvalidateMappedMemoryRanges(dstBuffer.getDevice().getVk(), ranges);
+				}
+			}
+			
+			vkBufferCopy.clear();
+			bufferCopyCount = 0;
+			isModified = false;
+			if (!isMapped && !dstBuffer.getMemory().isHostCoherent()) dstBuffer.getMemory().unmapMemory();
+		}
+	}
+	
+	public void transfer() throws VulkanException
+	{
 		if (flushCommandBuffer != null)
 		{
-			flush(flushCommandBuffer);
+			transfer(flushCommandBuffer);
 			return;
 		}
 		if (isModified)
 		{
 			Device device = srcBuffer.getDevice();
-			Work work = new Work(device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), this::flush));
+			Work work = new Work(device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), this::transfer));
 			
 			Work w = lastWork;
 			if (w == null) firstWork = lastWork = work;
@@ -294,7 +397,7 @@ public class BufferWriter implements AutoCloseable {
 		}
 	}
 	
-	public void flush(CommandBuffer commandBuffer)
+	public void transfer(CommandBuffer commandBuffer)
 	{
 		if (isModified)
 		{
@@ -351,7 +454,7 @@ public class BufferWriter implements AutoCloseable {
 	@Override
 	public void close() throws VulkanException
 	{
-		flush();
+		transfer();
 		if (firstWork != null) for (Work work = firstWork, work0 = work.next; work0 != null; work = work0, work0 = work0.next) work.next = null;
 		vkBufferCopy.free();
 	}

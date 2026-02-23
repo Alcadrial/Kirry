@@ -1,566 +1,181 @@
 package com.alcadrial.renderengine.render;
 
-import java.nio.LongBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.eclipse.collections.api.set.ImmutableSet;
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDescriptorBufferInfo;
 import org.lwjgl.vulkan.VkDescriptorImageInfo;
-import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
-import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
 import org.lwjgl.vulkan.VkPhysicalDeviceLimits;
-import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
-import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kector.vector.Vector2f;
-import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.kector.vector.Vector3f;
-import com.alcadrial.kector.vector.Vector3i;
-import com.alcadrial.kector.vector.Vector4f;
-import com.alcadrial.kector.vector.Vector4i;
-import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.buffer.BufferLayout;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
-import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline.GraphicsPipelineBuildFunction;
-import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
-import com.alcadrial.renderengine.render.renderpass.RenderPass;
-import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderUtils;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
+import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
-import com.alcadrial.renderengine.render.texture.TextureSampler;
-import com.alcadrial.renderengine.render.texture.TextureView;
-import com.alcadrial.renderengine.render.util.DataAccumulator;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
-import com.alcadrial.renderengine.render.util.VulkanUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
-import com.alcadrial.renderengine.render.util.functional.VulkanConsumer;
+import com.alcadrial.renderengine.render.util.functional.VulkanFunction;
 
-public class Renderer implements AutoCloseable, VulkanDebug {
+public class Renderer implements VulkanDebug {
 	
 	static
 	{
 		RenderEngine.assertLoaded();
 	}
 	
-	public static Builder create()
+	public static final class Builder {
+		
+		private @Nullable GraphicsPipeline graphicsPipeline;
+		private @Nullable VulkanFunction<Integer, BufferWriter[]> writers;
+		private DescriptorSet @Nullable [] descriptorSets;
+		private @Nullable ShaderProgram shaderProgram;
+		private int buffersCount;
+		private ShaderVariable @Nullable [][] variables;
+		
+		private Builder()
+		{
+			buffersCount = 1;
+		}
+		
+		public Builder graphicsPipeline(GraphicsPipeline graphicsPipeline)
+		{
+			this.graphicsPipeline = graphicsPipeline;
+			return this;
+		}
+		
+		public Builder writers(VulkanFunction<Integer, BufferWriter[]> writers)
+		{
+			this.writers = writers;
+			return this;
+		}
+		
+		public Builder bindingsLayout(ShaderVariable[]... variables)
+		{
+			this.variables = variables;
+			return this;
+		}
+		
+		public Builder buffersCount(int buffersCount)
+		{
+			if (buffersCount < 0) throw new IllegalArgumentException();
+			this.buffersCount = buffersCount;
+			return this;
+		}
+		
+		public Builder descriptorSets(DescriptorSet... descriptorSets)
+		{
+			this.descriptorSets = descriptorSets;
+			return this;
+		}
+		
+		public Builder shaderProgram(ShaderProgram shaderProgram)
+		{
+			this.shaderProgram = shaderProgram;
+			return this;
+		}
+		
+		public Renderer build() throws VulkanException
+		{
+			return new Renderer(this);
+		}
+	}
+	
+	public static Builder builder()
 	{
 		return new Builder();
 	}
 	
-	public enum DrawResult {
-		SUCCESS,
-		FAILED,
-		NO_DRAWING_AREA;
-	}
-	
-	private ModificationPlan modificationPlan;
 	private Device device;
 	private GraphicsPipeline graphicsPipeline;
-	private Map<Integer, List<VulkanBuffer>> vertexBuffers;
-	private VulkanBuffer indexBuffer;
-	private long descriptorSetLayout;
-	private long[] descriptorSet;
-	private long descriptorPool;
-	private Map<String, Entry<BufferLayout, UniformLayout>> uniforms;
-	private List<VulkanConsumer<CommandBuffer>> extraCommands;
+	private VulkanBuffer[] buffers;
+	private BufferLayout[][] layouts;
+	private @Nullable VulkanBuffer indexBuffer;
+	private DescriptorSet[] descriptorSets;
 	
-	private Renderer(Builder builder, Device device, GraphicsPipeline graphicsPipeline, long descriptorSetLayout, long[] descriptorSet, long descriptorPool, Map<String, BufferLayout> uniforms)
+	private Renderer(Builder builder) throws VulkanException
 	{
-		modificationPlan = new ModificationPlan(builder);
-		this.device = device;
-		this.graphicsPipeline = graphicsPipeline;
-		this.descriptorSetLayout = descriptorSetLayout;
-		this.descriptorSet = descriptorSet;
-		this.descriptorPool = descriptorPool;
-		this.uniforms = new HashMap<>(uniforms.size());
-		for (Entry<String, BufferLayout> e : uniforms.entrySet())
-		{
-			this.uniforms.put(e.getKey(), Map.entry(e.getValue(), new UniformLayout(e.getKey(), e.getValue())));
-		}
+		this.graphicsPipeline = VulkanErrorUtils.nonNull(builder.graphicsPipeline);
+		this.device = graphicsPipeline.getDevice();
+		this.descriptorSets = VulkanErrorUtils.nonNull(builder.descriptorSets);
 		
-		vertexBuffers = new HashMap<>();
-		extraCommands = new LinkedList<>();
+		ImmutableSet<Integer> activeBindings = graphicsPipeline.getActiveBindings();
+		buffers = new VulkanBuffer[activeBindings.isEmpty() ? 0 : activeBindings.max() + 1];
+		
+		if (builder.buffersCount < 0) throw new IllegalStateException();
+		BufferWriter[][] writers = new BufferWriter[builder.buffersCount][];
+		VulkanFunction<Integer, BufferWriter[]> writersFactory = VulkanErrorUtils.nonNull(builder.writers);
+		for (int i = 0; i < writers.length; i++) writers[i] = writersFactory.apply(i);
+		
+		ShaderProgram shaderProgram = VulkanErrorUtils.nonNull(builder.shaderProgram);
+		layouts = initLayouts(writers, ShaderUtils.extractData(shaderProgram), VulkanErrorUtils.nonNull(builder.variables));
 	}
 	
-	public void setName(String name)
+	private BufferLayout[][] initLayouts(BufferWriter[][] writers, Map<Integer, ShaderLayoutBinding> bindingFlags, ShaderVariable[][] bindingsVariables) throws VulkanException
 	{
-		graphicsPipeline.setName("Graphics Pipeline (" + name + ")");
-		for (int i = 0; i < descriptorSet.length; i++) device.setObjectDebugName(VK10.VK_OBJECT_TYPE_DESCRIPTOR_SET, descriptorSet[i], "Descriptor Set " + i + " (" + name + ")");
-		device.setObjectDebugName(VK10.VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, descriptorSetLayout, "Descriptor Set Layout (" + name + ")");
-		device.setObjectDebugName(VK10.VK_OBJECT_TYPE_DESCRIPTOR_POOL, descriptorPool, "Descriptor Pool (" + name + ")");
-	}
-	
-	public void updateUniform(String uniform, VulkanConsumer<UniformLayout> action) throws VulkanException
-	{
-		Entry<BufferLayout, UniformLayout> e = uniforms.get(uniform);
-		if (e != null) action.accept(e.getValue());
-	}
-	
-	public void updateUniform(String uniform, VulkanConsumer<UniformLayout> action, CommandBuffer target) throws VulkanException
-	{
-		Entry<BufferLayout, UniformLayout> e = uniforms.get(uniform);
-		if (e != null)
+		VkPhysicalDeviceLimits limits = device.getPhysicalDevice().getLimits();
+		int minStorageOffsetAlignment = (int) limits.minStorageBufferOffsetAlignment();
+		int minTexelBufferOffsetAlignment = (int) limits.minTexelBufferOffsetAlignment();
+		int minUniformOffsetAlignment = (int) limits.minUniformBufferOffsetAlignment();
+		
+		BufferLayout[][] layouts = new BufferLayout[writers.length][];
+		long[] set = new long[1];
+		for (int i = 0; i < writers.length; i++)
 		{
-			action.accept(e.getValue());
-			e.getKey().flush(target);
-		}
-	}
-	
-	public void addExtraCommand(VulkanConsumer<CommandBuffer> command)
-	{
-		extraCommands.add(command);
-	}
-	
-	public void draw(CommandBuffer commandBuffer) throws VulkanException
-	{
-		draw(commandBuffer, 1);
-	}
-	
-	public void draw(CommandBuffer commandBuffer, int instanceCount) throws VulkanException
-	{
-		draw(commandBuffer, instanceCount, indexBuffer != null ? (int) (indexBuffer.getSize() / 4) : 0);
-	}
-	
-	public void draw(CommandBuffer commandBuffer, int instanceCount, int count) throws VulkanException
-	{
-		if (count == 0) throw new IllegalStateException("Cannot draw 0 vertices");
-		
-		for (Entry<BufferLayout, UniformLayout> e : uniforms.values()) e.getKey().updateDescriptorSets();
-		
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			commandBuffer.bindPipeline(graphicsPipeline);
-			for (Entry<Integer, List<VulkanBuffer>> p : vertexBuffers.entrySet()) commandBuffer.bindVertexBuffers(p.getKey(), p.getValue());
-			commandBuffer.bindDescriptorSets(graphicsPipeline, descriptorSet, new int[0]);
-			if (indexBuffer != null)
-			{
-				commandBuffer.bindIndexBuffer(indexBuffer, 0, VK10.VK_INDEX_TYPE_UINT32);
-				commandBuffer.drawIndexed(count, instanceCount, 0, 0, 0);
-			}
-			else
-			{
-				commandBuffer.draw(count, instanceCount, 0, 0);
-			}
-			
-			for (VulkanConsumer<CommandBuffer> command : extraCommands) command.accept(commandBuffer);
-		}
-	}
-	
-	public ModificationPlan startModificationPlan()
-	{
-		modificationPlan.pushStack();
-		return modificationPlan;
-	}
-	
-	public ModificationPlan getCurrentModificationPlan()
-	{
-		return modificationPlan;
-	}
-	
-	public void setVertexBuffers(int binding, VulkanBuffer... vertexBuffer)
-	{
-		vertexBuffers.put(binding, Arrays.asList(vertexBuffer));
-	}
-	
-	public void setIndexBuffer(VulkanBuffer indexBuffer)
-	{
-		this.indexBuffer = indexBuffer;
-	}
-	
-	@Override
-	public void close()
-	{
-		device.waitIdle();
-		graphicsPipeline.close();
-		VK10.vkDestroyDescriptorSetLayout(device.getVk(), descriptorSetLayout, null);
-		VK10.vkDestroyDescriptorPool(device.getVk(), descriptorPool, null);
-	}
-	
-	@Override
-	public void debug()
-	{
-		Debug.print("Device", device);
-		Debug.print("Pipeline ", graphicsPipeline);
-		Debug.print("DescriptorPool: " + Debug.address(descriptorPool));
-		Debug.print("VertexBuffers [");
-		Debug.indent();
-		for (Entry<Integer, List<VulkanBuffer>> e : vertexBuffers.entrySet())
-		{
-			Debug.print("Binding " + e.getKey() + " [");
-			Debug.indent();
-			for (VulkanBuffer vertexBuffer : e.getValue())
-			{
-				Debug.print("Buffer", vertexBuffer);
-			}
-			Debug.deindent();
-			Debug.print("]");
-		}
-		Debug.deindent();
-		Debug.print("]");
-		Debug.print("DescriptorSetLayout: " + Debug.address(descriptorSetLayout));
-		Debug.print("DescriptorSet: " + Debug.address(descriptorSet[0]));
-		Debug.print("Other Buffers [");
-		Debug.indent();
-		for (Entry<BufferLayout, UniformLayout> e : uniforms.values())
-		{
-			Debug.print("Buffer ", e.getKey().getWriter().getDstBuffer());
-		}
-		Debug.deindent();
-		Debug.print("]");
-	}
-	
-	public class UniformLayout {
-		
-		private String uniform;
-		private BufferLayout layout;
-		
-		private UniformLayout(String uniform, BufferLayout layout)
-		{
-			this.uniform = uniform;
-			this.layout = layout;
-		}
-		
-		public void set(Matrix4f value) throws VulkanException
-		{
-			set(0, value);
-		}
-		
-		public void set(int index, Matrix4f value) throws VulkanException
-		{
-			layout.set(uniform, index, value);
-		}
-		
-		public void set(Vector2f value) throws VulkanException
-		{
-			set(0, value);
-		}
-		
-		public void set(int index, Vector2f value) throws VulkanException
-		{
-			layout.set(uniform, index, value);
-		}
-		
-		public void set(Vector3f value) throws VulkanException
-		{
-			set(0, value);
-		}
-		
-		public void set(int index, Vector3f value) throws VulkanException
-		{
-			layout.set(uniform, index, value);
-		}
-		
-		public void set(Vector4f value) throws VulkanException
-		{
-			set(0, value);
-		}
-		
-		public void set(int index, Vector4f value) throws VulkanException
-		{
-			layout.set(uniform, index, value);
-		}
-		
-		public void set(Vector2i value) throws VulkanException
-		{
-			set(0, value);
-		}
-		
-		public void set(int index, Vector2i value) throws VulkanException
-		{
-			layout.set(uniform, index, value);
-		}
-		
-		public void set(Vector3i value) throws VulkanException
-		{
-			set(0, value);
-		}
-		
-		public void set(int index, Vector3i value) throws VulkanException
-		{
-			layout.set(uniform, index, value);
-		}
-		
-		public void set(Vector4i value) throws VulkanException
-		{
-			set(0, value);
-		}
-		
-		public void set(int index, Vector4i value) throws VulkanException
-		{
-			layout.set(uniform, index, value);
-		}
-		
-		public void set(TextureView value, TextureSampler sampler)
-		{
-			layout.set(uniform, value, sampler);
-		}
-		
-		public void set(int value) throws VulkanException
-		{
-			set(0, value);
-		}
-		
-		public void set(int index, int value) throws VulkanException
-		{
-			layout.set(uniform, index, value);
-		}
-		
-		public void set(float value) throws VulkanException
-		{
-			set(0, value);
-		}
-		
-		public void set(int index, float value) throws VulkanException
-		{
-			layout.set(uniform, index, value);
-		}
-	}
-	
-	public class ModificationPlan extends RendererDataAccumulator<ModificationPlan> {
-		
-		private boolean isActive;
-		
-		private ModificationPlan(RendererDataAccumulator<?> defaultSource)
-		{
-			super(defaultSource);
-			isActive = false;
-		}
-		
-		@Override
-		public ModificationPlan device(@Nullable Device device)
-		{
-			return super.device(device);
-		}
-		
-		public void submit() throws VulkanException
-		{
-			submit(GraphicsPipeline::new);
-		}
-		
-		public void submit(GraphicsPipelineBuildFunction<?> builderFunction) throws VulkanException
-		{
-			if (isActive)
-			{
-				synchronized (Renderer.this)
-				{
-					if (isActive) submit0(builderFunction);
-				}
-			}
-		}
-		
-		private void pushStack()
-		{
-			stack.push();
-			isActive = true;
-		}
-		
-		private void submit0(GraphicsPipelineBuildFunction<?> builderFunction) throws VulkanException
-		{
-			boolean deviceModified = device.isModified();
-			
-			Device device0 = device.require();
-
-			physicalDevice.set(device0.getPhysicalDevice());
-			
-			GraphicsPipeline oldGraphicsPipeline = Renderer.this.graphicsPipeline;
-			Device oldDevice = oldGraphicsPipeline.getDevice();
-			
-			if (deviceModified || shaderProgram.isModified())
-			{
-				createDescriptorSet();
-				
-				VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
-				pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayout));
-				
-				pipelineLayout.set(new PipelineLayout(device0, pipelineLayoutInfo));
-				
-				long descriptorSetLayouts0 = Renderer.this.descriptorSetLayout;
-				long descriptorPool0 = Renderer.this.descriptorPool;
-				
-				RenderEngine.submitAsync(() -> {
-					oldDevice.waitIdle();
-					VK10.vkDestroyDescriptorSetLayout(oldDevice.getVk(), descriptorSetLayouts0, null);
-					VK10.vkDestroyDescriptorPool(oldDevice.getVk(), descriptorPool0, null);
-					oldGraphicsPipeline.close();
-				});
-				
-				Renderer.this.descriptorSetLayout = descriptorSetLayout;
-				Renderer.this.descriptorSet = descriptorSet;
-				Renderer.this.descriptorPool = descriptorPool;
-				Map<String, Entry<BufferLayout, UniformLayout>> newUniforms = new HashMap<>(uniforms.size());
-				for (Entry<String, BufferLayout> e : uniforms.entrySet())
-				{
-					newUniforms.put(e.getKey(), Map.entry(e.getValue(), new UniformLayout(e.getKey(), e.getValue())));
-				}
-				Renderer.this.uniforms = newUniforms;
-			}
-			else
-			{
-				RenderEngine.submitAsync(() -> {
-					oldDevice.waitIdle();
-					oldGraphicsPipeline.close();
-				});
-			}
-			
-			graphicsPipeline.set(createGraphicsPipeline(size.require(), builderFunction));
-			
-			Renderer.this.device = device0;
-			Renderer.this.graphicsPipeline = graphicsPipeline.get();
-			
-			isActive = false;
-			stack.pop();
-		}
-	}
-	
-	public static class Builder extends RendererDataAccumulator<Builder> {
-		
-		private Builder()
-		{}
-		
-		public Renderer build(Device device, Vector2i outputSize, RenderPass renderPass) throws VulkanException
-		{
-			return build(device, outputSize, renderPass, GraphicsPipeline::new);
-		}
-		
-		public Renderer build(Device device, Vector2i outputSize, RenderPass renderPass, GraphicsPipelineBuildFunction<?> builderFunction) throws VulkanException
-		{
-			this.device.setNonNull(device);
-			physicalDevice.set(device.getPhysicalDevice());
-			size.setNonNull(outputSize);
-			this.renderPass.setNonNull(renderPass);
-			
-			createDescriptorSet();
-			
-			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
-			pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayout));
-			
-			pipelineLayout.set(new PipelineLayout(device, pipelineLayoutInfo));
-			
-			graphicsPipeline.set(createGraphicsPipeline(outputSize, builderFunction));
-			
-			return new Renderer(this, device, graphicsPipeline.get(), descriptorSetLayout, descriptorSet, descriptorPool, uniforms);
-		}
-	}
-	
-	private static class RendererDataAccumulator<RDA extends RendererDataAccumulator<RDA>> extends DataAccumulator<RDA> {
-		
-		protected long descriptorSetLayout;
-		protected long[] descriptorSet;
-		protected long descriptorPool;
-		protected Map<String, BufferLayout> uniforms;
-		
-		protected RendererDataAccumulator()
-		{}
-		
-		protected RendererDataAccumulator(DataAccumulator<?> defaultSource)
-		{
-			super(defaultSource);
-		}
-		
-		protected void createDescriptorSet() throws VulkanException
-		{
-			device.require();
-			
-			Map<Integer, ShaderLayoutBinding> bindingFlags = new HashMap<>();
-			
-			for (PreparedShader prepared : shaderProgram.require().getshaders()) ShaderUtils.extractData(prepared, bindingFlags);
-			
-			List<BufferWriter> bufferBindings = this.bufferBindings.orElse(List.of());
-			
-			VkDescriptorSetLayoutBinding.Buffer descriptorSetLayoutBindings = VkDescriptorSetLayoutBinding.malloc(bindingFlags.size(), stack);// static
-			for (Entry<Integer, ShaderLayoutBinding> e : bindingFlags.entrySet())
-			{
-				ShaderLayout.Type type = e.getValue().getDescriptorType();
-				VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = descriptorSetLayoutBindings.get();
-				descriptorSetLayoutBinding.binding(e.getKey());
-				descriptorSetLayoutBinding.descriptorCount(1);
-				descriptorSetLayoutBinding.descriptorType(type.getType());
-				descriptorSetLayoutBinding.pImmutableSamplers(null);
-				descriptorSetLayoutBinding.stageFlags(e.getValue().getStages());
-				
-				if (bufferBindings.size() <= e.getKey() || bufferBindings.get(e.getKey()) == null) addError("Missing buffer for binding " + e.getKey());
-			}
-			descriptorSetLayoutBindings.rewind();
-			
-			checkErrors();
-			
-			VkDescriptorPoolCreateInfo poolInfo = VulkanUtils.descriptorPoolCreateInfo(stack, VulkanUtils.descriptorPoolSize(stack, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1));
-			poolInfo.maxSets(1);
-			
-			long[] p0 = new long[1];
-			
-			VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorPool(device.get().getVk(), poolInfo, null, p0), "Failed to create descriptor pool!");
-			
-			descriptorPool = p0[0];//add to DataAccumulator
-			
-			LongBuffer p = stack.callocLong(1);
-			
-			VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorSetLayout(device.get().getVk(), VulkanUtils.descriptorSetLayoutInfo(stack, 0, descriptorSetLayoutBindings), null, p), "Failed to create descriptor set layout!");
-			descriptorSetLayout = p.get();
-			
-			p.rewind();
-			
-			descriptorSet = new long[1];
-			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.get().getVk(), VulkanUtils.descriptorSetAllocateInfo(stack, descriptorPool, p), descriptorSet), "Failed to allocate descriptor sets!");
-			
-			uniforms = new HashMap<>();
-			
-			VkPhysicalDeviceLimits limits = physicalDevice.get().getLimits();
-			int minStorageOffsetAlignment = (int) limits.minStorageBufferOffsetAlignment();
-			int minTexelBufferOffsetAlignment = (int) limits.minTexelBufferOffsetAlignment();
-			int minUniformOffsetAlignment = (int) limits.minUniformBufferOffsetAlignment();
-			
-			Lock lock = new ReentrantLock();
+			Map<BufferWriter, int[]> perBufferOffset = new HashMap<>();
 			VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(bindingFlags.size());
 			
-			Map<BufferWriter, int[]> perBufferOffset = new HashMap<>();
-			for (BufferWriter writer : bufferBindings) if (writer != null) perBufferOffset.put(writer, new int[] {0, 0});
+			BufferLayout[] layouts0 = layouts[i] = new BufferLayout[writers[i].length];
+			for (int j = 0; j < writers[i].length; j++)
+			{
+				perBufferOffset.put(writers[i][j], new int[] {0, 0});
+				layouts0[j] = BufferLayout
+					.of(device)
+					.writeDescriptorSets(writeDescriptorSets)
+					.writer(writers[i][j])
+					.build(new ReentrantLock());
+			}
+			set[0] = descriptorSets[i].getVk();
 			
 			for (Entry<Integer, ShaderLayoutBinding> e : bindingFlags.entrySet())
 			{
-				ShaderLayoutBinding binding = e.getValue();
-				Type descriptorType = binding.getDescriptorType();
-				
-				VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
-				writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
-				writeDescriptorSet.pNext(0);
-				writeDescriptorSet.dstSet(descriptorSet[0]);
-				writeDescriptorSet.dstBinding(e.getKey());
-				writeDescriptorSet.dstArrayElement(0);
-				writeDescriptorSet.descriptorCount(1);
-				writeDescriptorSet.descriptorType(descriptorType.getType());
-				
-				BufferWriter writer = bufferBindings.get(e.getKey());
-				int[] offsets = perBufferOffset.get(writer);
-				
-				BufferLayout layout = new BufferLayout(device.get(), lock);
-				layout.setWriteDescriptorSets(writeDescriptorSets);
-				layout.setWriter(writer);
-				
-				Set<ShaderVariable> variables = binding.getLayoutsVariables();
-				for (ShaderVariable variable : variables) uniforms.putIfAbsent(variable.getName(), layout);
+				int binding = e.getKey();
+				ShaderLayoutBinding layoutBinding = e.getValue();
+				Type descriptorType = layoutBinding.getDescriptorType();
+				ShaderVariable[] variables = bindingsVariables[binding];
 				
 				switch (descriptorType)
 				{
 					case UNIFORM_BUFFER, STORAGE_BUFFER -> {
+						BufferLayout layout = layouts0[binding];
+						if (layout == null) throw new VulkanException("Missing BufferWriter for binding " + binding);
+						BufferWriter writer = layout.getWriter();
+						int[] offsets = perBufferOffset.get(writer);
+						Debug.debug("[Set 0, Binding " + binding + ", Index 0] " + Arrays.toString(variables));
+						
+						VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
+						writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
+						writeDescriptorSet.pNext(0);
+						writeDescriptorSet.dstSet(set[0]);
+						writeDescriptorSet.dstBinding(binding);
+						writeDescriptorSet.dstArrayElement(0);
+						writeDescriptorSet.descriptorCount(1);
+						writeDescriptorSet.descriptorType(descriptorType.getType());
+						
 						switch (descriptorType)
 						{
 							case UNIFORM_BUFFER -> {
@@ -573,7 +188,6 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 								if (offsets[0] % minTexelBufferOffsetAlignment != 0) offsets[0] += minTexelBufferOffsetAlignment - offsets[0] % minTexelBufferOffsetAlignment;
 							}
 						}
-						
 						VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
 						descriptorBufferInfo.buffer(writer.getDstBuffer().getVk());
 						descriptorBufferInfo.offset(offsets[0] + writer.getDstOffset());
@@ -591,7 +205,20 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 						writeDescriptorSet.pTexelBufferView(null);
 					}
 					case COMBINED_IMAGE_SAMPLER -> {
-						VkDescriptorImageInfo.Buffer descriptorImageInfos = VkDescriptorImageInfo.calloc(variables.size());
+						BufferLayout layout = layouts0[binding];
+						if (layout == null) throw new VulkanException("Missing BufferWriter for binding " + binding);
+						Debug.debug("[Set 0, Binding " + binding + ", Index 0] " + Arrays.toString(variables));
+						
+						VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
+						writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
+						writeDescriptorSet.pNext(0);
+						writeDescriptorSet.dstSet(set[0]);
+						writeDescriptorSet.dstBinding(binding);
+						writeDescriptorSet.dstArrayElement(0);
+						writeDescriptorSet.descriptorCount(1);
+						writeDescriptorSet.descriptorType(descriptorType.getType());
+						
+						VkDescriptorImageInfo.Buffer descriptorImageInfos = VkDescriptorImageInfo.calloc(variables.length);
 						for (ShaderVariable variable : variables)
 						{
 							layout.mark(variable, writeDescriptorSets.position() - 1);
@@ -612,191 +239,75 @@ public class Renderer implements AutoCloseable, VulkanDebug {
 			}
 			writeDescriptorSets.rewind();
 		}
+		return layouts;
+	}
+	
+	public BufferLayout[] getBufferLayout(int index)
+	{
+		return layouts[index];
+	}
+	
+	public void draw(CommandBuffer commandBuffer, int frameIndex) throws VulkanException
+	{
+		draw(commandBuffer, frameIndex, 1);
+	}
+	
+	public void draw(CommandBuffer commandBuffer, int frameIndex, int instanceCount) throws VulkanException
+	{
+		draw(commandBuffer, frameIndex, instanceCount, indexBuffer != null ? indexBuffer.getSize() / 4 : 0);
+	}
+	
+	public void draw(CommandBuffer commandBuffer, int frameIndex, int instanceCount, int count) throws VulkanException
+	{
+		if (count == 0) return;
 		
-		@Override
-		public RDA bufferBindings(@Nullable BufferWriter... value)
+		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			return super.bufferBindings(value);
+			long[] set = new long[] {descriptorSets[frameIndex].getVk()};
+			commandBuffer.bindPipeline(graphicsPipeline);
+			commandBuffer.bindVertexBuffers(0, buffers);
+			commandBuffer.bindDescriptorSets(graphicsPipeline, set, null);
+			if (indexBuffer != null)
+			{
+				commandBuffer.bindIndexBuffer(indexBuffer, 0, VK10.VK_INDEX_TYPE_UINT32);
+				commandBuffer.drawIndexed(count, instanceCount, 0, 0, 0);
+			}
+			else
+			{
+				commandBuffer.draw(count, instanceCount, 0, 0);
+			}
 		}
-		
-		@Override
-		public RDA bufferBindings(@Nullable List<BufferWriter> value)
+	}
+	
+	public void setBuffer(int binding, VulkanBuffer buffer)
+	{
+		if (graphicsPipeline.getActiveBindings().contains(binding)) buffers[binding] = buffer;
+	}
+	
+	public void setIndexBuffer(VulkanBuffer indexBuffer)
+	{
+		this.indexBuffer = indexBuffer;
+	}
+	
+	@Override
+	public void debug()
+	{
+		Debug.print("Device", device);
+		Debug.print("Pipeline ", graphicsPipeline);
+		Debug.print("VertexBuffers [");
+		Debug.indent();
+		for (Integer binding : graphicsPipeline.getActiveBindings())
 		{
-			return super.bufferBindings(value);
+			Debug.print("Binding " + binding, buffers[binding]);
 		}
-		
-		@Override
-		public RDA shaderProgram(@Nullable ShaderProgram value)
+		Debug.deindent();
+		Debug.print("]");
+		Debug.print("DescriptorSets: ");
+		Debug.indent();
+		for (DescriptorSet descriptorSet : descriptorSets)
 		{
-			return super.shaderProgram(value);
+			Debug.print("Set ", descriptorSet);
 		}
-		
-		@Override
-		public RDA alphaToCoverageEnable(@Nullable Boolean value)
-		{
-			return super.alphaToCoverageEnable(value);
-		}
-		
-		@Override
-		public RDA alphaToOneEnable(@Nullable Boolean value)
-		{
-			return super.alphaToOneEnable(value);
-		}
-		
-		@Override
-		public RDA cullMode(@Nullable Integer value)
-		{
-			return super.cullMode(value);
-		}
-		
-		@Override
-		public RDA depthBiasClamp(@Nullable Float value)
-		{
-			return super.depthBiasClamp(value);
-		}
-		
-		@Override
-		public RDA depthBiasConstantFactor(@Nullable Float value)
-		{
-			return super.depthBiasConstantFactor(value);
-		}
-		
-		@Override
-		public RDA depthBiasEnable(@Nullable Boolean value)
-		{
-			return super.depthBiasEnable(value);
-		}
-		
-		@Override
-		public RDA depthBiasSlopeFactor(@Nullable Float value)
-		{
-			return super.depthBiasSlopeFactor(value);
-		}
-		
-		@Override
-		public RDA depthClampEnable(@Nullable Boolean value)
-		{
-			return super.depthClampEnable(value);
-		}
-		
-		@Override
-		public RDA frontFace(@Nullable Integer value)
-		{
-			return super.frontFace(value);
-		}
-		
-		@Override
-		public RDA lineWidth(@Nullable Float value)
-		{
-			return super.lineWidth(value);
-		}
-		
-		@Override
-		public RDA logicOp(@Nullable Integer value)
-		{
-			return super.logicOp(value);
-		}
-		
-		@Override
-		public RDA logicOpEnable(@Nullable Boolean value)
-		{
-			return super.logicOpEnable(value);
-		}
-		
-		@Override
-		public RDA minSampleShading(@Nullable Float value)
-		{
-			return super.minSampleShading(value);
-		}
-		
-		@Override
-		public RDA polygonMode(@Nullable Integer value)
-		{
-			return super.polygonMode(value);
-		}
-		
-		@Override
-		public RDA primitiveRestartEnable(@Nullable Boolean value)
-		{
-			return super.primitiveRestartEnable(value);
-		}
-		
-		@Override
-		public RDA rasterizationSamples(@Nullable Integer value)
-		{
-			return super.rasterizationSamples(value);
-		}
-		
-		@Override
-		public RDA rasterizerDiscardEnable(@Nullable Boolean value)
-		{
-			return super.rasterizerDiscardEnable(value);
-		}
-		
-		@Override
-		public RDA sampleShadingEnable(@Nullable Boolean value)
-		{
-			return super.sampleShadingEnable(value);
-		}
-		
-		@Override
-		public RDA topology(@Nullable Integer value)
-		{
-			return super.topology(value);
-		}
-		
-		@Override
-		public <SSDA extends DataAccumulator<RDA>.PipelineColorBlendAttachmentStateAccumulator<SSDA>> SSDA startPipelineColorBlendAttachmentState()
-		{
-			return super.startPipelineColorBlendAttachmentState();
-		}
-		
-		@Override
-		public RDA depthTestEnable(@Nullable Boolean value)
-		{
-			return super.depthTestEnable(value);
-		}
-		
-		@Override
-		public RDA depthWriteEnable(@Nullable Boolean value)
-		{
-			return super.depthWriteEnable(value);
-		}
-		
-		@Override
-		public RDA depthCompareOp(@Nullable Integer value)
-		{
-			return super.depthCompareOp(value);
-		}
-		
-		@Override
-		public RDA minDepth(@Nullable Float value)
-		{
-			return super.minDepth(value);
-		}
-		
-		@Override
-		public RDA maxDepth(@Nullable Float value)
-		{
-			return super.maxDepth(value);
-		}
-		
-		@Override
-		public RDA dynamicViewport(@Nullable Boolean value)
-		{
-			return super.dynamicViewport(value);
-		}
-		
-		@Override
-		public RDA dynamicScissor(@Nullable Boolean value)
-		{
-			return super.dynamicScissor(value);
-		}
-		
-		@Override
-		public RDA size(@Nullable Vector2i value)
-		{
-			return super.size(value);
-		}
+		Debug.deindent();
 	}
 }

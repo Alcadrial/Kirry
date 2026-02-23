@@ -3,10 +3,10 @@ package com.alcadrial.renderengine.render;
 import java.math.RoundingMode;
 import java.nio.LongBuffer;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.eclipse.collections.api.list.ImmutableList;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -107,7 +107,7 @@ public class Computer implements AutoCloseable, VulkanDebug {
 	{
 		Binding bindingData = new Binding(writer, buffer, offset, size);
 		bindings.put(binding, bindingData);
-		return bindingData.getLayout();
+		return bindingData.layout;
 	}
 	
 	public void init() throws VulkanException
@@ -137,7 +137,7 @@ public class Computer implements AutoCloseable, VulkanDebug {
 			pipelineLayoutInfo.pSetLayouts(p);
 			computePipeline = new ComputePipeline(device, new PipelineLayout(device, pipelineLayoutInfo), true, computeShader);
 			
-			List<ShaderLayout> layouts = computeShader.info().getLayouts();
+			ImmutableList<ShaderLayout> layouts = computeShader.info().getLayouts();
 			
 			int uniformBufferCount = 0;
 			int storageBufferCount = 0;

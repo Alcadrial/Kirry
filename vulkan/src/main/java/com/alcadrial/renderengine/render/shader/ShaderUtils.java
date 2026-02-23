@@ -3,8 +3,8 @@ package com.alcadrial.renderengine.render.shader;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
-import org.eclipse.collections.api.factory.Sets;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VK10;
@@ -57,15 +57,15 @@ public class ShaderUtils {
 			{
 				case COMBINED_IMAGE_SAMPLER -> {
 					ShaderCombinedImageSamplerLayout combinedImageSamplerLayout = (ShaderCombinedImageSamplerLayout) layout;
-					bindingFlags.merge(combinedImageSamplerLayout.getBinding(), new ShaderLayoutBinding(stageBit, layout.getType(), layout.getDescriptorCount(), Sets.mutable.ofAll(combinedImageSamplerLayout.getVariables())), ShaderUtils::merge);
+					bindingFlags.merge(combinedImageSamplerLayout.getBinding(), new ShaderLayoutBinding(stageBit, layout.getType(), layout.getDescriptorCount(), Lists.mutable.of(new ShaderBufferView(combinedImageSamplerLayout.getVariables()))), ShaderUtils::merge);
 				}
 				case UNIFORM_BUFFER -> {
 					ShaderUniformBufferLayout uniformBufferLayout = (ShaderUniformBufferLayout) layout;
-					bindingFlags.merge(uniformBufferLayout.getBinding(), new ShaderLayoutBinding(stageBit, layout.getType(), layout.getDescriptorCount(), Sets.mutable.ofAll(uniformBufferLayout.getVariables())), ShaderUtils::merge);
+					bindingFlags.merge(uniformBufferLayout.getBinding(), new ShaderLayoutBinding(stageBit, layout.getType(), layout.getDescriptorCount(), Lists.mutable.of(new ShaderBufferView(uniformBufferLayout.getVariables()))), ShaderUtils::merge);
 				}
 				case STORAGE_BUFFER -> {
 					ShaderStorageBufferLayout storageBufferLayout = (ShaderStorageBufferLayout) layout;
-					bindingFlags.merge(storageBufferLayout.getBinding(), new ShaderLayoutBinding(stageBit, layout.getType(), layout.getDescriptorCount(), Sets.mutable.ofAll(storageBufferLayout.getVariables())), ShaderUtils::merge);
+					bindingFlags.merge(storageBufferLayout.getBinding(), new ShaderLayoutBinding(stageBit, layout.getType(), layout.getDescriptorCount(), Lists.mutable.of(new ShaderBufferView(storageBufferLayout.getVariables()))), ShaderUtils::merge);
 				}
 			}
 		}
@@ -116,7 +116,7 @@ public class ShaderUtils {
 				.pName(stack.UTF8(shader.info().getEntryPoint()))
 				.pSpecializationInfo(/*shader constants*/null);
 		}
-		return createInfoBuffer;
+		return createInfoBuffer.rewind();
 	}
 	
 	public static VkPipelineShaderStageCreateInfo.Buffer createPipelineShaderStageCreateInfoBuffer(Device device, ShaderProgram program) throws VulkanException
@@ -143,7 +143,7 @@ public class ShaderUtils {
 					.pName(MemoryUtil.memUTF8(shader.info().getEntryPoint()))
 					.pSpecializationInfo(/*shader constants*/null);
 			}
-			return createInfoBuffer;
+			return createInfoBuffer.rewind();
 		}
 	}
 }

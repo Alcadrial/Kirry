@@ -29,7 +29,7 @@ public final class ShaderInputLayout extends ShaderLayout {
 	public static ShaderInputLayout parse(JsonNode json, String location) throws IOException
 	{
 		int binding = json.get("binding").intValue();
-		String name = json.get("name").stringValue(null);
+		String name = json.optional("name").map(n -> n.stringValue(null)).orElse(null);
 		JsonNode variablesNode = json.get("variables").requireNonNull();
 		
 		List<Pair<Integer, ShaderVariable>> variables = new LinkedList<>();

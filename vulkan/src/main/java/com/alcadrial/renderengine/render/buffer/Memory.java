@@ -49,14 +49,16 @@ public class Memory extends RawDeviceResource {
 		}
 	}
 	
+	private final int size;
+	private final int memoryTypeBits;
 	private @Nullable Mapping mapping;
-	private int size;
 	
-	public Memory(Device device, long vk, int size)
+	public Memory(Device device, long vk, int size, int memoryTypeBits)
 	{
 		super(device);
 		this.vk = vk;
 		this.size = size;
+		this.memoryTypeBits = memoryTypeBits;
 	}
 	
 	public @Nullable Mapping getMapping()
@@ -107,6 +109,16 @@ public class Memory extends RawDeviceResource {
 			VK10.vkUnmapMemory(device.getVk(), vk);
 			this.mapping = null;
 		}
+	}
+	
+	public int getMemoryTypeBits()
+	{
+		return memoryTypeBits;
+	}
+	
+	public boolean isHostCoherent()
+	{
+		return (memoryTypeBits | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
 	}
 	
 	@Override

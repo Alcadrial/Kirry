@@ -18,15 +18,20 @@ import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.util.Version;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class CompileShaders extends RenderTest {
 
 	public static void main(String[] args)
 	{
-		if (!RenderEngine.initialize("compiler", new Version(0, 1, 0, 0)))
+		try
+		{
+			RenderEngine.initialize("compiler", new Version(0, 1, 0, 0));
+		}
+		catch (VulkanException e)
 		{
 			System.out.println("Cannot initialize RenderEngine");
-			RenderEngine.getLastInitializationException().printStackTrace();
+			e.printStackTrace();
 			return;
 		}
 
@@ -44,7 +49,7 @@ public class CompileShaders extends RenderTest {
 				@Override
 				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException
 				{
-					if (file.toString().matches(".*(\\.vert|\\.tesc|\\.tese|\\.geom|\\.frag|\\.comp)"))
+					if (Shader.isShaderFile(file))
 					{
 						Shader shader = new Shader(file.toFile());
 						ShaderInfo shaderInfo = ShaderInfo.fromJson(new File(file.toString() + ".json"));

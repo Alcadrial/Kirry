@@ -9,7 +9,6 @@ import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
-import com.alcadrial.renderengine.render.window.widget.ActionResult;
 
 public interface Screen {
 	
@@ -36,7 +35,7 @@ public interface Screen {
 	 * <p>
 	 * This method is called after {@link #render(Matrix4f, Renderer) render}.
 	 * 
-	 * @param matrix the tranformation matrix
+	 * @param matrix the transformation matrix
 	 * @param commandBuffer
 	 * @param renderer
 	 * @param partialFrame

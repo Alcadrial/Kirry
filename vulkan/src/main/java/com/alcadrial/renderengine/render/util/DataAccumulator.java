@@ -11,6 +11,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.Struct;
 import org.lwjgl.system.StructBuffer;
@@ -33,7 +35,6 @@ import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.core.util.NotUsed;
-import com.alcadrial.renderengine.core.util.Nullable;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
@@ -129,8 +130,8 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	protected @NotUsed Vector3f viewportSize;
 	protected @NotUsed Vector2f scissorPos;
 	protected @NotUsed Vector2f scissorSize;
-	protected List<VkViewport> viewports;
-	protected List<VkRect2D> scissors;
+	protected @Nullable List<VkViewport> viewports;
+	protected @Nullable List<VkRect2D> scissors;
 	// }
 	protected DataElement<Boolean> dynamicViewport;
 	protected DataElement<Boolean> dynamicScissor;
@@ -369,7 +370,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		return myself();
 	}
 	
-	protected SDA bufferBindings(@Nullable BufferWriter... value)
+	protected SDA bufferBindings(BufferWriter @NonNull... value)
 	{
 		return bufferBindings(Arrays.asList(value));
 	}
@@ -500,7 +501,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		return myself();
 	}
 	
-	protected SDA pSampleMask(@Nullable int[] value)
+	protected SDA pSampleMask(int @Nullable [] value)
 	{
 		sampleMask.set(value);
 		return myself();
@@ -577,7 +578,12 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	 */
 	protected <GP extends GraphicsPipeline> GP createGraphicsPipeline(Vector2i outputSize, GraphicsPipelineBuildFunction<GP> buildFunction) throws VulkanException
 	{
-		VkPipelineInputAssemblyStateCreateInfo inputAssembly = VulkanUtils.pipelineInputAssemblyStateInfo(stack, topology.orElse(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST), primitiveRestartEnable.orElse(false));
+		VkPipelineInputAssemblyStateCreateInfo inputAssembly = VkPipelineInputAssemblyStateCreateInfo.malloc(stack)
+			.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO)
+			.pNext(0)
+			.flags(0)
+			.topology(topology.orElse(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST))
+			.primitiveRestartEnable(primitiveRestartEnable.orElse(false));
 		
 		VkPipelineViewportStateCreateInfo viewportState = VkPipelineViewportStateCreateInfo.calloc(stack);
 		viewportState.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO);
@@ -587,60 +593,60 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		if (!dynamicViewport.orElse(false)) viewportState.pViewports(load(c -> VkViewport.malloc(c, stack), orElse(viewports, VkViewport.malloc(stack).set(0, outputSize.y(), outputSize.x(), -outputSize.y(), 0, 1))));
 		if (!dynamicScissor.orElse(false)) viewportState.pScissors(load(c -> VkRect2D.malloc(c, stack), orElse(scissors, VkRect2D.malloc(stack).set(VulkanUtils.offset(stack, 0, 0), VkExtent2D.malloc(stack).set(outputSize.x(), outputSize.y())))));
 		
-		VkPipelineRasterizationStateCreateInfo pipelineRasterizationStateCreateInfo = VkPipelineRasterizationStateCreateInfo.calloc(stack);
-		pipelineRasterizationStateCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO);
-		pipelineRasterizationStateCreateInfo.polygonMode(polygonMode.orElse(VK10.VK_POLYGON_MODE_FILL));
-		pipelineRasterizationStateCreateInfo.cullMode(cullMode.orElse(VK10.VK_CULL_MODE_BACK_BIT));
-		pipelineRasterizationStateCreateInfo.frontFace(frontFace.orElse(VK10.VK_FRONT_FACE_CLOCKWISE));
-		pipelineRasterizationStateCreateInfo.depthClampEnable(depthClampEnable.orElse(false));
-		pipelineRasterizationStateCreateInfo.rasterizerDiscardEnable(rasterizerDiscardEnable.orElse(false));
-		pipelineRasterizationStateCreateInfo.lineWidth(lineWidth.orElse(1F));
-		pipelineRasterizationStateCreateInfo.depthBiasEnable(depthBiasEnable.orElse(false));
+		VkPipelineRasterizationStateCreateInfo pipelineRasterizationStateCreateInfo = VkPipelineRasterizationStateCreateInfo.calloc(stack)
+			.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO)
+			.polygonMode(polygonMode.orElse(VK10.VK_POLYGON_MODE_FILL))
+			.cullMode(cullMode.orElse(VK10.VK_CULL_MODE_BACK_BIT))
+			.frontFace(frontFace.orElse(VK10.VK_FRONT_FACE_CLOCKWISE))
+			.depthClampEnable(depthClampEnable.orElse(false))
+			.rasterizerDiscardEnable(rasterizerDiscardEnable.orElse(false))
+			.lineWidth(lineWidth.orElse(1F))
+			.depthBiasEnable(depthBiasEnable.orElse(false));
 		
-		VkPipelineMultisampleStateCreateInfo pipelineMultisampleStateCreateInfo = VkPipelineMultisampleStateCreateInfo.calloc(stack);
-		pipelineMultisampleStateCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO);
-		pipelineMultisampleStateCreateInfo.rasterizationSamples(rasterizationSamples.orElse(VK10.VK_SAMPLE_COUNT_1_BIT));
-		pipelineMultisampleStateCreateInfo.sampleShadingEnable(sampleShadingEnable.orElse(false));
-		pipelineMultisampleStateCreateInfo.minSampleShading(minSampleShading.orElse(0F));
-		pipelineMultisampleStateCreateInfo.alphaToCoverageEnable(alphaToCoverageEnable.orElse(false));
-		pipelineMultisampleStateCreateInfo.alphaToOneEnable(alphaToOneEnable.orElse(false));
+		VkPipelineMultisampleStateCreateInfo pipelineMultisampleStateCreateInfo = VkPipelineMultisampleStateCreateInfo.calloc(stack)
+			.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO)
+			.rasterizationSamples(rasterizationSamples.orElse(VK10.VK_SAMPLE_COUNT_1_BIT))
+			.sampleShadingEnable(sampleShadingEnable.orElse(false))
+			.minSampleShading(minSampleShading.orElse(0F))
+			.alphaToCoverageEnable(alphaToCoverageEnable.orElse(false))
+			.alphaToOneEnable(alphaToOneEnable.orElse(false));
 		
-		VkPipelineColorBlendStateCreateInfo pipelineColorBlendStateCreateInfo = VkPipelineColorBlendStateCreateInfo.calloc(stack);
-		pipelineColorBlendStateCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO);
-		pipelineColorBlendStateCreateInfo.logicOpEnable(logicOpEnable.orElse(false));
-		pipelineColorBlendStateCreateInfo.logicOp(logicOp.orElse(VK10.VK_LOGIC_OP_COPY));
-		pipelineColorBlendStateCreateInfo.pAttachments(load(c -> VkPipelineColorBlendAttachmentState.calloc(c, stack), orElse(pipelineColorBlendAttachmentStates, VkPipelineColorBlendAttachmentState.calloc(stack).colorWriteMask(VK10.VK_COLOR_COMPONENT_R_BIT | VK10.VK_COLOR_COMPONENT_G_BIT | VK10.VK_COLOR_COMPONENT_B_BIT | VK10.VK_COLOR_COMPONENT_A_BIT).blendEnable(false))));
-		pipelineColorBlendStateCreateInfo.blendConstants(load(blendConstants, new float[] {0, 0, 0, 0}));
+		VkPipelineColorBlendStateCreateInfo pipelineColorBlendStateCreateInfo = VkPipelineColorBlendStateCreateInfo.calloc(stack)
+			.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
+			.logicOpEnable(logicOpEnable.orElse(false))
+			.logicOp(logicOp.orElse(VK10.VK_LOGIC_OP_COPY))
+			.pAttachments(load(c -> VkPipelineColorBlendAttachmentState.calloc(c, stack), orElse(pipelineColorBlendAttachmentStates, VkPipelineColorBlendAttachmentState.calloc(stack).colorWriteMask(VK10.VK_COLOR_COMPONENT_R_BIT | VK10.VK_COLOR_COMPONENT_G_BIT | VK10.VK_COLOR_COMPONENT_B_BIT | VK10.VK_COLOR_COMPONENT_A_BIT).blendEnable(false))))
+			.blendConstants(load(blendConstants, new float[] {0, 0, 0, 0}));
 		
-		VkPipelineDepthStencilStateCreateInfo pipelineDepthStencilStateCreateInfo = VkPipelineDepthStencilStateCreateInfo.calloc(stack);
-		pipelineDepthStencilStateCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO);
-		pipelineDepthStencilStateCreateInfo.depthTestEnable(depthTestEnable.orElse(false));
-		pipelineDepthStencilStateCreateInfo.depthWriteEnable(depthWriteEnable.orElse(true));
-		pipelineDepthStencilStateCreateInfo.depthCompareOp(depthCompareOp.orElse(VK10.VK_COMPARE_OP_LESS));
-		pipelineDepthStencilStateCreateInfo.depthBoundsTestEnable(false);
-		pipelineDepthStencilStateCreateInfo.minDepthBounds(minDepth.orElse(0F));
-		pipelineDepthStencilStateCreateInfo.maxDepthBounds(maxDepth.orElse(1F));
-		pipelineDepthStencilStateCreateInfo.stencilTestEnable(false);
-		// pipelineDepthStencilStateCreateInfo.front();
-		// pipelineDepthStencilStateCreateInfo.back();
+		VkPipelineDepthStencilStateCreateInfo pipelineDepthStencilStateCreateInfo = VkPipelineDepthStencilStateCreateInfo.calloc(stack)
+			.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
+			.depthTestEnable(depthTestEnable.orElse(false))
+			.depthWriteEnable(depthWriteEnable.orElse(true))
+			.depthCompareOp(depthCompareOp.orElse(VK10.VK_COMPARE_OP_LESS))
+			.depthBoundsTestEnable(false)
+			.minDepthBounds(minDepth.orElse(0F))
+			.maxDepthBounds(maxDepth.orElse(1F))
+			.stencilTestEnable(false);
+		    //.front();
+		    //.back();
 		
-		VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = VkPipelineDynamicStateCreateInfo.calloc(stack);
-		dynamicStateCreateInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO);
-		dynamicStateCreateInfo.pDynamicStates(enabledDynamicStates(stack, true, true));
+		VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = VkPipelineDynamicStateCreateInfo.calloc(stack)
+			.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO)
+			.pDynamicStates(enabledDynamicStates(stack, true, true));
 		
-		VkGraphicsPipelineCreateInfo.Buffer pipelineInfo = VkGraphicsPipelineCreateInfo.calloc(1, stack);
-		pipelineInfo.sType(VK10.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
-		pipelineInfo.pInputAssemblyState(inputAssembly);
-		pipelineInfo.pViewportState(viewportState);
-		pipelineInfo.pRasterizationState(pipelineRasterizationStateCreateInfo);
-		pipelineInfo.pMultisampleState(pipelineMultisampleStateCreateInfo);
-		pipelineInfo.pColorBlendState(pipelineColorBlendStateCreateInfo);
-		pipelineInfo.pDepthStencilState(pipelineDepthStencilStateCreateInfo);
-		pipelineInfo.pDynamicState(dynamicStateCreateInfo);
-		pipelineInfo.renderPass(renderPass.require().getVk());
-		pipelineInfo.subpass(0);
-		pipelineInfo.basePipelineHandle(VK10.VK_NULL_HANDLE);
-		pipelineInfo.basePipelineIndex(-1);
+		VkGraphicsPipelineCreateInfo.Buffer pipelineInfo = VkGraphicsPipelineCreateInfo.calloc(1, stack)
+			.sType(VK10.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
+			.pInputAssemblyState(inputAssembly)
+			.pViewportState(viewportState)
+			.pRasterizationState(pipelineRasterizationStateCreateInfo)
+			.pMultisampleState(pipelineMultisampleStateCreateInfo)
+			.pColorBlendState(pipelineColorBlendStateCreateInfo)
+			.pDepthStencilState(pipelineDepthStencilStateCreateInfo)
+			.pDynamicState(dynamicStateCreateInfo)
+			.renderPass(renderPass.require().getVk())
+			.subpass(0)
+			.basePipelineHandle(VK10.VK_NULL_HANDLE)
+			.basePipelineIndex(-1);
 		
 		GraphicsPipeline.Builder builder = GraphicsPipeline.create();
 		builder.autoCloseLayout(false);
@@ -667,7 +673,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		return List.of(defaultValue);
 	}
 	
-	protected <T> T[] orElse(@Nullable T[] requestedValue, T defaultValue)
+	protected <T> T[] orElse(T @Nullable [] requestedValue, T defaultValue)
 	{
 		if (requestedValue != null) return requestedValue;
 		return varargs(defaultValue);
@@ -686,7 +692,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		return buffer.rewind();
 	}
 	
-	protected <S extends Struct<S>, B extends StructBuffer<S, B>> B load(Function<Integer, B> builder, List<S> list, S defaultValue)
+	protected <S extends Struct<S>, B extends StructBuffer<S, B>> B load(Function<Integer, B> builder, List<@Nullable S> list, S defaultValue)
 	{
 		B buffer = builder.apply(list.size());
 		for (S s : list) buffer.put(orElse(s, defaultValue));
@@ -700,14 +706,14 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		return buffer.rewind();
 	}
 	
-	protected IntBuffer load(Integer[] array, int defaultValue)
+	protected IntBuffer load(@Nullable Integer[] array, int defaultValue)
 	{
 		IntBuffer buffer = stack.callocInt(array.length);
 		for (Integer i : array) buffer.put(orElse(i, defaultValue));
 		return buffer.rewind();
 	}
 	
-	protected IntBuffer load(Integer[] array, int[] defaultValue)
+	protected IntBuffer load(@Nullable Integer[] array, int[] defaultValue)
 	{
 		IntBuffer buffer = stack.callocInt(array.length);
 		for (int i = 0; i < array.length; i++) buffer.put(orElse(array[i], defaultValue[i]));
@@ -721,14 +727,14 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		return buffer.rewind();
 	}
 	
-	protected FloatBuffer load(Float[] array, float defaultValue)
+	protected FloatBuffer load(@Nullable Float[] array, float defaultValue)
 	{
 		FloatBuffer buffer = stack.callocFloat(array.length);
 		for (Float f : array) buffer.put(orElse(f, defaultValue));
 		return buffer.rewind();
 	}
 	
-	protected FloatBuffer load(Float[] array, float[] defaultValue)
+	protected FloatBuffer load(@Nullable Float @Nullable [] array, float[] defaultValue)
 	{
 		FloatBuffer buffer;
 		if (array != null)
@@ -744,7 +750,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 		return buffer.rewind();
 	}
 	
-	protected boolean isValid(Shader shader)
+	protected boolean isValid(@Nullable Shader shader)
 	{
 		return shader != null && shader.isCompilationSuccessfull();
 	}
@@ -763,9 +769,7 @@ public abstract class DataAccumulator<SDA extends DataAccumulator<SDA>> {
 	}
 	
 	protected void clearAllModificationMarks()
-	{
-		
-	}
+	{}
 	
 	protected void addError(String error)
 	{

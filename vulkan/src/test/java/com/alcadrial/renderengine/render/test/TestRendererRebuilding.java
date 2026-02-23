@@ -24,7 +24,7 @@ import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Renderer.Builder;
 import com.alcadrial.renderengine.render.Renderer.ModificationPlan;
 import com.alcadrial.renderengine.render.Vulkan;
-import com.alcadrial.renderengine.render.buffer.BigVulkanBuffer.PhysicalDeviceTranferState;
+import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
@@ -42,7 +42,6 @@ import com.alcadrial.renderengine.render.window.VulkanWindow;
 @Test
 public class TestRendererRebuilding extends RenderTest {
 	
-	private static Object WARNING;
 	private static final String SHADER = "shader";
 	
 	public static void main(String[] args)
@@ -54,12 +53,6 @@ public class TestRendererRebuilding extends RenderTest {
 		try
 		{
 			println("Render Engine initialization", RenderTest::initMultiThreadRenderEngine, TestProperties.PRINT_LOADING_TIMES);
-			if (!RenderEngine.isInitializated())
-			{
-				System.out.println("Cannot initialize RenderEngine");
-				RenderEngine.getLastInitializationException().printStackTrace(System.out);
-				return;
-			}
 			if (Properties.DEBUG.getValue()) Debug.setEnabledAllDebug(true);
 		}
 		catch (VulkanException e)
@@ -92,7 +85,6 @@ public class TestRendererRebuilding extends RenderTest {
 		t0.start();
 		
 		new Thread(() -> {
-			
 			while (t.isAlive() || t0.isAlive())
 			{
 				synchronized (MONITOR)
@@ -135,7 +127,7 @@ public class TestRendererRebuilding extends RenderTest {
 		}
 	}
 	
-	public static final class Logic {
+	public static final class Logic extends RenderTest.Logic {
 		
 		private ShaderProgram shaderProgram;
 		private RenderPass renderPass;
@@ -150,6 +142,7 @@ public class TestRendererRebuilding extends RenderTest {
 		private int i, j, k, l;
 		private int[] indices;
 		
+		@Override
 		public void load() throws IOException
 		{
 			shaderProgram = ShaderProgram.create().add(
@@ -157,7 +150,8 @@ public class TestRendererRebuilding extends RenderTest {
 					loadShader(SHADER + ".frag"))
 				.build();
 		}
-		
+
+		@Override
 		public void start() throws VulkanException
 		{
 			RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
@@ -222,7 +216,7 @@ public class TestRendererRebuilding extends RenderTest {
 			builder.dynamicViewport(false).dynamicScissor(false);
 			builder.bufferBindings(new BufferWriter(localUniformBuffer, 0, uniformBuffer, 0, uniformBuffer.getSize()));
 			renderer = builder.build(device, window.getSurface().getSize(), renderPass);
-			renderer.setVertexBuffers(0, vertexBuffer);
+			renderer.setBuffer(0, vertexBuffer);
 			renderer.setIndexBuffer(indexBuffer);
 			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), b -> {
 				renderer.updateUniform("TRANSFORMATION", l -> {
@@ -232,7 +226,7 @@ public class TestRendererRebuilding extends RenderTest {
 			
 			renderer.setName("Renderer");
 			
-			try (PhysicalDeviceTranferState transfert = staticBigBuffer.startLocalBuffering())
+			try (PhysicalDeviceTransferState transfert = staticBigBuffer.startLocalBuffering())
 			{
 				BufferWriter vertexBufferWriter = transfert.beginTransfer(vertexBuffer);
 				BufferWriter indexBufferWriter = transfert.beginTransfer(indexBuffer);
@@ -270,11 +264,11 @@ public class TestRendererRebuilding extends RenderTest {
 				RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, 4, true, "mmmm");
 			}
 		}
-		
+
+		@Override
 		public void loop() throws VulkanException
 		{
 			RenderTest.defaultLoop((enlapsed, enlapsedFrame) -> {
-				
 				boolean modified = false;
 				
 				if (i++ == 5)
@@ -286,7 +280,7 @@ public class TestRendererRebuilding extends RenderTest {
 				}
 				if (j++ % 10 == 0)
 				{
-					try (PhysicalDeviceTranferState transfert = staticBigBuffer.startLocalBuffering())
+					try (PhysicalDeviceTransferState transfert = staticBigBuffer.startLocalBuffering())
 					{
 						BufferWriter indexBufferWriter = transfert.beginTransfer(indexBuffer, (k % 8 * 3) * 4, 12);
 						
@@ -338,7 +332,8 @@ public class TestRendererRebuilding extends RenderTest {
 				}
 			});
 		}
-		
+
+		@Override
 		public void end() throws VulkanException
 		{
 			renderer.close();

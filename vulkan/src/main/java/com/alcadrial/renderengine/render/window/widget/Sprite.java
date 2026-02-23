@@ -1,5 +1,6 @@
 package com.alcadrial.renderengine.render.window.widget;
 
+import org.jspecify.annotations.NonNull;
 import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.kector.matrix.Matrix4f;
@@ -9,13 +10,14 @@ import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTranferState;
+import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.texture.TextureRegion;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.window.AbstractWidget;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class Sprite extends AbstractWidget {
@@ -35,6 +37,8 @@ public class Sprite extends AbstractWidget {
 		this.texture = texture;
 	}
 	
+	
+	
 	@Override
 	public void initializeRendering(StaticBigBuffer staticBigBuffer) throws VulkanException
 	{
@@ -42,7 +46,7 @@ public class Sprite extends AbstractWidget {
 		vertexBuffer = staticBigBuffer.allocate((3 + 4) * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		indexBuffer = staticBigBuffer.allocate(6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 		
-		try (PhysicalDeviceTranferState transfer = staticBigBuffer.startLocalBuffering())
+		try (PhysicalDeviceTransferState transfer = staticBigBuffer.startLocalBuffering())
 		{
 			BufferWriter localVertexWriter = transfer.beginTransfer(vertexBuffer);
 			BufferWriter localIndexWriter = transfer.beginTransfer(indexBuffer);
@@ -50,8 +54,14 @@ public class Sprite extends AbstractWidget {
 			Vector3f pos = Vector3f.of(this.pos);
 			Vector2f end = Vector2f.of(this.pos.add(size).xy());
 			
-			//	RenderingDataUtils.loadRectangleUv(localVertexWriter, localIndexWriter, 0, pos.x(), pos.y(), end.x(), end.y(), 0, texture.getUvStart().x(), texture.getUvStart().y(), texture.getUvEnd().x(), texture.getUvEnd().y());
+			//RenderingDataUtils.loadRectangleUv(localVertexWriter, localIndexWriter, 0, pos.x(), pos.y(), end.x(), end.y(), 0, texture.getUvStart().x(), texture.getUvStart().y(), texture.getUvEnd().x(), texture.getUvEnd().y());
 		}
+	}
+	
+	@Override
+	public void render(@NonNull Matrix4f matrix, @NonNull Renderer renderer)
+	{
+		super.render(matrix, renderer);
 	}
 	
 	@Override

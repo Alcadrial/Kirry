@@ -1,7 +1,12 @@
 package com.alcadrial.renderengine.render.pipeline;
 
+import org.eclipse.collections.api.factory.Sets;
+import org.eclipse.collections.api.set.ImmutableSet;
+import org.eclipse.collections.api.set.MutableSet;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
+import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo;
+import org.lwjgl.vulkan.VkVertexInputBindingDescription;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
@@ -16,19 +21,38 @@ public class GraphicsPipeline extends Pipeline {
 		RenderEngine.assertLoaded();
 	}
 	
-	public GraphicsPipeline(Device device, PipelineLayout layout, VkGraphicsPipelineCreateInfo.Buffer createInfo) throws VulkanException
+	private ImmutableSet<Integer> activeBindings;
+	
+	public GraphicsPipeline(Device device, PipelineLayout layout, VkGraphicsPipelineCreateInfo createInfo) throws VulkanException
 	{
 		super(device, layout);
 
 		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(VK10.vkCreateGraphicsPipelines(device.getVk(), 0, createInfo, null, p), "Failed to create graphics pipeline");
+		VulkanErrorUtils.assertNoError(VK10.vkCreateGraphicsPipelines(device.getVk(), 0, VkGraphicsPipelineCreateInfo.create(createInfo.address(), 1), null, p), "Failed to create graphics pipeline");
 		vk = p[0];
+		
+		MutableSet<Integer> bindings = Sets.mutable.empty();
+		VkPipelineVertexInputStateCreateInfo pVertexInputState = createInfo.pVertexInputState();
+		if (pVertexInputState != null)
+		{
+			VkVertexInputBindingDescription.Buffer pVertexBindingDescriptions = pVertexInputState.pVertexBindingDescriptions();
+			if (pVertexBindingDescriptions != null)
+			{
+				for (VkVertexInputBindingDescription vertexInputBindingDescription : pVertexBindingDescriptions) bindings.add(vertexInputBindingDescription.binding());
+			}
+		}
+		activeBindings = bindings.toImmutable();
 	}
 	
 	@Override
 	public int bindPoint()
 	{
 		return VK10.VK_PIPELINE_BIND_POINT_GRAPHICS;
+	}
+	
+	public ImmutableSet<Integer> getActiveBindings()
+	{
+		return activeBindings;
 	}
 	
 	@Override

@@ -1,13 +1,14 @@
 package com.alcadrial.renderengine.render.pipeline;
 
-import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Consumer;
 
+import org.eclipse.collections.api.factory.Lists;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryUtil;
@@ -62,9 +63,84 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		return new Builder();
 	}
 	
-	public static GraphicsPipelineTemplate defaultTemplate()
+	public static Builder create3dRenderingPipeline()
 	{
-		return create().build();
+		return create()
+			.configureVertexInputState(s -> {})
+			.configureInputAssemblyState(s -> s
+				.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+				.primitiveRestartEnable(false)
+			)
+			.configureViewportState(s -> s
+				.addDefaultViewport()
+				.addFullScissor()
+			)
+			.configureRasterizationState(s -> s
+				.cullMode(VK10.VK_CULL_MODE_BACK_BIT)
+			)
+			.configureMultisampleState(s -> {})
+			.configureDepthStencilState(s -> s
+				.depthTestEnable(true)
+			)
+			.configureColorBlendState(s -> s
+				.blendConstants(0, 0, 0, 0)
+				.addAttachment(false, 0, 0, 0, 0, 0, 0, 0)
+			)
+			.configureDynamicStateState(s -> {});
+	}
+	
+	public static Builder create3dOutlineRenderingPipeline()
+	{
+		return create()
+			.configureVertexInputState(s -> {})
+			.configureInputAssemblyState(s -> s
+				.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+				.primitiveRestartEnable(false)
+			)
+			.configureViewportState(s -> s
+				.addDefaultViewport()
+				.addFullScissor()
+			)
+			.configureRasterizationState(s -> s
+				.cullMode(VK10.VK_CULL_MODE_BACK_BIT)
+				.polygonMode(VK10.VK_POLYGON_MODE_LINE)
+			)
+			.configureMultisampleState(s -> {})
+			.configureDepthStencilState(s -> s
+				.depthTestEnable(true)
+			)
+			.configureColorBlendState(s -> s
+				.blendConstants(0, 0, 0, 0)
+				.addAttachment(false, 0, 0, 0, 0, 0, 0, 0)
+			)
+			.configureDynamicStateState(s -> {});
+	}
+	
+	public static Builder createScreenRenderingPipeline()
+	{
+		return create()
+			.configureVertexInputState(s -> {})
+			.configureInputAssemblyState(s -> s
+				.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+				.primitiveRestartEnable(false)
+			)
+			.configureViewportState(s -> s
+				.addDefaultViewport()
+				.addFullScissor()
+			)
+			.configureRasterizationState(s -> s
+				.cullMode(VK10.VK_CULL_MODE_NONE)
+				.polygonMode(VK10.VK_POLYGON_MODE_FILL)
+			)
+			.configureMultisampleState(s -> {})
+			.configureDepthStencilState(s -> s
+				.depthTestEnable(true)
+			)
+			.configureColorBlendState(s -> s
+				.blendConstants(0, 0, 0, 0)
+				.addAttachment(false, 0, 0, 0, 0, 0, 0, 0)
+			)
+			.configureDynamicStateState(s -> {});
 	}
 	
 	private VkGraphicsPipelineCreateInfo createInfo;
@@ -82,22 +158,25 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 	public GraphicsPipeline createPipeline(Device device, ShaderProgram program, Vector2i surfaceSize, PipelineLayout layout, RenderPass renderPass, int subpass) throws VulkanException
 	{
 		VkPipelineShaderStageCreateInfo.Buffer pStages = ShaderUtils.createPipelineShaderStageCreateInfoBuffer(device, program);
-		createInfo.pStages(pStages);
-		if (vertexInputStateExtraConfiguration != null) vertexInputStateExtraConfiguration.apply((@NonNull VkPipelineVertexInputStateCreateInfo) createInfo.pVertexInputState(), program);
-		if (viewportStateExtraConfiguration != null) viewportStateExtraConfiguration.apply((@NonNull VkPipelineViewportStateCreateInfo) createInfo.pViewportState(), surfaceSize);
-		
-		createInfo
-			.layout(layout.getVk())
-			.renderPass(renderPass.getVk())
-			.subpass(subpass)
-			.basePipelineHandle(0)
-			.basePipelineIndex(0);
-		GraphicsPipeline pipeline = new GraphicsPipeline(device, layout, VkGraphicsPipelineCreateInfo.create(createInfo.address(), 1));
-
-		//TODO reuse shader modules
-		for (VkPipelineShaderStageCreateInfo createInfo : pStages) VK10.vkDestroyShaderModule(device.getVk(), createInfo.module(), null);
-		pStages.free();
-		return pipeline;
+		try
+		{
+			createInfo.pStages(pStages);
+			if (vertexInputStateExtraConfiguration != null) vertexInputStateExtraConfiguration.apply((@NonNull VkPipelineVertexInputStateCreateInfo) createInfo.pVertexInputState(), program);
+			if (viewportStateExtraConfiguration != null) viewportStateExtraConfiguration.apply((@NonNull VkPipelineViewportStateCreateInfo) createInfo.pViewportState(), surfaceSize);
+			createInfo
+				.layout(layout.getVk())
+				.renderPass(renderPass.getVk())
+				.subpass(subpass)
+				.basePipelineHandle(0)
+				.basePipelineIndex(0);
+			return new GraphicsPipeline(device, layout, createInfo);
+		}
+		finally
+		{
+			//TODO reuse shader modules
+			for (VkPipelineShaderStageCreateInfo createInfo : pStages) VK10.vkDestroyShaderModule(device.getVk(), createInfo.module(), null);
+			pStages.free();
+		}
 	}
 	
 	private void free(@Nullable NativeResource struct)
@@ -204,7 +283,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			{
 				return (createInfo, program) -> {
 					
-					int variablesCount = (int) program.getShaders().sumOfInt(s -> s.info().getType() == ShaderType.VERTEX ? s.info().getLayouts().count(l -> l.getType() == Type.INPUT) : 0);
+					int variablesCount = (int) program.getShaders().sumOfInt(s -> s.info().getType() == ShaderType.VERTEX ? (int) s.info().getLayouts().sumOfInt(l -> l.getType() == Type.INPUT ? ((ShaderInputLayout) l).getVariables().size() : 0) : 0);
 					VkVertexInputAttributeDescription.Buffer attributeDescriptions = VkVertexInputAttributeDescription.malloc(variablesCount);
 					
 					for (PreparedShader shader : program.getShaders()) if (shader.info().getType() == ShaderType.VERTEX)
@@ -219,6 +298,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 							}
 						}
 					}
+					createInfo.pVertexAttributeDescriptions(attributeDescriptions.rewind());
 					
 					return createInfo;
 				};
@@ -389,7 +469,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			
 			public ExtraConfiguration extraConfiguration()
 			{
-				List<@Nullable Vector4i> scissors = List.copyOf(this.scissors);
+				List<@Nullable Vector4i> scissors = Lists.fixedSize.ofAll(this.scissors);
 				return (createInfo, surfaceSize) -> {
 					VkRect2D.Buffer pScissors = createInfo.pScissors();
 					if (pScissors != null)
@@ -445,61 +525,61 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				lineWidth = 1;
 			}
 			
-			public RasterizationStateConfigurator DepthClampEnable(boolean depthClampEnable)
+			public RasterizationStateConfigurator depthClampEnable(boolean depthClampEnable)
 			{
 				this.depthClampEnable = depthClampEnable;
 				return this;
 			}
 			
-			public RasterizationStateConfigurator RasterizerDiscardEnable(boolean rasterizerDiscardEnable)
+			public RasterizationStateConfigurator rasterizerDiscardEnable(boolean rasterizerDiscardEnable)
 			{
 				this.rasterizerDiscardEnable = rasterizerDiscardEnable;
 				return this;
 			}
 			
-			public RasterizationStateConfigurator PolygonMode(int polygonMode)
+			public RasterizationStateConfigurator polygonMode(int polygonMode)
 			{
 				this.polygonMode = polygonMode;
 				return this;
 			}
 			
-			public RasterizationStateConfigurator CullMode(int cullMode)
+			public RasterizationStateConfigurator cullMode(int cullMode)
 			{
 				this.cullMode = cullMode;
 				return this;
 			}
 			
-			public RasterizationStateConfigurator FrontFace(int frontFace)
+			public RasterizationStateConfigurator frontFace(int frontFace)
 			{
 				this.frontFace = frontFace;
 				return this;
 			}
 			
-			public RasterizationStateConfigurator DepthBiasEnable(boolean depthBiasEnable)
+			public RasterizationStateConfigurator depthBiasEnable(boolean depthBiasEnable)
 			{
 				this.depthBiasEnable = depthBiasEnable;
 				return this;
 			}
 			
-			public RasterizationStateConfigurator LineWidth(float lineWidth)
+			public RasterizationStateConfigurator lineWidth(float lineWidth)
 			{
 				this.lineWidth = lineWidth;
 				return this;
 			}
 			
-			public RasterizationStateConfigurator DepthBiasConstantFactor(float depthBiasConstantFactor)
+			public RasterizationStateConfigurator depthBiasConstantFactor(float depthBiasConstantFactor)
 			{
 				this.depthBiasConstantFactor = depthBiasConstantFactor;
 				return this;
 			}
 			
-			public RasterizationStateConfigurator DepthBiasClamp(float depthBiasClamp)
+			public RasterizationStateConfigurator depthBiasClamp(float depthBiasClamp)
 			{
 				this.depthBiasClamp = depthBiasClamp;
 				return this;
 			}
 			
-			public RasterizationStateConfigurator DepthBiasSlopeFactor(float depthBiasSlopeFactor)
+			public RasterizationStateConfigurator depthBiasSlopeFactor(float depthBiasSlopeFactor)
 			{
 				this.depthBiasSlopeFactor = depthBiasSlopeFactor;
 				return this;
@@ -548,31 +628,31 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				alphaToOneEnable = false;
 			}
 			
-			public MultisampleStateConfigurator RasterizationSamples(int rasterizationSamples)
+			public MultisampleStateConfigurator rasterizationSamples(int rasterizationSamples)
 			{
 				this.rasterizationSamples = rasterizationSamples;
 				return this;
 			}
 			
-			public MultisampleStateConfigurator SampleShadingEnable(boolean sampleShadingEnable)
+			public MultisampleStateConfigurator sampleShadingEnable(boolean sampleShadingEnable)
 			{
 				this.sampleShadingEnable = sampleShadingEnable;
 				return this;
 			}
 			
-			public MultisampleStateConfigurator MinSampleShading(float minSampleShading)
+			public MultisampleStateConfigurator minSampleShading(float minSampleShading)
 			{
 				this.minSampleShading = minSampleShading;
 				return this;
 			}
 			
-			public MultisampleStateConfigurator AlphaToCoverageEnable(boolean alphaToCoverageEnable)
+			public MultisampleStateConfigurator alphaToCoverageEnable(boolean alphaToCoverageEnable)
 			{
 				this.alphaToCoverageEnable = alphaToCoverageEnable;
 				return this;
 			}
 			
-			public MultisampleStateConfigurator AlphaToOneEnable(boolean alphaToOneEnable)
+			public MultisampleStateConfigurator alphaToOneEnable(boolean alphaToOneEnable)
 			{
 				this.alphaToOneEnable = alphaToOneEnable;
 				return this;
@@ -646,43 +726,43 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				return this;
 			}
 			
-			public DepthStencilStateConfigurator DepthTestEnable(boolean depthTestEnable)
+			public DepthStencilStateConfigurator depthTestEnable(boolean depthTestEnable)
 			{
 				this.depthTestEnable = depthTestEnable;
 				return this;
 			}
 			
-			public DepthStencilStateConfigurator DepthWriteEnable(boolean depthWriteEnable)
+			public DepthStencilStateConfigurator depthWriteEnable(boolean depthWriteEnable)
 			{
 				this.depthWriteEnable = depthWriteEnable;
 				return this;
 			}
 			
-			public DepthStencilStateConfigurator DepthCompareOp(int depthCompareOp)
+			public DepthStencilStateConfigurator depthCompareOp(int depthCompareOp)
 			{
 				this.depthCompareOp = depthCompareOp;
 				return this;
 			}
 			
-			public DepthStencilStateConfigurator DepthBoundsTestEnable(boolean depthBoundsTestEnable)
+			public DepthStencilStateConfigurator depthBoundsTestEnable(boolean depthBoundsTestEnable)
 			{
 				this.depthBoundsTestEnable = depthBoundsTestEnable;
 				return this;
 			}
 			
-			public DepthStencilStateConfigurator StencilTestEnable(boolean stencilTestEnable)
+			public DepthStencilStateConfigurator stencilTestEnable(boolean stencilTestEnable)
 			{
 				this.stencilTestEnable = stencilTestEnable;
 				return this;
 			}
 			
-			public DepthStencilStateConfigurator MinDepthBounds(float minDepthBounds)
+			public DepthStencilStateConfigurator minDepthBounds(float minDepthBounds)
 			{
 				this.minDepthBounds = minDepthBounds;
 				return this;
 			}
 			
-			public DepthStencilStateConfigurator MaxDepthBounds(float maxDepthBounds)
+			public DepthStencilStateConfigurator maxDepthBounds(float maxDepthBounds)
 			{
 				this.maxDepthBounds = maxDepthBounds;
 				return this;
@@ -809,7 +889,10 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 					.logicOpEnable(logicOpEnable)
 					.logicOp(logicOp)
 					.pAttachments(pAttachments)
-					.blendConstants(FloatBuffer.wrap(blendConstants));
+					.blendConstants(0, blendConstants[0])
+					.blendConstants(1, blendConstants[1])
+					.blendConstants(2, blendConstants[2])
+					.blendConstants(3, blendConstants[3]);
 			}
 			
 			public Builder end()
@@ -870,9 +953,21 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			return vertexInputStateConfigurator = new VertexInputStateConfigurator();
 		}
 		
+		public Builder configureVertexInputState(Consumer<VertexInputStateConfigurator> configure)
+		{
+			configure.accept(vertexInputStateConfigurator = new VertexInputStateConfigurator());
+			return this;
+		}
+		
 		public InputAssemblyStateConfigurator configureInputAssemblyState()
 		{
 			return inputAssemblyStateConfigurator = new InputAssemblyStateConfigurator();
+		}
+		
+		public Builder configureInputAssemblyState(Consumer<InputAssemblyStateConfigurator> configure)
+		{
+			configure.accept(inputAssemblyStateConfigurator = new InputAssemblyStateConfigurator());
+			return this;
 		}
 		
 		public TessellationStateConfigurator configureTessellationState()
@@ -880,9 +975,21 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			return tessellationStateConfigurator = new TessellationStateConfigurator();
 		}
 		
+		public Builder configureTessellationState(Consumer<TessellationStateConfigurator> configure)
+		{
+			configure.accept(tessellationStateConfigurator = new TessellationStateConfigurator());
+			return this;
+		}
+		
 		public ViewportStateConfigurator configureViewportState()
 		{
 			return viewportStateConfigurator = new ViewportStateConfigurator();
+		}
+		
+		public Builder configureViewportState(Consumer<ViewportStateConfigurator> configure)
+		{
+			configure.accept(viewportStateConfigurator = new ViewportStateConfigurator());
+			return this;
 		}
 		
 		public RasterizationStateConfigurator configureRasterizationState()
@@ -890,9 +997,21 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			return rasterizationStateConfigurator = new RasterizationStateConfigurator();
 		}
 		
+		public Builder configureRasterizationState(Consumer<RasterizationStateConfigurator> configure)
+		{
+			configure.accept(rasterizationStateConfigurator = new RasterizationStateConfigurator());
+			return this;
+		}
+		
 		public MultisampleStateConfigurator configureMultisampleState()
 		{
 			return multisampleStateConfigurator = new MultisampleStateConfigurator();
+		}
+		
+		public Builder configureMultisampleState(Consumer<MultisampleStateConfigurator> configure)
+		{
+			configure.accept(multisampleStateConfigurator = new MultisampleStateConfigurator());
+			return this;
 		}
 		
 		public DepthStencilStateConfigurator configureDepthStencilState()
@@ -900,14 +1019,32 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			return depthStencilStateConfigurator = new DepthStencilStateConfigurator();
 		}
 		
+		public Builder configureDepthStencilState(Consumer<DepthStencilStateConfigurator> configure)
+		{
+			configure.accept(depthStencilStateConfigurator = new DepthStencilStateConfigurator());
+			return this;
+		}
+		
 		public ColorBlendStateConfigurator configureColorBlendState()
 		{
 			return colorBlendStateConfigurator = new ColorBlendStateConfigurator();
 		}
 		
+		public Builder configureColorBlendState(Consumer<ColorBlendStateConfigurator> configure)
+		{
+			configure.accept(colorBlendStateConfigurator = new ColorBlendStateConfigurator());
+			return this;
+		}
+		
 		public DynamicStateConfigurator configureDynamicStateState()
 		{
 			return dynamicStateConfigurator = new DynamicStateConfigurator();
+		}
+		
+		public Builder configureDynamicStateState(Consumer<DynamicStateConfigurator> configure)
+		{
+			configure.accept(dynamicStateConfigurator = new DynamicStateConfigurator());
+			return this;
 		}
 		
 		public GraphicsPipelineTemplate build()

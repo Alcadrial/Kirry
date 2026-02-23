@@ -12,9 +12,9 @@ import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.window.ActionResult;
 import com.alcadrial.renderengine.render.window.Screen;
-import com.alcadrial.renderengine.render.window.widget.ActionResult;
-import com.alcadrial.renderengine.render.window.widget.Widget;
+import com.alcadrial.renderengine.render.window.Widget;
 
 public class BasicScreen implements Screen {
 	

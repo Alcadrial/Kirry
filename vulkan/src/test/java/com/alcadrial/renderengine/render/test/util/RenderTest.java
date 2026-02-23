@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.lwjgl.vulkan.EXTDebugUtils;
 import org.lwjgl.vulkan.VK10;
@@ -11,14 +12,11 @@ import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
 
 import com.alcadrial.kroperties.Property;
 import com.alcadrial.renderengine.render.Debug;
-import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.texture.Texture;
-import com.alcadrial.renderengine.render.util.PhysicalDeviceNotFoundException;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -31,8 +29,9 @@ public class RenderTest {
 	protected static final Object MONITOR = new Object();
 	private static final String[] SEVERITIES = new String[] {"UNKNOWN", "VERBOSE", "INFO", "WARNING", "ERROR"};
 	private static final String[] TYPES = new String[] {"UNKNOWN", "GENERAL", "VALIDATION", "PERFORMANCE"};
+	private static final AtomicBoolean hasValidationError = new AtomicBoolean(false);
 	
-	public static void mainTest(String[] args, VulkanRunnable start, VulkanRunnable loop, VulkanRunnable end)
+	public static void mainTest(String[] args, VulkanRunnable start, VulkanRunnable loop, VulkanRunnable end, boolean multithreaded)
 	{
 		try
 		{
@@ -41,11 +40,21 @@ public class RenderTest {
 			
 			if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
 			
-			println("RenderEngine initialization", RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
+			println("RenderEngine initialization", multithreaded ? RenderTest::initMultiThreadRenderEngine : RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
 			if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
-
-			if (Properties.DEBUG.getValue()) Debug.setEnabledAllocationDebug(true);
-			if (Properties.DEBUG.getValue()) Debug.setEnabledDeallocationFail(true);
+			
+			if (Properties.DEBUG.getValue())
+			{
+				Debug.setEnabledAllocationDebug(true);
+				Debug.setEnabledDeallocationFail(true);
+			}
+			
+			Thread mainThread = null;
+			
+			if (multithreaded)
+			{
+				mainThread = Thread.ofPlatform().name("Main").start(RenderEngine::serveRenderEngine);
+			}
 			
 			try
 			{
@@ -61,6 +70,11 @@ public class RenderTest {
 			{
 				if (RenderEngine.isInitializated()) RenderEngine.terminate();
 				throw t;
+			}
+			finally
+			{
+				//if (RenderEngine.isInitializated()) throw new IllegalStateException("RenderEngine not terminated");
+				if (mainThread != null) mainThread.join();
 			}
 		}
 		catch (Throwable t)
@@ -85,7 +99,7 @@ public class RenderTest {
 		long milestone = firstMilestone;
 		long highMilestone = firstHighMilestone;
 		
-		while (!window.shouldClose())
+		while (!window.shouldClose() && !hasValidationError.get())
 		{
 			current = System.nanoTime();
 			long enlapsed = current - time;
@@ -120,7 +134,7 @@ public class RenderTest {
 		window.getDevice().waitIdle();
 	}
 	
-	public static void initRenderEngine()
+	public static void initRenderEngine() throws VulkanException
 	{
 		RenderEngine.Builder builder = RenderEngine.create("Test", new Version(0, 0, 1, 0));
 		builder.messengerCallback(RenderTest::debugCallback);
@@ -131,7 +145,7 @@ public class RenderTest {
 		builder.initialize();
 	}
 	
-	public static void initMultiThreadRenderEngine()
+	public static void initMultiThreadRenderEngine() throws VulkanException
 	{
 		RenderEngine.Builder builder = RenderEngine.create("Test", new Version(0, 0, 1, 0));
 		builder.messengerCallback(RenderTest::debugCallback);
@@ -161,28 +175,14 @@ public class RenderTest {
 			case 0b100 -> 3;
 			default -> 0;
 		};
+		if (messageSeverity == EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+		{
+			hasValidationError.set(true);
+		}
 		
 		Debug.debug("[" + SEVERITIES[i] + " " + TYPES[j] + "] " + callbackData.pMessageString());
 		
 		return VK10.VK_FALSE;
-	}
-	
-	public static boolean pickPhysicalDevice(VulkanWindow window) throws VulkanException
-	{
-		try
-		{
-			Vulkan vulkan = RenderEngine.getVulkan();
-			vulkan.setPhysicalDeviceFilter(physicalDevice -> physicalDevice.getQueueFamily(VK10.VK_QUEUE_GRAPHICS_BIT | VK10.VK_QUEUE_COMPUTE_BIT, window.getSurface()) != null);
-			if (TestProperties.DEVICE.isDefault()) vulkan.pickPhysicalDevices(PhysicalDevice.typeBestMatcher());
-			else vulkan.pickPhysicalDevices(TestProperties.DEVICE.getValue());
-			return true;
-		}
-		catch (PhysicalDeviceNotFoundException e)
-		{
-			e.printStackTrace(System.out);
-			RenderEngine.terminate();
-			return false;
-		}
 	}
 	
 	public static Texture createDepthTexture(int width, int height) throws VulkanException
@@ -214,7 +214,7 @@ public class RenderTest {
 	
 	public static void saveShaderBinary(Shader shader) throws IOException
 	{
-		Files.write(new File(shader.getFile().getPath() + ".bin").toPath(), shader.getLastCompilation().get().getBinary());
+		Files.write(new File(shader.getFile().getPath() + ".bin").toPath(), shader.getLastCompilation().get().binary());
 	}
 	
 	public static void println(String s, VulkanRunnable action, Property<Boolean> printProperty) throws VulkanException
@@ -269,5 +269,13 @@ public class RenderTest {
 		else endTime = System.currentTimeMillis();
 		
 		return (double) resolution.convert(endTime - startTime, localUnit) / resolution.convert(1, unit);
+	}
+	
+	public static abstract class Logic {
+		
+		public abstract void load() throws IOException;
+		public abstract void start() throws VulkanException;
+		public abstract void loop() throws VulkanException;
+		public abstract void end() throws VulkanException;
 	}
 }
