@@ -10,10 +10,8 @@ import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
-import com.alcadrial.renderengine.core.util.Nonnull;
 import com.alcadrial.renderengine.core.util.NotYetImplemented;
 
-@Nonnull
 public abstract class ShaderUniform<T> {
 	
 	public static ShaderUniform<Integer> ofInt(String name)

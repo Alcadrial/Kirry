@@ -3,14 +3,12 @@ package com.alcadrial.renderengine.render.renderer;
 import java.util.List;
 
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.renderengine.core.util.Nonnull;
 import com.alcadrial.renderengine.render.buffer.GlBuffer;
 import com.alcadrial.renderengine.render.shader.ShaderInput;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderUtil;
 
-@Nonnull
 public abstract class AbstractShaderRenderer<AB extends GlBuffer> extends AbstractRenderer<AB> implements ShaderProgrammable {
 	
 	protected ShaderProgram program;

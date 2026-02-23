@@ -10,8 +10,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.alcadrial.renderengine.core.util.Nonnull;
-
 public class Text implements Iterable<TextLine> {
 	
 	private List<TextLine> lines;
@@ -37,7 +35,7 @@ public class Text implements Iterable<TextLine> {
 		isBlank = true;
 	}
 	
-	public void addLine(@Nonnull TextLine line)
+	public void addLine(TextLine line)
 	{
 		try
 		{
@@ -57,7 +55,7 @@ public class Text implements Iterable<TextLine> {
 		addLine(new TextLine());
 	}
 	
-	public TextLine setLine(int index, @Nonnull TextLine line)
+	public TextLine setLine(int index, TextLine line)
 	{
 		TextLine oldLine = lines.set(index, line);
 		length += line.length() - oldLine.length();

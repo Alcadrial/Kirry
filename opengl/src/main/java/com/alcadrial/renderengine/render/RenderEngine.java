@@ -7,7 +7,6 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWErrorCallbackI;
 import org.lwjgl.opengl.GL30;
 
-import com.alcadrial.renderengine.core.util.Nonnull;
 import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.framebuffer.FrameBuffer;
@@ -192,7 +191,7 @@ public class RenderEngine {
 			return this;
 		}
 		
-		public StateConfigurator setCullFace(@Nonnull CullFaceMode mode)
+		public StateConfigurator setCullFace(CullFaceMode mode)
 		{
 			cullFaceMode = Optional.of(mode);
 			return this;
@@ -204,7 +203,7 @@ public class RenderEngine {
 			return this;
 		}
 		
-		public StateConfigurator setClearColor(@Nonnull Color color)
+		public StateConfigurator setClearColor(Color color)
 		{
 			clearColor = Optional.of(color);
 			return this;

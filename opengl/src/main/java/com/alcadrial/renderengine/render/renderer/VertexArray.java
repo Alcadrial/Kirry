@@ -2,8 +2,6 @@ package com.alcadrial.renderengine.render.renderer;
 
 import org.lwjgl.opengl.GL30;
 
-import com.alcadrial.renderengine.core.util.Nonnull;
-
 public class VertexArray {
 	
 	public static final VertexArray NULL = new VertexArray(0);
@@ -14,7 +12,6 @@ public class VertexArray {
 		NULL.bind();
 	}
 	
-	@Nonnull
 	public static VertexArray getBinded()
 	{
 		return binded;
