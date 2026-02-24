@@ -10,5 +10,5 @@ layout (location = 0) out vec4 tex;
 
 void main()
 {
-	tex = vec4(1,0,0,1);
+	tex = color;
 }

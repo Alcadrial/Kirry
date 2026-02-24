@@ -39,6 +39,7 @@ import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.Surface;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
@@ -50,6 +51,7 @@ import com.alcadrial.renderengine.render.shader.layouts.ShaderInputLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class GraphicsPipelineTemplate implements AutoCloseable {
 	
@@ -84,7 +86,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			)
 			.configureColorBlendState(s -> s
 				.blendConstants(0, 0, 0, 0)
-				.addAttachment(false, 0, 0, 0, 0, 0, 0, 0)
+				.addAttachment(false, 0, 0, 0, 0, 0, 0, VK10.VK_COLOR_COMPONENT_R_BIT | VK10.VK_COLOR_COMPONENT_G_BIT | VK10.VK_COLOR_COMPONENT_B_BIT | VK10.VK_COLOR_COMPONENT_A_BIT)
 			)
 			.configureDynamicStateState(s -> {});
 	}
@@ -111,7 +113,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			)
 			.configureColorBlendState(s -> s
 				.blendConstants(0, 0, 0, 0)
-				.addAttachment(false, 0, 0, 0, 0, 0, 0, 0)
+				.addAttachment(false, 0, 0, 0, 0, 0, 0, VK10.VK_COLOR_COMPONENT_R_BIT | VK10.VK_COLOR_COMPONENT_G_BIT | VK10.VK_COLOR_COMPONENT_B_BIT | VK10.VK_COLOR_COMPONENT_A_BIT)
 			)
 			.configureDynamicStateState(s -> {});
 	}
@@ -138,7 +140,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			)
 			.configureColorBlendState(s -> s
 				.blendConstants(0, 0, 0, 0)
-				.addAttachment(false, 0, 0, 0, 0, 0, 0, 0)
+				.addAttachment(false, 0, 0, 0, 0, 0, 0, VK10.VK_COLOR_COMPONENT_R_BIT | VK10.VK_COLOR_COMPONENT_G_BIT | VK10.VK_COLOR_COMPONENT_B_BIT | VK10.VK_COLOR_COMPONENT_A_BIT)
 			)
 			.configureDynamicStateState(s -> {});
 	}
@@ -153,7 +155,16 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		this.vertexInputStateExtraConfiguration = vertexInputStateExtraConfiguration;
 		this.viewportStateExtraConfiguration = viewportStateExtraConfiguration;
 	}
-	
+
+	public GraphicsPipeline createPipeline(Device device, ShaderProgram program, VulkanWindow window, PipelineLayout layout, RenderPass renderPass, int subpass) throws VulkanException
+	{
+		return createPipeline(device, program, window.getSurface(), layout, renderPass, subpass);
+	}
+
+	public GraphicsPipeline createPipeline(Device device, ShaderProgram program, Surface surface, PipelineLayout layout, RenderPass renderPass, int subpass) throws VulkanException
+	{
+		return createPipeline(device, program, surface.getData().size(), layout, renderPass, subpass);
+	}
 	//TODO change ShaderProgram to ShaderVertexInputs
 	public GraphicsPipeline createPipeline(Device device, ShaderProgram program, Vector2i surfaceSize, PipelineLayout layout, RenderPass renderPass, int subpass) throws VulkanException
 	{

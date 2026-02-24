@@ -15,9 +15,16 @@ public class ShaderLayoutBinding {
 	private int stages;
 	private ShaderLayout.Type descriptorType;
 	private int descriptorCount;
-	private List<ShaderBufferView> layoutsVariables;
-	
-	public ShaderLayoutBinding(int stages, ShaderLayout.Type descriptorType, int descriptorCount, List<ShaderBufferView> layoutsVariables)
+	private List<ShaderVariable> layoutsVariables;
+
+	public ShaderLayoutBinding(int stages, ShaderLayout.Type descriptorType, int descriptorCount, ShaderVariable... layoutsVariables)
+	{
+		this.stages = stages;
+		this.descriptorType = descriptorType;
+		this.descriptorCount = descriptorCount;
+		this.layoutsVariables = List.of(layoutsVariables);
+	}
+	public ShaderLayoutBinding(int stages, ShaderLayout.Type descriptorType, int descriptorCount, List<ShaderVariable> layoutsVariables)
 	{
 		this.stages = stages;
 		this.descriptorType = descriptorType;
@@ -45,7 +52,7 @@ public class ShaderLayoutBinding {
 		return descriptorCount;
 	}
 	
-	public List<ShaderBufferView> getLayoutsVariables()
+	public List<ShaderVariable> getLayoutsVariables()
 	{
 		return layoutsVariables;
 	}

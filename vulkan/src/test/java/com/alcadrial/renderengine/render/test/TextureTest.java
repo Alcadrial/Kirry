@@ -3,7 +3,7 @@ package com.alcadrial.renderengine.render.test;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.math.RoundingMode;
-import java.util.Map;
+import java.util.List;
 
 import javax.imageio.ImageIO;
 
@@ -11,9 +11,6 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
-import org.lwjgl.glfw.GLFWWindowCloseCallbackI;
-import org.lwjgl.glfw.GLFWWindowIconifyCallbackI;
-import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
@@ -21,6 +18,10 @@ import org.lwjgl.vulkan.EXTDepthRangeUnrestricted;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkClearValue;
+import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
+import org.lwjgl.vulkan.VkDescriptorPoolSize;
+import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
+import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo;
 import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
@@ -48,11 +49,11 @@ import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.shader.ShaderUtils;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorPool;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSetLayout;
+import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
 import com.alcadrial.renderengine.render.texture.ImageWriter;
@@ -102,18 +103,13 @@ public class TextureTest extends RenderTest {
 			.size(1080, 720)
 			.title("Test")
 			.build();
-		
-		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> { System.out.println(iconified ? "Iconified" : "Restored"); });
+		window.setName("Window");
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
-			System.out.println("Resized " + width + "x" + height);
 			isModifiedMatrix = true;
 		});
 		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
-			System.out.println("Refresh");
 			isModified = true;
 		});
-		window.setCallback((GLFWWindowCloseCallbackI) w -> { System.out.println("Closed"); });
-		window.setCallback((GLFWWindowMaximizeCallbackI) (w, maximized) -> { System.out.println(maximized ? "Maximized" : "Restored"); });
 		
 		Vector2i[] oldPos = new Vector2i[] {Vector2i.of(0, 0)};
 		Vector2f[] oldMousePos = new Vector2f[] {Vector2f.of(0, 0), Vector2f.of(0, 0)};
@@ -231,10 +227,45 @@ public class TextureTest extends RenderTest {
 			localIndexBuffer.getMemory().unmapMemory();
 			localTextureBuffer.getMemory().unmapMemory();
 			
-			ShaderProgram shaderProgram = shaderProgramFuture.forceGet();
-			Map<Integer, ShaderLayoutBinding> bindingFlags = ShaderUtils.extractData(shaderProgram);
-			DescriptorPool descriptorPool = DescriptorPool.ofShaderProgram(device, shaderProgram, 1);
-			DescriptorSetLayout descriptorSetLayout = DescriptorSetLayout.ofBindings(device, bindingFlags);
+			VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = VkDescriptorPoolCreateInfo.malloc(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
+				.pNext(0)
+				.flags(0)
+				.maxSets(1)
+				.pPoolSizes(VkDescriptorPoolSize.malloc(2, stack)
+					.apply(b -> b
+						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+						.descriptorCount(1)
+					)
+					.apply(b -> b
+						.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+						.descriptorCount(1)
+					)
+					.rewind()
+				);
+			
+			VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
+				.pNext(0)
+				.flags(0)
+				.pBindings(VkDescriptorSetLayoutBinding.malloc(2, stack)
+					.apply(b -> b
+						.binding(0)
+						.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+						.descriptorCount(1)
+						.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
+						.pImmutableSamplers(null))
+					.apply(b -> b
+						.binding(1)
+						.descriptorType(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+						.descriptorCount(1)
+						.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
+						.pImmutableSamplers(null))
+					.rewind()
+				);
+			
+			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
+			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
 			DescriptorSet descriptorSet = descriptorPool.allocate(descriptorSetLayout);
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
 				.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
@@ -250,33 +281,30 @@ public class TextureTest extends RenderTest {
 					.addViewport(OrthoShape.byEnd(Vector3f.of(-1024, -1024, -1024), Vector3f.of(1024, 1024, 1024)))
 					.addFullScissor()
 				)
-				.configureDepthStencilState(s -> s
-					.depthTestEnable(false)
-					.stencilTestEnable(false)
-				)
 				.configureRasterizationState(s -> s
-					.cullMode(VK10.VK_CULL_MODE_NONE)
+					.cullMode(VK10.VK_CULL_MODE_FRONT_BIT)
 				)
 				.build())
 			{
-				graphicsPipeline = template.createPipeline(device, shaderProgram, window.getSurface().getData().size(), layout, renderPass, 0);
+				ShaderProgram shaderProgram = shaderProgramFuture.forceGet();
+				graphicsPipeline = template.createPipeline(device, shaderProgram, window, layout, renderPass, 0);
 			}
 			renderer = Renderer.builder()
 				.graphicsPipeline(graphicsPipeline)
 				.descriptorSets(descriptorSet)
-				.shaderProgram(shaderProgram)
 				.buffersCount(1)
 				.writers(i -> new BufferWriter[] {
 					new BufferWriter(uniformBuffer, uniformBuffer, 0, 256),
 					BufferWriter.nullWriter()//texture
 				})
 				.bindingsLayout(
-						new ShaderVariable[] {
-							ShaderVariable.TRANSFORMATION
-						},
-						new ShaderVariable[] {
-							ShaderVariable.of(ShaderInputType.SAMPLER_2D, TEXTURE_SAMPLER_UNIFORM)
-						})
+						new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, ShaderLayout.Type.UNIFORM_BUFFER, 1, List.of(
+								ShaderVariable.TRANSFORMATION
+						)),
+						new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderLayout.Type.COMBINED_IMAGE_SAMPLER, 1, List.of(
+								ShaderVariable.of(ShaderInputType.SAMPLER_2D, TEXTURE_SAMPLER_UNIFORM)
+						))
+				)
 				.build();
 			
 			renderer.setBuffer(0, vertexBuffer);
@@ -319,9 +347,14 @@ public class TextureTest extends RenderTest {
 					transformation.multiply(model);
 					BufferLayout bufferLayout = renderer.getBufferLayout(0)[0];
 					bufferLayout.set(TRANSFORMATION_UNIFORM, transformation);
-					bufferLayout.flushAndInvalidate();*/
+					bufferLayout.flushAndInvalidate();
+					*/
 				}
-				window.startPresentation();
+				switch (window.startPresentation())
+				{
+					case EMPTY_SURFACE: return;
+					case SURFACE_LOST, OUT_OF_MEMORY, FATAL_ERROR: throw new VulkanException("Presentaton error");
+				}
 				
 				FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
 				CommandBuffer commandBuffer = window.getDevice().createSingleUseCommandBuffer();
@@ -342,7 +375,7 @@ public class TextureTest extends RenderTest {
 				renderPassBeginInfo.pClearValues(clearValues.rewind());
 				
 				commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
-				renderer.draw(commandBuffer);
+				renderer.draw(commandBuffer, 0);
 				commandBuffer.endRenderPass();
 				commandBuffer.endRecording();
 				

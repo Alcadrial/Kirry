@@ -2,7 +2,7 @@ package com.alcadrial.renderengine.render.test;
 
 import java.io.IOException;
 import java.math.RoundingMode;
-import java.util.Map;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
@@ -18,6 +18,10 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkClearValue;
+import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
+import org.lwjgl.vulkan.VkDescriptorPoolSize;
+import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
+import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
@@ -46,11 +50,11 @@ import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.shader.ShaderUtils;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorPool;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSetLayout;
+import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
@@ -287,9 +291,45 @@ public class InstancingTest extends RenderTest {
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			Map<Integer, ShaderLayoutBinding> bindingFlags = ShaderUtils.extractData(shaderProgram);
-			DescriptorPool descriptorPool = DescriptorPool.ofShaderProgram(device, shaderProgram, window.getFramesCount());
-			DescriptorSetLayout descriptorSetLayout = DescriptorSetLayout.ofBindings(device, bindingFlags);
+			VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = VkDescriptorPoolCreateInfo.malloc(stack)
+					.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
+					.pNext(0)
+					.flags(0)
+					.maxSets(3)
+					.pPoolSizes(VkDescriptorPoolSize.malloc(2, stack)
+						.apply(b -> b
+							.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+							.descriptorCount(1)
+						)
+						.apply(b -> b
+							.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+							.descriptorCount(1)
+						)
+						.rewind()
+					);
+				
+			VkDescriptorSetLayoutCreateInfo createInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
+				.pNext(0)
+				.flags(0)
+				.pBindings(VkDescriptorSetLayoutBinding.malloc(2, stack)
+					.apply(b -> b
+						.binding(0)
+						.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+						.descriptorCount(1)
+						.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
+						.pImmutableSamplers(null))
+					.apply(b -> b
+						.binding(1)
+						.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+						.descriptorCount(1)
+						.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
+						.pImmutableSamplers(null))
+					.rewind()
+				);
+			
+			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
+			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, createInfo);
 			DescriptorSet[] descriptorSets = descriptorPool.allocates(descriptorSetLayout, 3);
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
 				.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
@@ -311,22 +351,21 @@ public class InstancingTest extends RenderTest {
 			renderer = Renderer.builder()
 				.graphicsPipeline(graphicsPipeline)
 				.descriptorSets(descriptorSets)
-				.shaderProgram(shaderProgram)
 				.buffersCount(window.getFramesCount())
 				.writers(i -> new BufferWriter[] {
 					new BufferWriter(uniformBuffer, uniformBuffer, 512 * i, 256),
 					new BufferWriter(uniformBuffer, uniformBuffer, 512 * i + 256, 256)
 				})
 				.bindingsLayout(
-						new ShaderVariable[] {
-							ShaderVariable.PROJECTION,
-							ShaderVariable.MODEL
-						},
-						new ShaderVariable[] {
-							ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, LIGHT_POS),
-							ShaderVariable.of(ShaderInputType.FLOAT, LIGHT_INTENSITY),
-							ShaderVariable.of(ShaderInputType.FLOAT, SPACE_FOG_INTENSITY)
-						}
+						new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, ShaderLayout.Type.UNIFORM_BUFFER, 1, List.of(
+								ShaderVariable.PROJECTION,
+								ShaderVariable.MODEL
+						)),
+						new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderLayout.Type.UNIFORM_BUFFER, 1, List.of(
+								ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, LIGHT_POS),
+								ShaderVariable.of(ShaderInputType.FLOAT, LIGHT_INTENSITY),
+								ShaderVariable.of(ShaderInputType.FLOAT, SPACE_FOG_INTENSITY)
+						))
 				)
 				.build();
 			renderer.setBuffer(0, vertexBuffer);

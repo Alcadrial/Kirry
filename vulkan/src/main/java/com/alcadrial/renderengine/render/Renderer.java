@@ -1,9 +1,8 @@
 package com.alcadrial.renderengine.render;
 
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.eclipse.collections.api.set.ImmutableSet;
@@ -21,8 +20,6 @@ import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
-import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.shader.ShaderUtils;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
@@ -43,9 +40,8 @@ public class Renderer implements VulkanDebug {
 		private @Nullable GraphicsPipeline graphicsPipeline;
 		private @Nullable VulkanFunction<Integer, BufferWriter[]> writers;
 		private DescriptorSet @Nullable [] descriptorSets;
-		private @Nullable ShaderProgram shaderProgram;
 		private int buffersCount;
-		private ShaderVariable @Nullable [][] variables;
+		private ShaderLayoutBinding @Nullable [] bindings;
 		
 		private Builder()
 		{
@@ -64,9 +60,9 @@ public class Renderer implements VulkanDebug {
 			return this;
 		}
 		
-		public Builder bindingsLayout(ShaderVariable[]... variables)
+		public Builder bindingsLayout(ShaderLayoutBinding... bindings)
 		{
-			this.variables = variables;
+			this.bindings = bindings;
 			return this;
 		}
 		
@@ -80,12 +76,6 @@ public class Renderer implements VulkanDebug {
 		public Builder descriptorSets(DescriptorSet... descriptorSets)
 		{
 			this.descriptorSets = descriptorSets;
-			return this;
-		}
-		
-		public Builder shaderProgram(ShaderProgram shaderProgram)
-		{
-			this.shaderProgram = shaderProgram;
 			return this;
 		}
 		
@@ -121,11 +111,10 @@ public class Renderer implements VulkanDebug {
 		VulkanFunction<Integer, BufferWriter[]> writersFactory = VulkanErrorUtils.nonNull(builder.writers);
 		for (int i = 0; i < writers.length; i++) writers[i] = writersFactory.apply(i);
 		
-		ShaderProgram shaderProgram = VulkanErrorUtils.nonNull(builder.shaderProgram);
-		layouts = initLayouts(writers, ShaderUtils.extractData(shaderProgram), VulkanErrorUtils.nonNull(builder.variables));
+		layouts = initLayouts(writers, VulkanErrorUtils.nonNull(builder.bindings));
 	}
 	
-	private BufferLayout[][] initLayouts(BufferWriter[][] writers, Map<Integer, ShaderLayoutBinding> bindingFlags, ShaderVariable[][] bindingsVariables) throws VulkanException
+	private BufferLayout[][] initLayouts(BufferWriter[][] writers, ShaderLayoutBinding[] bindingLayouts) throws VulkanException
 	{
 		VkPhysicalDeviceLimits limits = device.getPhysicalDevice().getLimits();
 		int minStorageOffsetAlignment = (int) limits.minStorageBufferOffsetAlignment();
@@ -137,7 +126,7 @@ public class Renderer implements VulkanDebug {
 		for (int i = 0; i < writers.length; i++)
 		{
 			Map<BufferWriter, int[]> perBufferOffset = new HashMap<>();
-			VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(bindingFlags.size());
+			VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(bindingLayouts.length);
 			
 			BufferLayout[] layouts0 = layouts[i] = new BufferLayout[writers[i].length];
 			for (int j = 0; j < writers[i].length; j++)
@@ -151,12 +140,11 @@ public class Renderer implements VulkanDebug {
 			}
 			set[0] = descriptorSets[i].getVk();
 			
-			for (Entry<Integer, ShaderLayoutBinding> e : bindingFlags.entrySet())
+			for (int binding = 0; binding < bindingLayouts.length; binding++)
 			{
-				int binding = e.getKey();
-				ShaderLayoutBinding layoutBinding = e.getValue();
+				ShaderLayoutBinding layoutBinding = bindingLayouts[binding];
 				Type descriptorType = layoutBinding.getDescriptorType();
-				ShaderVariable[] variables = bindingsVariables[binding];
+				List<ShaderVariable> variables = layoutBinding.getLayoutsVariables();
 				
 				switch (descriptorType)
 				{
@@ -165,7 +153,7 @@ public class Renderer implements VulkanDebug {
 						if (layout == null) throw new VulkanException("Missing BufferWriter for binding " + binding);
 						BufferWriter writer = layout.getWriter();
 						int[] offsets = perBufferOffset.get(writer);
-						Debug.debug("[Set 0, Binding " + binding + ", Index 0] " + Arrays.toString(variables));
+						Debug.debug("[Set 0, Binding " + binding + ", Index 0] " + variables);
 						
 						VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
 						writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
@@ -207,7 +195,7 @@ public class Renderer implements VulkanDebug {
 					case COMBINED_IMAGE_SAMPLER -> {
 						BufferLayout layout = layouts0[binding];
 						if (layout == null) throw new VulkanException("Missing BufferWriter for binding " + binding);
-						Debug.debug("[Set 0, Binding " + binding + ", Index 0] " + Arrays.toString(variables));
+						Debug.debug("[Set 0, Binding " + binding + ", Index 0] " + variables);
 						
 						VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
 						writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
@@ -218,7 +206,7 @@ public class Renderer implements VulkanDebug {
 						writeDescriptorSet.descriptorCount(1);
 						writeDescriptorSet.descriptorType(descriptorType.getType());
 						
-						VkDescriptorImageInfo.Buffer descriptorImageInfos = VkDescriptorImageInfo.calloc(variables.length);
+						VkDescriptorImageInfo.Buffer descriptorImageInfos = VkDescriptorImageInfo.calloc(variables.size());
 						for (ShaderVariable variable : variables)
 						{
 							layout.mark(variable, writeDescriptorSets.position() - 1);

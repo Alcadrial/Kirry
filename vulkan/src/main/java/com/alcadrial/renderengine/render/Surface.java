@@ -184,7 +184,7 @@ public class Surface extends AbstractVulkanResource<Long> {
 	{
 		SurfaceData oldData = this.data;
 		SurfaceData data = init();
-		if (DATA_HANDLE.compareAndSet(oldData, data))
+		if (DATA_HANDLE.compareAndSet(this, this.data, data))
 		{
 			oldData.format.free();
 			oldData.extent.free();
