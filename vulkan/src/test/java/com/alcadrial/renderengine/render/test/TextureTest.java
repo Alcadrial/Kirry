@@ -10,11 +10,8 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
-import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.vulkan.EXTDepthRangeUnrestricted;
-import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkClearValue;
 import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
@@ -32,6 +29,7 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
+import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.BufferLayout;
@@ -70,7 +68,7 @@ public class TextureTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, TextureTest::start, () -> defaultLoop(TextureTest::loop), TextureTest::end, false);
+		mainTest(args, TextureTest::start, () -> staticLoop(TextureTest::loop), TextureTest::end, false);
 	}
 	
 	private static Renderer renderer;
@@ -84,7 +82,6 @@ public class TextureTest extends RenderTest {
 	private static Vector2i panelPos;
 	
 	private static boolean isModifiedMatrix;
-	private static boolean isModified;
 	private static boolean isRendererDirty;
 	private static ShaderProgram shaderProgram;
 	private static PipelineLayout pipelineLayout;
@@ -95,22 +92,17 @@ public class TextureTest extends RenderTest {
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
-		VulkanWindow window = VulkanWindow.builder()
-			.deviceExtensions(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME, EXTDepthRangeUnrestricted.VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME)
+		VulkanWindow window = VulkanWindow.defaultBuilder()
+			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
 			.deviceFeatures(f -> f
 				.samplerAnisotropy(true)
 			)
 			.useDepthTexture(false)
-			.size(1080, 720)
-			.title("Test")
-			.build();
+			.build(1080, 720, "Test");
 		window.setName("Window");
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			isModifiedMatrix = true;
 			isRendererDirty = true;
-		});
-		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
-			isModified = true;
 		});
 		
 		Vector2i[] oldPos = new Vector2i[] {Vector2i.of(0, 0)};
@@ -143,19 +135,19 @@ public class TextureTest extends RenderTest {
 				{
 					case 'W':
 						panelPos.add(0, 1);
-						isModified = isModifiedMatrix = true;
+						isModifiedMatrix = true;
 						break;
 					case 'A':
 						panelPos.add(-1, 0);
-						isModified = isModifiedMatrix = true;
+						isModifiedMatrix = true;
 						break;
 					case 'S':
 						panelPos.add(0, -1);
-						isModified = isModifiedMatrix = true;
+						isModifiedMatrix = true;
 						break;
 					case 'D':
 						panelPos.add(1, 0);
-						isModified = isModifiedMatrix = true;
+						isModifiedMatrix = true;
 						break;
 				}
 			}
@@ -301,7 +293,6 @@ public class TextureTest extends RenderTest {
 			bufferLayout.flushAndInvalidate();
 			
 			isModifiedMatrix = true;
-			isModified = true;
 			textureFuture.join();
 			localTextureBuffer.close();
 			localVertexBuffer.close();
@@ -311,68 +302,64 @@ public class TextureTest extends RenderTest {
 	
 	public static void loop(long time, long enlapsed) throws VulkanException
 	{
-		VulkanWindow window = RenderEngine.getVulkan().getWindow();
-		if (isModified)
+		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			try (MemoryStack stack = MemoryStack.stackPush())
+			VulkanWindow window = RenderEngine.getVulkan().getWindow();
+			if (isModifiedMatrix)
 			{
-				isModified = false;
-				if (isModifiedMatrix)
-				{
-					isModifiedMatrix = false;
-					/*
-					Matrix4f transformation = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
-					Matrix4f model = new Matrix4f().translateYTo(-10 * panelPos.y()).translateXTo(-10 * panelPos.x());
-					transformation.multiply(model);
-					BufferLayout bufferLayout = renderer.getBufferLayout(0)[0];
-					bufferLayout.set(TRANSFORMATION_UNIFORM, transformation);
-					bufferLayout.flushAndInvalidate();
-					*/
-				}
-				switch (window.startPresentation())
-				{
-					case EMPTY_SURFACE:
-						return;
-					case SURFACE_LOST, OUT_OF_MEMORY, FATAL_ERROR:
-						throw new VulkanException("Presentaton error");
-				}
-				if (isRendererDirty)
-				{
-					isRendererDirty = false;
-					println("Rebuild graphics pipeline", () -> {
-						graphicsPipeline.close();
-						graphicsPipeline = graphicsPipelineTemplate.createPipeline(window.getDevice(), shaderProgram, window, pipelineLayout, renderPass, 0);
-						renderer.changePipeline(graphicsPipeline, null);
-					}, TestProperties.PRINT_LOADING_TIMES);
-				}
-				
-				FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
-				CommandBuffer commandBuffer = window.getDevice().createSingleUseCommandBuffer();
-				
-				VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
-				renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
-				renderPassBeginInfo.pNext(0);
-				renderPassBeginInfo.renderPass(renderPass.getVk());
-				renderPassBeginInfo.framebuffer(frameBuffer.getVk());
-				
-				VkRect2D renderArea = VkRect2D.calloc(stack);
-				renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
-				renderPassBeginInfo.renderArea(renderArea);
-				
-				VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
-				clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
-				clearValues.get().depthStencil().depth(1).stencil(0);
-				renderPassBeginInfo.pClearValues(clearValues.rewind());
-				
-				commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
-				renderer.draw(commandBuffer, 0);
-				commandBuffer.endRenderPass();
-				commandBuffer.endRecording();
-				
-				window.endPresentation(commandBuffer);
+				isModifiedMatrix = false;
+				/*
+				Matrix4f transformation = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
+				Matrix4f model = new Matrix4f().translateYTo(-10 * panelPos.y()).translateXTo(-10 * panelPos.x());
+				transformation.multiply(model);
+				BufferLayout bufferLayout = renderer.getBufferLayout(0)[0];
+				bufferLayout.set(TRANSFORMATION_UNIFORM, transformation);
+				bufferLayout.flushAndInvalidate();
+				*/
 			}
+			switch (window.startPresentation())
+			{
+				case EMPTY_SURFACE:
+					return;
+				case SURFACE_LOST, OUT_OF_MEMORY, FATAL_ERROR:
+					throw new VulkanException("Presentaton error");
+			}
+			if (isRendererDirty)
+			{
+				isRendererDirty = false;
+				println("Rebuild graphics pipeline", () -> {
+					graphicsPipeline.close();
+					graphicsPipeline = graphicsPipelineTemplate.createPipeline(window.getDevice(), shaderProgram, window, pipelineLayout, renderPass, 0);
+					renderer.changePipeline(graphicsPipeline, null);
+				}, TestProperties.PRINT_LOADING_TIMES);
+			}
+			
+			FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
+			CommandBuffer commandBuffer = window.getCurrentCommandBuffer();
+			
+			VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
+			renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
+			renderPassBeginInfo.pNext(0);
+			renderPassBeginInfo.renderPass(renderPass.getVk());
+			renderPassBeginInfo.framebuffer(frameBuffer.getVk());
+			
+			VkRect2D renderArea = VkRect2D.calloc(stack);
+			renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
+			renderPassBeginInfo.renderArea(renderArea);
+			
+			VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
+			clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
+			clearValues.get().depthStencil().depth(1).stencil(0);
+			renderPassBeginInfo.pClearValues(clearValues.rewind());
+			
+			commandBuffer.beginRecording();
+			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
+			renderer.draw(commandBuffer, 0);
+			commandBuffer.endRenderPass();
+			commandBuffer.endRecording();
+			
+			window.endPresentation(commandBuffer);
 		}
-		window.pollEvents();
 	}
 	
 	public static void end()

@@ -3,9 +3,12 @@ package com.alcadrial.renderengine.render.test.util;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.vulkan.EXTDebugUtils;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
@@ -19,6 +22,7 @@ import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.Version;
+import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.util.functional.VulkanBiConsumer;
 import com.alcadrial.renderengine.render.util.functional.VulkanRunnable;
@@ -68,7 +72,14 @@ public class RenderTest {
 			}
 			catch (Throwable t)
 			{
-				if (RenderEngine.isInitializated()) RenderEngine.terminate();
+				try
+				{
+					if (RenderEngine.isInitializated()) RenderEngine.terminate();
+				}
+				catch (Throwable e)
+				{
+					e.printStackTrace(System.out);
+				}
 				throw t;
 			}
 			finally
@@ -88,12 +99,138 @@ public class RenderTest {
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		String title = window.getTitle();
 		
+		VulkanException[] lastError = new VulkanException[1];
+		
+		int maxfps = TestProperties.MAX_FRAME_RATE.getValue();
+		long firstHighMilestone = 1000000000;
+		long firstMilestone = 1000000000 / maxfps;
+		if (firstMilestone <= 0) firstMilestone = 1;
+		
+		long time = System.nanoTime();
+		long[] lastCurrent = {time};
+		long frame = 0;
+		long milestone = firstMilestone;
+		long highMilestone = firstHighMilestone;
+		
+		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
+			try
+			{
+				long current = System.nanoTime();
+				long enlapsed = current - time;
+				long enlapsedFrame = current - lastCurrent[0];
+				action.accept(enlapsed, enlapsedFrame);
+			}
+			catch (VulkanException e)
+			{
+				lastError[0] = e;
+			}
+		});
+		
+		while (!window.shouldClose() && !hasValidationError.get())
+		{
+			long current = System.nanoTime();
+			long enlapsed = current - time;
+			long enlapsedFrame = current - lastCurrent[0];
+			long pauseTime = milestone - enlapsed;
+			if (pauseTime > 0)
+			{
+				try
+				{
+					synchronized (window)
+					{
+						window.wait(pauseTime / 1000000, (int) (pauseTime % 1000000));
+					}
+				}
+				catch (InterruptedException e)
+				{
+					e.printStackTrace(System.out);
+				}
+				continue;
+			}
+			milestone += (1 - pauseTime / firstMilestone) * firstMilestone;
+			if (enlapsed >= highMilestone)
+			{
+				window.setTitle(title + " fps=" + frame);
+				frame = 0;
+				highMilestone += (enlapsed - highMilestone + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
+			}
+			println("Frame " + frame, () -> action.accept(enlapsed, enlapsedFrame), TestProperties.PRINT_FRAME_TIMES);
+			
+			window.pollEvents();
+			if (lastError[0] != null) throw lastError[0];
+			frame++;
+			lastCurrent[0] = current;
+		}
+		window.getDevice().waitIdle();
+	}
+	
+	public static void staticLoop(VulkanBiConsumer<Long, Long> action) throws VulkanException
+	{
+		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		
+		VulkanException[] lastError = new VulkanException[1];
+		
+		int maxfps = TestProperties.MAX_FRAME_RATE.getValue();
+		long firstMilestone = 1000000000 / maxfps;
+		if (firstMilestone <= 0) firstMilestone = 1;
+		
+		long time = System.nanoTime();
+		long[] lastCurrent = {time};
+		long milestone = firstMilestone;
+		
+		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
+			try
+			{
+				long current = System.nanoTime();
+				long enlapsed = current - time;
+				long enlapsedFrame = current - lastCurrent[0];
+				action.accept(enlapsed, enlapsedFrame);
+			}
+			catch (VulkanException e)
+			{
+				lastError[0] = e;
+			}
+		});
+		
+		while (!window.shouldClose() && !hasValidationError.get())
+		{
+			long current = System.nanoTime();
+			long enlapsed = current - time;
+			long pauseTime = milestone - enlapsed;
+			if (pauseTime > 0)
+			{
+				try
+				{
+					synchronized (window)
+					{
+						window.wait(pauseTime / 1000000, (int) (pauseTime % 1000000));
+					}
+				}
+				catch (InterruptedException e)
+				{
+					e.printStackTrace(System.out);
+				}
+				continue;
+			}
+			milestone += (1 - pauseTime / firstMilestone) * firstMilestone;
+			
+			window.pollEvents();
+			if (lastError[0] != null) throw lastError[0];
+			lastCurrent[0] = current;
+		}
+		window.getDevice().waitIdle();
+	}
+	
+	public static void noEventsloop(VulkanBiConsumer<Long, Long> action) throws VulkanException
+	{
+		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		String title = window.getTitle();
+		
 		int maxfps = TestProperties.MAX_FRAME_RATE.getValue();
 		long firstHighMilestone = 1000000000;
 		long firstMilestone = 1000000000 / maxfps;
 		
 		long time = System.nanoTime();
-		long current;
 		long lastCurrent = time;
 		long frame = 0;
 		long milestone = firstMilestone;
@@ -101,7 +238,7 @@ public class RenderTest {
 		
 		while (!window.shouldClose() && !hasValidationError.get())
 		{
-			current = System.nanoTime();
+			long current = System.nanoTime();
 			long enlapsed = current - time;
 			long enlapsedFrame = current - lastCurrent;
 			long pauseTime = milestone - enlapsed;
@@ -128,9 +265,69 @@ public class RenderTest {
 				highMilestone += (enlapsed - highMilestone + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
 			}
 			println("Frame " + frame, () -> action.accept(enlapsed, enlapsedFrame), TestProperties.PRINT_FRAME_TIMES);
+			
 			frame++;
 			lastCurrent = current;
 		}
+		window.getDevice().waitIdle();
+	}
+	
+	public static void defaultAnimationLoop(VulkanBiConsumer<Long, Long> action) throws VulkanException
+	{
+		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		String title = window.getTitle();
+		ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+		VulkanException[] lastError = new VulkanException[1];
+		
+		int maxfps = TestProperties.MAX_FRAME_RATE.getValue();
+		long period = 1000000000 / maxfps;
+		if (period <= 0) period = 1;
+
+		long firstHighMilestone = 1000000000;
+		long time = System.nanoTime();
+		long[] lastCurrent = {time};
+		long[] frame = { 0 };
+		long[] highMilestone = {firstHighMilestone};
+		
+		service.scheduleAtFixedRate(() -> {
+			try
+			{
+				long current = System.nanoTime();
+				long enlapsed = current - time;
+				long enlapsedFrame = current - lastCurrent[0];
+				if (enlapsed >= highMilestone[0])
+				{
+					window.setTitle(title + " fps=" + frame);
+					frame[0] = 0;
+					highMilestone[0] += (enlapsed - highMilestone[0] + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
+				}
+				println("Frame " + frame, () -> action.accept(enlapsed, enlapsedFrame), TestProperties.PRINT_FRAME_TIMES);
+				frame[0]++;
+				lastCurrent[0] = current;
+			}
+			catch (VulkanException e)
+			{
+				lastError[0] = e;
+				service.shutdown();
+				window.setShouldClose(true);
+			}
+		}, 0, period, TimeUnit.NANOSECONDS);
+		
+		while (!window.shouldClose() && !hasValidationError.get())
+		{
+			window.pollEvents();
+		}
+		try
+		{
+			service.shutdown();
+			if (!service.awaitTermination(500, TimeUnit.MILLISECONDS)) service.shutdownNow();
+		}
+		catch (InterruptedException e)
+		{
+			service.shutdownNow();
+			return;
+		}
+		
 		window.getDevice().waitIdle();
 	}
 	
@@ -214,7 +411,7 @@ public class RenderTest {
 	
 	public static void saveShaderBinary(Shader shader) throws IOException
 	{
-		Files.write(new File(shader.getFile().getPath() + ".bin").toPath(), shader.getLastCompilation().get().binary());
+		Files.write(new File(VulkanErrorUtils.nonNull(shader.getFile()).getPath() + ".bin").toPath(), shader.getLastCompilation().get().binary());
 	}
 	
 	public static void println(String s, VulkanRunnable action, Property<Boolean> printProperty) throws VulkanException

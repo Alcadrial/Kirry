@@ -7,15 +7,9 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
-import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
-import org.lwjgl.glfw.GLFWWindowCloseCallbackI;
-import org.lwjgl.glfw.GLFWWindowIconifyCallbackI;
-import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
-import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkClearValue;
 import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
@@ -26,6 +20,7 @@ import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
+import com.alcadrial.kector.angle.AngleUnit;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
@@ -73,7 +68,7 @@ public class InstancingTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, InstancingTest::start, () -> defaultLoop(InstancingTest::loop), InstancingTest::end, false);
+		mainTest(args, InstancingTest::start, () -> defaultAnimationLoop(InstancingTest::loop), InstancingTest::end, false);
 	}
 	
 	private static RenderPass renderPass;
@@ -88,11 +83,15 @@ public class InstancingTest extends RenderTest {
 	private static Vector3f lightPos;
 	private static float f;
 	private static int instanceCount;
+	private static boolean isModified;
+	private static GraphicsPipelineTemplate graphicsPipelineTemplate;
+	private static ShaderProgram shaderProgram;
+	private static PipelineLayout pipelineLayout;
 	
 	private static Matrix4f buildProjectionMatrix(VulkanWindow window)
 	{
 		Matrix4f matrix = new Matrix4f();
-		//matrix.multiply(new Matrix4f().project(AngleUnit.RADIANS.fromDegrees(90), 0.09F, -0.1F, (float) window.getWidth() / window.getHeight()));
+		matrix.multiply(new Matrix4f().project(AngleUnit.RADIANS.fromDegrees(90), 0.09F, -0.1F, (float) window.getWidth() / window.getHeight()));
 		matrix.multiply(new Matrix4f().view(Vector3f.of(0, 0, -1), 0, 0));
 		return matrix.transpose();
 	}
@@ -100,9 +99,9 @@ public class InstancingTest extends RenderTest {
 	private static Matrix4f buildModelMatrix(float f)
 	{
 		Matrix4f matrix = new Matrix4f();
-		//matrix.multiply(new Matrix4f().rotateZ(AngleUnit.RADIANS.fromDegrees(f / 11)));
-		//matrix.multiply(new Matrix4f().rotateY(AngleUnit.RADIANS.fromDegrees(f / 17)));
-		//matrix.multiply(new Matrix4f().rotateX(AngleUnit.RADIANS.fromDegrees(f / 13)));
+		matrix.multiply(new Matrix4f().rotateZ(AngleUnit.RADIANS.fromDegrees(f / 11)));
+		matrix.multiply(new Matrix4f().rotateY(AngleUnit.RADIANS.fromDegrees(f / 17)));
+		matrix.multiply(new Matrix4f().rotateX(AngleUnit.RADIANS.fromDegrees(f / 13)));
 		matrix.multiply(buildScaleMatrix());
 		return matrix;
 	}
@@ -114,7 +113,6 @@ public class InstancingTest extends RenderTest {
 	
 	public static void start() throws VulkanException
 	{
-		ShaderProgram shaderProgram;
 		try
 		{
 			shaderProgram = ShaderProgram.create()
@@ -133,42 +131,13 @@ public class InstancingTest extends RenderTest {
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
-		VulkanWindow window = VulkanWindow.builder()
-			.physicalDeviceFilter(PhysicalDevice.Filter.withSurfaceGraphicsAndCompute())
+		VulkanWindow window = VulkanWindow.defaultBuilder()
 			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
-			.deviceFeatures(v -> v
-				.wideLines(true)
-				.samplerAnisotropy(true)
-			)
-			.deviceExtensions(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME)
-			.asDefaultPrimary()
-			.size(1080, 720)
-			.title("Test")
-			.build();
+			.build(1080, 720, "Test");
 		
-		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> { System.out.println(iconified ? "Iconified" : "Restored"); });
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
-			System.out.println("Resized " + width + "x" + height);
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				for (int i = 0; i < window.getFramesCount(); i++)
-				{
-					BufferLayout bufferLayout = renderer.getBufferLayout(i)[0];
-					bufferLayout.set(PROJECTION, buildProjectionMatrix(window));
-					bufferLayout.flushAndInvalidate();
-					//TODO notify changes to render-thread
-				}
-			}
-			catch (VulkanException e)
-			{
-				e.printStackTrace(System.out);
-				RenderEngine.terminate();
-				return;
-			}
+			isModified = true;
 		});
-		window.setCallback((GLFWWindowRefreshCallbackI) w -> { System.out.println("Refresh"); });
-		window.setCallback((GLFWWindowCloseCallbackI) w -> { System.out.println("Closed"); });
-		window.setCallback((GLFWWindowMaximizeCallbackI) (w, maximized) -> { System.out.println(maximized ? "Maximized" : "Restored"); });
 		
 		Vector2i[] oldPos = new Vector2i[] {Vector2i.of(0, 0)};
 		Vector2f[] oldMousePos = new Vector2f[] {Vector2f.of(0, 0), Vector2f.of(0, 0)};
@@ -190,32 +159,6 @@ public class InstancingTest extends RenderTest {
 				window.setPos(Vector2i.of((float) x - oldMousePos[0].x() + oldPos[0].x(), (float) y - oldMousePos[0].y() + oldPos[0].y(), RoundingMode.FLOOR));
 				window.getMousePos(oldMousePos[0]);
 				pressing[1] = false;
-			}
-		});
-		
-		window.setCallback((GLFWKeyCallbackI) (w, k, s, a, m) -> {
-			if (k == GLFW.GLFW_KEY_R)
-			{
-				try (MemoryStack stack = MemoryStack.stackPush())
-				{
-					for (int i = 0; i < window.getFramesCount(); i++)
-					{
-						BufferLayout bufferLayout = renderer.getBufferLayout(i)[0];
-						bufferLayout.set(PROJECTION, buildProjectionMatrix(window));
-						bufferLayout.set(MODEL, buildModelMatrix(f));
-						bufferLayout.set(LIGHT_POS, buildScaleMatrix().multiply(lightPos).xyz());
-						bufferLayout.set(LIGHT_INTENSITY, 0.75F);
-						bufferLayout.set(SPACE_FOG_INTENSITY, 0.1F);
-						bufferLayout.flushAndInvalidate();
-						//TODO notify changes to render-thread
-					}
-				}
-				catch (VulkanException e)
-				{
-					e.printStackTrace(System.out);
-					RenderEngine.terminate();
-					return;
-				}
 			}
 		});
 		
@@ -292,22 +235,22 @@ public class InstancingTest extends RenderTest {
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = VkDescriptorPoolCreateInfo.malloc(stack)
-					.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
-					.pNext(0)
-					.flags(0)
-					.maxSets(3)
-					.pPoolSizes(VkDescriptorPoolSize.malloc(2, stack)
-						.apply(b -> b
-							.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-							.descriptorCount(1)
-						)
-						.apply(b -> b
-							.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-							.descriptorCount(1)
-						)
-						.rewind()
-					);
-				
+				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
+				.pNext(0)
+				.flags(0)
+				.maxSets(3)
+				.pPoolSizes(VkDescriptorPoolSize.malloc(2, stack)
+					.apply(b -> b
+						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+						.descriptorCount(1)
+					)
+					.apply(b -> b
+						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+						.descriptorCount(1)
+					)
+					.rewind()
+				);
+			
 			VkDescriptorSetLayoutCreateInfo createInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
 				.pNext(0)
@@ -333,9 +276,9 @@ public class InstancingTest extends RenderTest {
 			DescriptorSet[] descriptorSets = descriptorPool.allocates(descriptorSetLayout, 3);
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
 				.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
-			PipelineLayout layout = new PipelineLayout(device, pipelineLayoutInfo);
+			pipelineLayout = new PipelineLayout(device, pipelineLayoutInfo);
 			
-			try (GraphicsPipelineTemplate template = GraphicsPipelineTemplate.create3dRenderingPipeline()
+			graphicsPipelineTemplate = GraphicsPipelineTemplate.create3dRenderingPipeline()
 				.configureVertexInputState(s -> s
 					.addBinding(0, 40, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
 					.addBinding(1, 12, VK10.VK_VERTEX_INPUT_RATE_INSTANCE)
@@ -344,10 +287,10 @@ public class InstancingTest extends RenderTest {
 					.addAttribute(2, 0, 28)
 					.addAttribute(3, 1, 0)
 				)
-				.build())
-			{
-				graphicsPipeline = template.createPipeline(device, shaderProgram, window.getSurface().getData().size(), layout, renderPass, 0);
-			}
+				.build();
+			
+			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window.getSurface().getData().size(), pipelineLayout, renderPass, 0);
+			
 			renderer = Renderer.builder()
 				.graphicsPipeline(graphicsPipeline)
 				.descriptorSets(descriptorSets)
@@ -357,22 +300,21 @@ public class InstancingTest extends RenderTest {
 					new BufferWriter(uniformBuffer, uniformBuffer, 512 * i + 256, 256)
 				})
 				.bindingsLayout(
-						new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, ShaderLayout.Type.UNIFORM_BUFFER, 1, List.of(
-								ShaderVariable.PROJECTION,
-								ShaderVariable.MODEL
-						)),
-						new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderLayout.Type.UNIFORM_BUFFER, 1, List.of(
-								ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, LIGHT_POS),
-								ShaderVariable.of(ShaderInputType.FLOAT, LIGHT_INTENSITY),
-								ShaderVariable.of(ShaderInputType.FLOAT, SPACE_FOG_INTENSITY)
-						))
+					new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, ShaderLayout.Type.UNIFORM_BUFFER, 1, List.of(
+						ShaderVariable.PROJECTION,
+						ShaderVariable.MODEL
+					)),
+					new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderLayout.Type.UNIFORM_BUFFER, 1, List.of(
+						ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, LIGHT_POS),
+						ShaderVariable.of(ShaderInputType.FLOAT, LIGHT_INTENSITY),
+						ShaderVariable.of(ShaderInputType.FLOAT, SPACE_FOG_INTENSITY)
+					))
 				)
 				.build();
 			renderer.setBuffer(0, vertexBuffer);
 			renderer.setBuffer(1, instanceVertexBuffer);
 			renderer.setIndexBuffer(indexBuffer);
 			
-			VulkanBuffer localUniformBuffer = InstancingTest.localUniformBuffer;
 			if (localUniformBuffer != null)
 			{
 				CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
@@ -423,11 +365,33 @@ public class InstancingTest extends RenderTest {
 	
 	public static void loop(long time, long enlapsed) throws VulkanException
 	{
-		VulkanWindow window = RenderEngine.getVulkan().getWindow();
-		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			window.startPresentation();
+			VulkanWindow window = RenderEngine.getVulkan().getWindow();
+			switch (window.startPresentation())
+			{
+				case EMPTY_SURFACE:
+					return;
+				case SURFACE_LOST, OUT_OF_MEMORY, FATAL_ERROR:
+					throw new VulkanException("Presentaton error");
+			}
+			if (isModified)
+			{
+				isModified = false;
+				println("Resize", () -> {
+					graphicsPipeline.close();
+					graphicsPipeline = graphicsPipelineTemplate.createPipeline(window.getDevice(), shaderProgram, window, pipelineLayout, renderPass, 0);
+					renderer.changePipeline(graphicsPipeline, null);
+					
+					for (int i = 0; i < window.getFramesCount(); i++)
+					{
+						BufferLayout bufferLayout = renderer.getBufferLayout(i)[0];
+						bufferLayout.set(PROJECTION, buildProjectionMatrix(window));
+						bufferLayout.flush();
+					}
+				}, TestProperties.PRINT_LOADING_TIMES);
+			}
+			
 			FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
 			CommandBuffer commandBuffer = window.getCurrentCommandBuffer();
 			BufferLayout bufferLayout = renderer.getBufferLayout(window.getFrameIndex())[0];
@@ -465,14 +429,14 @@ public class InstancingTest extends RenderTest {
 			commandBuffer.endRecording();
 			
 			window.endPresentation(commandBuffer);
+			f = time / 1000000F;
 		}
-		println("pollEvents", () -> window.pollEvents(), TestProperties.PRINT_FRAME_TIMES);
-		f = time / 1000000F;
 	}
 	
 	public static void end()
 	{
 		graphicsPipeline.close();
+		graphicsPipelineTemplate.close();
 		synchronized (MONITOR)
 		{
 			MONITOR.notify();

@@ -3,6 +3,7 @@ package com.alcadrial.renderengine.render.window;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -98,9 +99,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		private String deviceExtensions[];
 		private boolean defaultPrimary;
 		private boolean secondary;
-		private int width;
-		private int height;
-		private @Nullable String title;
 		private boolean useDepthTexture;
 		private long vk;
 		private @Nullable VulkanWindow window;
@@ -110,12 +108,9 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			filter = PhysicalDevice.Filter.any();
 			strategy = PhysicalDevice.Strategy.findBest();
 			deviceFeatures = VkPhysicalDeviceFeatures.calloc();
-			deviceExtensions = new String[0];
+			deviceExtensions = new String[] { KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 			defaultPrimary = false;
 			secondary = false;
-			width = -1;
-			height = -1;
-			title = null;
 			useDepthTexture = true;
 			vk = 0;
 			window = null;
@@ -141,7 +136,8 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		
 		public Builder deviceExtensions(String... deviceExtensions)
 		{
-			this.deviceExtensions = deviceExtensions;
+			this.deviceExtensions = Arrays.copyOf(deviceExtensions, deviceExtensions.length + 1);
+			this.deviceExtensions[deviceExtensions.length] = KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME;
 			return this;
 		}
 		
@@ -163,19 +159,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			return this;
 		}
 		
-		public Builder size(int width, int height)
-		{
-			this.width = width;
-			this.height = height;
-			return this;
-		}
-		
-		public Builder title(String title)
-		{
-			this.title = title;
-			return this;
-		}
-		
 		public Builder useDepthTexture(boolean useDepthTexture)
 		{
 			this.useDepthTexture = useDepthTexture;
@@ -190,9 +173,8 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		 * Must be called from the main thread if single threaded otherwise it will block waiting for the main thread.
 		 * @throws VulkanException 
 		 */
-		public VulkanWindow build() throws VulkanException
+		public VulkanWindow build(int width, int height, String title) throws VulkanException
 		{
-			String title = VulkanErrorUtils.nonNull(this.title, "The window's tile must be set");
 			Vulkan vulkan = RenderEngine.getVulkan();
 			
 			RenderEngine.setWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API);
@@ -218,7 +200,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		
 		public VulkanWindow rebuild(VulkanWindow oldWindow) throws VulkanException
 		{
-			String title = VulkanErrorUtils.nonNull(this.title, "The window's tile must be set");
 			Vulkan vulkan = RenderEngine.getVulkan();
 			
 			vk = oldWindow.id;
@@ -234,7 +215,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				throw new VulkanException("A broken PhysicalDevicePickStrategy has been used", e);
 			}
 			Device device = vulkan.createDevice(deviceFeatures, surface, deviceExtensions);
-			VulkanWindow window = new VulkanWindow(this, vk, title, device, surface);
+			VulkanWindow window = new VulkanWindow(this, vk, oldWindow.getTitle(), device, surface);
 			vulkan.replaceWindow(oldWindow, window);
 			this.window = window;
 			return window;
@@ -254,6 +235,14 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	public static Builder builder()
 	{
 		return new Builder();
+	}
+	
+	public static Builder defaultBuilder()
+	{
+		return new Builder()
+			.physicalDeviceFilter(PhysicalDevice.Filter.withSurfaceGraphicsAndCompute())
+			.physicalDeviceStrategy(PhysicalDevice.Strategy.findBest())
+			.asDefaultPrimary();
 	}
 	
 	public class FrameData implements AutoCloseable {
@@ -349,7 +338,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private final Surface surface;
 	private final AtomicBoolean isSurfaceSizeChanged;
 	
-	private final @Nullable Texture depthTexture;
+	private @Nullable Texture depthTexture;
 	private final RenderPass renderPass;
 	private ShaderProgram shaderProgram;
 	private Swapchain swapchain;
@@ -360,31 +349,21 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private final List<CommandBuffer> commandBuffers;
 	private int frameIndex;
 	private Screen screen;
-	private int drawCount;
+//	private int drawCount;
 	
 	private @Nullable String name;
 	private boolean isLost;
 	
 	private VulkanWindow(Builder builder, long windowId, String title, Device device, Surface.Builder surfaceBuilder) throws VulkanException
 	{
-		VulkanErrorUtils.assertStatement(builder.width >= 0, "The window's sizes must not be negative");
-		VulkanErrorUtils.assertStatement(builder.height >= 0, "The window's sizes must not be negative");
 		VulkanErrorUtils.assertStatement(device.getPresentQueue() != null, "The device must be able to present to this window's surface");
 		
 		this.id = windowId;
-		if (builder.width == 0 || builder.height == 0)
-		{
-			int[] p0 = builder.width == 0 ? new int[1] : null;
-			int[] p1 = builder.height == 0 ? new int[1] : null;
-			GLFW.glfwGetWindowSize(id, p0, p1);
-			if (builder.width == 0) this.width = ((int @NonNull []) p0)[0];
-			if (builder.height == 0) this.height = ((int @NonNull []) p1)[0];
-		}
-		else
-		{
-			this.width = builder.width;
-			this.height = builder.height;
-		}
+		int[] p0 = new int[1];
+		int[] p1 = new int[1];
+		GLFW.glfwGetWindowSize(id, p0, p1);
+		this.width = p0[0];
+		this.height = p1[0];
 		
 		this.title = title;
 		this.device = device;
@@ -394,11 +373,10 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		SurfaceData surfaceData = surface.getData();
 		resetCallbacks();
 		shaderProgram = ShaderProgram.DEFAULT;
-		drawCount = 0;
-		depthTexture = builder.useDepthTexture ? createDepthTexture(surfaceData) : null;
+	//	drawCount = 0;
 		
 		int format = surfaceData.format().format();
-		try (RenderPassTemplate renderPassTemplate = depthTexture != null ? RenderPassTemplate.initColorDepthTextureTemplate(format) : RenderPassTemplate.initColorTextureTemplate(format))
+		try (RenderPassTemplate renderPassTemplate = builder.useDepthTexture ? RenderPassTemplate.initColorDepthTextureTemplate(format) : RenderPassTemplate.initColorTextureTemplate(format))
 		{
 			renderPass = renderPassTemplate.createRenderPass(device);
 		}
@@ -408,7 +386,8 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		
 		onSwapchainRecreationCallbacks = new LinkedList<>();
 		swapchain = createSwapchain(surfaceData, null);
-		frames = prepareFrameBuffers(surfaceData, swapchain, null);
+		depthTexture = builder.useDepthTexture ? createDepthTexture(surfaceData) : null;
+		frames = prepareFrameBuffers(surfaceData, swapchain, depthTexture, null);
 		presentationTasks = new ArrayList<>();
 		for (int i = 0; i < frames.length; i++) presentationTasks.add(new LinkedList<>());
 		screen = BlackScreen.BLACK_SCREEN;
@@ -460,7 +439,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		}
 	}
 	
-	private FrameData[] prepareFrameBuffers(SurfaceData surfaceData, Swapchain swapchain, FrameData @Nullable [] oldFrames) throws VulkanException
+	private FrameData[] prepareFrameBuffers(SurfaceData surfaceData, Swapchain swapchain, @Nullable Texture depthTexture, FrameData @Nullable [] oldFrames) throws VulkanException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -579,13 +558,16 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			
 			Swapchain oldSwapchain = swapchain;
 			FrameData[] oldFrames = frames;
+			@Nullable Texture oldDepthTexture = depthTexture;
 			
 			Swapchain newSwapchain = createSwapchain(surfaceData, oldSwapchain);
-			FrameData[] newFrames = prepareFrameBuffers(surfaceData, newSwapchain, oldFrames);
+			@Nullable Texture newDepthTexture = oldDepthTexture != null ? createDepthTexture(surfaceData) : null;
+			FrameData[] newFrames = prepareFrameBuffers(surfaceData, newSwapchain, newDepthTexture, oldFrames);
 			
 			for (VulkanConsumer<SurfaceData> callback : onSwapchainRecreationCallbacks) callback.accept(surfaceData);
 			frames = newFrames;
 			if (name != null) newSwapchain.setName("Swapchain (" + name + ")");
+			depthTexture = newDepthTexture;
 			swapchain = newSwapchain;
 			
 			for (int i = 0; i < frames.length; i++)
@@ -597,7 +579,10 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 					VK10.vkDestroyImageView(device.getVk(), frame.imageView, null);
 				});
 			}
-			presentationTasks.get(frameIndex).add(oldSwapchain::close);
+			presentationTasks.get(frameIndex).add(() -> {
+				oldSwapchain.close();
+				if (oldDepthTexture != null) oldDepthTexture.close();
+			});
 			return true;
 		}
 	}
