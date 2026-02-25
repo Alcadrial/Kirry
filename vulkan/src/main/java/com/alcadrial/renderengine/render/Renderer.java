@@ -1,5 +1,6 @@
 package com.alcadrial.renderengine.render;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -90,6 +91,9 @@ public class Renderer implements VulkanDebug {
 		return new Builder();
 	}
 	
+	private final BufferWriter[][] writers;
+	private final ShaderLayoutBinding[] bindings;
+	
 	private Device device;
 	private GraphicsPipeline graphicsPipeline;
 	private VulkanBuffer[] buffers;
@@ -107,14 +111,15 @@ public class Renderer implements VulkanDebug {
 		buffers = new VulkanBuffer[activeBindings.isEmpty() ? 0 : activeBindings.max() + 1];
 		
 		if (builder.buffersCount < 0) throw new IllegalStateException();
-		BufferWriter[][] writers = new BufferWriter[builder.buffersCount][];
+		writers = new BufferWriter[builder.buffersCount][];
 		VulkanFunction<Integer, BufferWriter[]> writersFactory = VulkanErrorUtils.nonNull(builder.writers);
 		for (int i = 0; i < writers.length; i++) writers[i] = writersFactory.apply(i);
+		bindings = VulkanErrorUtils.nonNull(builder.bindings);
 		
-		layouts = initLayouts(writers, VulkanErrorUtils.nonNull(builder.bindings));
+		layouts = initLayouts();
 	}
 	
-	private BufferLayout[][] initLayouts(BufferWriter[][] writers, ShaderLayoutBinding[] bindingLayouts) throws VulkanException
+	private BufferLayout[][] initLayouts() throws VulkanException
 	{
 		VkPhysicalDeviceLimits limits = device.getPhysicalDevice().getLimits();
 		int minStorageOffsetAlignment = (int) limits.minStorageBufferOffsetAlignment();
@@ -126,7 +131,7 @@ public class Renderer implements VulkanDebug {
 		for (int i = 0; i < writers.length; i++)
 		{
 			Map<BufferWriter, int[]> perBufferOffset = new HashMap<>();
-			VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(bindingLayouts.length);
+			VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(bindings.length);
 			
 			BufferLayout[] layouts0 = layouts[i] = new BufferLayout[writers[i].length];
 			for (int j = 0; j < writers[i].length; j++)
@@ -140,9 +145,9 @@ public class Renderer implements VulkanDebug {
 			}
 			set[0] = descriptorSets[i].getVk();
 			
-			for (int binding = 0; binding < bindingLayouts.length; binding++)
+			for (int binding = 0; binding < bindings.length; binding++)
 			{
-				ShaderLayoutBinding layoutBinding = bindingLayouts[binding];
+				ShaderLayoutBinding layoutBinding = bindings[binding];
 				Type descriptorType = layoutBinding.getDescriptorType();
 				List<ShaderVariable> variables = layoutBinding.getLayoutsVariables();
 				
@@ -228,6 +233,27 @@ public class Renderer implements VulkanDebug {
 			writeDescriptorSets.rewind();
 		}
 		return layouts;
+	}
+	
+	public void changePipeline(@Nullable GraphicsPipeline newPipeline, DescriptorSet @Nullable [] newSets) throws VulkanException
+	{
+		if (newPipeline == null)
+		{
+			if (newSets == null) return;
+			if (Arrays.equals(descriptorSets, newSets)) return;
+			layouts = initLayouts();
+			return;
+		}
+		this.graphicsPipeline = newPipeline;
+		
+		ImmutableSet<Integer> activeBindings = graphicsPipeline.getActiveBindings();
+		if (newPipeline.getDevice() != this.device || !newPipeline.getLayout().equals(graphicsPipeline.getLayout())) layouts = initLayouts();
+		int newBindingsCount = activeBindings.isEmpty() ? 0 : activeBindings.max() + 1;
+		if (buffers.length != newBindingsCount)
+		{
+			VulkanBuffer[] newBuffers = new VulkanBuffer[newBindingsCount];
+			for (int i = 0; i < Math.min(newBuffers.length, buffers.length); i++) newBuffers[i] = buffers[i];
+		}
 	}
 	
 	public BufferLayout[] getBufferLayout(int index)

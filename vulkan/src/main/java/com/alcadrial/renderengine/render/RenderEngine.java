@@ -8,6 +8,7 @@ import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -346,7 +347,7 @@ public class RenderEngine extends RenderEngineCore {
 		return new AsyncRunnableTaskHandler(action);
 	}
 	
-	public static <V> VulkanFuture<V> submitAsync(VulkanSupplier<V> action)
+	public static <V> VulkanFuture<V> submitAsync(Callable<V> action)
 	{
 		return new AsyncSupplierTaskHandler<>(action);
 	}
@@ -535,9 +536,9 @@ public class RenderEngine extends RenderEngineCore {
 	
 	private static class AsyncSupplierTaskHandler<V> extends AsyncTaskHandler<V> {
 		
-		private VulkanSupplier<V> action;
+		private Callable<V> action;
 		
-		public AsyncSupplierTaskHandler(VulkanSupplier<V> action)
+		public AsyncSupplierTaskHandler(Callable<V> action)
 		{
 			this.action = action;
 			start();
@@ -546,7 +547,14 @@ public class RenderEngine extends RenderEngineCore {
 		@Override
 		protected V execute() throws VulkanException
 		{
-			return action.get();
+			try
+			{
+				return action.call();
+			}
+			catch (Exception e)
+			{
+				throw new ExternalException(e);
+			}
 		}
 	}
 	

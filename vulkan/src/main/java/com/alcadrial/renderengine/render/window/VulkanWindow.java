@@ -78,6 +78,7 @@ import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanResource;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.functional.VulkanConsumer;
 import com.alcadrial.renderengine.render.util.functional.VulkanRunnable;
 
 public class VulkanWindow extends Window implements VulkanResource<Long> {
@@ -354,6 +355,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private Swapchain swapchain;
 	private FrameData[] frames;
 	private List<Queue<VulkanRunnable>> presentationTasks;
+	private List<VulkanConsumer<SurfaceData>> onSwapchainRecreationCallbacks;
 	
 	private final List<CommandBuffer> commandBuffers;
 	private int frameIndex;
@@ -404,6 +406,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		commandBuffers = device.createMultiUseCommandBuffer(BUFFERED_FRAMES_COUNT);
 		for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.beginRecording();
 		
+		onSwapchainRecreationCallbacks = new LinkedList<>();
 		swapchain = createSwapchain(surfaceData, null);
 		frames = prepareFrameBuffers(surfaceData, swapchain, null);
 		presentationTasks = new ArrayList<>();
@@ -580,6 +583,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			Swapchain newSwapchain = createSwapchain(surfaceData, oldSwapchain);
 			FrameData[] newFrames = prepareFrameBuffers(surfaceData, newSwapchain, oldFrames);
 			
+			for (VulkanConsumer<SurfaceData> callback : onSwapchainRecreationCallbacks) callback.accept(surfaceData);
 			frames = newFrames;
 			if (name != null) newSwapchain.setName("Swapchain (" + name + ")");
 			swapchain = newSwapchain;
@@ -596,6 +600,11 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			presentationTasks.get(frameIndex).add(oldSwapchain::close);
 			return true;
 		}
+	}
+	
+	public void addOnSwapchainRecreationCallback(VulkanConsumer<SurfaceData> callback)
+	{
+		onSwapchainRecreationCallbacks.add(callback);
 	}
 	
 	public enum PresentationResult {

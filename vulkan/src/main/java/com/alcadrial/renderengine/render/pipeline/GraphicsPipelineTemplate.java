@@ -155,16 +155,17 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		this.vertexInputStateExtraConfiguration = vertexInputStateExtraConfiguration;
 		this.viewportStateExtraConfiguration = viewportStateExtraConfiguration;
 	}
-
+	
 	public GraphicsPipeline createPipeline(Device device, ShaderProgram program, VulkanWindow window, PipelineLayout layout, RenderPass renderPass, int subpass) throws VulkanException
 	{
 		return createPipeline(device, program, window.getSurface(), layout, renderPass, subpass);
 	}
-
+	
 	public GraphicsPipeline createPipeline(Device device, ShaderProgram program, Surface surface, PipelineLayout layout, RenderPass renderPass, int subpass) throws VulkanException
 	{
 		return createPipeline(device, program, surface.getData().size(), layout, renderPass, subpass);
 	}
+	
 	//TODO change ShaderProgram to ShaderVertexInputs
 	public GraphicsPipeline createPipeline(Device device, ShaderProgram program, Vector2i surfaceSize, PipelineLayout layout, RenderPass renderPass, int subpass) throws VulkanException
 	{
@@ -410,7 +411,8 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			
 			public ViewportStateConfigurator addDefaultViewport()
 			{
-				viewports.add(OrthoShape.byEnd(Vector3f.origin(), Vector3f.of(1, 1, 1)));
+				//TODO: replace with a special "lazy" OrthoShape
+				viewports.add(null);
 				return this;
 			}
 			
@@ -440,13 +442,20 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				if (!viewports.isEmpty())
 				{
 					pViewports = VkViewport.malloc(viewports.size());
-					for (OrthoShape viewport : viewports) pViewports.get()
-						.x(viewport.getStart().x())
-						.y(viewport.getStart().y())
-						.minDepth(viewport.getStart().z())
-						.width(viewport.getEnd().x() - viewport.getStart().x())
-						.height(viewport.getEnd().y() - viewport.getStart().y())
-						.maxDepth(viewport.getEnd().z());
+					for (OrthoShape viewport : viewports)
+					{
+						VkViewport vkViewport = pViewports.get();
+						if (viewport != null)
+						{
+							vkViewport
+								.x(viewport.getStart().x())
+								.y(viewport.getStart().y())
+								.minDepth(viewport.getStart().z())
+								.width(viewport.getEnd().x() - viewport.getStart().x())
+								.height(viewport.getEnd().y() - viewport.getStart().y())
+								.maxDepth(viewport.getEnd().z());
+						}
+					}
 					pViewports.rewind();
 				}
 				VkRect2D.Buffer pScissors = null;
@@ -456,13 +465,13 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 					pScissors = VkRect2D.malloc(scissors.size());
 					for (Vector4i scissor : scissors)
 					{
-						VkRect2D rect = pScissors.get();
+						VkRect2D vkScissor = pScissors.get();
 						if (scissor != null)
 						{
-							rect.offset()
+							vkScissor.offset()
 								.x(scissor.x())
 								.y(scissor.y());
-							rect.extent()
+							vkScissor.extent()
 								.width(scissor.z())
 								.height(scissor.w());
 						}
@@ -487,9 +496,10 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 					{
 						for (Vector4i scissor : scissors)
 						{
+							VkRect2D vkScissor = pScissors.get();
 							if (scissor == null)
 							{
-								VkRect2D rect = pScissors.get();
+								VkRect2D rect = vkScissor;
 								rect.offset()
 									.x(0)
 									.y(0);
@@ -498,6 +508,26 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 									.height(surfaceSize.y());
 							}
 						}
+						pScissors.rewind();
+					}
+					VkViewport.Buffer pViewports = createInfo.pViewports();
+					if (pViewports != null)
+					{
+						for (OrthoShape viewport : viewports)
+						{
+							VkViewport vkViewport = pViewports.get();
+							if (viewport == null)
+							{
+								vkViewport
+									.x(0)
+									.y(0)
+									.minDepth(0)
+									.width(surfaceSize.x())
+									.height(surfaceSize.y())
+									.maxDepth(1);
+							}
+						}
+						pViewports.rewind();
 					}
 					return createInfo;
 				};

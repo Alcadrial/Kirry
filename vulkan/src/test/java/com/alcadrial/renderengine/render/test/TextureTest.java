@@ -1,7 +1,6 @@
 package com.alcadrial.renderengine.render.test;
 
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.math.RoundingMode;
 import java.util.List;
 
@@ -28,10 +27,8 @@ import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kector.shape.OrthoShape;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
@@ -56,18 +53,18 @@ import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSetLayout;
 import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
+import com.alcadrial.renderengine.render.test.util.TestProperties;
 import com.alcadrial.renderengine.render.texture.ImageWriter;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
 import com.alcadrial.renderengine.render.util.VulkanFuture;
-import com.alcadrial.renderengine.render.util.exception.ExternalException;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
 public class TextureTest extends RenderTest {
 	
-	private static final String SHADER = "shader";
+	private static final String SHADER = "shader0";
 	private static final String TRANSFORMATION_UNIFORM = "TRANSFORMATION";
 	private static final String TEXTURE_SAMPLER_UNIFORM = "TEXTURE_SAMPLER";
 	
@@ -78,6 +75,7 @@ public class TextureTest extends RenderTest {
 	
 	private static Renderer renderer;
 	private static RenderPass renderPass;
+	private static GraphicsPipelineTemplate graphicsPipelineTemplate;
 	private static GraphicsPipeline graphicsPipeline;
 	private static Texture texture;
 	private static VulkanBuffer vertexBuffer;
@@ -87,6 +85,9 @@ public class TextureTest extends RenderTest {
 	
 	private static boolean isModifiedMatrix;
 	private static boolean isModified;
+	private static boolean isRendererDirty;
+	private static ShaderProgram shaderProgram;
+	private static PipelineLayout pipelineLayout;
 	
 	public static void start() throws VulkanException
 	{
@@ -106,6 +107,7 @@ public class TextureTest extends RenderTest {
 		window.setName("Window");
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			isModifiedMatrix = true;
+			isRendererDirty = true;
 		});
 		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
 			isModified = true;
@@ -159,33 +161,17 @@ public class TextureTest extends RenderTest {
 			}
 		});
 		
-		VulkanFuture<BufferedImage> future = RenderEngine.submitAsync(() -> {
-			try
-			{
-				return ImageIO.read(getFile("KhishweTransparent.png"));
-			}
-			catch (IOException e)
-			{
-				throw new ExternalException(e);
-			}
-		});
+		VulkanFuture<BufferedImage> imageFuture = RenderEngine.submitAsync(() -> ImageIO.read(getFile("icon.png")));
 		VulkanFuture<ShaderProgram> shaderProgramFuture = RenderEngine.submitAsync(() -> {
-			try
-			{
-				PreparedShader vertexShader = loadShader(SHADER + ".vert");
-				PreparedShader fragmentShader = loadShader(SHADER + ".frag");
-				return ShaderProgram.create().add(vertexShader, fragmentShader).build();
-			}
-			catch (IOException e)
-			{
-				throw new ExternalException(e);
-			}
+			PreparedShader vertexShader = loadShader(SHADER + ".vert");
+			PreparedShader fragmentShader = loadShader(SHADER + ".frag");
+			return ShaderProgram.create().add(vertexShader, fragmentShader).build();
 		});
 		
 		Device device = window.getDevice();
 		
-		vertexBuffer = new VulkanBuffer(device, 28 * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-		indexBuffer = new VulkanBuffer(device, 6 * 4 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		vertexBuffer = new VulkanBuffer(device, 28 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		indexBuffer = new VulkanBuffer(device, 6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		uniformBuffer = new VulkanBuffer(device, 256, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 		uniformBuffer.getMemory().mapMemory();
 		
@@ -200,7 +186,7 @@ public class TextureTest extends RenderTest {
 			BufferWriter vertexBufferWriter = new BufferWriter(localVertexBuffer, vertexBuffer);
 			BufferWriter indexBufferWriter = new BufferWriter(localIndexBuffer, indexBuffer);
 			
-			RenderingDataUtils.loadRectangleUv(vertexBufferWriter, indexBufferWriter, 0, -1, -1, 1, 1, 0, 0, 0, 1, 1);
+			RenderingDataUtils.loadRectangleUv(vertexBufferWriter, indexBufferWriter, 0, -1, 1, 1, -1, 0, 0, 0, 1, 1);
 			vertexBufferWriter.close();
 			indexBufferWriter.close();
 			
@@ -208,7 +194,7 @@ public class TextureTest extends RenderTest {
 			
 			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
 			
-			BufferedImage image = future.forceGet();
+			BufferedImage image = imageFuture.forceGet();
 			texture = Texture.create2dTexture(device, image.getWidth(), image.getHeight(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 			
@@ -269,26 +255,17 @@ public class TextureTest extends RenderTest {
 			DescriptorSet descriptorSet = descriptorPool.allocate(descriptorSetLayout);
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
 				.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
-			PipelineLayout layout = new PipelineLayout(device, pipelineLayoutInfo);
+			pipelineLayout = new PipelineLayout(device, pipelineLayoutInfo);
 			
-			try (GraphicsPipelineTemplate template = GraphicsPipelineTemplate.create3dRenderingPipeline()
+			graphicsPipelineTemplate = GraphicsPipelineTemplate.createScreenRenderingPipeline()
 				.configureVertexInputState(s -> s
 					.addBinding(0, 20, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
 					.addAttribute(0, 0, 0)
 					.addAttribute(1, 0, 12)
 				)
-				.configureViewportState(s -> s
-					.addViewport(OrthoShape.byEnd(Vector3f.of(-1024, -1024, -1024), Vector3f.of(1024, 1024, 1024)))
-					.addFullScissor()
-				)
-				.configureRasterizationState(s -> s
-					.cullMode(VK10.VK_CULL_MODE_FRONT_BIT)
-				)
-				.build())
-			{
-				ShaderProgram shaderProgram = shaderProgramFuture.forceGet();
-				graphicsPipeline = template.createPipeline(device, shaderProgram, window, layout, renderPass, 0);
-			}
+				.build();
+			shaderProgram = shaderProgramFuture.forceGet();
+			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
 			renderer = Renderer.builder()
 				.graphicsPipeline(graphicsPipeline)
 				.descriptorSets(descriptorSet)
@@ -298,17 +275,19 @@ public class TextureTest extends RenderTest {
 					BufferWriter.nullWriter()//texture
 				})
 				.bindingsLayout(
-						new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, ShaderLayout.Type.UNIFORM_BUFFER, 1, List.of(
-								ShaderVariable.TRANSFORMATION
-						)),
-						new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderLayout.Type.COMBINED_IMAGE_SAMPLER, 1, List.of(
-								ShaderVariable.of(ShaderInputType.SAMPLER_2D, TEXTURE_SAMPLER_UNIFORM)
-						))
+					new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, ShaderLayout.Type.UNIFORM_BUFFER, 1, List.of(
+						ShaderVariable.TRANSFORMATION
+					)),
+					new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderLayout.Type.COMBINED_IMAGE_SAMPLER, 1, List.of(
+						ShaderVariable.of(ShaderInputType.SAMPLER_2D, TEXTURE_SAMPLER_UNIFORM)
+					))
 				)
 				.build();
 			
 			renderer.setBuffer(0, vertexBuffer);
 			renderer.setIndexBuffer(indexBuffer);
+			isRendererDirty = false;
+			
 			BufferLayout bufferLayout = renderer.getBufferLayout(0)[1];
 			bufferLayout.set(TEXTURE_SAMPLER_UNIFORM, texture.getView(), new TextureSampler(device));
 			bufferLayout.updateDescriptorSets();
@@ -352,8 +331,19 @@ public class TextureTest extends RenderTest {
 				}
 				switch (window.startPresentation())
 				{
-					case EMPTY_SURFACE: return;
-					case SURFACE_LOST, OUT_OF_MEMORY, FATAL_ERROR: throw new VulkanException("Presentaton error");
+					case EMPTY_SURFACE:
+						return;
+					case SURFACE_LOST, OUT_OF_MEMORY, FATAL_ERROR:
+						throw new VulkanException("Presentaton error");
+				}
+				if (isRendererDirty)
+				{
+					isRendererDirty = false;
+					println("Rebuild graphics pipeline", () -> {
+						graphicsPipeline.close();
+						graphicsPipeline = graphicsPipelineTemplate.createPipeline(window.getDevice(), shaderProgram, window, pipelineLayout, renderPass, 0);
+						renderer.changePipeline(graphicsPipeline, null);
+					}, TestProperties.PRINT_LOADING_TIMES);
 				}
 				
 				FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
@@ -388,6 +378,7 @@ public class TextureTest extends RenderTest {
 	public static void end()
 	{
 		graphicsPipeline.close();
+		graphicsPipelineTemplate.close();
 		RenderEngine.getVulkan().getWindow().hide();
 		synchronized (MONITOR)
 		{
