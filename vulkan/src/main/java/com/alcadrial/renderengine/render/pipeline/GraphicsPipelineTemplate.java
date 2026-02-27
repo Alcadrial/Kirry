@@ -71,15 +71,12 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			.configureVertexInputState(s -> {})
 			.configureInputAssemblyState(s -> s
 				.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-				.primitiveRestartEnable(false)
 			)
 			.configureViewportState(s -> s
 				.addDefaultViewport()
 				.addFullScissor()
 			)
-			.configureRasterizationState(s -> s
-				.cullMode(VK10.VK_CULL_MODE_BACK_BIT)
-			)
+			.configureRasterizationState(s -> {})
 			.configureMultisampleState(s -> {})
 			.configureDepthStencilState(s -> s
 				.depthTestEnable(true)
@@ -97,7 +94,6 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			.configureVertexInputState(s -> {})
 			.configureInputAssemblyState(s -> s
 				.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-				.primitiveRestartEnable(false)
 			)
 			.configureViewportState(s -> s
 				.addDefaultViewport()
@@ -124,7 +120,6 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			.configureVertexInputState(s -> {})
 			.configureInputAssemblyState(s -> s
 				.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-				.primitiveRestartEnable(false)
 			)
 			.configureViewportState(s -> s
 				.addDefaultViewport()
@@ -132,7 +127,6 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			)
 			.configureRasterizationState(s -> s
 				.cullMode(VK10.VK_CULL_MODE_NONE)
-				.polygonMode(VK10.VK_POLYGON_MODE_FILL)
 			)
 			.configureMultisampleState(s -> {})
 			.configureDepthStencilState(s -> s

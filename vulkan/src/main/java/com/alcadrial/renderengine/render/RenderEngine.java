@@ -17,8 +17,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 import java.util.function.IntSupplier;
@@ -53,8 +51,6 @@ import com.alcadrial.renderengine.render.util.functional.VulkanRunnable;
 import com.alcadrial.renderengine.render.util.functional.VulkanSupplier;
 
 public class RenderEngine extends RenderEngineCore {
-	
-	private static final Lock LOCK = new ReentrantLock();
 	
 	private static volatile List<String> instanceLayers = List.of();
 	private static volatile List<String> instanceExtensions = List.of();
@@ -112,7 +108,6 @@ public class RenderEngine extends RenderEngineCore {
 	
 	private static void initVulkan(Builder builder) throws VulkanException
 	{
-		LOCK.lock();
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			mainThreadActions = new LinkedBlockingQueue<>();
@@ -193,10 +188,6 @@ public class RenderEngine extends RenderEngineCore {
 			if (e instanceof RuntimeException re) throw re;
 			throw new RuntimeException(e);
 		}
-		finally
-		{
-			LOCK.unlock();
-		}
 	}
 	
 	static PointerBuffer getInstanceLayers(MemoryStack stack)
@@ -213,49 +204,42 @@ public class RenderEngine extends RenderEngineCore {
 	 */
 	public static void terminate()
 	{
-		VulkanFuture<?> f = null;
-		LOCK.lock();
-		try
+		if (initializated)
 		{
-			if (initializated)
-			{
-				((@NonNull Vulkan) vulkan).close();
-				if (executor != null) executor.shutdown();
-				vulkan = null;
-				f = requestMainThread(() -> {
-					GLFW.glfwTerminate();
-					if (executor != null)
+			Debug.debug("Terminating RenderEngine");
+			if (executor != null) executor.shutdown();
+			((@NonNull Vulkan) vulkan).close();
+			vulkan = null;
+			VulkanFuture<?> f = requestMainThread(() -> {
+				GLFW.glfwTerminate();
+				if (executor != null)
+				{
+					try
 					{
-						try
-						{
-							executor.awaitTermination(1, TimeUnit.MILLISECONDS);
-						}
-						catch (InterruptedException e)
-						{}
-						((@NonNull ExecutorService) executor).shutdownNow();
-						executor = null;
+						executor.awaitTermination(1, TimeUnit.MILLISECONDS);
 					}
-					mainThreadActions = null;
-					initializated = false;
-				});
-			}
-		}
-		finally
-		{
-			LOCK.unlock();
-		}
-		if (f != null) while (true)
-		{
-			try
+					catch (InterruptedException e)
+					{}
+					((@NonNull ExecutorService) executor).shutdownNow();
+					Debug.debug("Terminated RenderEngine");
+					executor = null;
+				}
+				mainThreadActions = null;
+				initializated = false;
+			});
+			while (true)
 			{
-				f.get();
-				break;
-			}
-			catch (InterruptedException e)
-			{}
-			catch (VulkanException e)
-			{
-				throw new IllegalStateException(e);
+				try
+				{
+					f.get();
+					break;
+				}
+				catch (InterruptedException e)
+				{}
+				catch (VulkanException e)
+				{
+					throw new IllegalStateException(e);
+				}
 			}
 		}
 	}
@@ -708,30 +692,20 @@ public class RenderEngine extends RenderEngineCore {
 	public static void serveRenderEngine()
 	{
 		assertLoaded();
-		LOCK.lock();
-		try
+		if (multiThreading)
 		{
-			if (multiThreading)
+			if (mainThread != null) throw new DuplicateMainThreadException();
+			mainThread = Thread.currentThread();
+			while (initializated)
 			{
-				if (mainThread != null) throw new DuplicateMainThreadException();
-				mainThread = Thread.currentThread();
-				while (initializated)
+				try
 				{
-					try
-					{
-						LOCK.unlock();
-						getMainThreadActions().take().run();
-						LOCK.lock();
-					}
-					catch (InterruptedException e)
-					{}
+					for (LinkedBlockingQueue<Runnable> mainThreadActions = getMainThreadActions(); !mainThreadActions.isEmpty();) mainThreadActions.take().run();
 				}
-				mainThread = null;
+				catch (InterruptedException e)
+				{}
 			}
-		}
-		finally
-		{
-			LOCK.unlock();
+			mainThread = null;
 		}
 	}
 	
@@ -741,21 +715,13 @@ public class RenderEngine extends RenderEngineCore {
 	public static void serveOnceRenderEngine()
 	{
 		assertLoaded();
-		LOCK.lock();
-		try
+		if (multiThreading)
 		{
-			if (multiThreading)
-			{
-				if (mainThread != null) throw new DuplicateMainThreadException();
-				mainThread = Thread.currentThread();
-				LinkedBlockingQueue<Runnable> actions = getMainThreadActions();
-				while (initializated && actions.peek() != null) actions.poll().run();
-				mainThread = null;
-			}
-		}
-		finally
-		{
-			LOCK.unlock();
+			if (mainThread != null) throw new DuplicateMainThreadException();
+			mainThread = Thread.currentThread();
+			LinkedBlockingQueue<Runnable> actions = getMainThreadActions();
+			while (initializated && actions.peek() != null) actions.poll().run();
+			mainThread = null;
 		}
 	}
 	

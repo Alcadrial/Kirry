@@ -48,9 +48,8 @@ public class VulkanBuffer extends RawDeviceResource {
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			vk = device.createBuffer(stack, size, usage);
-			Debug.debugCreate(() -> "Created " + this);
 			memory = device.allocateMemory(stack, this, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
-			Debug.debugAllocation(() -> "Allocated " + this);
+			Debug.debugCreate(() -> "Created & Allocated " + this);
 		}
 	}
 	
@@ -63,9 +62,8 @@ public class VulkanBuffer extends RawDeviceResource {
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			vk = device.createBuffer(stack, size, usage);
-			Debug.debugCreate(() -> "Created " + this);
 			memory = device.allocateMemory(stack, this, requiredProperties, optimalProperties);
-			Debug.debugAllocation(() -> "Allocated " + this);
+			Debug.debugCreate(() -> "Created & Allocated " + this);
 		}
 	}
 	

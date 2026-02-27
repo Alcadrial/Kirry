@@ -181,7 +181,7 @@ public class InstancingTest extends RenderTest {
 		indexBuffer = staticBigBuffer.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 		try
 		{
-			uniformBuffer = new VulkanBuffer(device, 256 * 2 * window.getFramesCount() * 4, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+			uniformBuffer = new VulkanBuffer(device, 256 * 2 * window.getFramesCount() * 4, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 			uniformBuffer.getMemory().mapMemory();
 		}
 		catch (OverflowException e)

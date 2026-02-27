@@ -108,7 +108,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			filter = PhysicalDevice.Filter.any();
 			strategy = PhysicalDevice.Strategy.findBest();
 			deviceFeatures = VkPhysicalDeviceFeatures.calloc();
-			deviceExtensions = new String[] { KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+			deviceExtensions = new String[0];
 			defaultPrimary = false;
 			secondary = false;
 			useDepthTexture = true;
@@ -134,10 +134,16 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			return this;
 		}
 		
-		public Builder deviceExtensions(String... deviceExtensions)
+		public Builder deviceExtensionsWithDefaults(String... deviceExtensions)
 		{
 			this.deviceExtensions = Arrays.copyOf(deviceExtensions, deviceExtensions.length + 1);
 			this.deviceExtensions[deviceExtensions.length] = KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+			return this;
+		}
+		
+		public Builder deviceExtensions(String... deviceExtensions)
+		{
+			this.deviceExtensions = deviceExtensions;
 			return this;
 		}
 		
@@ -242,7 +248,8 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		return new Builder()
 			.physicalDeviceFilter(PhysicalDevice.Filter.withSurfaceGraphicsAndCompute())
 			.physicalDeviceStrategy(PhysicalDevice.Strategy.findBest())
-			.asDefaultPrimary();
+			.asDefaultPrimary()
+			.deviceExtensionsWithDefaults();
 	}
 	
 	public class FrameData implements AutoCloseable {
@@ -770,6 +777,16 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	public void pollEvents()
 	{
 		RenderEngine.requestMainThread(GLFW::glfwPollEvents);
+	}
+	
+	public void waitEvents()
+	{
+		RenderEngine.awaitRequestMainThread(GLFW::glfwWaitEvents);
+	}
+	
+	public void postEmptyEvent()
+	{
+		GLFW.glfwPostEmptyEvent();
 	}
 	
 	public final void resetCallbacks()

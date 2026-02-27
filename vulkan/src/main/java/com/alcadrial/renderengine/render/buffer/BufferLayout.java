@@ -29,6 +29,7 @@ import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
 import com.alcadrial.renderengine.render.texture.TextureView;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
+import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class BufferLayout implements VulkanDebug {
@@ -84,7 +85,6 @@ public class BufferLayout implements VulkanDebug {
 	private final ConcurrentHashMap<String, Pair<ShaderVariable, Integer>> marks;
 	private final VkWriteDescriptorSet.Buffer writeDescriptorSets;
 	private final BufferWriter writer;
-	private boolean isDirty;
 	
 	private BufferLayout(Builder builder, Lock lock)
 	{
@@ -93,7 +93,6 @@ public class BufferLayout implements VulkanDebug {
 		writeDescriptorSets = Objects.requireNonNull(builder.writeDescriptorSets);
 		this.lock = lock;
 		writer = Objects.requireNonNull(builder.writer);
-		isDirty = true;
 	}
 	
 	public BufferWriter getWriter()
@@ -116,45 +115,12 @@ public class BufferLayout implements VulkanDebug {
 		return marks.get(variableName);
 	}
 	
-	public void forceUpdate()
-	{
-		lock.lock();
-		try
-		{
-			VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets, null);
-			isDirty = false;
-		}
-		finally
-		{
-			lock.unlock();
-		}
-	}
-	
 	public void updateDescriptorSets()
 	{
 		lock.lock();
 		try
 		{
-			if (isDirty)
-			{
-				VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets, null);
-				isDirty = false;
-			}
-		}
-		finally
-		{
-			lock.unlock();
-		}
-	}
-	
-	public void forceUpdate(Consumer<VkWriteDescriptorSet.Buffer> action)
-	{
-		lock.lock();
-		try
-		{
-			action.accept(writeDescriptorSets);
 			VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets, null);
-			isDirty = false;
 		}
 		finally
 		{
@@ -167,11 +133,7 @@ public class BufferLayout implements VulkanDebug {
 		lock.lock();
 		try
 		{
-			if (isDirty)
-			{
-				action.accept(writeDescriptorSets);
-				isDirty = false;
-			}
+			action.accept(writeDescriptorSets);
 		}
 		finally
 		{
@@ -196,7 +158,6 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.MATRIX_FLOAT_4X4, p.left.getType());
 			writer.setCursor(16 * index + p.right).put(value.toArray());
-			isDirty = true;
 		}
 	}
 	
@@ -212,7 +173,6 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_2, p.left.getType());
 			writer.setCursor(2 * index + p.right).put(value.getValuesArray());
-			isDirty = true;
 		}
 	}
 	
@@ -228,7 +188,6 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_3, p.left.getType());
 			writer.setCursor(4 * index + p.right).put(value.getValuesArray());
-			isDirty = true;
 		}
 	}
 	
@@ -244,7 +203,6 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_4, p.left.getType());
 			writer.setCursor(4 * index + p.right).put(value.getValuesArray());
-			isDirty = true;
 		}
 	}
 	
@@ -260,7 +218,6 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.VECTOR_INT_2, p.left.getType());
 			writer.setCursor(2 * index + p.right).put(value.getValuesArray());
-			isDirty = true;
 		}
 	}
 	
@@ -276,7 +233,6 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.VECTOR_INT_3, p.left.getType());
 			writer.setCursor(4 * index + p.right).put(value.getValuesArray());
-			isDirty = true;
 		}
 	}
 	
@@ -292,7 +248,6 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.VECTOR_INT_4, p.left.getType());
 			writer.setCursor(4 * index + p.right).put(value.getValuesArray());
-			isDirty = true;
 		}
 	}
 	
@@ -305,10 +260,9 @@ public class BufferLayout implements VulkanDebug {
 			lock.lock();
 			try
 			{
-				VkDescriptorImageInfo.Buffer descriptorImageInfo = writeDescriptorSets.get(p.right).pImageInfo();
+				VkDescriptorImageInfo.Buffer descriptorImageInfo = VulkanErrorUtils.nonNull(writeDescriptorSets.get(p.right).pImageInfo());
 				descriptorImageInfo.imageView(value.getVk());
 				descriptorImageInfo.sampler(sampler.getVk());
-				isDirty = true;
 			}
 			finally
 			{
@@ -329,7 +283,6 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.INT, p.left.getType());
 			writer.setCursor(index + p.right).put(value);
-			isDirty = true;
 		}
 	}
 	
@@ -345,7 +298,6 @@ public class BufferLayout implements VulkanDebug {
 		{
 			checkValue(ShaderInputType.FLOAT, p.left.getType());
 			writer.setCursor(index + p.right).put(value);
-			isDirty = true;
 		}
 	}
 	

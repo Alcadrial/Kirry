@@ -304,18 +304,20 @@ public class RenderTest {
 				println("Frame " + frame, () -> action.accept(enlapsed, enlapsedFrame), TestProperties.PRINT_FRAME_TIMES);
 				frame[0]++;
 				lastCurrent[0] = current;
+				if (window.shouldClose()) window.postEmptyEvent();
 			}
 			catch (VulkanException e)
 			{
 				lastError[0] = e;
 				service.shutdown();
 				window.setShouldClose(true);
+				window.postEmptyEvent();
 			}
 		}, 0, period, TimeUnit.NANOSECONDS);
 		
 		while (!window.shouldClose() && !hasValidationError.get())
 		{
-			window.pollEvents();
+			window.waitEvents();
 		}
 		try
 		{
