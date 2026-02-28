@@ -1,15 +1,12 @@
 package com.alcadrial.renderengine.render.test;
 
 import java.awt.image.BufferedImage;
-import java.math.RoundingMode;
 import java.util.List;
 
 import javax.imageio.ImageIO;
 
 import org.lwjgl.glfw.GLFW;
-import org.lwjgl.glfw.GLFWCursorPosCallbackI;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
-import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -24,8 +21,7 @@ import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kector.vector.Vector2f;
-import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
@@ -68,29 +64,34 @@ public class TextureTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, TextureTest::start, () -> staticLoop(TextureTest::loop), TextureTest::end, false);
+		mainTest(args, TextureTest::start, () -> staticLoop(TextureTest::loop, r -> {
+			render = r;
+			RenderEngine.getVulkan().getWindow().show();
+		}), TextureTest::end, false);
 	}
 	
 	private static Renderer renderer;
 	private static RenderPass renderPass;
+	private static ShaderProgram shaderProgram;
+	private static PipelineLayout pipelineLayout;
 	private static GraphicsPipelineTemplate graphicsPipelineTemplate;
 	private static GraphicsPipeline graphicsPipeline;
 	private static Texture texture;
 	private static VulkanBuffer vertexBuffer;
 	private static VulkanBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
-	private static Vector2i panelPos;
+	private static Vector3f panelPos;
 	
+	private static Runnable render;
 	private static boolean isModifiedMatrix;
 	private static boolean isRendererDirty;
-	private static ShaderProgram shaderProgram;
-	private static PipelineLayout pipelineLayout;
 	
 	public static void start() throws VulkanException
 	{
 		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
+		RenderEngine.setWindowHint(GLFW.GLFW_VISIBLE, false);
 		
 		VulkanWindow window = VulkanWindow.defaultBuilder()
 			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
@@ -105,51 +106,51 @@ public class TextureTest extends RenderTest {
 			isRendererDirty = true;
 		});
 		
-		Vector2i[] oldPos = new Vector2i[] {Vector2i.of(0, 0)};
-		Vector2f[] oldMousePos = new Vector2f[] {Vector2f.of(0, 0), Vector2f.of(0, 0)};
-		boolean[] pressing = new boolean[2];
-		window.setCallback((GLFWMouseButtonCallbackI) (w, button, action, mods) -> {
-			if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT)
-			{
-				if (pressing[0] = action == GLFW.GLFW_PRESS)
-				{
-					window.getMousePos(oldMousePos[0]);
-				}
-			}
-		});
-		window.setCallback((GLFWCursorPosCallbackI) (w, x, y) -> {
-			if (pressing[0] && !pressing[1])
-			{
-				pressing[1] = true;
-				window.getPos(oldPos[0]);
-				window.setPos(Vector2i.of((float) x - oldMousePos[0].x() + oldPos[0].x(), (float) y - oldMousePos[0].y() + oldPos[0].y(), RoundingMode.FLOOR));
-				window.getMousePos(oldMousePos[0]);
-				pressing[1] = false;
-			}
-		});
-		panelPos = Vector2i.of(0, 0);
+		registerDragging();
+		panelPos = Vector3f.of(0, 0, 0);
 		window.setCallback((GLFWKeyCallbackI) (w, k, s, a, m) -> {
 			if (a == GLFW.GLFW_PRESS || a == GLFW.GLFW_REPEAT)
 			{
+				float xMove, yMove, zMove;
 				switch (k)
 				{
 					case 'W':
-						panelPos.add(0, 1);
-						isModifiedMatrix = true;
+						xMove = 0;
+						yMove = 1;
+						zMove = 0;
 						break;
 					case 'A':
-						panelPos.add(-1, 0);
-						isModifiedMatrix = true;
+						xMove = -1;
+						yMove = 0;
+						zMove = 0;
 						break;
 					case 'S':
-						panelPos.add(0, -1);
-						isModifiedMatrix = true;
+						xMove = 0;
+						yMove = -1;
+						zMove = 0;
 						break;
 					case 'D':
-						panelPos.add(1, 0);
-						isModifiedMatrix = true;
+						xMove = 1;
+						yMove = 0;
+						zMove = 0;
 						break;
+					case 'Q':
+						xMove = 0;
+						yMove = 0;
+						zMove = -1;
+						break;
+					case 'Z':
+						xMove = 0;
+						yMove = 0;
+						zMove = 1;
+						break;
+					default:
+						return;
 				}
+				
+				panelPos.add(xMove * 2 / 16, yMove * 2 / 16, zMove * 2 / 16);
+				isModifiedMatrix = true;
+				render.run();
 			}
 		});
 		
@@ -178,7 +179,7 @@ public class TextureTest extends RenderTest {
 			BufferWriter vertexBufferWriter = new BufferWriter(localVertexBuffer, vertexBuffer);
 			BufferWriter indexBufferWriter = new BufferWriter(localIndexBuffer, indexBuffer);
 			
-			RenderingDataUtils.loadRectangleUv(vertexBufferWriter, indexBufferWriter, 0, -1, 1, 1, -1, 0, 0, 0, 1, 1);
+			RenderingDataUtils.loadRectangleUv(vertexBufferWriter, indexBufferWriter, 0, -1, -1, 1, 1, 1, 0, 0, 1, 1);
 			vertexBufferWriter.close();
 			indexBufferWriter.close();
 			
@@ -284,15 +285,15 @@ public class TextureTest extends RenderTest {
 			bufferLayout.set(TEXTURE_SAMPLER_UNIFORM, texture.getView(), new TextureSampler(device));
 			bufferLayout.updateDescriptorSets();
 			
-			Matrix4f transformation = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
-			Matrix4f model = new Matrix4f().translateYTo(-10 * panelPos.y()).translateXTo(-10 * panelPos.x());
+			float scale = Math.min(window.getWidth(), window.getHeight());
+			Matrix4f transformation = new Matrix4f().scale(Vector3f.of(scale / window.getWidth(), -scale / window.getHeight(), 0.02F));
+			Matrix4f model = new Matrix4f().translateTo(panelPos);
 			transformation.multiply(model);
-			transformation.identity();
 			bufferLayout = renderer.getBufferLayout(0)[0];
 			bufferLayout.set(TRANSFORMATION_UNIFORM, transformation);
 			bufferLayout.flushAndInvalidate();
 			
-			isModifiedMatrix = true;
+			isModifiedMatrix = false;
 			textureFuture.join();
 			localTextureBuffer.close();
 			localVertexBuffer.close();
@@ -305,18 +306,6 @@ public class TextureTest extends RenderTest {
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			VulkanWindow window = RenderEngine.getVulkan().getWindow();
-			if (isModifiedMatrix)
-			{
-				isModifiedMatrix = false;
-				/*
-				Matrix4f transformation = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
-				Matrix4f model = new Matrix4f().translateYTo(-10 * panelPos.y()).translateXTo(-10 * panelPos.x());
-				transformation.multiply(model);
-				BufferLayout bufferLayout = renderer.getBufferLayout(0)[0];
-				bufferLayout.set(TRANSFORMATION_UNIFORM, transformation);
-				bufferLayout.flushAndInvalidate();
-				*/
-			}
 			switch (window.startPresentation())
 			{
 				case EMPTY_SURFACE:
@@ -332,6 +321,18 @@ public class TextureTest extends RenderTest {
 					graphicsPipeline = graphicsPipelineTemplate.createPipeline(window.getDevice(), shaderProgram, window, pipelineLayout, renderPass, 0);
 					renderer.changePipeline(graphicsPipeline, null);
 				}, TestProperties.PRINT_LOADING_TIMES);
+				isModifiedMatrix = true;
+			}
+			if (isModifiedMatrix)
+			{
+				isModifiedMatrix = false;
+				float scale = Math.min(window.getWidth(), window.getHeight());
+				Matrix4f transformation = new Matrix4f().scale(Vector3f.of(scale / window.getWidth(), -scale / window.getHeight(), 0.02F));
+				Matrix4f model = new Matrix4f().translateTo(panelPos);
+				transformation.multiply(model);
+				BufferLayout bufferLayout = renderer.getBufferLayout(0)[0];
+				bufferLayout.set(TRANSFORMATION_UNIFORM, transformation);
+				bufferLayout.flushAndInvalidate();
 			}
 			
 			FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
@@ -366,11 +367,7 @@ public class TextureTest extends RenderTest {
 	{
 		graphicsPipeline.close();
 		graphicsPipelineTemplate.close();
-		RenderEngine.getVulkan().getWindow().hide();
-		synchronized (MONITOR)
-		{
-			MONITOR.notify();
-		}
+		pipelineLayout.close();
 		RenderEngine.terminate();
 	}
 }

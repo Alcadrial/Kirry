@@ -2,17 +2,25 @@ package com.alcadrial.renderengine.render.test.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
+import org.jspecify.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWCursorPosCallbackI;
+import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.vulkan.EXTDebugUtils;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
 
+import com.alcadrial.kector.vector.Vector2f;
+import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kroperties.Property;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -166,6 +174,11 @@ public class RenderTest {
 	
 	public static void staticLoop(VulkanBiConsumer<Long, Long> action) throws VulkanException
 	{
+		staticLoop(action, null);
+	}
+	
+	public static void staticLoop(VulkanBiConsumer<Long, Long> action, @Nullable Consumer<Runnable> forceRender) throws VulkanException
+	{
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		
 		VulkanException[] lastError = new VulkanException[1];
@@ -178,7 +191,7 @@ public class RenderTest {
 		long[] lastCurrent = {time};
 		long milestone = firstMilestone;
 		
-		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
+		Runnable render = () -> {
 			try
 			{
 				long current = System.nanoTime();
@@ -190,7 +203,10 @@ public class RenderTest {
 			{
 				lastError[0] = e;
 			}
-		});
+		};
+		
+		window.setCallback((GLFWWindowRefreshCallbackI) w -> render.run());
+		if (forceRender != null) forceRender.accept(render);
 		
 		while (!window.shouldClose() && !hasValidationError.get())
 		{
@@ -297,7 +313,7 @@ public class RenderTest {
 				long enlapsedFrame = current - lastCurrent[0];
 				if (enlapsed >= highMilestone[0])
 				{
-					window.setTitle(title + " fps=" + frame);
+					window.setTitle(title + " fps=" + frame[0]);
 					frame[0] = 0;
 					highMilestone[0] += (enlapsed - highMilestone[0] + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
 				}
@@ -331,6 +347,33 @@ public class RenderTest {
 		}
 		
 		window.getDevice().waitIdle();
+	}
+	
+	public static void registerDragging()
+	{
+		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		Vector2i oldPos = Vector2i.of(0, 0);
+		Vector2f oldMousePos = Vector2f.of(0, 0);
+		boolean[] pressing = new boolean[2];
+		window.setCallback((GLFWMouseButtonCallbackI) (w, button, action, mods) -> {
+			if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT)
+			{
+				if (pressing[0] = action == GLFW.GLFW_PRESS)
+				{
+					window.getMousePos(oldMousePos);
+				}
+			}
+		});
+		window.setCallback((GLFWCursorPosCallbackI) (w, x, y) -> {
+			if (pressing[0] && !pressing[1])
+			{
+				pressing[1] = true;
+				window.getPos(oldPos);
+				window.setPos(Vector2i.of((float) x - oldMousePos.x() + oldPos.x(), (float) y - oldMousePos.y() + oldPos.y(), RoundingMode.FLOOR));
+				window.getMousePos(oldMousePos);
+				pressing[1] = false;
+			}
+		});
 	}
 	
 	public static void initRenderEngine() throws VulkanException

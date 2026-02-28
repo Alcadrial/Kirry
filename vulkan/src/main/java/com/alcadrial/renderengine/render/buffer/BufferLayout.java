@@ -157,7 +157,7 @@ public class BufferLayout implements VulkanDebug {
 		if (p != null)
 		{
 			checkValue(ShaderInputType.MATRIX_FLOAT_4X4, p.left.getType());
-			writer.setCursor(16 * index + p.right).put(value.toArray());
+			writer.setCursor(16 * index + p.right).put(value.toTransposedArray());
 		}
 	}
 	

@@ -1,6 +1,7 @@
 package com.alcadrial.renderengine.render.test;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.system.MemoryStack;
@@ -62,8 +63,8 @@ public class TestReinit extends RenderTest {
 		
 		try
 		{
-			boolean[] flag = {true};
-			for (int i = 0; i < 100 && flag[0]; i++)
+			AtomicBoolean flag = new AtomicBoolean(true);
+			for (int i = 0; i < 100 && flag.get(); i++)
 			{
 				System.out.println("Iteration " + i);
 				println("Render Engine initialization", RenderTest::initMultiThreadRenderEngine, TestProperties.PRINT_LOADING_TIMES);
@@ -85,7 +86,7 @@ public class TestReinit extends RenderTest {
 					catch (Throwable e)
 					{
 						e.printStackTrace(System.out);
-						flag[0] = false;
+						flag.set(false);
 					}
 					finally
 					{

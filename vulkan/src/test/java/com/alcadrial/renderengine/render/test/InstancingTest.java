@@ -1,13 +1,10 @@
 package com.alcadrial.renderengine.render.test;
 
 import java.io.IOException;
-import java.math.RoundingMode;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
-import org.lwjgl.glfw.GLFWCursorPosCallbackI;
-import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -22,8 +19,6 @@ import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.angle.AngleUnit;
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kector.vector.Vector2f;
-import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Device;
@@ -139,28 +134,7 @@ public class InstancingTest extends RenderTest {
 			isModified = true;
 		});
 		
-		Vector2i[] oldPos = new Vector2i[] {Vector2i.of(0, 0)};
-		Vector2f[] oldMousePos = new Vector2f[] {Vector2f.of(0, 0), Vector2f.of(0, 0)};
-		boolean[] pressing = new boolean[2];
-		window.setCallback((GLFWMouseButtonCallbackI) (w, button, action, mods) -> {
-			if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT)
-			{
-				if (pressing[0] = action == GLFW.GLFW_PRESS)
-				{
-					window.getMousePos(oldMousePos[0]);
-				}
-			}
-		});
-		window.setCallback((GLFWCursorPosCallbackI) (w, x, y) -> {
-			if (pressing[0] && !pressing[1])
-			{
-				pressing[1] = true;
-				window.getPos(oldPos[0]);
-				window.setPos(Vector2i.of((float) x - oldMousePos[0].x() + oldPos[0].x(), (float) y - oldMousePos[0].y() + oldPos[0].y(), RoundingMode.FLOOR));
-				window.getMousePos(oldMousePos[0]);
-				pressing[1] = false;
-			}
-		});
+		registerDragging();
 		
 		Device device = window.getDevice();
 		
@@ -187,7 +161,7 @@ public class InstancingTest extends RenderTest {
 		catch (OverflowException e)
 		{
 			throw e;
-			/*
+			/* TODO: fallback to memory transfers
 			uniformBuffer = staticBigBuffer.allocate(256 * 2 * window.getFrameCount() * 4, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 			localUniformBuffer = VulkanBuffer.asLocal(uniformBuffer);
 			localUniformBuffer.getMemory().mapMemory();
@@ -327,12 +301,6 @@ public class InstancingTest extends RenderTest {
 					bufferLayout.set(SPACE_FOG_INTENSITY, 0.1F);
 					bufferLayout.updateDescriptorSets();
 					bufferLayout.transfer(commandBuffer);
-					
-					RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, i * 128 + 0, 16, true, "PPPP");
-					RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, i * 128 + 16, 16, true, "MMMM");
-					RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, i * 128 + 64 + 0, 3, true, "xyz");
-					RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, i * 128 + 64 + 3, 1, true, "I");
-					RenderingDataUtils.printBufferContent(staticBigBuffer, uniformBuffer, i * 128 + 64 + 4, 1, true, "F");
 				}
 				commandBuffer.endRecording();
 				device.submitSingleUseCommandBuffer(stack, commandBuffer).join();
@@ -352,12 +320,6 @@ public class InstancingTest extends RenderTest {
 					bufferLayout.set(SPACE_FOG_INTENSITY, 0.1F);
 					bufferLayout.flush();
 					bufferLayout.updateDescriptorSets();
-					
-					RenderingDataUtils.printBufferContent(uniformBuffer, uniformBuffer, i * 128 + 0, 16, true, "PPPP");
-					RenderingDataUtils.printBufferContent(uniformBuffer, uniformBuffer, i * 128 + 16, 16, true, "MMMM");
-					RenderingDataUtils.printBufferContent(uniformBuffer, uniformBuffer, i * 128 + 64 + 0, 3, true, "xyz");
-					RenderingDataUtils.printBufferContent(uniformBuffer, uniformBuffer, i * 128 + 64 + 3, 1, true, "I");
-					RenderingDataUtils.printBufferContent(uniformBuffer, uniformBuffer, i * 128 + 64 + 4, 1, true, "F");
 				}
 			}
 		}
@@ -414,15 +376,14 @@ public class InstancingTest extends RenderTest {
 			bufferLayout.set(MODEL, buildModelMatrix(f));
 			if (localUniformBuffer == null) bufferLayout.flushAndInvalidate();
 			
-			commandBuffer.reset();
 			commandBuffer.beginRecording();
+			/* TODO: fallback to memory transfers
 			if (localUniformBuffer != null)
 			{
 				bufferLayout.transfer(commandBuffer);
 				//barrier
 			}
-			//commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
-			//commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), 0, 1);
+			*/
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 			renderer.draw(commandBuffer, window.getFrameIndex(), instanceCount);
 			commandBuffer.endRenderPass();
@@ -437,10 +398,7 @@ public class InstancingTest extends RenderTest {
 	{
 		graphicsPipeline.close();
 		graphicsPipelineTemplate.close();
-		synchronized (MONITOR)
-		{
-			MONITOR.notify();
-		}
+		pipelineLayout.close();
 		RenderEngine.terminate();
 	}
 }
