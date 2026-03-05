@@ -83,30 +83,12 @@ public class InstancingTest extends RenderTest {
 	private static final int density = 2;
 	private static final int instanceCount;
 	
-	private static Vector3f lightPos;
 	private static float f;
 	private static boolean isModified;
 	
 	static {
 		int a = ((2 * size + 1) / density + 1);
 		instanceCount = a * a;
-	}
-	
-	private static Matrix4f buildProjectionMatrix(VulkanWindow window)
-	{
-		float sceneRay = 1;//ray of the sphere containing the entire scene after applying the model matrix
-		float aspectRatio = (float) window.getWidth() / window.getHeight();
-		float fieldOfView = AngleUnit.RADIANS.fromDegrees(120);
-		float scale = (float) (1 / Math.tan(fieldOfView / 2));
-		float cameraZ = (float) (sceneRay * Math.sqrt(1 + scale * scale) / scale);
-		float maxDepth = cameraZ + sceneRay;
-		float minDepth = cameraZ - sceneRay;
-		
-		Matrix4f matrix = new Matrix4f();
-		matrix.projectPositiveZ(fieldOfView, maxDepth, minDepth, aspectRatio);
-		matrix.multiply(new Matrix4f().translateZTo(-cameraZ));
-		
-		return matrix;
 	}
 	
 	private static Matrix4f buildModelMatrix(float f)
@@ -165,7 +147,7 @@ public class InstancingTest extends RenderTest {
 		
 		staticBigBuffer = new StaticBigBuffer(device, 65536);
 		
-		vertexBuffer = staticBigBuffer.allocate(240 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		vertexBuffer = staticBigBuffer.allocate(24 * 10 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		instanceVertexBuffer = staticBigBuffer.allocate(instanceCount * 3 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		indexBuffer = staticBigBuffer.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 		try
@@ -218,7 +200,6 @@ public class InstancingTest extends RenderTest {
 			return;
 		}
 		
-		lightPos = Vector3f.of(5, 20, 0);
 		f = 0;
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
@@ -304,14 +285,20 @@ public class InstancingTest extends RenderTest {
 			renderer.setBuffer(1, instanceVertexBuffer);
 			renderer.setIndexBuffer(indexBuffer);
 			
+			Vector3f lightPos = Vector3f.of(5, 20, 0);
+			
+			Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
+			Matrix4f modelMatrix = buildModelMatrix(f);
+			Vector3f relativeLightPos = buildScaleMatrix().multiply(lightPos.xyz1()).xyz();
+			
 			if (localUniformBuffer != null)
 			{
 				CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
 				for (int i = 0; i < window.getFramesCount(); i++)
 				{
 					BufferLayout bufferLayout = renderer.getBufferLayout(i)[0];
-					bufferLayout.set(PROJECTION, buildProjectionMatrix(window));
-					bufferLayout.set(LIGHT_POS, buildScaleMatrix().multiply(lightPos).xyz());
+					bufferLayout.set(PROJECTION, projectionMatrix);
+					bufferLayout.set(LIGHT_POS, relativeLightPos);
 					bufferLayout.set(LIGHT_INTENSITY, 0.75F);
 					bufferLayout.set(SPACE_FOG_INTENSITY, 0.1F);
 					bufferLayout.updateDescriptorSets();
@@ -325,12 +312,12 @@ public class InstancingTest extends RenderTest {
 				for (int i = 0; i < window.getFramesCount(); i++)
 				{
 					BufferLayout bufferLayout = renderer.getBufferLayout(i)[0];
-					bufferLayout.set(MODEL, buildModelMatrix(f));
-					bufferLayout.set(PROJECTION, buildProjectionMatrix(window));
+					bufferLayout.set(MODEL, modelMatrix);
+					bufferLayout.set(PROJECTION, projectionMatrix);
 					bufferLayout.flush();
 					bufferLayout.updateDescriptorSets();
 					bufferLayout = renderer.getBufferLayout(i)[1];
-					bufferLayout.set(LIGHT_POS, buildScaleMatrix().multiply(lightPos).xyz());
+					bufferLayout.set(LIGHT_POS, relativeLightPos);
 					bufferLayout.set(LIGHT_INTENSITY, 0.75F);
 					bufferLayout.set(SPACE_FOG_INTENSITY, 0.1F);
 					bufferLayout.flush();
@@ -359,11 +346,12 @@ public class InstancingTest extends RenderTest {
 					graphicsPipeline.close();
 					graphicsPipeline = graphicsPipelineTemplate.createPipeline(window.getDevice(), shaderProgram, window, pipelineLayout, renderPass, 0);
 					renderer.changePipeline(graphicsPipeline, null);
-					
+
+					Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
 					for (int i = 0; i < window.getFramesCount(); i++)
 					{
 						BufferLayout bufferLayout = renderer.getBufferLayout(i)[0];
-						bufferLayout.set(PROJECTION, buildProjectionMatrix(window));
+						bufferLayout.set(PROJECTION, projectionMatrix);
 						bufferLayout.flush();
 					}
 				}, TestProperties.PRINT_LOADING_TIMES);

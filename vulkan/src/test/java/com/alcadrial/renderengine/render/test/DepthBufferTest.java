@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.List;
 
 import org.lwjgl.glfw.GLFW;
-import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -25,6 +24,7 @@ import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
+import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
@@ -77,17 +77,9 @@ public class DepthBufferTest extends RenderTest {
 	private static VulkanBuffer vertexBuffer;
 	private static VulkanBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
-	private static Vector3f lightPos;
+	
 	private static float f;
 	private static boolean isModified;
-	
-	private static Matrix4f buildProjectionMatrix(VulkanWindow window)
-	{
-		Matrix4f matrix = new Matrix4f();
-		matrix.multiply(new Matrix4f().project(AngleUnit.RADIANS.fromDegrees(90), 0.09F, -0.1F, (float) window.getWidth() / window.getHeight()));
-		matrix.multiply(new Matrix4f().view(Vector3f.of(0, 0, -1), 0, 0));
-		return matrix.transpose();
-	}
 	
 	private static Matrix4f buildModelMatrix(float f)
 	{
@@ -95,7 +87,7 @@ public class DepthBufferTest extends RenderTest {
 		matrix.multiply(new Matrix4f().rotateZ(AngleUnit.RADIANS.fromDegrees(f / 11)));
 		matrix.multiply(new Matrix4f().rotateY(AngleUnit.RADIANS.fromDegrees(f / 17)));
 		matrix.multiply(new Matrix4f().rotateX(AngleUnit.RADIANS.fromDegrees(f / 13)));
-		matrix.multiply(new Matrix4f().scale(Vector3f.of(1, 1, 1).divideAll(2)));
+		matrix.multiply(new Matrix4f().scale(Vector3f.of(1, 1, 1).divideAll((float) Math.sqrt(3))));
 		return matrix;
 	}
 	
@@ -116,7 +108,9 @@ public class DepthBufferTest extends RenderTest {
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
-		VulkanWindow window = VulkanWindow.defaultBuilder().build(1080, 720, "Test");
+		VulkanWindow window = VulkanWindow.defaultBuilder()
+			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
+			.build(1080, 720, "Test");
 		Device device = window.getDevice();
 		
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
@@ -124,17 +118,17 @@ public class DepthBufferTest extends RenderTest {
 		});
 		
 		registerDragging();
-		
-		window.setCallback((GLFWKeyCallbackI) (w, k, s, a, m) -> {
-			
-		});
-		
-		renderPass = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format()).createRenderPass(device);
+
+		try (RenderPassTemplate template = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format()))
+		{
+			renderPass = template.createRenderPass(device);
+		}
 		
 		staticBigBuffer = new StaticBigBuffer(device, 65536);
-		vertexBuffer = staticBigBuffer.allocate(36 * 10 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		
+		vertexBuffer = staticBigBuffer.allocate(24 * 10 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		indexBuffer = staticBigBuffer.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-		uniformBuffer = new VulkanBuffer(device, 256 * 2 * 3, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 6);
 		uniformBuffer.getMemory().mapMemory();
 		
 		Color[] colors = new Color[] {
@@ -159,9 +153,8 @@ public class DepthBufferTest extends RenderTest {
 			RenderEngine.terminate();
 			return;
 		}
-		lightPos = Vector3f.of(0.3F, 1, 0);
+		
 		f = 0;
-		isModified = false;
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -237,12 +230,18 @@ public class DepthBufferTest extends RenderTest {
 				.build();
 			renderer.setBuffer(0, vertexBuffer);
 			renderer.setIndexBuffer(indexBuffer);
+
+			Vector3f lightPos = Vector3f.of(5, 20, 0);
+			
+			Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
+			Matrix4f modelMatrix = buildModelMatrix(f);
+			lightPos = Vector3f.of(0.3F, 1, 0);
 			
 			for (int i = 0; i < window.getFramesCount(); i++)
 			{
 				BufferLayout bufferLayout = renderer.getBufferLayout(i)[0];
-				bufferLayout.set(MODEL, buildModelMatrix(f));
-				bufferLayout.set(PROJECTION, buildProjectionMatrix(window));
+				bufferLayout.set(MODEL, modelMatrix);
+				bufferLayout.set(PROJECTION, projectionMatrix);
 				bufferLayout.flush();
 				bufferLayout.updateDescriptorSets();
 				bufferLayout = renderer.getBufferLayout(i)[1];
@@ -282,10 +281,12 @@ public class DepthBufferTest extends RenderTest {
 					graphicsPipeline.close();
 					graphicsPipeline = graphicsPipelineTemplate.createPipeline(window.getDevice(), shaderProgram, window, pipelineLayout, renderPass, 0);
 					renderer.changePipeline(graphicsPipeline, null);
+					
+					Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
 					for (int i = 0; i < window.getFramesCount(); i++)
 					{
 						BufferLayout bufferLayout = renderer.getBufferLayout(i)[0];
-						bufferLayout.set(PROJECTION, buildProjectionMatrix(window));
+						bufferLayout.set(PROJECTION, projectionMatrix);
 						bufferLayout.flush();
 					}
 				}, TestProperties.PRINT_LOADING_TIMES);
@@ -330,6 +331,8 @@ public class DepthBufferTest extends RenderTest {
 		graphicsPipeline.close();
 		graphicsPipelineTemplate.close();
 		pipelineLayout.close();
+		uniformBuffer.close();
+		staticBigBuffer.close();
 		RenderEngine.terminate();
 	}
 }

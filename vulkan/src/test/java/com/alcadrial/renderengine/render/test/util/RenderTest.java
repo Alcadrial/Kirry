@@ -19,6 +19,9 @@ import org.lwjgl.vulkan.EXTDebugUtils;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
 
+import com.alcadrial.kector.angle.AngleUnit;
+import com.alcadrial.kector.annotation.Angle;
+import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kroperties.Property;
@@ -511,6 +514,22 @@ public class RenderTest {
 		else endTime = System.currentTimeMillis();
 		
 		return (double) resolution.convert(endTime - startTime, localUnit) / resolution.convert(1, unit);
+	}
+	
+	public static Matrix4f buildFullSceneMatrix(VulkanWindow window, @Angle(AngleUnit.RADIANS) float fieldOfView)
+	{
+		float sceneRay = 1;//ray of the sphere containing the entire scene after applying the model matrix
+		float aspectRatio = (float) window.getWidth() / window.getHeight();
+		float scale = (float) (1 / Math.tan(fieldOfView / 2));
+		float cameraZ = (float) (sceneRay * Math.sqrt(1 + scale * scale) / scale);
+		float maxDepth = cameraZ + sceneRay;
+		float minDepth = cameraZ - sceneRay;
+		
+		Matrix4f matrix = new Matrix4f();
+		matrix.projectPositiveZ(fieldOfView, maxDepth, minDepth, aspectRatio);
+		matrix.multiply(new Matrix4f().translateZTo(-cameraZ));
+		
+		return matrix;
 	}
 	
 	public static abstract class Logic {

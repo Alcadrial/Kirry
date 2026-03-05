@@ -18,9 +18,9 @@ void main()
 {
 	vec4 v = PROJECTION * MODEL * vec4(vertexPosition + cubePosition, 1);
 
-	gl_Position = vec4(v.xyz, 1);
+	gl_Position = v;
 	
-	vertexPosition0 = v.xyz;
+	vertexPosition0 = v.xyz / v.w;
 	color0 = color;
 	normalPosition0 = (MODEL * vec4(normalPosition, 0)).xyz;
 }
