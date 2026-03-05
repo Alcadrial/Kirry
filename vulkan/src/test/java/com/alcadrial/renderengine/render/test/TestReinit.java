@@ -21,6 +21,7 @@ import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
+import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Vulkan;
@@ -139,6 +140,7 @@ public class TestReinit extends RenderTest {
 		private void initWindow() throws VulkanException
 		{
 			VulkanWindow.defaultBuilder()
+				.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
 				.deviceFeatures(f -> f.wideLines(true))
 				.build(1080, 720, "Test");
 		}
@@ -153,7 +155,7 @@ public class TestReinit extends RenderTest {
 			
 			vertexBuffer = staticBigBuffer.allocate(70 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 			indexBuffer = staticBigBuffer.allocate(24 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-			uniformBuffer = new VulkanBuffer(device, 16 * 4, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+			uniformBuffer = VulkanBuffer.ofUniforms(device, 16 * 4);
 			
 			staticBigBuffer.setName("StaticBigBuffer");
 			vertexBuffer.setName("VertexBuffer");

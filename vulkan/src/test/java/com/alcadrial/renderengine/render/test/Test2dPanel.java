@@ -2,7 +2,6 @@ package com.alcadrial.renderengine.render.test;
 
 import java.io.IOException;
 import java.math.RoundingMode;
-import java.util.Map;
 import java.util.Random;
 
 import org.lwjgl.glfw.GLFW;
@@ -12,12 +11,14 @@ import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWWindowCloseCallbackI;
 import org.lwjgl.glfw.GLFWWindowIconifyCallbackI;
 import org.lwjgl.glfw.GLFWWindowMaximizeCallbackI;
-import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkClearValue;
+import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
+import org.lwjgl.vulkan.VkDescriptorPoolSize;
+import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
+import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo;
 import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
@@ -27,10 +28,11 @@ import com.alcadrial.kector.Math;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.core.util.Test;
-import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
+import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
@@ -46,13 +48,14 @@ import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.shader.ShaderUtils;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorPool;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSetLayout;
+import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
+import com.alcadrial.renderengine.render.test.util.TestProperties;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
@@ -65,20 +68,27 @@ public class Test2dPanel extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, Test2dPanel::start, () -> defaultLoop(Test2dPanel::loop), Test2dPanel::end, false);
+		mainTest(args, Test2dPanel::start, () -> staticLoop(Test2dPanel::loop, r -> {
+			render = r;
+			RenderEngine.getVulkan().getWindow().show();
+		}), Test2dPanel::end, false);
 	}
 	
 	private static RenderPass renderPass;
 	private static Renderer renderer;
+	private static ShaderProgram shaderProgram;
+	private static PipelineLayout pipelineLayout;
+	private static GraphicsPipelineTemplate graphicsPipelineTemplate;
 	private static GraphicsPipeline graphicsPipeline;
+	private static StaticBigBuffer staticBigBuffer;
 	private static VulkanBuffer vertexBuffer;
 	private static VulkanBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
-	private static Vector2i panelPos;
 	
+	private static Runnable render;
+	private static Vector2f panelPos;
 	private static boolean isModifiedMatrix;
-	private static boolean isModified;
-	private static StaticBigBuffer staticBigBuffer;
+	private static boolean isRendererDirty;
 	
 	public static void start() throws VulkanException
 	{
@@ -86,21 +96,16 @@ public class Test2dPanel extends RenderTest {
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
-		VulkanWindow window = VulkanWindow.builder()
-			.deviceExtensions(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME)
+		VulkanWindow window = VulkanWindow.defaultBuilder()
+			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
 			.useDepthTexture(false)
-			.size(1080, 720)
-			.title("Test")
-			.build();
+			.build(1080, 720, "Test");
 		
 		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> { System.out.println(iconified ? "Iconified" : "Restored"); });
 		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
 			System.out.println("Resized " + width + "x" + height);
 			isModifiedMatrix = true;
-		});
-		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
-			System.out.println("Refresh");
-			isModified = true;
+			isRendererDirty = true;
 		});
 		window.setCallback((GLFWWindowCloseCallbackI) w -> { System.out.println("Closed"); });
 		window.setCallback((GLFWWindowMaximizeCallbackI) (w, maximized) -> { System.out.println(maximized ? "Maximized" : "Restored"); });
@@ -127,33 +132,35 @@ public class Test2dPanel extends RenderTest {
 				pressing[1] = false;
 			}
 		});
-		panelPos = Vector2i.of(0, 0);
+		panelPos = Vector2f.of(0, 0);
 		window.setCallback((GLFWKeyCallbackI) (w, k, s, a, m) -> {
 			if (a == GLFW.GLFW_PRESS || a == GLFW.GLFW_REPEAT)
 			{
+				float v = 1;
+				if ((m & GLFW.GLFW_MOD_SHIFT) != 0) v += 2;
+				if ((m & GLFW.GLFW_MOD_CONTROL) != 0) v *= 2;
 				switch (k)
 				{
 					case 'W':
-						panelPos.add(0, 1);
-						isModified = isModifiedMatrix = true;
+						panelPos.add(0, v);
 						break;
 					case 'A':
-						panelPos.add(-1, 0);
-						isModified = isModifiedMatrix = true;
+						panelPos.add(-v, 0);
 						break;
 					case 'S':
-						panelPos.add(0, -1);
-						isModified = isModifiedMatrix = true;
+						panelPos.add(0, -v);
 						break;
 					case 'D':
-						panelPos.add(1, 0);
-						isModified = isModifiedMatrix = true;
+						panelPos.add(v, 0);
 						break;
+					default:
+						return;
 				}
+				isModifiedMatrix = true;
+				render.run();
 			}
 		});
 		
-		ShaderProgram shaderProgram;
 		try
 		{
 			shaderProgram = ShaderProgram.create().add(loadShader(SHADER + ".vert"), loadShader(SHADER + ".frag")).build();
@@ -176,7 +183,7 @@ public class Test2dPanel extends RenderTest {
 		
 		vertexBuffer = staticBigBuffer.allocate(7 * 4 * SIZE * SIZE * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		indexBuffer = staticBigBuffer.allocate(6 * SIZE * SIZE * 4 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-		uniformBuffer = new VulkanBuffer(device, 256 * 4, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 0);
+		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 1);
 		uniformBuffer.getMemory().mapMemory();
 		
 		staticBigBuffer.setName("StaticBigBuffer");
@@ -195,125 +202,151 @@ public class Test2dPanel extends RenderTest {
 			int k = 0;
 			for (int i = -SIZE; i < SIZE; i++) for (int j = -SIZE; j < SIZE; j++)
 			{
-				RenderingDataUtils.loadRectangleColor(vertexBufferWriter, indexBufferWriter, k, j, i, j + 1, i + 1, 0, random.nextFloat(), random.nextFloat(), random.nextFloat(), random.nextFloat());
+				RenderingDataUtils.loadRectangleColor(vertexBufferWriter, indexBufferWriter, k, j, i, j + 1, i + 1, 1, random.nextFloat(), random.nextFloat(), random.nextFloat(), random.nextFloat());
 				k += 4;
 			}
 		}
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			Map<Integer, ShaderLayoutBinding> bindingFlags = ShaderUtils.extractData(shaderProgram);
-			DescriptorPool descriptorPool = DescriptorPool.ofShaderProgram(device, shaderProgram, 1);
-			DescriptorSetLayout descriptorSetLayout = DescriptorSetLayout.ofBindings(device, bindingFlags);
+			VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = VkDescriptorPoolCreateInfo.malloc(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
+				.pNext(0)
+				.flags(0)
+				.maxSets(1)
+				.pPoolSizes(VkDescriptorPoolSize.malloc(2, stack)
+					.apply(b -> b
+						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+						.descriptorCount(1)
+					)
+					.apply(b -> b
+						.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+						.descriptorCount(1)
+					)
+					.rewind()
+				);
+			
+			VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
+				.pNext(0)
+				.flags(0)
+				.pBindings(VkDescriptorSetLayoutBinding.malloc(1, stack)
+					.apply(b -> b
+						.binding(0)
+						.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+						.descriptorCount(1)
+						.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
+						.pImmutableSamplers(null))
+					.rewind()
+				);
+			
+			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
+			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
 			DescriptorSet descriptorSet = descriptorPool.allocate(descriptorSetLayout);
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
 				.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
-			PipelineLayout layout = new PipelineLayout(device, pipelineLayoutInfo);
+			pipelineLayout = new PipelineLayout(device, pipelineLayoutInfo);
 			
-			try (GraphicsPipelineTemplate template = GraphicsPipelineTemplate.create3dRenderingPipeline()
+			graphicsPipelineTemplate = GraphicsPipelineTemplate.createScreenRenderingPipeline()
 				.configureVertexInputState(s -> s
 					.addBinding(0, 28, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
 					.addAttribute(0, 0, 0)
 					.addAttribute(1, 0, 12)
 				)
-				.build())
-			{
-				graphicsPipeline = template.createPipeline(device, shaderProgram, window.getSurface().getData().size(), layout, renderPass, 0);
-			}
+				.build();
+			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
+			
+			int minUniformBufferOffsetAlignment = (int) device.getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment();
+			
 			renderer = Renderer.builder()
 				.graphicsPipeline(graphicsPipeline)
 				.descriptorSets(descriptorSet)
-				.shaderProgram(shaderProgram)
-				.buffersCount(window.getFramesCount())
+				.buffersCount(1)
+				.bindingsLayout(
+					new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, Type.UNIFORM_BUFFER, 1, ShaderVariable.TRANSFORMATION)
+				)
 				.writers(i -> new BufferWriter[] {
-					new BufferWriter(uniformBuffer, uniformBuffer, 256 * i, 256)
-				})
-				.bindingsLayout(new ShaderVariable[] {
-					ShaderVariable.TRANSFORMATION
+					new BufferWriter(uniformBuffer, uniformBuffer, minUniformBufferOffsetAlignment * i, minUniformBufferOffsetAlignment)
 				})
 				.build();
 		}
 		
 		renderer.setBuffer(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
-		
-		Matrix4f transformation = new Matrix4f().orthographic(window.getWidth(), window.getHeight());
-		Matrix4f model = new Matrix4f().translateYTo(-panelPos.y()).translateXTo(-panelPos.x());
-		transformation.multiply(model);
-		for (int i = 0; i < window.getFramesCount(); i++)
-		{
-			BufferLayout bufferLayout = renderer.getBufferLayout(i)[0];
-			bufferLayout.set(TRANSFORMATION_UNIFORM, transformation);
-			bufferLayout.flush();
-			bufferLayout.updateDescriptorSets();
-		}
+		renderer.getBufferLayout(0)[0].updateDescriptorSets();
 		
 		isModifiedMatrix = true;
-		isModified = true;
 	}
 	
 	public static void loop(long time, long enlapsed) throws VulkanException
 	{
-		VulkanWindow window = RenderEngine.getVulkan().getWindow();
-		
-		if (isModifiedMatrix)
+		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			isModifiedMatrix = false;
-			
-			isModified = true;
-		}
-		if (isModified)
-		{
-			isModified = false;
-			
-			try (MemoryStack stack = MemoryStack.stackPush())
+			VulkanWindow window = RenderEngine.getVulkan().getWindow();
+			switch (window.startPresentation())
 			{
-				Debug.debug("Before startPresentation");
-				window.startPresentation();
-				Debug.debug("After startPresentation");
-				FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
-				CommandBuffer commandBuffer = window.getCurrentCommandBuffer();
-				
-				VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
-				renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
-				renderPassBeginInfo.pNext(0);
-				renderPassBeginInfo.renderPass(renderPass.getVk());
-				renderPassBeginInfo.framebuffer(frameBuffer.getVk());
-				
-				VkRect2D renderArea = VkRect2D.calloc(stack);
-				renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
-				renderPassBeginInfo.renderArea(renderArea);
-				
-				VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
-				clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
-				clearValues.get().depthStencil().depth(1).stencil(0);
-				renderPassBeginInfo.pClearValues(clearValues.rewind());
-				
-				commandBuffer.reset();
-				commandBuffer.beginRecording();
-				//commandBuffer.setScissor(0, 0, window.getWidth(), window.getHeight());
-				//commandBuffer.setViewport(0, window.getHeight(), window.getWidth(), -window.getHeight(), 0, 1);
-				commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
-				renderer.draw(commandBuffer);
-				commandBuffer.endRenderPass();
-				commandBuffer.endRecording();
-				Debug.debug("Before endPresentation");
-				window.endPresentation(commandBuffer);
-				Debug.debug("After endPresentation");
+				case EMPTY_SURFACE:
+					return;
+				case SURFACE_LOST, OUT_OF_MEMORY, FATAL_ERROR:
+					throw new VulkanException("Presentaton error");
 			}
+			if (isRendererDirty)
+			{
+				isRendererDirty = false;
+				println("Rebuild graphics pipeline", () -> {
+					graphicsPipeline.close();
+					graphicsPipeline = graphicsPipelineTemplate.createPipeline(window.getDevice(), shaderProgram, window, pipelineLayout, renderPass, 0);
+					renderer.changePipeline(graphicsPipeline, null);
+				}, TestProperties.PRINT_LOADING_TIMES);
+				isModifiedMatrix = true;
+			}
+			if (isModifiedMatrix)
+			{
+				isModifiedMatrix = false;
+				float scale = (float) Math.min(window.getWidth(), window.getHeight()) / SIZE;
+				Matrix4f transformation = new Matrix4f().scale(Vector3f.of(scale / window.getWidth(), -scale / window.getHeight(), 0.02F));
+				Matrix4f model = new Matrix4f().translateTo(panelPos);
+				transformation.multiply(model);
+				BufferLayout bufferLayout = renderer.getBufferLayout(0)[0];
+				bufferLayout.set(TRANSFORMATION_UNIFORM, transformation);
+				bufferLayout.flushAndInvalidate();
+			}
+			
+			FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
+			CommandBuffer commandBuffer = window.getCurrentCommandBuffer();
+			
+			VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
+			renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
+			renderPassBeginInfo.pNext(0);
+			renderPassBeginInfo.renderPass(renderPass.getVk());
+			renderPassBeginInfo.framebuffer(frameBuffer.getVk());
+			
+			VkRect2D renderArea = VkRect2D.calloc(stack);
+			renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
+			renderPassBeginInfo.renderArea(renderArea);
+			
+			VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
+			clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
+			clearValues.get().depthStencil().depth(1).stencil(0);
+			renderPassBeginInfo.pClearValues(clearValues.rewind());
+			
+			commandBuffer.beginRecording();
+			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
+			renderer.draw(commandBuffer, 0);
+			commandBuffer.endRenderPass();
+			commandBuffer.endRecording();
+			
+			window.endPresentation(commandBuffer);
 		}
-		window.pollEvents();
 	}
 	
 	public static void end()
 	{
 		graphicsPipeline.close();
+		graphicsPipelineTemplate.close();
+		pipelineLayout.close();
+		uniformBuffer.close();
 		staticBigBuffer.close();
-		RenderEngine.getVulkan().getWindow().hide();
-		synchronized (MONITOR)
-		{
-			MONITOR.notify();
-		}
 		RenderEngine.terminate();
 	}
 }

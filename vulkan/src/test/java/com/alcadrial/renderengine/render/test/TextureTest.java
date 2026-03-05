@@ -80,9 +80,9 @@ public class TextureTest extends RenderTest {
 	private static VulkanBuffer vertexBuffer;
 	private static VulkanBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
-	private static Vector3f panelPos;
 	
 	private static Runnable render;
+	private static Vector3f panelPos;
 	private static boolean isModifiedMatrix;
 	private static boolean isRendererDirty;
 	
@@ -111,44 +111,31 @@ public class TextureTest extends RenderTest {
 		window.setCallback((GLFWKeyCallbackI) (w, k, s, a, m) -> {
 			if (a == GLFW.GLFW_PRESS || a == GLFW.GLFW_REPEAT)
 			{
-				float xMove, yMove, zMove;
+				float v = 2F / 16;
 				switch (k)
 				{
 					case 'W':
-						xMove = 0;
-						yMove = 1;
-						zMove = 0;
+						panelPos.add(0, v, 0);
 						break;
 					case 'A':
-						xMove = -1;
-						yMove = 0;
-						zMove = 0;
+						panelPos.add(-v, 0, 0);
 						break;
 					case 'S':
-						xMove = 0;
-						yMove = -1;
-						zMove = 0;
+						panelPos.add(0, -v, 0);
 						break;
 					case 'D':
-						xMove = 1;
-						yMove = 0;
-						zMove = 0;
+						panelPos.add(v, 0, 0);
 						break;
 					case 'Q':
-						xMove = 0;
-						yMove = 0;
-						zMove = -1;
+						panelPos.add(0, 0, -v);
 						break;
 					case 'Z':
-						xMove = 0;
-						yMove = 0;
-						zMove = 1;
+						panelPos.add(0, 0, v);
 						break;
 					default:
 						return;
 				}
 				
-				panelPos.add(xMove * 2 / 16, yMove * 2 / 16, zMove * 2 / 16);
 				isModifiedMatrix = true;
 				render.run();
 			}
@@ -165,13 +152,13 @@ public class TextureTest extends RenderTest {
 		
 		vertexBuffer = new VulkanBuffer(device, 28 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		indexBuffer = new VulkanBuffer(device, 6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-		uniformBuffer = new VulkanBuffer(device, 256, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 1);
 		uniformBuffer.getMemory().mapMemory();
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VulkanBuffer localVertexBuffer = new VulkanBuffer(device, vertexBuffer.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0);
-			VulkanBuffer localIndexBuffer = new VulkanBuffer(device, indexBuffer.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0);
+			VulkanBuffer localVertexBuffer = VulkanBuffer.asLocal(vertexBuffer);
+			VulkanBuffer localIndexBuffer = VulkanBuffer.asLocal(indexBuffer);
 			
 			localVertexBuffer.getMemory().mapMemory();
 			localIndexBuffer.getMemory().mapMemory();
@@ -205,6 +192,9 @@ public class TextureTest extends RenderTest {
 			localVertexBuffer.getMemory().unmapMemory();
 			localIndexBuffer.getMemory().unmapMemory();
 			localTextureBuffer.getMemory().unmapMemory();
+			localVertexBuffer.close();
+			localIndexBuffer.close();
+			localTextureBuffer.close();
 			
 			VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = VkDescriptorPoolCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
@@ -295,9 +285,6 @@ public class TextureTest extends RenderTest {
 			
 			isModifiedMatrix = false;
 			textureFuture.join();
-			localTextureBuffer.close();
-			localVertexBuffer.close();
-			localIndexBuffer.close();
 		}
 	}
 	

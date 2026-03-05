@@ -24,6 +24,22 @@ public class VulkanBuffer extends RawDeviceResource {
 		return new VulkanBuffer(vulkanBuffer.device, vulkanBuffer.size, vulkanBuffer.usage | VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK10.VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
 	}
 	
+	public static VulkanBuffer ofUniformsBindings(Device device, int bindingsCount) throws VulkanException
+	{
+		int minUniformBufferOffsetAlignment = (int) device.getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment();
+		return ofUniforms(device, minUniformBufferOffsetAlignment * bindingsCount, 0);
+	}
+	
+	public static VulkanBuffer ofUniforms(Device device, int size) throws VulkanException
+	{
+		return ofUniforms(device, size, 0);
+	}
+	
+	public static VulkanBuffer ofUniforms(Device device, int size, int extraUsage) throws VulkanException
+	{
+		return new VulkanBuffer(device, size, extraUsage | VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+	}
+	
 	protected Memory memory;
 	private @Nullable VulkanBuffer parent;
 	

@@ -68,6 +68,9 @@ public class InstancingTest extends RenderTest {
 	
 	private static RenderPass renderPass;
 	private static Renderer renderer;
+	private static ShaderProgram shaderProgram;
+	private static PipelineLayout pipelineLayout;
+	private static GraphicsPipelineTemplate graphicsPipelineTemplate;
 	private static GraphicsPipeline graphicsPipeline;
 	private static StaticBigBuffer staticBigBuffer;
 	private static VulkanBuffer vertexBuffer;
@@ -75,20 +78,35 @@ public class InstancingTest extends RenderTest {
 	private static VulkanBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
 	private static @Nullable VulkanBuffer localUniformBuffer;
+	
+	private static final int size = 20;
+	private static final int density = 2;
+	private static final int instanceCount;
+	
 	private static Vector3f lightPos;
 	private static float f;
-	private static int instanceCount;
 	private static boolean isModified;
-	private static GraphicsPipelineTemplate graphicsPipelineTemplate;
-	private static ShaderProgram shaderProgram;
-	private static PipelineLayout pipelineLayout;
+	
+	static {
+		int a = ((2 * size + 1) / density + 1);
+		instanceCount = a * a;
+	}
 	
 	private static Matrix4f buildProjectionMatrix(VulkanWindow window)
 	{
+		float sceneRay = 1;//ray of the sphere containing the entire scene after applying the model matrix
+		float aspectRatio = (float) window.getWidth() / window.getHeight();
+		float fieldOfView = AngleUnit.RADIANS.fromDegrees(120);
+		float scale = (float) (1 / Math.tan(fieldOfView / 2));
+		float cameraZ = (float) (sceneRay * Math.sqrt(1 + scale * scale) / scale);
+		float maxDepth = cameraZ + sceneRay;
+		float minDepth = cameraZ - sceneRay;
+		
 		Matrix4f matrix = new Matrix4f();
-		matrix.multiply(new Matrix4f().project(AngleUnit.RADIANS.fromDegrees(90), 0.09F, -0.1F, (float) window.getWidth() / window.getHeight()));
-		matrix.multiply(new Matrix4f().view(Vector3f.of(0, 0, -1), 0, 0));
-		return matrix.transpose();
+		matrix.projectPositiveZ(fieldOfView, maxDepth, minDepth, aspectRatio);
+		matrix.multiply(new Matrix4f().translateZTo(-cameraZ));
+		
+		return matrix;
 	}
 	
 	private static Matrix4f buildModelMatrix(float f)
@@ -103,7 +121,9 @@ public class InstancingTest extends RenderTest {
 	
 	private static Matrix4f buildScaleMatrix()
 	{
-		return new Matrix4f().scale(Vector3f.of(1, 1, 1).divideAll(16));
+		float ss = (size + 1) * (size + 1);
+		float sceneRay = (float) Math.sqrt(ss + ss + 1 / ss);//ray of the sphere containing the entire scene
+		return new Matrix4f().scale(Vector3f.of(1, 1, 1).divideAll(sceneRay));
 	}
 	
 	public static void start() throws VulkanException
@@ -143,11 +163,6 @@ public class InstancingTest extends RenderTest {
 			renderPass = template.createRenderPass(device);
 		}
 		
-		int size = 20;
-		int density = 2;
-		int a = ((2 * size + 1) / density + 1);
-		instanceCount = a * a;
-		
 		staticBigBuffer = new StaticBigBuffer(device, 65536);
 		
 		vertexBuffer = staticBigBuffer.allocate(240 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
@@ -155,7 +170,7 @@ public class InstancingTest extends RenderTest {
 		indexBuffer = staticBigBuffer.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 		try
 		{
-			uniformBuffer = new VulkanBuffer(device, 256 * 2 * window.getFramesCount() * 4, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+			uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 6);
 			uniformBuffer.getMemory().mapMemory();
 		}
 		catch (OverflowException e)
@@ -194,7 +209,7 @@ public class InstancingTest extends RenderTest {
 				vertexBuffer0Writer.put(Vector3f.of(j, k, 0));
 			}
 			
-			RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3f.of(-1, -1, -1), Vector3f.of(0, 0, 0), (i, j) -> colors[i]);
+			RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3f.origin(), Vector3f.of(1, 1, 1), (i, j) -> colors[i]);
 		}
 		catch (OverflowException e)
 		{
@@ -263,7 +278,7 @@ public class InstancingTest extends RenderTest {
 				)
 				.build();
 			
-			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window.getSurface().getData().size(), pipelineLayout, renderPass, 0);
+			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
 			
 			renderer = Renderer.builder()
 				.graphicsPipeline(graphicsPipeline)
@@ -399,6 +414,9 @@ public class InstancingTest extends RenderTest {
 		graphicsPipeline.close();
 		graphicsPipelineTemplate.close();
 		pipelineLayout.close();
+		staticBigBuffer.close();
+		uniformBuffer.close();
+		if (localUniformBuffer != null) localUniformBuffer.close();
 		RenderEngine.terminate();
 	}
 }
