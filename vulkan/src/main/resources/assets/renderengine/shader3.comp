@@ -3,7 +3,6 @@
 struct Particle {
   vec3 position;
   vec3 velocity;
-  vec4 color;
 };
 
 layout (binding = 0) uniform U {

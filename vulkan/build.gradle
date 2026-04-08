@@ -8,6 +8,10 @@ plugins {
 
 apply from: rootProject.file("pre.gradle")
 
+java {
+	toolchain.languageVersion.set(JavaLanguageVersion.of(25))
+}
+
 dependencies {
 	implementation(project(":core"))
 	
@@ -18,9 +22,11 @@ dependencies {
 	implementation(libs.jspecify)
 	implementation(libs.lwjgl)
 	implementation(libs.lwjgl.glfw)
+	implementation(libs.lwjgl.stb)
 	implementation(libs.lwjgl.vulkan)
 	runtimeOnly("org.lwjgl:lwjgl::${lwjglNatives}")
 	runtimeOnly("org.lwjgl:lwjgl-glfw::${lwjglNatives}")
+	runtimeOnly("org.lwjgl:lwjgl-stb::${lwjglNatives}")
 	if (lwjglNatives == "natives-macos" || lwjglNatives == "natives-macos-arm64") runtimeOnly("org.lwjgl:lwjgl-vulkan::${lwjglNatives}")
 }
 

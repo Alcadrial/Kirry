@@ -15,12 +15,8 @@
 			"binding": 0,
 			"variables": [
 				{
-					"location": "0",
+					"location": 0,
 					"declaration": "vec3 vertexPosition"
-				},
-				{
-					"location": "1",
-					"declaration": "vec4 color"
 				}
 			]
 		},
@@ -29,8 +25,18 @@
 			"binding": 1,
 			"variables": [
 				{
-					"location": "2",
+					"location": 1,
 					"declaration": "vec3 position"
+				}
+			]
+		},
+		{
+			"type": "input",
+			"binding": 2,
+			"variables": [
+				{
+					"location": 2,
+					"declaration": "vec4 color"
 				}
 			]
 		}

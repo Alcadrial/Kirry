@@ -6,7 +6,8 @@
 			"type": "combinedImageSampler",
 			"binding": 1,
 			"variables": [
-				"sampler2D TEXTURE_SAMPLER"
+				"sampler2D TEXTURE_SAMPLER",
+				"sampler2D ATLAS"
 			]
 		},
 		{

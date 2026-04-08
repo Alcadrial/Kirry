@@ -7,15 +7,15 @@
 			"binding": 0,
 			"variables": [
 				{
-					"location": "0",
+					"location": 0,
 					"declaration": "vec3 vertexPosition"
 				},
 				{
-					"location": "1",
+					"location": 1,
 					"declaration": "vec4 color"
 				},
 				{
-					"location": "2",
+					"location": 2,
 					"declaration": "vec3 originPosition"
 				}
 			]

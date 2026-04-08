@@ -33,9 +33,9 @@
 		},
 		{
 			"type": "localSize",
-			"xSize": "256",
-			"ySize": "1",
-			"zSize": "1"
+			"xSize": 256,
+			"ySize": 1,
+			"zSize": 1
 		}
 	]
 }
