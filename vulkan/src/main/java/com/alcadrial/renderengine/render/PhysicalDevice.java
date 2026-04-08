@@ -82,12 +82,12 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 		
 		public static PhysicalDevicePickFilter withCompute()
 		{
-			return (physicalDevice, surface) -> physicalDevice.getQueueFamily(VK10.VK_QUEUE_COMPUTE_BIT) != null;
+			return (physicalDevice, _) -> physicalDevice.getQueueFamily(VK10.VK_QUEUE_COMPUTE_BIT) != null;
 		}
 		
 		public static PhysicalDevicePickFilter any()
 		{
-			return (physicalDevice, surface) -> true;
+			return (_, _) -> true;
 		}
 	}
 	
@@ -170,13 +170,10 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	public PhysicalDevice(VkPhysicalDevice vk)
 	{
 		this.vk = vk;
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			properties = VkPhysicalDeviceProperties.create();
-			VK10.vkGetPhysicalDeviceProperties(vk, properties);
-			features = VkPhysicalDeviceFeatures.create();
-			VK10.vkGetPhysicalDeviceFeatures(vk, features);
-		}
+		properties = VkPhysicalDeviceProperties.create();
+		VK10.vkGetPhysicalDeviceProperties(vk, properties);
+		features = VkPhysicalDeviceFeatures.create();
+		VK10.vkGetPhysicalDeviceFeatures(vk, features);
 		queues = new ArrayList<>(16);
 		for (int i = 0; i < 16; i++) queues.add(new LinkedList<>());
 		searchFamilies();
@@ -347,6 +344,7 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	public void close()
 	{
 		properties.close();
+		features.close();
 		super.close();
 	}
 	

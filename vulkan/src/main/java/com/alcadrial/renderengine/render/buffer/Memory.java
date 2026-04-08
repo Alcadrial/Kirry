@@ -111,6 +111,11 @@ public class Memory extends RawDeviceResource {
 		}
 	}
 	
+	public int getSize()
+	{
+		return size;
+	}
+	
 	public int getMemoryTypeBits()
 	{
 		return memoryTypeBits;

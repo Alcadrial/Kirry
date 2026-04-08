@@ -81,7 +81,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		VK10.vkCmdBindPipeline(vk, pipeline.bindPoint(), pipeline.getVk());
 	}
 	
-	public void bindDescriptorSets(Pipeline pipeline, long[] descriptorSets, int @Nullable[] dynamicOffsets)
+	public void bindDescriptorSets(Pipeline pipeline, long[] descriptorSets, int @Nullable [] dynamicOffsets)
 	{
 		VK10.vkCmdBindDescriptorSets(vk, pipeline.bindPoint(), pipeline.getLayout().getVk(), 0, descriptorSets, dynamicOffsets);
 	}
@@ -160,16 +160,17 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VkBufferImageCopy.Buffer region = VkBufferImageCopy.malloc(1, stack);
-			region.bufferOffset(0);
-			region.bufferRowLength(0);
-			region.bufferImageHeight(0);
-			region.imageSubresource().aspectMask(dstTexture.getAspectMask());
-			region.imageSubresource().mipLevel(0);
-			region.imageSubresource().baseArrayLayer(0);
-			region.imageSubresource().layerCount(1);
-			region.imageOffset().set(0, 0, 0);
-			region.imageExtent().set(dstTexture.getWidth(), dstTexture.getHeight(), dstTexture.getDepth());
+			VkBufferImageCopy.Buffer region = VkBufferImageCopy.malloc(1, stack)
+				.bufferOffset(0)
+				.bufferRowLength(0)
+				.bufferImageHeight(0)
+				.imageSubresource(s -> s
+					.aspectMask(dstTexture.getAspectMask())
+					.mipLevel(0)
+					.baseArrayLayer(0)
+					.layerCount(1))
+				.imageOffset(o -> o.set(0, 0, 0))
+				.imageExtent(e -> e.set(dstTexture.getWidth(), dstTexture.getHeight(), dstTexture.getDepth()));
 			
 			copyBufferToImage(srcBuffer, dstTexture, region);
 		}
@@ -264,7 +265,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		VK10.vkCmdNextSubpass(vk, subpassContents);
 	}
 	
-	public void pipelineBarrier(int srcStageMask, int dstStageMask, int dependencyFlags,  VkMemoryBarrier.@Nullable Buffer memoryBarriers, VkBufferMemoryBarrier.@Nullable Buffer bufferMemoryBarriers, VkImageMemoryBarrier.@Nullable Buffer imageMemoryBarriers)
+	public void pipelineBarrier(int srcStageMask, int dstStageMask, int dependencyFlags, VkMemoryBarrier.@Nullable Buffer memoryBarriers, VkBufferMemoryBarrier.@Nullable Buffer bufferMemoryBarriers, VkImageMemoryBarrier.@Nullable Buffer imageMemoryBarriers)
 	{
 		VK10.vkCmdPipelineBarrier(vk, srcStageMask, dstStageMask, dependencyFlags, memoryBarriers, bufferMemoryBarriers, imageMemoryBarriers);
 	}

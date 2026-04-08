@@ -215,7 +215,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			CommandBuffer commandBuffer = new CommandBuffer(this, singleUseCommandPool, new VkCommandBuffer(p.get(), vk));
 			Debug.runOnDebug(() -> commandBuffer.setName("SingleUse CommandBuffer " + Debug.getIncrementalId(this)));
 			
-			useShortLivedCommandPool(pool -> {
+			useShortLivedCommandPool(_ -> {
 				commandBuffer.beginRecording();
 				configure.accept(commandBuffer);
 				commandBuffer.endRecording();
@@ -223,7 +223,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			long fence = createFence(stack, false);
 			queue.submit(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), fence);
 			destroyFences(fence);
-			useShortLivedCommandPool(pool -> commandBuffer.close());
+			useShortLivedCommandPool(_ -> commandBuffer.close());
 		}
 	}
 	
@@ -243,7 +243,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			CommandBuffer commandBuffer = new CommandBuffer(this, singleUseCommandPool, new VkCommandBuffer(p.get(), vk));
 			Debug.runOnDebug(() -> commandBuffer.setName("SingleUse CommandBuffer " + Debug.getIncrementalId(this)));
 			
-			useShortLivedCommandPool(pool -> {
+			useShortLivedCommandPool(_ -> {
 				commandBuffer.beginRecording();
 				configure.accept(commandBuffer);
 				commandBuffer.endRecording();
@@ -409,10 +409,10 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		return memoryRequirements;
 	}
 	
-	public VkMemoryRequirements getImageRequirements(MemoryStack stack, Texture texture)
+	public VkMemoryRequirements getImageRequirements(MemoryStack stack, long textureVk)
 	{
 		VkMemoryRequirements memoryRequirements = VkMemoryRequirements.malloc(stack);
-		VK10.vkGetImageMemoryRequirements(vk, texture.getVk(), memoryRequirements);
+		VK10.vkGetImageMemoryRequirements(vk, textureVk, memoryRequirements);
 		return memoryRequirements;
 	}
 	
@@ -423,10 +423,10 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		return memory;
 	}
 	
-	public Memory allocateMemory(MemoryStack stack, Texture texture, int requiredProperties, int optimalProperties) throws VulkanException
+	public Memory allocateTextureMemory(MemoryStack stack, long textureVk, int requiredProperties, int optimalProperties) throws VulkanException
 	{
-		Memory memory = allocateMemory(stack, getImageRequirements(stack, texture), requiredProperties, optimalProperties);
-		VulkanErrorUtils.assertNoError(VK10.vkBindImageMemory(vk, texture.getVk(), memory.getVk(), 0), "Failed to bind image memory");
+		Memory memory = allocateMemory(stack, getImageRequirements(stack, textureVk), requiredProperties, optimalProperties);
+		VulkanErrorUtils.assertNoError(VK10.vkBindImageMemory(vk, textureVk, memory.getVk(), 0), "Failed to bind image memory");
 		return memory;
 	}
 	

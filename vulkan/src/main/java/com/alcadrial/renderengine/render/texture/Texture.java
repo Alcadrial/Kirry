@@ -1,5 +1,9 @@
 package com.alcadrial.renderengine.render.texture;
 
+import java.io.File;
+import java.nio.ByteBuffer;
+
+import org.lwjgl.stb.STBImage;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VK13;
@@ -10,17 +14,48 @@ import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.buffer.Memory;
+import com.alcadrial.renderengine.render.buffer.MemoryResource;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
-import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
-public class Texture extends RawDeviceResource {
+public class Texture extends MemoryResource {
 	
 	static
 	{
 		RenderEngine.assertLoaded();
+	}
+	
+	public static VulkanFuture<Texture> loadFromFile(Device device, File file, int dstLayout) throws VulkanException
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			int[] width = new int[1];
+			int[] height = new int[1];
+			int[] channels = new int[1];
+			ByteBuffer data = STBImage.stbi_load(stack.UTF8(file.getPath()), width, height, channels, STBImage.STBI_rgb_alpha);
+			if (data == null) throw new VulkanException("Cannot load image \"" + file + "\"");
+
+			VulkanBuffer buffer = VulkanBuffer.forTransfer(device, data.limit());
+			buffer.getMemory().mapMemory().getBuffer().put(data).rewind();
+			STBImage.stbi_image_free(data.rewind());
+			
+			Texture texture = Texture.create2dTexture(device, width[0], height[0], VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+			
+			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
+			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			commandBuffer.copyBufferToImage(buffer, texture);
+			texture.changeLayout(commandBuffer, dstLayout);
+			commandBuffer.endRecording();
+			
+			return RenderEngine.composeAfter(device.submitSingleUseCommandBuffer(stack, commandBuffer), () -> {
+				buffer.getMemory().unmapMemory();
+				buffer.close();
+				return texture;
+			});
+		}
 	}
 	
 	public static Texture create1dTexture(Device device, int width, int format, int usage, int aspectMask) throws VulkanException
@@ -54,7 +89,6 @@ public class Texture extends RawDeviceResource {
 	}
 	
 	private TextureView view;
-	private Memory memory;
 	private int length;
 	private int width;
 	private int height;
@@ -67,7 +101,6 @@ public class Texture extends RawDeviceResource {
 	
 	private Texture(Device device, int width, int height, int depth, int format, int tiling, int usage, int aspectMask, int mipLevels, int imageType) throws VulkanException
 	{
-		super(device);
 		length = width * height * depth;
 		this.width = width;
 		this.height = height;
@@ -78,6 +111,8 @@ public class Texture extends RawDeviceResource {
 		this.aspectMask = aspectMask;
 		layout = VK10.VK_IMAGE_LAYOUT_UNDEFINED;
 		
+		long vk;
+		Memory memory;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			VkImageCreateInfo createInfo = VkImageCreateInfo.malloc(stack);
@@ -99,9 +134,11 @@ public class Texture extends RawDeviceResource {
 			long[] p = new long[1];
 			VulkanErrorUtils.assertNoError(VK10.vkCreateImage(device.getVk(), createInfo, null, p), "Failed to create image");
 			vk = p[0];
-			
-			memory = device.allocateMemory(stack, this, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+
+			memory = device.allocateTextureMemory(stack, p[0], VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 		}
+		super(device, memory);
+		this.vk = vk;
 		
 		view = new TextureView(this);
 	}
@@ -111,11 +148,6 @@ public class Texture extends RawDeviceResource {
 	{
 		device.setObjectDebugName(this, name);
 		this.name = name;
-	}
-	
-	public Memory getMemory()
-	{
-		return memory;
 	}
 	
 	public VulkanFuture<?> changeLayout(int layout) throws VulkanException

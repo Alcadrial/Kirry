@@ -338,7 +338,7 @@ public class RenderEngine extends RenderEngineCore {
 	
 	public static VulkanFuture<?> composeAfter(VulkanFuture<?> future, VulkanRunnable action)
 	{
-		return new AsyncDependentTaskHandler<>(future, v -> {
+		return new AsyncDependentTaskHandler<>(future, _ -> {
 			action.run();
 			return null;
 		});
@@ -346,7 +346,7 @@ public class RenderEngine extends RenderEngineCore {
 	
 	public static <V> VulkanFuture<V> composeAfter(VulkanFuture<?> future, VulkanSupplier<V> action)
 	{
-		return new AsyncDependentTaskHandler<>(future, v -> action.get());
+		return new AsyncDependentTaskHandler<>(future, _ -> action.get());
 	}
 	
 	public static <V> VulkanFuture<?> composeAfter(VulkanFuture<V> future, VulkanConsumer<V> action)
