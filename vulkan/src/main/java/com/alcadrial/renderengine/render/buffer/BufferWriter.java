@@ -36,6 +36,51 @@ public class BufferWriter implements AutoCloseable {
 		return NullBufferWriter.INSTANCE;
 	}
 	
+	public static VulkanFuture<?> writeData(ByteBuffer data, VulkanBuffer dst) throws VulkanException
+	{
+		VulkanBuffer src = new VulkanBuffer(dst.getDevice(), data.limit(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0);
+		BufferWriter writer = new BufferWriter(src, dst);
+		
+		src.getMemory().mapMemory();
+		writer.put(data);
+		src.getMemory().unmapMemory();
+		writer.transfer();
+		return RenderEngine.composeAfter(writer.getLoad(), () -> {
+			src.close();
+			writer.close();
+		});
+	}
+	
+	public static VulkanFuture<?> writeData(int[] data, VulkanBuffer dst) throws VulkanException
+	{
+		VulkanBuffer src = new VulkanBuffer(dst.getDevice(), data.length * 4, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0);
+		BufferWriter writer = new BufferWriter(src, dst);
+		
+		src.getMemory().mapMemory();
+		writer.put(data);
+		src.getMemory().unmapMemory();
+		writer.transfer();
+		return RenderEngine.composeAfter(writer.getLoad(), () -> {
+			src.close();
+			writer.close();
+		});
+	}
+	
+	public static VulkanFuture<?> writeData(byte[] data, VulkanBuffer dst) throws VulkanException
+	{
+		VulkanBuffer src = new VulkanBuffer(dst.getDevice(), data.length, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0);
+		BufferWriter writer = new BufferWriter(src, dst);
+		
+		src.getMemory().mapMemory();
+		writer.put(data);
+		src.getMemory().unmapMemory();
+		writer.transfer();
+		return RenderEngine.composeAfter(writer.getLoad(), () -> {
+			src.close();
+			writer.close();
+		});
+	}
+	
 	private class Work {
 		
 		private VulkanFuture<?> work;
@@ -63,6 +108,7 @@ public class BufferWriter implements AutoCloseable {
 	
 	private VkBufferCopy.Buffer vkBufferCopy;
 	private int bufferCopyCount;
+	private boolean preferFlush;
 	
 	private @Nullable CommandBuffer flushCommandBuffer;
 	private @Nullable Work firstWork;
@@ -105,6 +151,12 @@ public class BufferWriter implements AutoCloseable {
 		firstWork = lastWork = null;
 		lastSetCursor = 0;
 		isModified = false;
+		preferFlush = false;
+	}
+	
+	public void setPreferFlush(boolean preferFlush)
+	{
+		this.preferFlush = preferFlush;
 	}
 	
 	/**
@@ -454,7 +506,8 @@ public class BufferWriter implements AutoCloseable {
 	@Override
 	public void close() throws VulkanException
 	{
-		transfer();
+		if (preferFlush) flushAndInvalidate();
+		else transfer();
 		if (firstWork != null) for (Work work = firstWork, work0 = work.next; work0 != null; work = work0, work0 = work0.next) work.next = null;
 		vkBufferCopy.free();
 	}
