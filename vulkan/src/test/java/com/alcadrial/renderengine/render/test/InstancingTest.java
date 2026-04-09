@@ -3,7 +3,6 @@ package com.alcadrial.renderengine.render.test;
 import java.io.IOException;
 import java.util.List;
 
-import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
@@ -27,7 +26,6 @@ import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
-import com.alcadrial.renderengine.render.buffer.BufferLayout;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
@@ -38,13 +36,12 @@ import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
-import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
+import com.alcadrial.renderengine.render.shader.binding.BindingInfo;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorPool;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSetLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
@@ -55,11 +52,6 @@ import com.alcadrial.renderengine.render.window.VulkanWindow;
 public class InstancingTest extends RenderTest {
 	
 	private static final String SHADER = "shader2";
-	private static final String PROJECTION = "PROJECTION";
-	private static final String MODEL = "MODEL";
-	private static final String LIGHT_POS = "LIGHT_POS";
-	private static final String LIGHT_INTENSITY = "LIGHT_INTENSITY";
-	private static final String SPACE_FOG_INTENSITY = "SPACE_FOG_INTENSITY";
 	
 	public static void main(String[] args)
 	{
@@ -77,7 +69,10 @@ public class InstancingTest extends RenderTest {
 	private static VulkanBuffer instanceVertexBuffer;
 	private static VulkanBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
-	private static @Nullable VulkanBuffer localUniformBuffer;
+	
+	private static ShaderVariable lightPos;
+	private static ShaderVariable lightIntensity;
+	private static ShaderVariable spaceFogIntensity;
 	
 	private static final int size = 20;
 	private static final int density = 2;
@@ -86,7 +81,8 @@ public class InstancingTest extends RenderTest {
 	private static float f;
 	private static boolean isModified;
 	
-	static {
+	static
+	{
 		int a = ((2 * size + 1) / density + 1);
 		instanceCount = a * a;
 	}
@@ -132,7 +128,7 @@ public class InstancingTest extends RenderTest {
 			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
 			.build(1080, 720, "Test");
 		
-		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
+		window.setCallback((GLFWWindowSizeCallbackI) (_, _, _) -> {
 			isModified = true;
 		});
 		
@@ -150,20 +146,8 @@ public class InstancingTest extends RenderTest {
 		vertexBuffer = staticBigBuffer.allocate(24 * 10 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		instanceVertexBuffer = staticBigBuffer.allocate(instanceCount * 3 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		indexBuffer = staticBigBuffer.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-		try
-		{
-			uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 6);
-			uniformBuffer.getMemory().mapMemory();
-		}
-		catch (OverflowException e)
-		{
-			throw e;
-			/* TODO: fallback to memory transfers
-			uniformBuffer = staticBigBuffer.allocate(256 * 2 * window.getFrameCount() * 4, VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-			localUniformBuffer = VulkanBuffer.asLocal(uniformBuffer);
-			localUniformBuffer.getMemory().mapMemory();
-			*/
-		}
+		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 6);
+		uniformBuffer.getMemory().mapMemory();
 		
 		staticBigBuffer.setName("StaticBigBuffer");
 		vertexBuffer.setName("VertexBuffer");
@@ -191,7 +175,7 @@ public class InstancingTest extends RenderTest {
 				vertexBuffer0Writer.put(Vector3f.of(j, k, 0));
 			}
 			
-			RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3f.origin(), Vector3f.of(1, 1, 1), (i, j) -> colors[i]);
+			RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3f.origin(), Vector3f.of(1, 1, 1), (i, _) -> colors[i]);
 		}
 		catch (OverflowException e)
 		{
@@ -199,7 +183,10 @@ public class InstancingTest extends RenderTest {
 			RenderEngine.terminate();
 			return;
 		}
-		
+
+		lightPos = ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS");
+		lightIntensity = ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY");
+		spaceFogIntensity = ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY");
 		f = 0;
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
@@ -208,7 +195,7 @@ public class InstancingTest extends RenderTest {
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
 				.pNext(0)
 				.flags(0)
-				.maxSets(3)
+				.maxSets(window.getFramesCount())
 				.pPoolSizes(VkDescriptorPoolSize.malloc(2, stack)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
@@ -243,7 +230,7 @@ public class InstancingTest extends RenderTest {
 			
 			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
 			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, createInfo);
-			DescriptorSet[] descriptorSets = descriptorPool.allocates(descriptorSetLayout, 3);
+			DescriptorSet[] descriptorSets = descriptorPool.allocates(descriptorSetLayout, window.getFramesCount());
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
 				.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
 			pipelineLayout = new PipelineLayout(device, pipelineLayoutInfo);
@@ -265,64 +252,39 @@ public class InstancingTest extends RenderTest {
 				.graphicsPipeline(graphicsPipeline)
 				.descriptorSets(descriptorSets)
 				.buffersCount(window.getFramesCount())
-				.writers(i -> new BufferWriter[] {
-					new BufferWriter(uniformBuffer, uniformBuffer, 512 * i, 256),
-					new BufferWriter(uniformBuffer, uniformBuffer, 512 * i + 256, 256)
-				})
-				.bindingsLayout(
-					new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, ShaderLayout.Type.UNIFORM_BUFFER, 1, List.of(
+				.bindings(i -> new BindingInfo[] {
+					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i, 1), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.PROJECTION,
 						ShaderVariable.MODEL
 					)),
-					new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderLayout.Type.UNIFORM_BUFFER, 1, List.of(
-						ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, LIGHT_POS),
-						ShaderVariable.of(ShaderInputType.FLOAT, LIGHT_INTENSITY),
-						ShaderVariable.of(ShaderInputType.FLOAT, SPACE_FOG_INTENSITY)
+					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i + 1, 1), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
+						lightPos,
+						lightIntensity,
+						spaceFogIntensity
 					))
-				)
+				})
 				.build();
 			renderer.setBuffer(0, vertexBuffer);
 			renderer.setBuffer(1, instanceVertexBuffer);
 			renderer.setIndexBuffer(indexBuffer);
 			
-			Vector3f lightPos = Vector3f.of(5, 20, 0);
-			
 			Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
 			Matrix4f modelMatrix = buildModelMatrix(f);
-			Vector3f relativeLightPos = buildScaleMatrix().multiply(lightPos.xyz1()).xyz();
+			Vector3f relativeLightPos = buildScaleMatrix().multiply(Vector3f.of(5, 20, 0).xyz1()).xyz();
 			
-			if (localUniformBuffer != null)
+			for (int i = 0; i < window.getFramesCount(); i++)
 			{
-				CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
-				for (int i = 0; i < window.getFramesCount(); i++)
-				{
-					BufferLayout bufferLayout = renderer.getBufferLayout(i)[0];
-					bufferLayout.set(PROJECTION, projectionMatrix);
-					bufferLayout.set(LIGHT_POS, relativeLightPos);
-					bufferLayout.set(LIGHT_INTENSITY, 0.75F);
-					bufferLayout.set(SPACE_FOG_INTENSITY, 0.1F);
-					bufferLayout.updateDescriptorSets();
-					bufferLayout.transfer(commandBuffer);
-				}
-				commandBuffer.endRecording();
-				device.submitSingleUseCommandBuffer(stack, commandBuffer).join();
-			}
-			else
-			{
-				for (int i = 0; i < window.getFramesCount(); i++)
-				{
-					BufferLayout bufferLayout = renderer.getBufferLayout(i)[0];
-					bufferLayout.set(MODEL, modelMatrix);
-					bufferLayout.set(PROJECTION, projectionMatrix);
-					bufferLayout.flush();
-					bufferLayout.updateDescriptorSets();
-					bufferLayout = renderer.getBufferLayout(i)[1];
-					bufferLayout.set(LIGHT_POS, relativeLightPos);
-					bufferLayout.set(LIGHT_INTENSITY, 0.75F);
-					bufferLayout.set(SPACE_FOG_INTENSITY, 0.1F);
-					bufferLayout.flush();
-					bufferLayout.updateDescriptorSets();
-				}
+				renderer.useBufferLayoutWriter(i, 0, writer -> {
+					writer.set(ShaderVariable.MODEL, modelMatrix);
+					writer.set(ShaderVariable.PROJECTION, projectionMatrix);
+					writer.flush();
+				});
+				renderer.useBufferLayoutWriter(i, 1, writer -> {
+					writer.set(lightPos, relativeLightPos);
+					writer.set(lightIntensity, 0.75F);
+					writer.set(spaceFogIntensity, 0.1F);
+					writer.flush();
+				});
 			}
 		}
 	}
@@ -346,20 +308,38 @@ public class InstancingTest extends RenderTest {
 					graphicsPipeline.close();
 					graphicsPipeline = graphicsPipelineTemplate.createPipeline(window.getDevice(), shaderProgram, window, pipelineLayout, renderPass, 0);
 					renderer.changePipeline(graphicsPipeline, null);
-
+					
 					Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
 					for (int i = 0; i < window.getFramesCount(); i++)
 					{
-						BufferLayout bufferLayout = renderer.getBufferLayout(i)[0];
-						bufferLayout.set(PROJECTION, projectionMatrix);
-						bufferLayout.flush();
+						if (i == window.getFrameIndex())
+						{
+							renderer.useBufferLayoutWriter(i, 0, writer -> {
+								writer.set(ShaderVariable.PROJECTION, projectionMatrix);
+								writer.set(ShaderVariable.MODEL, buildModelMatrix(f));
+								writer.flushAndInvalidate();							
+							});
+						}
+						else
+						{
+							renderer.useBufferLayoutWriter(i, 0, writer -> {
+								writer.set(ShaderVariable.PROJECTION, projectionMatrix);
+								writer.flushAndInvalidate();							
+							});
+						}
 					}
 				}, TestProperties.PRINT_LOADING_TIMES);
+			}
+			else
+			{
+				renderer.useBufferLayoutWriter(window.getFrameIndex(), 0, writer -> {
+					writer.set(ShaderVariable.MODEL, buildModelMatrix(f));
+					writer.flushAndInvalidate();							
+				});
 			}
 			
 			FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
 			CommandBuffer commandBuffer = window.getCurrentCommandBuffer();
-			BufferLayout bufferLayout = renderer.getBufferLayout(window.getFrameIndex())[0];
 			
 			VkRect2D renderArea = VkRect2D.malloc(stack);
 			renderArea.offset().set(0, 0);
@@ -376,17 +356,7 @@ public class InstancingTest extends RenderTest {
 				.renderArea(renderArea)
 				.pClearValues(clearValues.rewind());
 			
-			bufferLayout.set(MODEL, buildModelMatrix(f));
-			if (localUniformBuffer == null) bufferLayout.flushAndInvalidate();
-			
 			commandBuffer.beginRecording();
-			/* TODO: fallback to memory transfers
-			if (localUniformBuffer != null)
-			{
-				bufferLayout.transfer(commandBuffer);
-				//barrier
-			}
-			*/
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 			renderer.draw(commandBuffer, window.getFrameIndex(), instanceCount);
 			commandBuffer.endRenderPass();
@@ -404,7 +374,6 @@ public class InstancingTest extends RenderTest {
 		pipelineLayout.close();
 		staticBigBuffer.close();
 		uniformBuffer.close();
-		if (localUniformBuffer != null) localUniformBuffer.close();
 		RenderEngine.terminate();
 	}
 }

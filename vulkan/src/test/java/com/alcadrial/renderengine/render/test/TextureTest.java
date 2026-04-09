@@ -1,9 +1,6 @@
 package com.alcadrial.renderengine.render.test;
 
-import java.awt.image.BufferedImage;
 import java.util.List;
-
-import javax.imageio.ImageIO;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
@@ -28,7 +25,6 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.buffer.BufferLayout;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
@@ -37,18 +33,15 @@ import com.alcadrial.renderengine.render.pipeline.GraphicsPipelineTemplate;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
-import com.alcadrial.renderengine.render.shader.ShaderInputType;
-import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
+import com.alcadrial.renderengine.render.shader.binding.BindingInfo;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorPool;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSetLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
-import com.alcadrial.renderengine.render.texture.ImageWriter;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
 import com.alcadrial.renderengine.render.util.VulkanFuture;
@@ -59,8 +52,6 @@ import com.alcadrial.renderengine.render.window.VulkanWindow;
 public class TextureTest extends RenderTest {
 	
 	private static final String SHADER = "shader0";
-	private static final String TRANSFORMATION_UNIFORM = "TRANSFORMATION";
-	private static final String TEXTURE_SAMPLER_UNIFORM = "TEXTURE_SAMPLER";
 	
 	public static void main(String[] args)
 	{
@@ -77,6 +68,7 @@ public class TextureTest extends RenderTest {
 	private static GraphicsPipelineTemplate graphicsPipelineTemplate;
 	private static GraphicsPipeline graphicsPipeline;
 	private static Texture texture;
+	private static Texture texture0;
 	private static VulkanBuffer vertexBuffer;
 	private static VulkanBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
@@ -101,14 +93,14 @@ public class TextureTest extends RenderTest {
 			.useDepthTexture(false)
 			.build(1080, 720, "Test");
 		window.setName("Window");
-		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
+		window.setCallback((GLFWWindowSizeCallbackI) (_, _, _) -> {
 			isModifiedMatrix = true;
 			isRendererDirty = true;
 		});
 		
 		registerDragging();
 		panelPos = Vector3f.of(0, 0, 0);
-		window.setCallback((GLFWKeyCallbackI) (w, k, s, a, m) -> {
+		window.setCallback((GLFWKeyCallbackI) (_, k, _, a, _) -> {
 			if (a == GLFW.GLFW_PRESS || a == GLFW.GLFW_REPEAT)
 			{
 				float v = 2F / 16;
@@ -140,15 +132,15 @@ public class TextureTest extends RenderTest {
 				render.run();
 			}
 		});
+		Device device = window.getDevice();
 		
-		VulkanFuture<BufferedImage> imageFuture = RenderEngine.submitAsync(() -> ImageIO.read(getFile("icon.png")));
+		VulkanFuture<Texture> textureFuture = Texture.loadFromFile(device, getFile("icon.png"), VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		VulkanFuture<Texture> texture0Future = Texture.loadFromFile(device, getFile("icon0.png"), VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		VulkanFuture<ShaderProgram> shaderProgramFuture = RenderEngine.submitAsync(() -> {
 			PreparedShader vertexShader = loadShader(SHADER + ".vert");
 			PreparedShader fragmentShader = loadShader(SHADER + ".frag");
 			return ShaderProgram.create().add(vertexShader, fragmentShader).build();
 		});
-		
-		Device device = window.getDevice();
 		
 		vertexBuffer = new VulkanBuffer(device, 28 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		indexBuffer = new VulkanBuffer(device, 6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
@@ -163,38 +155,29 @@ public class TextureTest extends RenderTest {
 			localVertexBuffer.getMemory().mapMemory();
 			localIndexBuffer.getMemory().mapMemory();
 			
+			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
+			
 			BufferWriter vertexBufferWriter = new BufferWriter(localVertexBuffer, vertexBuffer);
+			vertexBufferWriter.setCommandBuffer(commandBuffer);
 			BufferWriter indexBufferWriter = new BufferWriter(localIndexBuffer, indexBuffer);
+			indexBufferWriter.setCommandBuffer(commandBuffer);
 			
 			RenderingDataUtils.loadRectangleUv(vertexBufferWriter, indexBufferWriter, 0, -1, -1, 1, 1, 1, 0, 0, 1, 1);
 			vertexBufferWriter.close();
 			indexBufferWriter.close();
-			
-			renderPass = window.getRenderPass();
-			
-			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
-			
-			BufferedImage image = imageFuture.forceGet();
-			texture = Texture.create2dTexture(device, image.getWidth(), image.getHeight(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
-			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-			
-			VulkanBuffer localTextureBuffer = new VulkanBuffer(device, texture.getLength() * 4, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0);
-			localTextureBuffer.getMemory().mapMemory();
-			ImageWriter textureBufferWriter = new ImageWriter(localTextureBuffer, 0, texture, 0, 0, 0, texture.getWidth(), texture.getHeight(), texture.getDepth(), commandBuffer);
-			textureBufferWriter.put(image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth()));
-			textureBufferWriter.close();
-			
-			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-			
 			commandBuffer.endRecording();
 			
-			VulkanFuture<?> textureFuture = device.submitSingleUseCommandBuffer(stack, commandBuffer);
+			device.submitSingleUseCommandBuffer(stack, commandBuffer).join();
+			
 			localVertexBuffer.getMemory().unmapMemory();
 			localIndexBuffer.getMemory().unmapMemory();
-			localTextureBuffer.getMemory().unmapMemory();
 			localVertexBuffer.close();
 			localIndexBuffer.close();
-			localTextureBuffer.close();
+
+			texture = textureFuture.forceGet();
+			texture0 = texture0Future.forceGet();
+			
+			renderPass = window.getRenderPass();
 			
 			VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = VkDescriptorPoolCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
@@ -208,7 +191,7 @@ public class TextureTest extends RenderTest {
 					)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-						.descriptorCount(1)
+						.descriptorCount(2)
 					)
 					.rewind()
 				);
@@ -227,7 +210,7 @@ public class TextureTest extends RenderTest {
 					.apply(b -> b
 						.binding(1)
 						.descriptorType(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-						.descriptorCount(1)
+						.descriptorCount(2)
 						.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
 						.pImmutableSamplers(null))
 					.rewind()
@@ -252,18 +235,14 @@ public class TextureTest extends RenderTest {
 			renderer = Renderer.builder()
 				.graphicsPipeline(graphicsPipeline)
 				.descriptorSets(descriptorSet)
-				.buffersCount(1)
-				.writers(i -> new BufferWriter[] {
-					new BufferWriter(uniformBuffer, uniformBuffer, 0, 256),
-					BufferWriter.nullWriter()//texture
-				})
-				.bindingsLayout(
-					new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, ShaderLayout.Type.UNIFORM_BUFFER, 1, List.of(
+				.bindings(
+					BindingInfo.ofUniform(uniformBuffer, VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.TRANSFORMATION
 					)),
-					new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderLayout.Type.COMBINED_IMAGE_SAMPLER, 1, List.of(
-						ShaderVariable.of(ShaderInputType.SAMPLER_2D, TEXTURE_SAMPLER_UNIFORM)
-					))
+					BindingInfo.ofTextures(VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
+						.add(texture, new TextureSampler(device), ShaderVariable.TEXTURE)
+						.add(texture0, new TextureSampler(device), ShaderVariable.ATLAS)
+						.build()
 				)
 				.build();
 			
@@ -271,20 +250,16 @@ public class TextureTest extends RenderTest {
 			renderer.setIndexBuffer(indexBuffer);
 			isRendererDirty = false;
 			
-			BufferLayout bufferLayout = renderer.getBufferLayout(0)[1];
-			bufferLayout.set(TEXTURE_SAMPLER_UNIFORM, texture.getView(), new TextureSampler(device));
-			bufferLayout.updateDescriptorSets();
-			
 			float scale = Math.min(window.getWidth(), window.getHeight());
 			Matrix4f transformation = new Matrix4f().scale(Vector3f.of(scale / window.getWidth(), -scale / window.getHeight(), 0.02F));
-			Matrix4f model = new Matrix4f().translateTo(panelPos);
-			transformation.multiply(model);
-			bufferLayout = renderer.getBufferLayout(0)[0];
-			bufferLayout.set(TRANSFORMATION_UNIFORM, transformation);
-			bufferLayout.flushAndInvalidate();
+			transformation.multiply(new Matrix4f().translateTo(panelPos));
+			
+			renderer.useBufferLayoutWriter(0, 0, writer -> {
+				writer.set(ShaderVariable.TRANSFORMATION, transformation);
+				writer.flushAndInvalidate();
+			});
 			
 			isModifiedMatrix = false;
-			textureFuture.join();
 		}
 	}
 	
@@ -317,9 +292,10 @@ public class TextureTest extends RenderTest {
 				Matrix4f transformation = new Matrix4f().scale(Vector3f.of(scale / window.getWidth(), -scale / window.getHeight(), 0.02F));
 				Matrix4f model = new Matrix4f().translateTo(panelPos);
 				transformation.multiply(model);
-				BufferLayout bufferLayout = renderer.getBufferLayout(0)[0];
-				bufferLayout.set(TRANSFORMATION_UNIFORM, transformation);
-				bufferLayout.flushAndInvalidate();
+				renderer.useBufferLayoutWriter(0, 0, writer -> {
+					writer.set(ShaderVariable.TRANSFORMATION, transformation);
+					writer.flushAndInvalidate();
+				});
 			}
 			
 			FrameBuffer frameBuffer = window.getCurrentFrameBuffer();

@@ -28,7 +28,6 @@ import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
-import com.alcadrial.renderengine.render.buffer.BufferLayout;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
@@ -39,13 +38,12 @@ import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
-import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
+import com.alcadrial.renderengine.render.shader.binding.BindingInfo;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorPool;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSetLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
@@ -56,11 +54,6 @@ import com.alcadrial.renderengine.render.window.VulkanWindow;
 public class DepthBufferTest extends RenderTest {
 	
 	private static final String SHADER = "shader1";
-	private static final String PROJECTION = "PROJECTION";
-	private static final String MODEL = "MODEL";
-	private static final String LIGHT_POS = "LIGHT_POS";
-	private static final String LIGHT_INTENSITY = "LIGHT_INTENSITY";
-	private static final String SPACE_FOG_INTENSITY = "SPACE_FOG_INTENSITY";
 	
 	public static void main(String[] args)
 	{
@@ -77,6 +70,10 @@ public class DepthBufferTest extends RenderTest {
 	private static VulkanBuffer vertexBuffer;
 	private static VulkanBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
+	
+	private static ShaderVariable lightPos;
+	private static ShaderVariable lightIntensity;
+	private static ShaderVariable spaceFogIntensity;
 	
 	private static float f;
 	private static boolean isModified;
@@ -113,7 +110,7 @@ public class DepthBufferTest extends RenderTest {
 			.build(1080, 720, "Test");
 		Device device = window.getDevice();
 		
-		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
+		window.setCallback((GLFWWindowSizeCallbackI) (_, _, _) -> {
 			isModified = true;
 		});
 		
@@ -145,7 +142,7 @@ public class DepthBufferTest extends RenderTest {
 			BufferWriter vertexBufferWriter = transfert.beginTransfer(vertexBuffer);
 			BufferWriter indexBufferWriter = transfert.beginTransfer(indexBuffer);
 			
-			RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3f.of(-1, -1, -1), Vector3f.of(1, 1, 1), (i, j) -> colors[i]);
+			RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3f.of(-1, -1, -1), Vector3f.of(1, 1, 1), (i, _) -> colors[i]);
 		}
 		catch (OverflowException e)
 		{
@@ -153,7 +150,10 @@ public class DepthBufferTest extends RenderTest {
 			RenderEngine.terminate();
 			return;
 		}
-		
+
+		lightPos = ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS");
+		lightIntensity = ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY");
+		spaceFogIntensity = ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY");
 		f = 0;
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
@@ -212,45 +212,37 @@ public class DepthBufferTest extends RenderTest {
 				.graphicsPipeline(graphicsPipeline)
 				.buffersCount(window.getFramesCount())
 				.descriptorSets(descriptorSets)
-				.bindingsLayout(
-					new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, Type.UNIFORM_BUFFER, 2, List.of(
+				.bindings(i -> new BindingInfo[] {
+					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i, 1), 1, List.of(
 						ShaderVariable.PROJECTION,
 						ShaderVariable.MODEL
 					)),
-					new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, Type.UNIFORM_BUFFER, 3, List.of(
-						ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, LIGHT_POS),
-						ShaderVariable.of(ShaderInputType.FLOAT, LIGHT_INTENSITY),
-						ShaderVariable.of(ShaderInputType.FLOAT, SPACE_FOG_INTENSITY)
+					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i + 1, 1), 1, List.of(
+						ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS"),
+						ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY"),
+						ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY")
 					))
-				)
-				.writers(i -> new BufferWriter[] {
-					new BufferWriter(uniformBuffer, uniformBuffer, 256 * 2 * i, 256),
-					new BufferWriter(uniformBuffer, uniformBuffer, 256 * 2 * i + 256, 256)
 				})
 				.build();
 			renderer.setBuffer(0, vertexBuffer);
 			renderer.setIndexBuffer(indexBuffer);
 
-			Vector3f lightPos = Vector3f.of(5, 20, 0);
-			
 			Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
 			Matrix4f modelMatrix = buildModelMatrix(f);
-			lightPos = Vector3f.of(0.3F, 1, 0);
 			
 			for (int i = 0; i < window.getFramesCount(); i++)
 			{
-				BufferLayout bufferLayout = renderer.getBufferLayout(i)[0];
-				bufferLayout.set(MODEL, modelMatrix);
-				bufferLayout.set(PROJECTION, projectionMatrix);
-				bufferLayout.flush();
-				bufferLayout.updateDescriptorSets();
-				bufferLayout = renderer.getBufferLayout(i)[1];
-				bufferLayout.set(LIGHT_POS, lightPos);
-				bufferLayout.set(LIGHT_INTENSITY, 0.75F);
-				bufferLayout.set(SPACE_FOG_INTENSITY, 0.1F);
-				bufferLayout.flush();
-				bufferLayout.updateDescriptorSets();
-				
+				renderer.useBufferLayoutWriter(i, 0, writer -> {
+					writer.set(ShaderVariable.MODEL, modelMatrix);
+					writer.set(ShaderVariable.PROJECTION, projectionMatrix);
+					writer.flushAndInvalidate();
+				});
+				renderer.useBufferLayoutWriter(i, 1, writer -> {
+					writer.set(lightPos, Vector3f.of(0.3F, 1, 0));
+					writer.set(lightIntensity, 0.75F);
+					writer.set(spaceFogIntensity, 0.1F);
+					writer.flushAndInvalidate();
+				});
 			}
 		}
 		Debug.runOnDebug(() -> {
@@ -285,9 +277,10 @@ public class DepthBufferTest extends RenderTest {
 					Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
 					for (int i = 0; i < window.getFramesCount(); i++)
 					{
-						BufferLayout bufferLayout = renderer.getBufferLayout(i)[0];
-						bufferLayout.set(PROJECTION, projectionMatrix);
-						bufferLayout.flush();
+						renderer.useBufferLayoutWriter(i, 0, writer -> {
+							writer.set(ShaderVariable.PROJECTION, projectionMatrix);
+							writer.flushAndInvalidate();
+						});
 					}
 				}, TestProperties.PRINT_LOADING_TIMES);
 			}
@@ -311,10 +304,11 @@ public class DepthBufferTest extends RenderTest {
 			clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
 			clearValues.get().depthStencil().depth(1).stencil(0);
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
-			
-			BufferLayout bufferLayout = renderer.getBufferLayout(window.getFrameIndex())[0];
-			bufferLayout.set(MODEL, buildModelMatrix(f));
-			bufferLayout.flush();
+
+			renderer.useBufferLayoutWriter(window.getFrameIndex(), 0, writer -> {
+				writer.set(ShaderVariable.MODEL, buildModelMatrix(f));
+				writer.flushAndInvalidate();
+			});
 			
 			commandBuffer.beginRecording();
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);

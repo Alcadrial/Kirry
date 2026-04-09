@@ -2,6 +2,7 @@ package com.alcadrial.renderengine.render.test;
 
 import java.io.IOException;
 import java.math.RoundingMode;
+import java.util.List;
 import java.util.Random;
 
 import org.lwjgl.glfw.GLFW;
@@ -36,7 +37,6 @@ import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
-import com.alcadrial.renderengine.render.buffer.BufferLayout;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
@@ -46,13 +46,12 @@ import com.alcadrial.renderengine.render.pipeline.GraphicsPipelineTemplate;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
-import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
+import com.alcadrial.renderengine.render.shader.binding.BindingInfo;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorPool;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSetLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
@@ -63,7 +62,6 @@ import com.alcadrial.renderengine.render.window.VulkanWindow;
 public class Test2dPanel extends RenderTest {
 	
 	private static final String SHADER = "shader";
-	private static final String TRANSFORMATION_UNIFORM = "TRANSFORMATION";
 	private static final int SIZE = 256;
 	
 	public static void main(String[] args)
@@ -101,19 +99,19 @@ public class Test2dPanel extends RenderTest {
 			.useDepthTexture(false)
 			.build(1080, 720, "Test");
 		
-		window.setCallback((GLFWWindowIconifyCallbackI) (w, iconified) -> { System.out.println(iconified ? "Iconified" : "Restored"); });
-		window.setCallback((GLFWWindowSizeCallbackI) (w, width, height) -> {
+		window.setCallback((GLFWWindowIconifyCallbackI) (_, iconified) -> { System.out.println(iconified ? "Iconified" : "Restored"); });
+		window.setCallback((GLFWWindowSizeCallbackI) (_, width, height) -> {
 			System.out.println("Resized " + width + "x" + height);
 			isModifiedMatrix = true;
 			isRendererDirty = true;
 		});
-		window.setCallback((GLFWWindowCloseCallbackI) w -> { System.out.println("Closed"); });
-		window.setCallback((GLFWWindowMaximizeCallbackI) (w, maximized) -> { System.out.println(maximized ? "Maximized" : "Restored"); });
+		window.setCallback((GLFWWindowCloseCallbackI) _ -> { System.out.println("Closed"); });
+		window.setCallback((GLFWWindowMaximizeCallbackI) (_, maximized) -> { System.out.println(maximized ? "Maximized" : "Restored"); });
 		
 		Vector2i[] oldPos = new Vector2i[] {Vector2i.of(0, 0)};
 		Vector2f[] oldMousePos = new Vector2f[] {Vector2f.of(0, 0), Vector2f.of(0, 0)};
 		boolean[] pressing = new boolean[2];
-		window.setCallback((GLFWMouseButtonCallbackI) (w, button, action, mods) -> {
+		window.setCallback((GLFWMouseButtonCallbackI) (_, button, action, _) -> {
 			if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT)
 			{
 				if (pressing[0] = action == GLFW.GLFW_PRESS)
@@ -122,7 +120,7 @@ public class Test2dPanel extends RenderTest {
 				}
 			}
 		});
-		window.setCallback((GLFWCursorPosCallbackI) (w, x, y) -> {
+		window.setCallback((GLFWCursorPosCallbackI) (_, x, y) -> {
 			if (pressing[0] && !pressing[1])
 			{
 				pressing[1] = true;
@@ -133,7 +131,7 @@ public class Test2dPanel extends RenderTest {
 			}
 		});
 		panelPos = Vector2f.of(0, 0);
-		window.setCallback((GLFWKeyCallbackI) (w, k, s, a, m) -> {
+		window.setCallback((GLFWKeyCallbackI) (_, k, _, a, m) -> {
 			if (a == GLFW.GLFW_PRESS || a == GLFW.GLFW_REPEAT)
 			{
 				float v = 1;
@@ -184,7 +182,6 @@ public class Test2dPanel extends RenderTest {
 		vertexBuffer = staticBigBuffer.allocate(7 * 4 * SIZE * SIZE * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		indexBuffer = staticBigBuffer.allocate(6 * SIZE * SIZE * 4 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 1);
-		uniformBuffer.getMemory().mapMemory();
 		
 		staticBigBuffer.setName("StaticBigBuffer");
 		vertexBuffer.setName("VertexBuffer");
@@ -256,24 +253,18 @@ public class Test2dPanel extends RenderTest {
 				.build();
 			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
 			
-			int minUniformBufferOffsetAlignment = (int) device.getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment();
-			
 			renderer = Renderer.builder()
 				.graphicsPipeline(graphicsPipeline)
 				.descriptorSets(descriptorSet)
 				.buffersCount(1)
-				.bindingsLayout(
-					new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, Type.UNIFORM_BUFFER, 1, ShaderVariable.TRANSFORMATION)
+				.bindings(
+					BindingInfo.ofUniform(uniformBuffer, VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(ShaderVariable.TRANSFORMATION))
 				)
-				.writers(i -> new BufferWriter[] {
-					new BufferWriter(uniformBuffer, uniformBuffer, minUniformBufferOffsetAlignment * i, minUniformBufferOffsetAlignment)
-				})
 				.build();
 		}
 		
 		renderer.setBuffer(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
-		renderer.getBufferLayout(0)[0].updateDescriptorSets();
 		
 		isModifiedMatrix = true;
 	}
@@ -307,9 +298,12 @@ public class Test2dPanel extends RenderTest {
 				Matrix4f transformation = new Matrix4f().scale(Vector3f.of(scale / window.getWidth(), -scale / window.getHeight(), 0.02F));
 				Matrix4f model = new Matrix4f().translateTo(panelPos);
 				transformation.multiply(model);
-				BufferLayout bufferLayout = renderer.getBufferLayout(0)[0];
-				bufferLayout.set(TRANSFORMATION_UNIFORM, transformation);
-				bufferLayout.flushAndInvalidate();
+				uniformBuffer.getMemory().mapMemory();
+				renderer.useBufferLayoutWriter(0, 0, writer -> {
+					writer.set(ShaderVariable.TRANSFORMATION, transformation);
+					writer.flushAndInvalidate();					
+				});
+				uniformBuffer.getMemory().unmapMemory();
 			}
 			
 			FrameBuffer frameBuffer = window.getCurrentFrameBuffer();

@@ -1,249 +1,291 @@
 package com.alcadrial.renderengine.render;
 
 import java.math.RoundingMode;
-import java.nio.LongBuffer;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.List;
 
-import org.eclipse.collections.api.list.ImmutableList;
 import org.jspecify.annotations.Nullable;
-import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDescriptorBufferInfo;
-import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
-import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
-import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
 import com.alcadrial.kector.Math;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.renderengine.render.buffer.BufferLayout;
-import com.alcadrial.renderengine.render.buffer.BufferWriter;
+import com.alcadrial.renderengine.render.buffer.BufferLayoutWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.pipeline.ComputePipeline;
-import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
-import com.alcadrial.renderengine.render.shader.PreparedShader;
-import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
-import com.alcadrial.renderengine.render.shader.ShaderType;
-import com.alcadrial.renderengine.render.shader.ShaderUtils;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLocalSizeLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderStorageBufferLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderUniformBufferLayout;
+import com.alcadrial.renderengine.render.shader.binding.BindingInfo;
+import com.alcadrial.renderengine.render.shader.binding.BufferBindingInfo;
+import com.alcadrial.renderengine.render.shader.binding.ImageBindingInfo;
+import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSet;
+import com.alcadrial.renderengine.render.shader.layout.ShaderLayout.Type;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
-import com.alcadrial.renderengine.render.util.VulkanUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.functional.VulkanConsumer;
+import com.alcadrial.renderengine.render.util.functional.VulkanFunction;
 
-public class Computer implements AutoCloseable, VulkanDebug {
+public class Computer implements VulkanDebug, AutoCloseable {
 	
 	static
 	{
 		RenderEngine.assertLoaded();
 	}
 	
-	private class Binding {
+	public static final class Builder {
 		
-		private @Nullable BufferWriter writer;
-		private VulkanBuffer buffer;
-		private int offset;
-		private int size;
-		private BufferLayout layout;
+		private @Nullable ComputePipeline computePipeline;
+		private @Nullable Vector3i groupCount;
+		private DescriptorSet @Nullable [] descriptorSets;
+		private int buffersCount;
+		private @Nullable VulkanFunction<Integer, BindingInfo[]> bindings;
 		
-		private Binding(@Nullable BufferWriter writer, VulkanBuffer buffer, int offset, int size)
+		private Builder()
+		{}
+		
+		public Builder computePipeline(ComputePipeline computePipeline)
 		{
-			this.writer = writer;
-			this.buffer = buffer;
-			this.offset = offset;
-			this.size = size;
-			layout = new BufferLayout(device, new ReentrantLock());
-			layout.setWriter(writer);
+			this.computePipeline = computePipeline;
+			return this;
+		}
+		
+		public Builder bindings(BindingInfo... bindings)
+		{
+			return bindings(_ -> bindings);
+		}
+		
+		public Builder bindings(BindingInfo[][] bindings)
+		{
+			return bindings(i -> bindings[i]);
+		}
+		
+		public Builder bindings(VulkanFunction<Integer, BindingInfo[]> bindings)
+		{
+			this.bindings = bindings;
+			return this;
+		}
+		
+		public Builder buffersCount(int buffersCount)
+		{
+			if (buffersCount < 0) throw new IllegalArgumentException();
+			this.buffersCount = buffersCount;
+			return this;
+		}
+		
+		public Builder groupCount(Vector3i groupCount)
+		{
+			this.groupCount = groupCount;
+			return this;
+		}
+		
+		public Builder descriptorSets(DescriptorSet @Nullable [] descriptorSets)
+		{
+			this.descriptorSets = descriptorSets;
+			return this;
+		}
+		
+		public Computer build() throws VulkanException
+		{
+			return new Computer(this);
 		}
 	}
+	
+	private static class InfoHolder {
+		
+		@Nullable
+		BufferBindingInfo bufferBindingInfo;
+		@Nullable
+		ImageBindingInfo imageBindingInfo;
+		@Nullable
+		BufferLayout layout;
+		
+		public InfoHolder(BufferBindingInfo bufferBindingInfo)
+		{
+			this.bufferBindingInfo = bufferBindingInfo;
+		}
+		
+		public InfoHolder(ImageBindingInfo imageBindingInfo)
+		{
+			this.imageBindingInfo = imageBindingInfo;
+		}
+	}
+	
+	public static Builder builder()
+	{
+		return new Builder();
+	}
+	
+	private final BindingInfo[][] bindings;
 	
 	private Device device;
-	private @Nullable ComputePipeline computePipeline;
+	private ComputePipeline computePipeline;
 	private Vector3i groupCount;
+	private InfoHolder[][] info;
+	private VkWriteDescriptorSet.Buffer[] writeDescriptorSets;
+	private @Nullable BufferLayoutWriter[][] writers;
+	private DescriptorSet[] descriptorSets;
 	
-	private long computeDescriptorPool;
-	private long computeDescriptorSetLayout;
-	private long @Nullable[] computeDescriptorSet;
-	private PreparedShader computeShader;
-	private Map<Integer, Binding> bindings;
-	
-	public Computer(Device device, PreparedShader computeShader)
+	private Computer(Builder builder) throws VulkanException
 	{
-		VulkanErrorUtils.match(computeShader.info().getType(), ShaderType.COMPUTE, "Only compute shader can be used");
-		this.device = device;
-		this.computeShader = computeShader;
-		for (ShaderLayout layout : computeShader.info().getLayouts()) if (layout.getType() == Type.LOCAL_SIZE)
+		this.computePipeline = VulkanErrorUtils.nonNull(builder.computePipeline);
+		this.device = computePipeline.getDevice();
+		this.descriptorSets = VulkanErrorUtils.nonNull(builder.descriptorSets);
+		
+		this.groupCount = VulkanErrorUtils.nonNull(builder.groupCount);
+		
+		bindings = new BindingInfo[builder.buffersCount][];
+		VulkanFunction<Integer, BindingInfo[]> bindingsFactory = VulkanErrorUtils.nonNull(builder.bindings);
+		for (int i = 0; i < bindings.length; i++) bindings[i] = bindingsFactory.apply(i);
+		
+		InitResult result = initInfo();
+		info = result.info;
+		writeDescriptorSets = result.writeDescriptorSets;
+		writers = new BufferLayoutWriter[info.length][];
+		for (int i = 0; i < bindings.length; i++)
 		{
-			groupCount = ((ShaderLocalSizeLayout) layout).getLocalSize();
+			writers[i] = new BufferLayoutWriter[bindings[i].length];
+			updateDescriptorSet(i);
 		}
-		groupCount = VulkanErrorUtils.nonNull(groupCount, "Missing localsize in shader info");
-		bindings = new HashMap<>();
 	}
 	
-	public BufferLayout setBinding(int binding, BufferWriter writer)
-	{
-		return setBinding(binding, writer, writer.getDstBuffer(), writer.getDstOffset(), writer.getSize());
-	}
+	private record InitResult(InfoHolder[][] info, VkWriteDescriptorSet.Buffer[] writeDescriptorSets) {}
 	
-	public BufferLayout setBinding(int binding, VulkanBuffer buffer)
+	private InitResult initInfo() throws VulkanException
 	{
-		return setBinding(binding, buffer, 0, buffer.getSize());
-	}
-	
-	public BufferLayout setBinding(int binding, VulkanBuffer buffer, int offset, int size)
-	{
-		return setBinding(binding, null, buffer, offset, size);
-	}
-	
-	private BufferLayout setBinding(int binding, @Nullable BufferWriter writer, VulkanBuffer buffer, int offset, int size)
-	{
-		Binding bindingData = new Binding(writer, buffer, offset, size);
-		bindings.put(binding, bindingData);
-		return bindingData.layout;
-	}
-	
-	public void init() throws VulkanException
-	{
-		try (MemoryStack stack = MemoryStack.stackPush())
+		InfoHolder[][] info = new InfoHolder[bindings.length][];
+		VkWriteDescriptorSet.Buffer[] writeDescriptorSetsResult = new VkWriteDescriptorSet.Buffer[bindings.length];
+		for (int i = 0; i < bindings.length; i++)
 		{
-			VkDescriptorPoolCreateInfo poolInfo = VulkanUtils.descriptorPoolCreateInfo(stack, VulkanUtils.descriptorPoolSize(stack, VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4));// static
-			poolInfo.maxSets(3);
+			BindingInfo[] bindings = this.bindings[i];
 			
-			long[] p0 = new long[1];
-			VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorPool(device.getVk(), poolInfo, null, p0), "Failed to create descriptor pool!");
-			computeDescriptorPool = p0[0];
+			VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(bindings.length);
 			
-			Map<Integer, ShaderLayoutBinding> bindingFlags = new HashMap<>();
-			ShaderUtils.extractData(computeShader, bindingFlags);
-			
-			VkDescriptorSetLayoutBinding.Buffer descriptorSetLayoutBindings = ShaderUtils.createDescriptorSetLayoutBindingBuffer(stack, bindingFlags);
-			
-			LongBuffer p = stack.callocLong(1);
-			VulkanErrorUtils.assertNoError(VK10.vkCreateDescriptorSetLayout(device.getVk(), VulkanUtils.descriptorSetLayoutInfo(stack, 0, descriptorSetLayoutBindings), null, p), "Failed to create descriptor set layout!");
-			computeDescriptorSetLayout = p.rewind().get(0);
-			
-			computeDescriptorSet = new long[1];
-			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), VulkanUtils.descriptorSetAllocateInfo(stack, computeDescriptorPool, p), computeDescriptorSet), "Failed to allocate descriptor sets!");
-			
-			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
-			pipelineLayoutInfo.pSetLayouts(p);
-			computePipeline = new ComputePipeline(device, new PipelineLayout(device, pipelineLayoutInfo), true, computeShader);
-			
-			ImmutableList<ShaderLayout> layouts = computeShader.info().getLayouts();
-			
-			int uniformBufferCount = 0;
-			int storageBufferCount = 0;
-			
-			for (ShaderLayout layout : layouts)
+			info[i] = new InfoHolder[bindings.length];
+			long setVk = descriptorSets[i].getVk();
+
+			for (int binding = 0; binding < bindings.length; binding++)
 			{
-				switch (layout.getType())
+				BindingInfo description = bindings[binding];
+				Type descriptorType = description.getDescriptorType();
+				List<ShaderVariable> variables = description.getVariables();
+
+				InfoHolder writer = null;
+				if (descriptorType.useBuffer()) writer = info[i][binding] = new InfoHolder((BufferBindingInfo) description);
+				else if (descriptorType.useImage()) writer = info[i][binding] = new InfoHolder((ImageBindingInfo) description);
+				else
 				{
-					case UNIFORM_BUFFER -> uniformBufferCount++;
-					case STORAGE_BUFFER -> storageBufferCount++;
+					Debug.debug("WARNING: Unsupported descriptor type " + descriptorType);
+					continue;
 				}
-			}
-			
-			VkWriteDescriptorSet.Buffer writeDescriptorSets = VkWriteDescriptorSet.malloc(uniformBufferCount + storageBufferCount);
-			
-			for (ShaderLayout shaderLayout : computeShader.info().getLayouts())
-			{
-				switch (shaderLayout.getType())
+				if (variables.isEmpty()) continue;
+
+				VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
+				writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
+				writeDescriptorSet.pNext(0);
+				writeDescriptorSet.dstSet(setVk);
+				writeDescriptorSet.dstBinding(binding);
+				writeDescriptorSet.dstArrayElement(0);
+				writeDescriptorSet.descriptorType(descriptorType.getType());
+				
+				BufferBindingInfo bufferBindingInfo = writer.bufferBindingInfo;
+				if (bufferBindingInfo != null)
+				{
+				switch (descriptorType)
 				{
 					case UNIFORM_BUFFER -> {
-						ShaderUniformBufferLayout shaderUniformBufferLayout = (ShaderUniformBufferLayout) shaderLayout;
+						VulkanBuffer buffer = bufferBindingInfo.getBuffer();
+						BufferLayout layout = new BufferLayout();
 						
-						Binding binding = bindings.get(shaderUniformBufferLayout.getBinding());
-						VulkanBuffer buffer = binding.buffer;
-						BufferLayout layout = binding.layout;
-						
-						layout.setWriteDescriptorSets(writeDescriptorSets.slice(0, 1));
-						VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
-						writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
-						writeDescriptorSet.pNext(0);
-						writeDescriptorSet.dstBinding(shaderUniformBufferLayout.getBinding());
-						writeDescriptorSet.dstSet(computeDescriptorSet[0]);
-						writeDescriptorSet.dstArrayElement(0);
-						writeDescriptorSet.descriptorCount(1);
-						writeDescriptorSet.descriptorType(Type.UNIFORM_BUFFER.getType());
-						
-						VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.malloc(1);
-						descriptorBufferInfo.buffer(buffer.getVk());
-						descriptorBufferInfo.offset(binding.offset);
-						descriptorBufferInfo.range(binding.size);
-						
-						writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
-						writeDescriptorSet.pImageInfo(null);
-						writeDescriptorSet.pTexelBufferView(null);
-						
+						int range = 0;
 						int offset = 0;
-						int partialOffset = 0;
-						for (ShaderVariable variable : shaderUniformBufferLayout.getVariables())
+						for (ShaderVariable variable : variables)
 						{
 							int size = variable.getType().getLength();
-							if (partialOffset > 0 && partialOffset + size > 16)
-							{
-								offset += 16 - partialOffset;
-							}
-							layout.mark(variable, offset / 4);
-							offset += size;
-							partialOffset = offset % 16;
+							if (offset > 0 && offset + size > 16) range += 16 - offset;
+							layout.mark(variable, range / 4);
+							range += size;
+							offset = range % 16;
 						}
-						layout.updateDescriptorSets();
+						writer.layout = layout;
+						VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.malloc(1);
+						descriptorBufferInfo.buffer(buffer.getVk());
+						descriptorBufferInfo.offset(buffer.getOffset());
+						descriptorBufferInfo.range(range);
+						writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
+						writeDescriptorSet.pImageInfo(null);
+						writeDescriptorSet.pTexelBufferView(null);
+						writeDescriptorSet.descriptorCount(1);
 					}
 					case STORAGE_BUFFER -> {
-						ShaderStorageBufferLayout shaderStorageBufferLayout = (ShaderStorageBufferLayout) shaderLayout;
-						
-						Binding binding = bindings.get(shaderStorageBufferLayout.getBinding());
-						VulkanBuffer buffer = binding.buffer;
-						BufferLayout layout = binding.layout;
-						
-						layout.setWriteDescriptorSets(writeDescriptorSets.slice(0, 1));
-						VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
-						writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
-						writeDescriptorSet.pNext(0);
-						writeDescriptorSet.dstSet(computeDescriptorSet[0]);
-						writeDescriptorSet.dstBinding(shaderStorageBufferLayout.getBinding());
-						writeDescriptorSet.dstArrayElement(0);
-						writeDescriptorSet.descriptorCount(1);
-						writeDescriptorSet.descriptorType(ShaderLayout.Type.STORAGE_BUFFER.getType());
+						VulkanBuffer buffer = bufferBindingInfo.getBuffer();
 						
 						VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.malloc(1);
 						descriptorBufferInfo.buffer(buffer.getVk());
-						descriptorBufferInfo.offset(binding.offset);
-						descriptorBufferInfo.range(binding.size);
+						descriptorBufferInfo.offset(buffer.getOffset());
+						descriptorBufferInfo.range(buffer.getSize());
 						
 						writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
 						writeDescriptorSet.pImageInfo(null);
 						writeDescriptorSet.pTexelBufferView(null);
-						
-						layout.updateDescriptorSets();
+						writeDescriptorSet.descriptorCount(1);
+					}
+					default -> {
+						Debug.debug("WARNING: Unsupported descriptor type " + descriptorType);
 					}
 				}
+				}
 			}
+			writeDescriptorSetsResult[i] = writeDescriptorSets.rewind();
+		}
+		return new InitResult(info, writeDescriptorSetsResult);
+	}
+	
+	public BufferLayout getBufferLayout(int frameIndex, int binding)
+	{
+		return VulkanErrorUtils.nonNull(info[frameIndex][binding].layout);
+	}
+	
+	public void useBufferLayoutWriter(int frameIndex, int binding, VulkanConsumer<BufferLayoutWriter> action) throws VulkanException
+	{
+		action.accept(getBufferLayoutWriter(frameIndex, binding));
+		freeBufferLayoutWriter(frameIndex, binding);
+	}
+	
+	public BufferLayoutWriter getBufferLayoutWriter(int frameIndex, int binding) throws VulkanException
+	{
+		BufferLayoutWriter writer = writers[frameIndex][binding];
+		if (writer == null)
+		{
+			BufferLayout layout = VulkanErrorUtils.nonNull(info[frameIndex][binding].layout);
+			BufferBindingInfo bufferBindingInfo = VulkanErrorUtils.nonNull(info[frameIndex][binding].bufferBindingInfo);
+			writer = new BufferLayoutWriter(bufferBindingInfo.getBuffer(), layout);
+			
+			writers[frameIndex][binding] = writer;
+		}
+		return writer;
+	}
+	
+	public void freeBufferLayoutWriter(int frameIndex, int binding) throws VulkanException
+	{
+		BufferLayoutWriter writer = writers[frameIndex][binding];
+		if (writer != null)
+		{
+			writer.close();
+			writers[frameIndex][binding] = null;
 		}
 	}
 	
-	public @Nullable ComputePipeline getComputePipeline()
+	public void updateDescriptorSet(int frameIndex, VulkanConsumer<VkWriteDescriptorSet.Buffer> action) throws VulkanException
 	{
-		return computePipeline;
+		action.accept(writeDescriptorSets[frameIndex]);
+		VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets[frameIndex], null);
 	}
 	
-	public void setComputePipeline(ComputePipeline computePipeline)
+	public void updateDescriptorSet(int frameIndex)
 	{
-		this.computePipeline = computePipeline;
-	}
-	
-	public void setComputeDescriptorSet(long[] computeDescriptorSet)
-	{
-		this.computeDescriptorSet = computeDescriptorSet;
+		VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets[frameIndex], null);
 	}
 	
 	public void setGroupCount(Vector3i groupCount)
@@ -251,10 +293,11 @@ public class Computer implements AutoCloseable, VulkanDebug {
 		this.groupCount = groupCount;
 	}
 	
-	public void dispatch(CommandBuffer commandBuffer, int countX, int countY, int countZ)
+	public void dispatch(CommandBuffer commandBuffer, int frameIndex, int countX, int countY, int countZ)
 	{
+		long[] set = new long[] {descriptorSets[frameIndex].getVk()};
 		commandBuffer.bindPipeline(computePipeline);
-		commandBuffer.bindDescriptorSets(computePipeline, computeDescriptorSet, new int[0]);
+		commandBuffer.bindDescriptorSets(computePipeline, set, null);
 		commandBuffer.dispatch(ceil(countX, groupCount.x()), ceil(countY, groupCount.y()), ceil(countZ, groupCount.z()));
 	}
 	
@@ -264,12 +307,9 @@ public class Computer implements AutoCloseable, VulkanDebug {
 	}
 	
 	@Override
-	public void close()
+	public void close() throws VulkanException
 	{
-		device.waitIdle();
-		if (computePipeline != null) computePipeline.close();
-		VK10.vkDestroyDescriptorSetLayout(device.getVk(), computeDescriptorSetLayout, null);
-		VK10.vkDestroyDescriptorPool(device.getVk(), computeDescriptorPool, null);
+		for (BufferLayoutWriter[] bindingWriters : writers) for (BufferLayoutWriter writer : bindingWriters) if (writer != null) writer.close();
 	}
 	
 	@Override
@@ -279,8 +319,12 @@ public class Computer implements AutoCloseable, VulkanDebug {
 		Debug.print("Pipeline ", computePipeline);
 		Debug.print("GroupCount: " + groupCount.x() + "x" + groupCount.y() + "x" + groupCount.z());
 		
-		Debug.print("DescriptorPool: " + Debug.address(computeDescriptorPool));
-		Debug.print("DescriptorSetLayout: " + Debug.address(computeDescriptorSetLayout));
-		Debug.print("DescriptorSet: " + Debug.address(computeDescriptorSet[0]));
+		Debug.print("DescriptorSets: ");
+		Debug.indent();
+		for (DescriptorSet descriptorSet : descriptorSets)
+		{
+			Debug.print("Set ", descriptorSet);
+		}
+		Debug.deindent();
 	}
 }
