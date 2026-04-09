@@ -11,11 +11,8 @@ import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
-import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.shader.ShaderUtils;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
+import com.alcadrial.renderengine.render.shader.layout.ShaderLayout;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -26,7 +23,7 @@ public class DescriptorSetLayout extends RawDeviceResource {
 	{
 		RenderEngine.assertLoaded();
 	}
-	
+	/*
 	public static DescriptorSetLayout ofShaderProgram(Device device, ShaderProgram shaderProgram) throws VulkanException
 	{
 		return ofBindings(device, ShaderUtils.extractData(shaderProgram));
@@ -36,7 +33,7 @@ public class DescriptorSetLayout extends RawDeviceResource {
 	{
 		return ofBindings(device, ShaderUtils.extractData(preparedShader));
 	}
-	
+	*/
 	public static DescriptorSetLayout ofBindings(Device device, Map<Integer, ShaderLayoutBinding> bindings) throws VulkanException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())

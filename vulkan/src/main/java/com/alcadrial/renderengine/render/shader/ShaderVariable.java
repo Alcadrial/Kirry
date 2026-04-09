@@ -1,24 +1,21 @@
 package com.alcadrial.renderengine.render.shader;
 
 import java.io.IOException;
+import java.util.Map;
 
+import org.eclipse.collections.api.factory.Maps;
 import org.jspecify.annotations.Nullable;
-
-import com.alcadrial.renderengine.render.RenderEngine;
 
 import tools.jackson.databind.JsonNode;
 
 public class ShaderVariable {
+
+	private static Map<String, Integer> nextId = Maps.mutable.empty();
 	
-	static
-	{
-		RenderEngine.assertLoaded();
-	}
-	
-	public static final ShaderVariable PADDING_1 = of(ShaderInputType.INT, "");
-	public static final ShaderVariable PADDING_2 = of(ShaderInputType.VECTOR_INT_2, "");
-	public static final ShaderVariable PADDING_3 = of(ShaderInputType.VECTOR_INT_3, "");
-	public static final ShaderVariable PADDING_4 = of(ShaderInputType.VECTOR_INT_4, "");
+	public static final ShaderVariable PADDING_1 = ofPadding(ShaderInputType.INT);
+	public static final ShaderVariable PADDING_2 = ofPadding(ShaderInputType.VECTOR_INT_2);
+	public static final ShaderVariable PADDING_3 = ofPadding(ShaderInputType.VECTOR_INT_3);
+	public static final ShaderVariable PADDING_4 = ofPadding(ShaderInputType.VECTOR_INT_4);
 	public static final ShaderVariable VERTEX_POSITION = of(ShaderInputType.VECTOR_FLOAT_3, "vertexPosition");
 	public static final ShaderVariable COLOR_RGB = of(ShaderInputType.VECTOR_FLOAT_3, "colorRGB");
 	public static final ShaderVariable COLOR_RGB_EXTRA_1 = of(ShaderInputType.VECTOR_FLOAT_3, "colorRGB1");
@@ -46,6 +43,9 @@ public class ShaderVariable {
 	public static final ShaderVariable MODEL = of(ShaderInputType.MATRIX_FLOAT_4X4, "MODEL");
 	public static final ShaderVariable TRANSFORMATION = of(ShaderInputType.MATRIX_FLOAT_4X4, "TRANSFORMATION");
 	
+	public static final ShaderVariable TEXTURE = of(ShaderInputType.SAMPLER_2D, "TEXTURE_SAMPLER");
+	public static final ShaderVariable ATLAS = of(ShaderInputType.SAMPLER_2D, "ATLAS");
+	
 	public static ShaderVariable parse(JsonNode json) throws IOException
 	{
 		return parse(json, "$");
@@ -64,16 +64,23 @@ public class ShaderVariable {
 	
 	public static ShaderVariable of(ShaderInputType type, String name)
 	{
-		return new ShaderVariable(type, name);
+		return new ShaderVariable(type, name, nextId.computeIfAbsent(name, _ -> nextId.size()));
+	}
+	
+	private static ShaderVariable ofPadding(ShaderInputType type)
+	{
+		return new ShaderVariable(type, "", -1);
 	}
 	
 	private ShaderInputType type;
 	private String name;
+	private int id;
 	
-	public ShaderVariable(ShaderInputType type, String name)
+	ShaderVariable(ShaderInputType type, String name, int id)
 	{
 		this.type = type;
 		this.name = name;
+		this.id = id;
 	}
 	
 	public ShaderInputType getType()
@@ -86,10 +93,15 @@ public class ShaderVariable {
 		return name;
 	}
 	
+	public int getId()
+	{
+		return id;
+	}
+	
 	@Override
 	public int hashCode()
 	{
-		return name.hashCode();
+		return id;
 	}
 	
 	@Override
@@ -98,15 +110,15 @@ public class ShaderVariable {
 		return this == obj || obj instanceof ShaderVariable s && equals(s);
 	}
 	
-	public boolean equals(ShaderVariable uniform)
+	public boolean equals(ShaderVariable variable)
 	{
-		return name.equals(uniform.name);
+		return id == variable.id;
 	}
 	
 	@Override
 	public String toString()
 	{
-		if (name.isBlank()) return "padding" + type.getSize();
+		if (id < 0) return "padding" + type.getSize();
 		return type + " " + name;
 	}
 }

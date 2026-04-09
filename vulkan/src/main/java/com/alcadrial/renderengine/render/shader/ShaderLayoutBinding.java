@@ -3,7 +3,7 @@ package com.alcadrial.renderengine.render.shader;
 import java.util.List;
 
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
+import com.alcadrial.renderengine.render.shader.layout.ShaderLayout;
 
 public class ShaderLayoutBinding {
 	

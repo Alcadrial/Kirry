@@ -113,15 +113,12 @@ public class Surface extends AbstractVulkanResource<Long> {
 	
 	private Surface(Builder builder, long vk, VulkanWindow window) throws VulkanException
 	{
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			this.vk = vk;
-			this.window = window;
-			format = builder.format;
-			colorspace = builder.colorspace;
-			targetPresentMode = builder.targetPresentMode;
-			data = init();
-		}
+		this.vk = vk;
+		this.window = window;
+		format = builder.format;
+		colorspace = builder.colorspace;
+		targetPresentMode = builder.targetPresentMode;
+		data = init();
 	}
 	
 	private SurfaceData init() throws VulkanException

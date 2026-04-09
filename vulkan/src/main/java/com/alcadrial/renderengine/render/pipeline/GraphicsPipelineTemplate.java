@@ -47,9 +47,9 @@ import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderType;
 import com.alcadrial.renderengine.render.shader.ShaderUtils;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderInputLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
+import com.alcadrial.renderengine.render.shader.layout.ShaderInputLayout;
+import com.alcadrial.renderengine.render.shader.layout.ShaderLayout;
+import com.alcadrial.renderengine.render.shader.layout.ShaderLayout.Type;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
@@ -68,7 +68,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 	public static Builder create3dRenderingPipeline()
 	{
 		return create()
-			.configureVertexInputState(s -> {})
+			.configureVertexInputState(_ -> {})
 			.configureInputAssemblyState(s -> s
 				.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
 			)
@@ -76,8 +76,8 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				.addDefaultViewport()
 				.addFullScissor()
 			)
-			.configureRasterizationState(s -> {})
-			.configureMultisampleState(s -> {})
+			.configureRasterizationState(_ -> {})
+			.configureMultisampleState(_ -> {})
 			.configureDepthStencilState(s -> s
 				.depthTestEnable(true)
 			)
@@ -85,13 +85,13 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				.blendConstants(0, 0, 0, 0)
 				.addAttachment(false, 0, 0, 0, 0, 0, 0, VK10.VK_COLOR_COMPONENT_R_BIT | VK10.VK_COLOR_COMPONENT_G_BIT | VK10.VK_COLOR_COMPONENT_B_BIT | VK10.VK_COLOR_COMPONENT_A_BIT)
 			)
-			.configureDynamicStateState(s -> {});
+			.configureDynamicStateState(_ -> {});
 	}
 	
 	public static Builder create3dOutlineRenderingPipeline()
 	{
 		return create()
-			.configureVertexInputState(s -> {})
+			.configureVertexInputState(_ -> {})
 			.configureInputAssemblyState(s -> s
 				.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
 			)
@@ -103,7 +103,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				.cullMode(VK10.VK_CULL_MODE_BACK_BIT)
 				.polygonMode(VK10.VK_POLYGON_MODE_LINE)
 			)
-			.configureMultisampleState(s -> {})
+			.configureMultisampleState(_ -> {})
 			.configureDepthStencilState(s -> s
 				.depthTestEnable(true)
 			)
@@ -111,13 +111,13 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				.blendConstants(0, 0, 0, 0)
 				.addAttachment(false, 0, 0, 0, 0, 0, 0, VK10.VK_COLOR_COMPONENT_R_BIT | VK10.VK_COLOR_COMPONENT_G_BIT | VK10.VK_COLOR_COMPONENT_B_BIT | VK10.VK_COLOR_COMPONENT_A_BIT)
 			)
-			.configureDynamicStateState(s -> {});
+			.configureDynamicStateState(_ -> {});
 	}
 	
 	public static Builder createScreenRenderingPipeline()
 	{
 		return create()
-			.configureVertexInputState(s -> {})
+			.configureVertexInputState(_ -> {})
 			.configureInputAssemblyState(s -> s
 				.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
 			)
@@ -128,7 +128,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			.configureRasterizationState(s -> s
 				.cullMode(VK10.VK_CULL_MODE_NONE)
 			)
-			.configureMultisampleState(s -> {})
+			.configureMultisampleState(_ -> {})
 			.configureDepthStencilState(s -> s
 				.depthTestEnable(true)
 			)
@@ -136,7 +136,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				.blendConstants(0, 0, 0, 0)
 				.addAttachment(false, 0, 0, 0, 0, 0, 0, VK10.VK_COLOR_COMPONENT_R_BIT | VK10.VK_COLOR_COMPONENT_G_BIT | VK10.VK_COLOR_COMPONENT_B_BIT | VK10.VK_COLOR_COMPONENT_A_BIT)
 			)
-			.configureDynamicStateState(s -> {});
+			.configureDynamicStateState(_ -> {});
 	}
 	
 	private VkGraphicsPipelineCreateInfo createInfo;

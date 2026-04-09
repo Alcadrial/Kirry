@@ -10,7 +10,7 @@ import org.eclipse.collections.api.list.MutableList;
 
 import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderInputLayout;
+import com.alcadrial.renderengine.render.shader.layout.ShaderInputLayout;
 
 public class ShaderProgram {
 	

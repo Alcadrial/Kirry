@@ -14,7 +14,7 @@ import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderInfo;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
+import com.alcadrial.renderengine.render.shader.layout.ShaderLayout;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -96,7 +96,7 @@ public class DescriptorPool extends RawDeviceResource {
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
 				.descriptorPool(vk)
 				.pSetLayouts(pp);
-			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), allocateInfo, p), "Failed to allocate descriptor sets!");
+			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), allocateInfo, p), "Failed to allocate descriptor sets");
 			return new DescriptorSet(device, p[0], this);
 		}
 	}
@@ -112,7 +112,7 @@ public class DescriptorPool extends RawDeviceResource {
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
 				.descriptorPool(vk)
 				.pSetLayouts(pp.rewind());
-			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), allocateInfo, p), "Failed to allocate descriptor sets!");
+			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), allocateInfo, p), "Failed to allocate descriptor sets");
 			DescriptorSet[] sets = new DescriptorSet[count];
 			for (int i = 0; i < count; i++) sets[i] = new DescriptorSet(device, p[i], this);
 			return sets;
@@ -131,7 +131,7 @@ public class DescriptorPool extends RawDeviceResource {
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
 				.descriptorPool(vk)
 				.pSetLayouts(pp.rewind());
-			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), allocateInfo, p), "Failed to allocate descriptor sets!");
+			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), allocateInfo, p), "Failed to allocate descriptor sets");
 			for (int i = 0; i < layouts.length; i++) sets[i] = new DescriptorSet(device, p[i], this);
 			return sets;
 		}
@@ -147,7 +147,7 @@ public class DescriptorPool extends RawDeviceResource {
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
 				.descriptorPool(vk)
 				.pSetLayouts(pp);
-			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), allocateInfo, p), "Failed to allocate descriptor sets!");
+			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), allocateInfo, p), "Failed to allocate descriptor sets");
 			return p[0];
 		}
 	}
@@ -163,7 +163,7 @@ public class DescriptorPool extends RawDeviceResource {
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
 				.descriptorPool(vk)
 				.pSetLayouts(pp.rewind());
-			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), allocateInfo, p), "Failed to allocate descriptor sets!");
+			VulkanErrorUtils.assertNoError(VK10.vkAllocateDescriptorSets(device.getVk(), allocateInfo, p), "Failed to allocate descriptor sets");
 			return p;
 		}
 	}

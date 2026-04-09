@@ -16,6 +16,14 @@ import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
+/**
+ * 
+ * @author Alcadrial
+ *
+ *@see 
+ *	<a href="https://wikis.khronos.org/opengl/Core_Language_(GLSL)">GLSL specs</a>
+ *	<a href="https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_vulkan_glsl.txt">Vulkan extension</a>
+ */
 public class Shader {
 	
 	static

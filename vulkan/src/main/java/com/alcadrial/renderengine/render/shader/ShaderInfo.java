@@ -12,12 +12,12 @@ import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
 
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderCombinedImageSamplerLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderInputLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLocalSizeLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderStorageBufferLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderUniformBufferLayout;
+import com.alcadrial.renderengine.render.shader.layout.ShaderCombinedImageSamplerLayout;
+import com.alcadrial.renderengine.render.shader.layout.ShaderInputLayout;
+import com.alcadrial.renderengine.render.shader.layout.ShaderLayout;
+import com.alcadrial.renderengine.render.shader.layout.ShaderLocalSizeLayout;
+import com.alcadrial.renderengine.render.shader.layout.ShaderStorageBufferLayout;
+import com.alcadrial.renderengine.render.shader.layout.ShaderUniformBufferLayout;
 import com.alcadrial.renderengine.render.util.FileUtils;
 
 import tools.jackson.databind.JsonNode;
