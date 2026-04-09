@@ -41,15 +41,9 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Surface;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
-import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.shader.ShaderType;
 import com.alcadrial.renderengine.render.shader.ShaderUtils;
-import com.alcadrial.renderengine.render.shader.ShaderVariable;
-import com.alcadrial.renderengine.render.shader.layout.ShaderInputLayout;
-import com.alcadrial.renderengine.render.shader.layout.ShaderLayout;
-import com.alcadrial.renderengine.render.shader.layout.ShaderLayout.Type;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
@@ -140,13 +134,11 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 	}
 	
 	private VkGraphicsPipelineCreateInfo createInfo;
-	private Builder.VertexInputStateConfigurator.@Nullable ExtraConfiguration vertexInputStateExtraConfiguration;
 	private Builder.ViewportStateConfigurator.@Nullable ExtraConfiguration viewportStateExtraConfiguration;
 	
-	private GraphicsPipelineTemplate(VkGraphicsPipelineCreateInfo createInfo, Builder.VertexInputStateConfigurator.@Nullable ExtraConfiguration vertexInputStateExtraConfiguration, Builder.ViewportStateConfigurator.@Nullable ExtraConfiguration viewportStateExtraConfiguration)
+	private GraphicsPipelineTemplate(VkGraphicsPipelineCreateInfo createInfo, Builder.ViewportStateConfigurator.@Nullable ExtraConfiguration viewportStateExtraConfiguration)
 	{
 		this.createInfo = createInfo;
-		this.vertexInputStateExtraConfiguration = vertexInputStateExtraConfiguration;
 		this.viewportStateExtraConfiguration = viewportStateExtraConfiguration;
 	}
 	
@@ -167,7 +159,6 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		try
 		{
 			createInfo.pStages(pStages);
-			if (vertexInputStateExtraConfiguration != null) vertexInputStateExtraConfiguration.apply((@NonNull VkPipelineVertexInputStateCreateInfo) createInfo.pVertexInputState(), program);
 			if (viewportStateExtraConfiguration != null) viewportStateExtraConfiguration.apply((@NonNull VkPipelineViewportStateCreateInfo) createInfo.pViewportState(), surfaceSize);
 			createInfo
 				.layout(layout.getVk())
@@ -236,14 +227,8 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		
 		public class VertexInputStateConfigurator {
 			
-			@FunctionalInterface
-			public static interface ExtraConfiguration {
-				
-				VkPipelineVertexInputStateCreateInfo apply(VkPipelineVertexInputStateCreateInfo createInfo, ShaderProgram shaderProgram);//TODO change ShaderProgram to ShaderVertexInputs
-			}
-			
 			private Map<Integer, Pair<Integer, Integer>> bindings;
-			private Map<Vector2i, Integer> attributes;
+			private Map<Vector2i, Pair<Integer, ShaderInputType>> attributes;
 			
 			public VertexInputStateConfigurator()
 			{
@@ -257,15 +242,16 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				return this;
 			}
 			
-			public VertexInputStateConfigurator addAttribute(int location, int binding, int offset)
+			public VertexInputStateConfigurator addAttribute(int location, int binding, ShaderInputType type, int offset)
 			{
-				attributes.put(Vector2i.of(location, binding), offset);
+				attributes.put(Vector2i.of(location, binding), new Pair<>(offset, type));
 				return this;
 			}
 			
 			protected VkPipelineVertexInputStateCreateInfo configure()
 			{
 				VkVertexInputBindingDescription.Buffer pVertexBindingDescriptions = null;
+				VkVertexInputAttributeDescription.Buffer pVertexAttributeDescriptions = null;
 				
 				if (!bindings.isEmpty())
 				{
@@ -276,38 +262,24 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 						.inputRate(e.getValue().r());
 					pVertexBindingDescriptions.rewind();
 				}
+				if (!attributes.isEmpty())
+				{
+					pVertexAttributeDescriptions = VkVertexInputAttributeDescription.malloc(attributes.size());
+					
+					for (Entry<Vector2i, Pair<Integer, ShaderInputType>> e : attributes.entrySet()) pVertexAttributeDescriptions.get()
+						.location(e.getKey().x())
+						.binding(e.getKey().y())
+						.format(e.getValue().right.getVulkanType())
+						.offset(e.getValue().left);
+					pVertexAttributeDescriptions.rewind();
+				}
 				
 				return VkPipelineVertexInputStateCreateInfo.malloc()
 					.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
 					.pNext(0)
 					.flags(0)
 					.pVertexBindingDescriptions(pVertexBindingDescriptions)
-					.pVertexAttributeDescriptions(null);
-			}
-			
-			public ExtraConfiguration extraConfiguration()
-			{
-				return (createInfo, program) -> {
-					
-					int variablesCount = (int) program.getShaders().sumOfInt(s -> s.info().getType() == ShaderType.VERTEX ? (int) s.info().getLayouts().sumOfInt(l -> l.getType() == Type.INPUT ? ((ShaderInputLayout) l).getVariables().size() : 0) : 0);
-					VkVertexInputAttributeDescription.Buffer attributeDescriptions = VkVertexInputAttributeDescription.malloc(variablesCount);
-					
-					for (PreparedShader shader : program.getShaders()) if (shader.info().getType() == ShaderType.VERTEX)
-					{
-						for (ShaderLayout l : shader.info().getLayouts()) if (l.getType() == Type.INPUT)
-						{
-							ShaderInputLayout layout = (ShaderInputLayout) l;
-							for (Pair<Integer, ShaderVariable> p : layout.getVariables())
-							{
-								ShaderInputType type = p.right.getType();
-								attributeDescriptions.get().set(p.left, layout.getBinding(), type.getVulkanType(), attributes.getOrDefault(Vector2i.of(p.left, layout.getBinding()), 0));
-							}
-						}
-					}
-					createInfo.pVertexAttributeDescriptions(attributeDescriptions.rewind());
-					
-					return createInfo;
-				};
+					.pVertexAttributeDescriptions(pVertexAttributeDescriptions);
 			}
 			
 			public Builder end()
@@ -1098,7 +1070,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				.pColorBlendState(colorBlendStateConfigurator != null ? colorBlendStateConfigurator.configure() : null)
 				.pDynamicState(dynamicStateConfigurator != null ? dynamicStateConfigurator.configure() : null);
 			
-			return new GraphicsPipelineTemplate(createInfo, vertexInputStateConfigurator != null ? vertexInputStateConfigurator.extraConfiguration() : null, viewportStateConfigurator != null ? viewportStateConfigurator.extraConfiguration() : null);
+			return new GraphicsPipelineTemplate(createInfo, viewportStateConfigurator != null ? viewportStateConfigurator.extraConfiguration() : null);
 		}
 	}
 }

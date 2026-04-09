@@ -4,7 +4,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
 import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
@@ -22,57 +21,6 @@ public class ShaderUtils {
 		RenderEngine.assertLoaded();
 	}
 	
-	/*
-	public static Map<Integer, ShaderLayoutBinding> extractData(ShaderProgram shaderProgram)
-	{
-		Map<Integer, ShaderLayoutBinding> bindingFlags = Maps.mutable.empty();
-		for (PreparedShader shader : shaderProgram.getShaders()) extractData(shader, bindingFlags);
-		return bindingFlags;
-	}
-	
-	public static void extractData(ShaderProgram shaderProgram, Map<Integer, ShaderLayoutBinding> bindingFlags)
-	{
-		for (PreparedShader shader : shaderProgram.getShaders()) extractData(shader, bindingFlags);
-	}
-	
-	public static Map<Integer, ShaderLayoutBinding> extractData(PreparedShader shader)
-	{
-		Map<Integer, ShaderLayoutBinding> bindingFlags = Maps.mutable.empty();
-		extractData(shader, bindingFlags);
-		return bindingFlags;
-	}
-	
-	public static void extractData(PreparedShader shader, Map<Integer, ShaderLayoutBinding> bindingFlags)
-	{
-		ShaderInfo info = shader.info();
-		for (ShaderLayout layout : info.getLayouts())
-		{
-			int stageBit = info.getType().getStageBit();
-			switch (layout.getType())
-			{
-				case COMBINED_IMAGE_SAMPLER -> {
-					ShaderCombinedImageSamplerLayout combinedImageSamplerLayout = (ShaderCombinedImageSamplerLayout) layout;
-					bindingFlags.merge(combinedImageSamplerLayout.getBinding(), new ShaderLayoutBinding(stageBit, layout.getType(), layout.getDescriptorCount(), Lists.mutable.of(new ShaderBufferView(combinedImageSamplerLayout.getVariables()))), ShaderUtils::merge);
-				}
-				case UNIFORM_BUFFER -> {
-					ShaderUniformBufferLayout uniformBufferLayout = (ShaderUniformBufferLayout) layout;
-					bindingFlags.merge(uniformBufferLayout.getBinding(), new ShaderLayoutBinding(stageBit, layout.getType(), layout.getDescriptorCount(), Lists.mutable.of(new ShaderBufferView(uniformBufferLayout.getVariables()))), ShaderUtils::merge);
-				}
-				case STORAGE_BUFFER -> {
-					ShaderStorageBufferLayout storageBufferLayout = (ShaderStorageBufferLayout) layout;
-					bindingFlags.merge(storageBufferLayout.getBinding(), new ShaderLayoutBinding(stageBit, layout.getType(), layout.getDescriptorCount(), Lists.mutable.of(new ShaderBufferView(storageBufferLayout.getVariables()))), ShaderUtils::merge);
-				}
-			}
-		}
-	}
-	
-	private static ShaderLayoutBinding merge(ShaderLayoutBinding v, ShaderLayoutBinding w)
-	{
-		v.getLayoutsVariables().addAll(w.getLayoutsVariables());
-		v.setStages(v.getStages() | w.getStages());
-		return v;
-	}
-	*/
 	public static VkDescriptorSetLayoutBinding.Buffer createDescriptorSetLayoutBindingBuffer(MemoryStack stack, Map<Integer, ShaderLayoutBinding> bindingFlags)
 	{
 		VkDescriptorSetLayoutBinding.Buffer descriptorSetLayoutBindings = VkDescriptorSetLayoutBinding.malloc(bindingFlags.size(), stack);
@@ -91,6 +39,11 @@ public class ShaderUtils {
 	
 	public static VkPipelineShaderStageCreateInfo.Buffer createPipelineShaderStageCreateInfoBuffer(MemoryStack stack, Device device, ShaderProgram program) throws VulkanException
 	{
+		return createPipelineShaderStageCreateInfoBuffer(stack, device, program, "main");
+	}
+	
+	public static VkPipelineShaderStageCreateInfo.Buffer createPipelineShaderStageCreateInfoBuffer(MemoryStack stack, Device device, ShaderProgram program, String entryPoint) throws VulkanException
+	{
 		VkPipelineShaderStageCreateInfo.Buffer createInfoBuffer = VkPipelineShaderStageCreateInfo.malloc(program.getShaders().size(), stack);
 		VkShaderModuleCreateInfo createInfo = VkShaderModuleCreateInfo.malloc(stack)
 			.sType(VK10.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)
@@ -106,15 +59,20 @@ public class ShaderUtils {
 				.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
 				.pNext(0)
 				.flags(0)
-				.stage(shader.info().getType().getStageBit())
+				.stage(shader.type().getStageBit())
 				.module(p[0])
-				.pName(stack.UTF8(shader.info().getEntryPoint()))
+				.pName(stack.UTF8(entryPoint))
 				.pSpecializationInfo(/*shader constants*/null);
 		}
 		return createInfoBuffer.rewind();
 	}
 	
 	public static VkPipelineShaderStageCreateInfo createPipelineShaderStageCreateInfoBuffer(MemoryStack stack, Device device, PreparedShader shader) throws VulkanException
+	{
+		return createPipelineShaderStageCreateInfoBuffer(stack, device, shader, "main");
+	}
+	
+	public static VkPipelineShaderStageCreateInfo createPipelineShaderStageCreateInfoBuffer(MemoryStack stack, Device device, PreparedShader shader, String entryPoint) throws VulkanException
 	{
 		VkShaderModuleCreateInfo createInfo = VkShaderModuleCreateInfo.malloc(stack)
 			.sType(VK10.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)
@@ -128,14 +86,19 @@ public class ShaderUtils {
 			.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
 			.pNext(0)
 			.flags(0)
-			.stage(shader.info().getType().getStageBit())
+			.stage(shader.type().getStageBit())
 			.module(p[0])
-			.pName(stack.UTF8(shader.info().getEntryPoint()))
+			.pName(stack.UTF8(entryPoint))
 			.pSpecializationInfo(/*shader constants*/null);
 		return createInfoBuffer;
 	}
 	
 	public static VkPipelineShaderStageCreateInfo.Buffer createPipelineShaderStageCreateInfoBuffer(Device device, ShaderProgram program) throws VulkanException
+	{
+		return createPipelineShaderStageCreateInfoBuffer(device, program, "main");
+	}
+	
+	public static VkPipelineShaderStageCreateInfo.Buffer createPipelineShaderStageCreateInfoBuffer(Device device, ShaderProgram program, String entryPoint) throws VulkanException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -154,9 +117,9 @@ public class ShaderUtils {
 					.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
 					.pNext(0)
 					.flags(0)
-					.stage(shader.info().getType().getStageBit())
+					.stage(shader.type().getStageBit())
 					.module(p[0])
-					.pName(MemoryUtil.memUTF8(shader.info().getEntryPoint()))
+					.pName(stack.UTF8(entryPoint))
 					.pSpecializationInfo(/*shader constants*/null);
 			}
 			return createInfoBuffer.rewind();
@@ -164,6 +127,11 @@ public class ShaderUtils {
 	}
 	
 	public static VkPipelineShaderStageCreateInfo createPipelineShaderStageCreateInfoBuffer(Device device, PreparedShader shader) throws VulkanException
+	{
+		return createPipelineShaderStageCreateInfoBuffer(device, shader, "main");
+	}
+	
+	public static VkPipelineShaderStageCreateInfo createPipelineShaderStageCreateInfoBuffer(Device device, PreparedShader shader, String entryPoint) throws VulkanException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -179,9 +147,9 @@ public class ShaderUtils {
 				.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
 				.pNext(0)
 				.flags(0)
-				.stage(shader.info().getType().getStageBit())
+				.stage(shader.type().getStageBit())
 				.module(p[0])
-				.pName(MemoryUtil.memUTF8(shader.info().getEntryPoint()))
+				.pName(stack.UTF8(entryPoint))
 				.pSpecializationInfo(/*shader constants*/null);
 			return createInfoBuffer;
 		}

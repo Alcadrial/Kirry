@@ -29,7 +29,7 @@ import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.Shader;
-import com.alcadrial.renderengine.render.shader.ShaderInfo;
+import com.alcadrial.renderengine.render.shader.ShaderType;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.Version;
@@ -458,17 +458,19 @@ public class RenderTest {
 	
 	public static PreparedShader loadShader(String path) throws IOException
 	{
-		Shader shader = new Shader(getFile(path));
-		ShaderInfo info = ShaderInfo.fromJson(getFile(path + ".json"));
-		if (TestProperties.FORCE_RECOMPILE_SHADERS.getValue()) shader.compile(info);
+		File file = getFile(path);
+		String name = file.getName();
+		Shader shader = new Shader(file);
+		ShaderType type = ShaderType.fromExtension(name.contains(".") ? name.substring(name.indexOf('.') + 1) : name);
+		if (TestProperties.FORCE_RECOMPILE_SHADERS.getValue()) shader.compile(type);
 		else
 		{
 			File binFile = getFile(path + ".bin");
 			if (binFile.canRead()) shader.loadCompiled(binFile);
-			else shader.compile(info);
+			else shader.compile(type);
 		}
 		if (!shader.isCompilationSuccessfull()) throw new IOException("Shader " + shader.getFile() + " has errors");
-		return new PreparedShader(shader, info);
+		return new PreparedShader(shader, type);
 	}
 	
 	public static void saveShaderBinary(Shader shader) throws IOException

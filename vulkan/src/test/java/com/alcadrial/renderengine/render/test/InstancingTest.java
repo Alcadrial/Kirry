@@ -239,10 +239,10 @@ public class InstancingTest extends RenderTest {
 				.configureVertexInputState(s -> s
 					.addBinding(0, 40, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
 					.addBinding(1, 12, VK10.VK_VERTEX_INPUT_RATE_INSTANCE)
-					.addAttribute(0, 0, 0)
-					.addAttribute(1, 0, 12)
-					.addAttribute(2, 0, 28)
-					.addAttribute(3, 1, 0)
+					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
+					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_4, 12)
+					.addAttribute(2, 0, ShaderInputType.VECTOR_FLOAT_3, 28)
+					.addAttribute(3, 1, ShaderInputType.VECTOR_FLOAT_3, 0)
 				)
 				.build();
 			

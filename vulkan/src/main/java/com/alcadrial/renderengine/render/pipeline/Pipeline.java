@@ -1,22 +1,10 @@
 package com.alcadrial.renderengine.render.pipeline;
 
-import java.util.List;
-
-import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
-import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
 
-import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.shader.PreparedShader;
-import com.alcadrial.renderengine.render.shader.ShaderVariable;
-import com.alcadrial.renderengine.render.shader.layout.ShaderInputLayout;
-import com.alcadrial.renderengine.render.shader.layout.ShaderLayout.Type;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
-import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
-import com.alcadrial.renderengine.render.util.VulkanUtils;
-import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 /**
  * A sequence of operation that must be executed in order.
@@ -46,23 +34,6 @@ public abstract class Pipeline extends RawDeviceResource {
 	}
 	
 	public abstract int bindPoint();
-	
-	protected void fillShaderStageCreateInfo(MemoryStack stack, VkPipelineShaderStageCreateInfo shaderStageInfo, PreparedShader shader) throws VulkanException
-	{
-		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(VK10.vkCreateShaderModule(device.getVk(), VulkanUtils.shaderModuleInfo(stack, shader.shader().getLastCompilation().orElseThrow().binary()), null, p), "Failed to create shader module");
-		
-		shaderStageInfo.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
-		shaderStageInfo.stage(shader.info().getType().getStageBit());
-		shaderStageInfo.module(p[0]);
-		shaderStageInfo.pName(stack.UTF8(shader.info().getEntryPoint()));
-	}
-	
-	protected List<ShaderVariable> extractInputs(PreparedShader vertexShader)
-	{
-		ShaderInputLayout inputLayout = (ShaderInputLayout) vertexShader.info().getLayouts().stream().filter(l -> l.getType() == Type.INPUT).findFirst().orElseThrow(() -> new RuntimeException("Missing input layout"));
-		return inputLayout.getVariables().stream().map(Pair::r).toList();
-	}
 	
 	public PipelineLayout getLayout()
 	{

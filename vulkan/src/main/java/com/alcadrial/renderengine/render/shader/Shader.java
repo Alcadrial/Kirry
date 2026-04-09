@@ -72,8 +72,8 @@ public class Shader {
 	{
 		return compiled = CompiledShader.ofSuccess(code, Files.readAllBytes(compiledFile.toPath()));
 	}
-	
-	public CompiledShader compile(ShaderInfo info)
+
+	public CompiledShader compile(ShaderType type)
 	{
 		Process process;
 		try
@@ -81,11 +81,11 @@ public class Shader {
 			File file = this.file;
 			if (file != null)
 			{
-				process = new ProcessBuilder(GLSLC_PATH, "-O", "-o", "-", "-fshader-stage=" + info.getType().toString().toLowerCase(), file.toPath().toAbsolutePath().toString()).redirectError(Redirect.INHERIT).start();
+				process = new ProcessBuilder(GLSLC_PATH, "-O", "-o", "-", "-fshader-stage=" + type.toString().toLowerCase(), file.toPath().toAbsolutePath().toString()).redirectError(Redirect.INHERIT).start();
 			}
 			else
 			{
-				process = new ProcessBuilder(GLSLC_PATH, "-O", "-o", "-", "-fshader-stage=" + info.getType().toString().toLowerCase(), "-").redirectError(Redirect.INHERIT).start();
+				process = new ProcessBuilder(GLSLC_PATH, "-O", "-o", "-", "-fshader-stage=" + type.toString().toLowerCase(), "-").redirectError(Redirect.INHERIT).start();
 				for (String l : code)
 				{
 					process.getOutputStream().write(l.getBytes(StandardCharsets.UTF_8));

@@ -5,16 +5,11 @@ import java.nio.LongBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
-import org.lwjgl.vulkan.VkDescriptorPoolSize;
 import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.shader.PreparedShader;
-import com.alcadrial.renderengine.render.shader.ShaderInfo;
-import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.shader.layout.ShaderLayout;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -24,49 +19,6 @@ public class DescriptorPool extends RawDeviceResource {
 	static
 	{
 		RenderEngine.assertLoaded();
-	}
-	
-	public static DescriptorPool ofShaderProgram(Device device, ShaderProgram shaderProgram, int maxSets) throws VulkanException
-	{
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			//may be more than required
-			int size = (int) shaderProgram.getShaders().sumOfInt(ps -> ps.info().getLayouts().count(l -> l.getDescriptorCount() > 0));
-			VkDescriptorPoolSize.Buffer poolSizes = VkDescriptorPoolSize.calloc(size, stack);
-			for (PreparedShader preparedShader : shaderProgram.getShaders()) for (ShaderLayout layout : preparedShader.info().getLayouts()) if (layout.getDescriptorCount() > 0)
-			{
-				poolSizes.get()
-					.type(layout.getType().getType())
-					.descriptorCount(layout.getDescriptorCount());
-			}
-			VkDescriptorPoolCreateInfo createInfo = VkDescriptorPoolCreateInfo.calloc(stack)
-				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
-				.maxSets(maxSets)
-				.pPoolSizes(poolSizes.rewind());
-			
-			return new DescriptorPool(device, createInfo);
-		}
-	}
-	
-	public static DescriptorPool ofShader(Device device, PreparedShader preparedShader, int maxSets) throws VulkanException
-	{
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			ShaderInfo shaderInfo = preparedShader.info();
-			VkDescriptorPoolSize.Buffer poolSizes = VkDescriptorPoolSize.calloc(shaderInfo.getLayouts().count(l -> l.getDescriptorCount() > 0), stack);
-			for (ShaderLayout layout : shaderInfo.getLayouts()) if (layout.getDescriptorCount() > 0)
-			{
-				poolSizes.get()
-					.type(layout.getType().getType())
-					.descriptorCount(layout.getDescriptorCount());
-			}
-			VkDescriptorPoolCreateInfo createInfo = VkDescriptorPoolCreateInfo.calloc(stack)
-				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
-				.maxSets(maxSets)
-				.pPoolSizes(poolSizes.rewind());
-			
-			return new DescriptorPool(device, createInfo);
-		}
 	}
 	
 	private final int flags;

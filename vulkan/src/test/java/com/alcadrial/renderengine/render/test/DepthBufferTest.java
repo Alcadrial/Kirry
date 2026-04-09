@@ -202,9 +202,9 @@ public class DepthBufferTest extends RenderTest {
 			graphicsPipelineTemplate = GraphicsPipelineTemplate.create3dRenderingPipeline()
 				.configureVertexInputState(s -> s
 					.addBinding(0, 40, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
-					.addAttribute(0, 0, 0)
-					.addAttribute(1, 0, 12)
-					.addAttribute(2, 0, 28)
+					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
+					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_4, 12)
+					.addAttribute(2, 0, ShaderInputType.VECTOR_FLOAT_3, 28)
 				)
 				.build();
 			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);

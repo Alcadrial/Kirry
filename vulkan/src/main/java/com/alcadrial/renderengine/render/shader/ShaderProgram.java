@@ -8,9 +8,7 @@ import java.util.List;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 
-import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.shader.layout.ShaderInputLayout;
 
 public class ShaderProgram {
 	
@@ -67,22 +65,30 @@ public class ShaderProgram {
 			}
 			""");
 		shader.loadCompiled(binary);
-		ShaderInputLayout shaderInputLayout = new ShaderInputLayout(0, "vertexInput", List.of(new Pair<>(0, ShaderVariable.VERTEX_POSITION)));
-		ShaderInfo shaderInfo = new ShaderInfo(ShaderType.VERTEX, "main", List.of(shaderInputLayout));
-		DEFAULT = create().add(new PreparedShader(shader, shaderInfo)).build();
+		DEFAULT = create().add(new PreparedShader(shader, ShaderType.VERTEX)).build();
 	}
 	
 	private MutableList<PreparedShader> shaders;
+	private PreparedShader vertexShader;
 	
 	private ShaderProgram(Builder builder)
 	{
 		shaders = Lists.mutable.ofAll(builder.shaders);
-		for (PreparedShader ps : shaders) if (ps.info().getType() == ShaderType.VERTEX) return;
+		for (PreparedShader ps : shaders) if (ps.type() == ShaderType.VERTEX)
+		{
+			vertexShader = ps;
+			return;
+		}
 		throw new IllegalStateException("A ShaderProgram must have at least 1 VertexShader");
 	}
 	
 	public MutableList<PreparedShader> getShaders()
 	{
 		return shaders;
+	}
+	
+	public PreparedShader getVertexShader()
+	{
+		return vertexShader;
 	}
 }

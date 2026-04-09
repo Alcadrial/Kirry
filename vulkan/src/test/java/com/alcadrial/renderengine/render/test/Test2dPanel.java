@@ -46,6 +46,7 @@ import com.alcadrial.renderengine.render.pipeline.GraphicsPipelineTemplate;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
+import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.binding.BindingInfo;
@@ -247,8 +248,8 @@ public class Test2dPanel extends RenderTest {
 			graphicsPipelineTemplate = GraphicsPipelineTemplate.createScreenRenderingPipeline()
 				.configureVertexInputState(s -> s
 					.addBinding(0, 28, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
-					.addAttribute(0, 0, 0)
-					.addAttribute(1, 0, 12)
+					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
+					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_4, 12)
 				)
 				.build();
 			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);

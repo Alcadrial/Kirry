@@ -334,9 +334,9 @@ public class ComputerTest extends RenderTest {
 					.addBinding(0, 12, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
 					.addBinding(1, 32, VK10.VK_VERTEX_INPUT_RATE_INSTANCE)
 					.addBinding(2, 16, VK10.VK_VERTEX_INPUT_RATE_INSTANCE)
-					.addAttribute(0, 0, 0)
-					.addAttribute(1, 1, 0)
-					.addAttribute(2, 2, 0)
+					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
+					.addAttribute(1, 1, ShaderInputType.VECTOR_FLOAT_3, 0)
+					.addAttribute(2, 2, ShaderInputType.VECTOR_FLOAT_4, 0)
 				)
 				.build();
 			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);

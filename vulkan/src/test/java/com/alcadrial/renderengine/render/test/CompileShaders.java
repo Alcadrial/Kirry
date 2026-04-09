@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.shader.Shader;
-import com.alcadrial.renderengine.render.shader.ShaderInfo;
+import com.alcadrial.renderengine.render.shader.ShaderType;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -47,13 +47,15 @@ public class CompileShaders extends RenderTest {
 				}
 
 				@Override
-				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException
+				public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException
 				{
-					if (Shader.isShaderFile(file))
+					if (Shader.isShaderFile(path))
 					{
-						Shader shader = new Shader(file.toFile());
-						ShaderInfo shaderInfo = ShaderInfo.fromJson(new File(file.toString() + ".json"));
-						shader.compile(shaderInfo);
+						File file = path.toFile();
+						String name = file.getName();
+						Shader shader = new Shader(file);
+						ShaderType type = ShaderType.fromExtension(name.contains(".") ? name.substring(name.indexOf('.') + 1) : name);
+						shader.compile(type);
 						if (!shader.isCompilationSuccessfull())
 						{
 							throw new IOException("Shader " + shader.getFile() + " has errors: \n" + Arrays.stream(shader.getCode()).collect(Collectors.joining("\n")));
