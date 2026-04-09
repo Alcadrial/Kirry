@@ -402,10 +402,10 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	// MEMORY
 	
-	public VkMemoryRequirements getBufferRequirements(MemoryStack stack, VulkanBuffer buffer)
+	public VkMemoryRequirements getBufferRequirements(MemoryStack stack, long bufferVk)
 	{
 		VkMemoryRequirements memoryRequirements = VkMemoryRequirements.malloc(stack);
-		VK10.vkGetBufferMemoryRequirements(vk, buffer.getVk(), memoryRequirements);
+		VK10.vkGetBufferMemoryRequirements(vk, bufferVk, memoryRequirements);
 		return memoryRequirements;
 	}
 	
@@ -416,10 +416,10 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		return memoryRequirements;
 	}
 	
-	public Memory allocateMemory(MemoryStack stack, VulkanBuffer buffer, int requiredProperties, int optimalProperties) throws VulkanException
+	public Memory allocateBufferMemory(MemoryStack stack, long bufferVk, int requiredProperties, int optimalProperties) throws VulkanException
 	{
-		Memory memory = allocateMemory(stack, getBufferRequirements(stack, buffer), requiredProperties, optimalProperties);
-		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(vk, buffer.getVk(), memory.getVk(), 0), "Failed to bind buffer memory");
+		Memory memory = allocateMemory(stack, getBufferRequirements(stack, bufferVk), requiredProperties, optimalProperties);
+		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(vk, bufferVk, memory.getVk(), 0), "Failed to bind buffer memory");
 		return memory;
 	}
 	

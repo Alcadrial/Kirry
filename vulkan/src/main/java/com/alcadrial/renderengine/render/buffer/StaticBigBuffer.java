@@ -65,8 +65,9 @@ public class StaticBigBuffer extends AbstractBigVulkanBuffer<StaticBigBuffer.Dat
 				allocationOffset = (int) (Math.ceilDiv(allocationOffset, requirements.alignment()) * requirements.alignment());
 			}
 			
-			VulkanBuffer buffer = new VulkanBuffer(bigBuffer, bufferVk, allocationOffset, size, usage);
+			VulkanBuffer buffer = new VulkanBuffer(bigBuffer, bufferVk, allocationOffset, size, usage, false);
 			Debug.debugAllocation(() -> "Allocate " + (isLocalBufferingActive() ? "Local" : "Remote") + " " + buffer);
+			buffer.bindMemory();
 			data.slots.addLast(new Slot<>(buffer));
 			
 			allocationOffset += size;
