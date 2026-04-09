@@ -34,6 +34,7 @@ import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.exception.ExternalException;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.util.functional.VulkanBiConsumer;
 import com.alcadrial.renderengine.render.util.functional.VulkanRunnable;
@@ -95,7 +96,6 @@ public class RenderTest {
 			}
 			finally
 			{
-				//if (RenderEngine.isInitializated()) throw new IllegalStateException("RenderEngine not terminated");
 				if (mainThread != null) mainThread.join();
 			}
 		}
@@ -123,7 +123,7 @@ public class RenderTest {
 		long milestone = firstMilestone;
 		long highMilestone = firstHighMilestone;
 		
-		window.setCallback((GLFWWindowRefreshCallbackI) w -> {
+		window.setCallback((GLFWWindowRefreshCallbackI) _ -> {
 			try
 			{
 				long current = System.nanoTime();
@@ -206,9 +206,13 @@ public class RenderTest {
 			{
 				lastError[0] = e;
 			}
+			catch (Throwable e)
+			{
+				lastError[0] = new ExternalException(e);
+			}
 		};
 		
-		window.setCallback((GLFWWindowRefreshCallbackI) w -> render.run());
+		window.setCallback((GLFWWindowRefreshCallbackI) _ -> render.run());
 		if (forceRender != null) forceRender.accept(render);
 		
 		while (!window.shouldClose() && !hasValidationError.get())
@@ -332,6 +336,13 @@ public class RenderTest {
 				window.setShouldClose(true);
 				window.postEmptyEvent();
 			}
+			catch (Throwable e)
+			{
+				lastError[0] = new ExternalException(e);
+				service.shutdown();
+				window.setShouldClose(true);
+				window.postEmptyEvent();
+			}
 		}, 0, period, TimeUnit.NANOSECONDS);
 		
 		while (!window.shouldClose() && !hasValidationError.get())
@@ -348,6 +359,9 @@ public class RenderTest {
 			service.shutdownNow();
 			return;
 		}
+		finally {
+			if (lastError[0] != null) throw lastError[0];
+		}
 		
 		window.getDevice().waitIdle();
 	}
@@ -358,7 +372,7 @@ public class RenderTest {
 		Vector2i oldPos = Vector2i.of(0, 0);
 		Vector2f oldMousePos = Vector2f.of(0, 0);
 		boolean[] pressing = new boolean[2];
-		window.setCallback((GLFWMouseButtonCallbackI) (w, button, action, mods) -> {
+		window.setCallback((GLFWMouseButtonCallbackI) (_, button, action, _) -> {
 			if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT)
 			{
 				if (pressing[0] = action == GLFW.GLFW_PRESS)
@@ -367,7 +381,7 @@ public class RenderTest {
 				}
 			}
 		});
-		window.setCallback((GLFWCursorPosCallbackI) (w, x, y) -> {
+		window.setCallback((GLFWCursorPosCallbackI) (_, x, y) -> {
 			if (pressing[0] && !pressing[1])
 			{
 				pressing[1] = true;

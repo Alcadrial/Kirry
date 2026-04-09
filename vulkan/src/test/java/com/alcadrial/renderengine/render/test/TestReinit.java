@@ -1,6 +1,7 @@
 package com.alcadrial.renderengine.render.test;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.lwjgl.glfw.GLFW;
@@ -26,7 +27,6 @@ import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
-import com.alcadrial.renderengine.render.buffer.BufferLayout;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
@@ -36,13 +36,12 @@ import com.alcadrial.renderengine.render.pipeline.GraphicsPipelineTemplate;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
-import com.alcadrial.renderengine.render.shader.ShaderLayoutBinding;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
+import com.alcadrial.renderengine.render.shader.binding.BindingInfo;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorPool;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSetLayout;
-import com.alcadrial.renderengine.render.shader.layouts.ShaderLayout.Type;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
 import com.alcadrial.renderengine.render.util.Properties;
@@ -97,7 +96,7 @@ public class TestReinit extends RenderTest {
 				});
 				RenderEngine.serveRenderEngine();
 			}
-			System.out.println("Test SUCCESS");
+			System.out.println("Test " + (flag.get() ? "SUCCESS" : "FAIL"));
 		}
 		catch (VulkanException e)
 		{
@@ -211,8 +210,6 @@ public class TestReinit extends RenderTest {
 					.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
 				PipelineLayout pipelineLayout = new PipelineLayout(device, pipelineLayoutInfo);
 				
-				uniformBuffer.getMemory().mapMemory();
-				
 				try (GraphicsPipelineTemplate graphicsPipelineTemplate = GraphicsPipelineTemplate.createScreenRenderingPipeline()
 					.configureVertexInputState(s -> s
 						.addBinding(0, 28, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
@@ -233,21 +230,19 @@ public class TestReinit extends RenderTest {
 				renderer = Renderer.builder()
 					.graphicsPipeline(pipeline)
 					.descriptorSets(descriptorSet)
-					.bindingsLayout(
-						new ShaderLayoutBinding(VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, Type.UNIFORM_BUFFER, 1, ShaderVariable.TRANSFORMATION)
+					.bindings(
+						BindingInfo.ofUniform(uniformBuffer, VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(ShaderVariable.TRANSFORMATION))
 					)
-					.writers(i -> new BufferWriter[] {
-						new BufferWriter(uniformBuffer)
-					})
 					.build();
 				
 				renderer.setBuffer(0, vertexBuffer);
 				renderer.setIndexBuffer(indexBuffer);
 				
-				BufferLayout bufferLayout = renderer.getBufferLayout(0)[0];
-				bufferLayout.set("TRANSFORMATION", new Matrix4f().orthographic(window.getWidth(), window.getHeight()));
-				bufferLayout.flushAndInvalidate();
-				bufferLayout.updateDescriptorSets();
+				uniformBuffer.getMemory().mapMemory();
+				renderer.useBufferLayoutWriter(0, 0, writer -> {
+					writer.set(ShaderVariable.TRANSFORMATION, new Matrix4f().orthographic(window.getWidth(), window.getHeight()));
+					writer.flushAndInvalidate();
+				});
 				uniformBuffer.getMemory().unmapMemory();
 				
 				try (PhysicalDeviceTransferState transfert = staticBigBuffer.startLocalBuffering())
@@ -286,7 +281,7 @@ public class TestReinit extends RenderTest {
 		
 		public void loop() throws VulkanException
 		{
-			RenderTest.defaultAnimationLoop((enlapsed, enlapsedFrame) -> {
+			RenderTest.defaultAnimationLoop((_, _) -> {
 				if (++i == 30) RenderEngine.getVulkan().getWindow().setShouldClose(true);
 				
 				VulkanWindow window = RenderEngine.getVulkan().getWindow();
