@@ -30,6 +30,11 @@ public class Texture extends MemoryResource {
 	
 	public static VulkanFuture<Texture> loadFromFile(Device device, File file, int dstLayout) throws VulkanException
 	{
+		return loadFromFile(device, file, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, dstLayout);
+	}
+	
+	public static VulkanFuture<Texture> loadFromFile(Device device, File file, int usage, int dstLayout) throws VulkanException
+	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			int[] width = new int[1];
@@ -42,7 +47,7 @@ public class Texture extends MemoryResource {
 			buffer.getMemory().mapMemory().getBuffer().put(data).rewind();
 			STBImage.stbi_image_free(data.rewind());
 			
-			Texture texture = Texture.create2dTexture(device, width[0], height[0], VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+			Texture texture = Texture.create2dTexture(device, width[0], height[0], VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | usage, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 			
 			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
 			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -204,6 +209,22 @@ public class Texture extends MemoryResource {
 						}
 						default -> throw new UnsupportedOperationException("Transition not supported: " + this.layout + " -> " + layout);
 					}
+				}
+				else if (this.layout == VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && layout == VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+				{
+					barrier.srcAccessMask(VK10.VK_ACCESS_TRANSFER_READ_BIT);
+					barrier.dstAccessMask(VK10.VK_ACCESS_TRANSFER_WRITE_BIT);
+					
+					sourceStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
+					destinationStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
+				}
+				else if (this.layout == VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && layout == VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+				{
+					barrier.srcAccessMask(VK10.VK_ACCESS_TRANSFER_WRITE_BIT);
+					barrier.dstAccessMask(VK10.VK_ACCESS_TRANSFER_READ_BIT);
+					
+					sourceStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
+					destinationStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
 				}
 				else if (this.layout == VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && layout == VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 				{

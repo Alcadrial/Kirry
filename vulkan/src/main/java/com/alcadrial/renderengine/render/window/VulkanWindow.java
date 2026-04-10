@@ -686,7 +686,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				.pSignalSemaphores(p1);
 			
 			device.resetFences(frame.getFence());
-			RenderEngine.composeAfter(device.getGraphicsQueue().submitAsync(submitInfo, frame.getFence()), fences -> {
+			RenderEngine.composeAfter(device.getGraphicsQueue().submitAsync(submitInfo, frame.getFence()), _ -> {
 				onCommandBufferEndAction.run();
 			});
 			
@@ -800,25 +800,25 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			GLFW.glfwSetKeyCallback(id, null);
 			GLFW.glfwSetMouseButtonCallback(id, null);
 			GLFW.glfwSetScrollCallback(id, null);
-			GLFW.glfwSetWindowCloseCallback(id, w -> onHide());
+			GLFW.glfwSetWindowCloseCallback(id, _ -> onHide());
 			GLFW.glfwSetWindowContentScaleCallback(id, null);
-			GLFW.glfwSetWindowFocusCallback(id, (w, f) -> onFocus());
-			GLFW.glfwSetWindowIconifyCallback(id, (w, c) -> {
+			GLFW.glfwSetWindowFocusCallback(id, (_, _) -> onFocus());
+			GLFW.glfwSetWindowIconifyCallback(id, (_, c) -> {
 				isIconified = c;
 				if (c) onIconify();
 				else onRestore();
 			});
-			GLFW.glfwSetWindowMaximizeCallback(id, (w, m) -> {
+			GLFW.glfwSetWindowMaximizeCallback(id, (_, m) -> {
 				if (m) onMaximize();
 				else onRestore();
 			});
 			GLFW.glfwSetWindowPosCallback(id, null);
 			GLFW.glfwSetWindowRefreshCallback(id, null);
-			GLFW.glfwSetWindowSizeCallback(id, (p, w, h) -> {
+			GLFW.glfwSetWindowSizeCallback(id, (_, w, h) -> {
 				width = w;
 				height = h;
 			});
-			GLFW.glfwSetFramebufferSizeCallback(id, (p, w, h) -> {
+			GLFW.glfwSetFramebufferSizeCallback(id, (_, _, _) -> {
 				isSurfaceSizeChanged.set(true);
 			});
 		});
@@ -936,6 +936,11 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	public final void setPos(Vector2i pos)
 	{
 		RenderEngine.requestMainThread(() -> GLFW.glfwSetWindowPos(id, pos.x(), pos.y()));
+	}
+	
+	public final void setSize(int width, int height)
+	{
+		RenderEngine.requestMainThread(() -> GLFW.glfwSetWindowSize(id, width, height));
 	}
 	
 	@Override

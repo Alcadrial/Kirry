@@ -10,10 +10,13 @@ import org.lwjgl.vulkan.VkBufferCopy;
 import org.lwjgl.vulkan.VkBufferImageCopy;
 import org.lwjgl.vulkan.VkBufferMemoryBarrier;
 import org.lwjgl.vulkan.VkClearAttachment;
+import org.lwjgl.vulkan.VkClearColorValue;
 import org.lwjgl.vulkan.VkClearRect;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
+import org.lwjgl.vulkan.VkImageCopy;
 import org.lwjgl.vulkan.VkImageMemoryBarrier;
+import org.lwjgl.vulkan.VkImageSubresourceRange;
 import org.lwjgl.vulkan.VkMemoryBarrier;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
@@ -21,6 +24,7 @@ import org.lwjgl.vulkan.VkViewport;
 
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.renderengine.core.util.NotYetImplementedException;
+import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -125,13 +129,21 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		}
 	}
 	
-	/**
-	 * NYI
-	 */
-	public void clearColorImage()
+	public void clearColorImage(Texture texture, Color color)
 	{
-		// VK10.vkCmdClearColorImage(vk);
-		throw new NotYetImplementedException();
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VK10.vkCmdClearColorImage(vk, texture.getVk(), texture.getLayout(),
+				VkClearColorValue.malloc(stack)
+					.float32(stack.floats(color.r() / 255, color.g() / 255, color.b() / 255, color.a() / 255)),
+				VkImageSubresourceRange.malloc(stack)
+					.aspectMask(texture.getAspectMask())
+					.baseMipLevel(0)
+					.levelCount(1)
+					.baseArrayLayer(0)
+					.layerCount(1)
+			);
+		}
 	}
 	
 	/**
@@ -147,7 +159,11 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			copyBuffer(srcBuffer, dstBuffer, VulkanUtils.bufferCopy(stack, srcOffset, dstOffset, size));
+			copyBuffer(srcBuffer, dstBuffer, VkBufferCopy.malloc(1, stack)
+				.srcOffset(srcOffset)
+				.dstOffset(dstOffset)
+				.size(size)
+			);
 		}
 	}
 	
@@ -160,7 +176,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VkBufferImageCopy.Buffer region = VkBufferImageCopy.malloc(1, stack)
+			copyBufferToImage(srcBuffer, dstTexture, VkBufferImageCopy.malloc(1, stack)
 				.bufferOffset(0)
 				.bufferRowLength(0)
 				.bufferImageHeight(0)
@@ -170,9 +186,8 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 					.baseArrayLayer(0)
 					.layerCount(1))
 				.imageOffset(o -> o.set(0, 0, 0))
-				.imageExtent(e -> e.set(dstTexture.getWidth(), dstTexture.getHeight(), dstTexture.getDepth()));
-			
-			copyBufferToImage(srcBuffer, dstTexture, region);
+				.imageExtent(e -> e.set(dstTexture.getWidth(), dstTexture.getHeight(), dstTexture.getDepth()))
+			);
 		}
 	}
 	
@@ -181,28 +196,68 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		copyBufferToImage(srcBuffer, srcOffset, dstTexture, imageOffset.x(), imageOffset.y(), imageOffset.z(), imageExtent.x(), imageExtent.y(), imageExtent.z());
 	}
 	
-	public void copyBufferToImage(VulkanBuffer srcBuffer, long srcOffset, Texture dstTexture, int xOffset, int yOffset, int zOffset, int xExtent, int yExtent, int zExtent)
+	public void copyBufferToImage(VulkanBuffer srcBuffer, long srcOffset, Texture dstTexture, int xOffset, int yOffset, int zOffset, int width, int height, int depth)
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VkBufferImageCopy.Buffer region = VkBufferImageCopy.malloc(1, stack);
-			region.bufferOffset(srcOffset);
-			region.bufferRowLength(0);
-			region.bufferImageHeight(0);
-			region.imageSubresource().aspectMask(dstTexture.getAspectMask());
-			region.imageSubresource().mipLevel(0);
-			region.imageSubresource().baseArrayLayer(0);
-			region.imageSubresource().layerCount(1);
-			region.imageOffset().set(xOffset, yOffset, zOffset);
-			region.imageExtent().set(xExtent, yExtent, zExtent);
-			
-			copyBufferToImage(srcBuffer, dstTexture, region);
+			copyBufferToImage(srcBuffer, dstTexture, VkBufferImageCopy.malloc(1, stack)
+				.bufferOffset(srcOffset)
+				.bufferRowLength(0)
+				.bufferImageHeight(0)
+				.imageSubresource(i -> i
+					.aspectMask(dstTexture.getAspectMask())
+					.mipLevel(0)
+					.baseArrayLayer(0)
+					.layerCount(1)
+				)
+				.imageOffset(o -> o.set(xOffset, yOffset, zOffset))
+				.imageExtent(e -> e.set(width, height, depth))
+			);
 		}
 	}
 	
 	public void copyBufferToImage(VulkanBuffer srcBuffer, Texture dstTexture, VkBufferImageCopy.Buffer copyRegion)
 	{
-		VK10.vkCmdCopyBufferToImage(vk, srcBuffer.getVk(), dstTexture.getVk(), VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copyRegion);
+		copyBufferToImage(srcBuffer, dstTexture, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copyRegion);
+	}
+	
+	public void copyBufferToImage(VulkanBuffer srcBuffer, Texture dstTexture, int dstLayout, VkBufferImageCopy.Buffer copyRegion)
+	{
+		VK10.vkCmdCopyBufferToImage(vk, srcBuffer.getVk(), dstTexture.getVk(), dstLayout, copyRegion);
+	}
+	
+	public void copyImage(Texture srcTexture, int srcXOffset, int srcYOffset, int srcZOffset, Texture dstTexture, int dstXOffset, int dstYOffset, int dstZOffset, int width, int height, int depth)
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			copyImage(srcTexture, dstTexture, VkImageCopy.malloc(1, stack)
+				.srcOffset(o -> o.set(srcXOffset, srcYOffset, srcZOffset))
+				.srcSubresource(i -> i
+					.aspectMask(srcTexture.getAspectMask())
+					.mipLevel(0)
+					.baseArrayLayer(0)
+					.layerCount(1)
+				)
+				.dstOffset(o -> o.set(dstXOffset, dstYOffset, dstZOffset))
+				.dstSubresource(i -> i
+					.aspectMask(dstTexture.getAspectMask())
+					.mipLevel(0)
+					.baseArrayLayer(0)
+					.layerCount(1)
+				)
+				.extent(e -> e.set(width, height, depth))
+			);
+		}
+	}
+	
+	public void copyImage(Texture srcTexture, Texture dstTexture, VkImageCopy.Buffer copyRegion)
+	{
+		copyImage(srcTexture, VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstTexture, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copyRegion);
+	}
+	
+	public void copyImage(Texture srcTexture, int srcLayout, Texture dstTexture, int dstLayout, VkImageCopy.Buffer copyRegion)
+	{
+		VK10.vkCmdCopyImage(vk, srcTexture.getVk(), srcLayout, dstTexture.getVk(), dstLayout, copyRegion);
 	}
 	
 	// copy
