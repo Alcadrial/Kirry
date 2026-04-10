@@ -467,7 +467,6 @@ public class RenderEngine extends RenderEngineCore {
 				System.arraycopy(errorStackTrace, 0, stackTrace, 0, errorStackTrace.length);
 				System.arraycopy(callerStackTrace, 2, stackTrace, errorStackTrace.length, callerStackTrace.length - 2);
 				e.setStackTrace(stackTrace);
-				e.printStackTrace();
 				exception = e;
 			}
 			catch (Throwable e)
@@ -476,7 +475,6 @@ public class RenderEngine extends RenderEngineCore {
 				StackTraceElement[] stackTrace = new StackTraceElement[callerStackTrace.length - 2];
 				System.arraycopy(callerStackTrace, 2, stackTrace, 0, callerStackTrace.length - 2);
 				exception.setStackTrace(stackTrace);
-				exception.printStackTrace();
 				this.exception = exception;
 			}
 			finally

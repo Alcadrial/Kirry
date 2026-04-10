@@ -10,10 +10,12 @@ import org.lwjgl.vulkan.VkBufferCopy;
 import org.lwjgl.vulkan.VkBufferImageCopy;
 import org.lwjgl.vulkan.VkBufferMemoryBarrier;
 import org.lwjgl.vulkan.VkClearAttachment;
+import org.lwjgl.vulkan.VkClearColorValue;
 import org.lwjgl.vulkan.VkClearRect;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
 import org.lwjgl.vulkan.VkImageMemoryBarrier;
+import org.lwjgl.vulkan.VkImageSubresourceRange;
 import org.lwjgl.vulkan.VkMemoryBarrier;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
@@ -21,6 +23,7 @@ import org.lwjgl.vulkan.VkViewport;
 
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.renderengine.core.util.NotYetImplementedException;
+import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
@@ -92,7 +95,7 @@ public class SynchronizedCommandBuffer extends CommandBuffer {
 	}
 	
 	@Override
-	public synchronized void bindDescriptorSets(Pipeline pipeline, long[] descriptorSets, int @Nullable[] dynamicOffsets)
+	public synchronized void bindDescriptorSets(Pipeline pipeline, long[] descriptorSets, int @Nullable [] dynamicOffsets)
 	{
 		synchronized (pool)
 		{
@@ -153,14 +156,24 @@ public class SynchronizedCommandBuffer extends CommandBuffer {
 		}
 	}
 	
-	/**
-	 * NYI
-	 */
 	@Override
-	public void clearColorImage()
+	public void clearColorImage(Texture texture, Color color)
 	{
-		// VK10.vkCmdClearColorImage(vk);
-		throw new NotYetImplementedException();
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VkClearColorValue clearColorValue = VkClearColorValue.malloc(stack)
+				.float32(stack.floats(color.r() / 255, color.g() / 255, color.b() / 255, color.a() / 255));
+			VkImageSubresourceRange imageSubresourceRange = VkImageSubresourceRange.malloc(stack)
+				.aspectMask(texture.getAspectMask())
+				.baseMipLevel(0)
+				.levelCount(1)
+				.baseArrayLayer(0)
+				.layerCount(1);
+			synchronized (pool)
+			{
+				VK10.vkCmdClearColorImage(vk, texture.getVk(), texture.getLayout(), clearColorValue, imageSubresourceRange);
+			}
+		}
 	}
 	
 	/**

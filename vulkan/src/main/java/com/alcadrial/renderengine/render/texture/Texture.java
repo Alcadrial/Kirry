@@ -28,6 +28,26 @@ public class Texture extends MemoryResource {
 		RenderEngine.assertLoaded();
 	}
 	
+	public static VulkanFuture<TextureBuffer> loadToBufferFromFile(Device device, File file) throws VulkanException
+	{
+		return RenderEngine.submitAsync(() -> {
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				int[] width = new int[1];
+				int[] height = new int[1];
+				int[] channels = new int[1];
+				ByteBuffer data = STBImage.stbi_load(stack.UTF8(file.getPath()), width, height, channels, STBImage.STBI_rgb_alpha);
+				if (data == null) throw new VulkanException("Cannot load image \"" + file + "\"");
+				
+				VulkanBuffer buffer = VulkanBuffer.forTransfer(device, data.limit());
+				buffer.getMemory().mapMemory().getBuffer().put(data).rewind();
+				STBImage.stbi_image_free(data.rewind());
+				
+				return new TextureBuffer(buffer, width[0], height[0]);
+			}
+		});
+	}
+	
 	public static VulkanFuture<Texture> loadFromFile(Device device, File file, int dstLayout) throws VulkanException
 	{
 		return loadFromFile(device, file, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, dstLayout);
@@ -35,32 +55,33 @@ public class Texture extends MemoryResource {
 	
 	public static VulkanFuture<Texture> loadFromFile(Device device, File file, int usage, int dstLayout) throws VulkanException
 	{
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			int[] width = new int[1];
-			int[] height = new int[1];
-			int[] channels = new int[1];
-			ByteBuffer data = STBImage.stbi_load(stack.UTF8(file.getPath()), width, height, channels, STBImage.STBI_rgb_alpha);
-			if (data == null) throw new VulkanException("Cannot load image \"" + file + "\"");
-
-			VulkanBuffer buffer = VulkanBuffer.forTransfer(device, data.limit());
-			buffer.getMemory().mapMemory().getBuffer().put(data).rewind();
-			STBImage.stbi_image_free(data.rewind());
-			
-			Texture texture = Texture.create2dTexture(device, width[0], height[0], VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | usage, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
-			
-			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
-			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-			commandBuffer.copyBufferToImage(buffer, texture);
-			texture.changeLayout(commandBuffer, dstLayout);
-			commandBuffer.endRecording();
-			
-			return RenderEngine.composeAfter(device.submitSingleUseCommandBuffer(stack, commandBuffer), () -> {
+		return RenderEngine.submitAsync(() -> {
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				int[] width = new int[1];
+				int[] height = new int[1];
+				int[] channels = new int[1];
+				ByteBuffer data = STBImage.stbi_load(stack.UTF8(file.getPath()), width, height, channels, STBImage.STBI_rgb_alpha);
+				if (data == null) throw new VulkanException("Cannot load image \"" + file + "\"");
+				
+				VulkanBuffer buffer = VulkanBuffer.forTransfer(device, data.limit());
+				buffer.getMemory().mapMemory().getBuffer().put(data).rewind();
+				STBImage.stbi_image_free(data.rewind());
+				
+				Texture texture = Texture.create2dTexture(device, width[0], height[0], VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | usage, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+				
+				CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
+				texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+				commandBuffer.copyBufferToImage(buffer, texture);
+				texture.changeLayout(commandBuffer, dstLayout);
+				commandBuffer.endRecording();
+				device.submitSingleUseCommandBuffer(stack, commandBuffer).join();
 				buffer.getMemory().unmapMemory();
 				buffer.close();
+				
 				return texture;
-			});
-		}
+			}
+		});
 	}
 	
 	public static Texture create1dTexture(Device device, int width, int format, int usage, int aspectMask) throws VulkanException
@@ -139,7 +160,7 @@ public class Texture extends MemoryResource {
 			long[] p = new long[1];
 			VulkanErrorUtils.assertNoError(VK10.vkCreateImage(device.getVk(), createInfo, null, p), "Failed to create image");
 			vk = p[0];
-
+			
 			memory = device.allocateTextureMemory(stack, p[0], VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 		}
 		super(device, memory);

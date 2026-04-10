@@ -15,6 +15,7 @@ import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
@@ -87,6 +88,23 @@ public class Atlas {
 		void copy(CommandBuffer commandBuffer, Texture atlasTexture, int x, int y)
 		{
 			commandBuffer.copyImage(texture, 0, 0, 0, atlasTexture, x, y, 0, width, height, 1);
+		}
+	}
+	
+	private class VulkanBufferResource extends Resource {
+		
+		VulkanBuffer buffer;
+		
+		public VulkanBufferResource(VulkanBuffer buffer, int width, int height)
+		{
+			super(width, height);
+			this.buffer = buffer;
+		}
+		
+		@Override
+		void copy(CommandBuffer commandBuffer, Texture atlasTexture, int x, int y)
+		{
+			commandBuffer.copyBufferToImage(buffer, 0, atlasTexture, x, y, 0, width, height, 1);
 		}
 	}
 	
@@ -163,6 +181,18 @@ public class Atlas {
 	{
 		List<Resource> resources = new ArrayList<>(textures.length);
 		for (Texture texture : textures) resources.add(new TextureResource(texture));
+		return addAll(resources);
+	}
+	
+	public TextureRegion add(TextureBuffer buffer)
+	{
+		return add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight()));
+	}
+	
+	public List<TextureRegion> addAll(TextureBuffer... buffers)
+	{
+		List<Resource> resources = new ArrayList<>(buffers.length);
+		for (TextureBuffer buffer : buffers) resources.add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight()));
 		return addAll(resources);
 	}
 	
