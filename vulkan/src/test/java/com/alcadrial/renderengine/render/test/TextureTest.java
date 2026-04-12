@@ -252,7 +252,7 @@ public class TextureTest extends RenderTest {
 			isRendererDirty = false;
 			
 			float scale = Math.min(window.getWidth(), window.getHeight());
-			Matrix4f transformation = new Matrix4f().scale(Vector3f.of(scale / window.getWidth(), -scale / window.getHeight(), 0.02F));
+			Matrix4f transformation = new Matrix4f().scale(Vector3f.of(scale / window.getWidth(), scale / window.getHeight(), 0.02F));
 			transformation.multiply(new Matrix4f().translateTo(panelPos));
 			
 			renderer.useBufferLayoutWriter(0, 0, writer -> {

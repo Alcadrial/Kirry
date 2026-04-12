@@ -1,8 +1,10 @@
 package com.alcadrial.renderengine.render.texture;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeSet;
 
 import org.jspecify.annotations.NonNull;
@@ -135,6 +137,7 @@ public class Atlas {
 	private List<Region> oldRegions;
 	private List<Region> regions;
 	private TreeSet<Slot> slots;
+	private Set<Resource> resources;
 	private int availableArea;
 	
 	private boolean debug;
@@ -169,6 +172,7 @@ public class Atlas {
 		slots = new TreeSet<>();
 		oldRegions = new ArrayList<>();
 		regions = new ArrayList<>();
+		resources = new HashSet<>();
 		emptySlots();
 	}
 	
@@ -203,13 +207,20 @@ public class Atlas {
 	
 	private List<TextureRegion> addAll(List<Resource> resources)
 	{
-		if (resources.isEmpty()) return List.of();
+		List<Resource> newResources = new ArrayList<>(resources.size());
+		for (Resource resource : resources) if (!this.resources.contains(resource))
+		{
+			newResources.add(resource);
+			this.resources.add(resource);
+		}
+		
+		if (newResources.isEmpty()) return List.of();
 		isDirty = true;
-		List<Resource> l = new ArrayList<>(resources);
+		List<Resource> l = new ArrayList<>(newResources);
 		l.sort((t0, t1) -> -Integer.compare(t0.width, t1.width));
 		
 		int requiredArea = 0;
-		for (Resource resource : resources) requiredArea += resource.width * resource.height;
+		for (Resource resource : newResources) requiredArea += resource.width * resource.height;
 		
 		int currentArea = availableArea;
 		while (currentArea < requiredArea)
@@ -409,6 +420,7 @@ public class Atlas {
 							region.isDirty = false;
 						}
 					}
+					newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 				}
 			}).join();
 			
@@ -435,12 +447,14 @@ public class Atlas {
 						region.isDirty = false;
 					}
 				}
+				newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			}).join();
 			texture = newTexture;
 		}
 		else
 		{
 			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
+				texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 				for (int i = 0; i < regions.size(); i++)
 				{
 					Region region = regions.get(i);
@@ -450,6 +464,7 @@ public class Atlas {
 						region.isDirty = false;
 					}
 				}
+				texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			}).join();
 		}
 		
@@ -483,5 +498,10 @@ public class Atlas {
 	public int getHeight()
 	{
 		return height;
+	}
+
+	public void close()
+	{
+		texture.close();
 	}
 }

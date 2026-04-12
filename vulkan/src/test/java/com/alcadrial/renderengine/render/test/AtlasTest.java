@@ -59,7 +59,6 @@ public class AtlasTest {
 			TestProperties.init(args);
 			RenderEngine.enableDebug();
 			RenderTest.initRenderEngine();
-			//RenderEngine.create("Test", new Version(0, 1, 0, 0)).multiThreading(false).initialize();
 
 			RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 			VulkanWindow window = VulkanWindow.defaultBuilder()

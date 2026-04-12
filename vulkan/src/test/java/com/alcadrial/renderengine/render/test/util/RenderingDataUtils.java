@@ -116,18 +116,18 @@ public class RenderingDataUtils {
 	
 	public static void loadRectangleUv(BufferWriter vertexBuffer, float sX, float sY, float eX, float eY, float z, float u0, float v0, float u1, float v1)
 	{
-		loadVertex(vertexBuffer, sX, eY, z, u0, v0);
-		loadVertex(vertexBuffer, eX, eY, z, u1, v0);
-		loadVertex(vertexBuffer, eX, sY, z, u1, v1);
-		loadVertex(vertexBuffer, sX, sY, z, u0, v1);
+		loadVertex(vertexBuffer, sX, eY, z, u0, v1);
+		loadVertex(vertexBuffer, eX, eY, z, u1, v1);
+		loadVertex(vertexBuffer, eX, sY, z, u1, v0);
+		loadVertex(vertexBuffer, sX, sY, z, u0, v0);
 	}
 	
 	public static void loadRectangleUv(BufferWriter vertexBuffer, BufferWriter indexBuffer, int startIndex, float sX, float sY, float eX, float eY, float z, float u0, float v0, float u1, float v1)
 	{
-		loadVertex(vertexBuffer, sX, eY, z, u0, v0);
-		loadVertex(vertexBuffer, eX, eY, z, u1, v0);
-		loadVertex(vertexBuffer, eX, sY, z, u1, v1);
-		loadVertex(vertexBuffer, sX, sY, z, u0, v1);
+		loadVertex(vertexBuffer, sX, eY, z, u0, v1);
+		loadVertex(vertexBuffer, eX, eY, z, u1, v1);
+		loadVertex(vertexBuffer, eX, sY, z, u1, v0);
+		loadVertex(vertexBuffer, sX, sY, z, u0, v0);
 		loadRectangleIndices(indexBuffer, startIndex);
 	}
 	
