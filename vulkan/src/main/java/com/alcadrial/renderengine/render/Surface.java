@@ -38,7 +38,7 @@ public class Surface extends AbstractVulkanResource<Long> {
 		
 		public Builder()
 		{
-			format = VK10.VK_FORMAT_B8G8R8A8_UNORM;
+			format = VK10.VK_FORMAT_B8G8R8A8_SRGB;
 			colorspace = KHRSurface.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 			targetPresentMode = KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR;
 			windowVk = 0;
