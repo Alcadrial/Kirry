@@ -53,6 +53,7 @@ import org.lwjgl.vulkan.VkSubmitInfo;
 import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 
+import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.core.Window;
@@ -72,7 +73,6 @@ import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.queue.PresentQueue;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
-import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.util.PhysicalDeviceNotFoundException;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
@@ -81,6 +81,7 @@ import com.alcadrial.renderengine.render.util.VulkanUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.util.functional.VulkanConsumer;
 import com.alcadrial.renderengine.render.util.functional.VulkanRunnable;
+import com.alcadrial.renderengine.render.window.event.EventType;
 
 public class VulkanWindow extends Window implements VulkanResource<Long> {
 	
@@ -347,7 +348,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	
 	private @Nullable Texture depthTexture;
 	private final RenderPass renderPass;
-	private ShaderProgram shaderProgram;
 	private Swapchain swapchain;
 	private FrameData[] frames;
 	private List<Queue<VulkanRunnable>> presentationTasks;
@@ -355,8 +355,11 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	
 	private final List<CommandBuffer> commandBuffers;
 	private int frameIndex;
+	
+	private @Nullable Screen oldScreen;
 	private Screen screen;
-//	private int drawCount;
+	private @Nullable Matrix4f screenMatrix;
+	private EventRegistry eventRegistry;
 	
 	private @Nullable String name;
 	private boolean isLost;
@@ -371,6 +374,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		GLFW.glfwGetWindowSize(id, p0, p1);
 		this.width = p0[0];
 		this.height = p1[0];
+		screenMatrix = null;
 		
 		this.title = title;
 		this.device = device;
@@ -379,8 +383,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		isSurfaceSizeChanged = new AtomicBoolean(false);
 		SurfaceData surfaceData = surface.getData();
 		resetCallbacks();
-		shaderProgram = ShaderProgram.DEFAULT;
-	//	drawCount = 0;
+		//	drawCount = 0;
 		
 		int format = surfaceData.format().format();
 		try (RenderPassTemplate renderPassTemplate = builder.useDepthTexture ? RenderPassTemplate.initColorDepthTextureTemplate(format) : RenderPassTemplate.initColorTextureTemplate(format))
@@ -397,7 +400,9 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		frames = prepareFrameBuffers(surfaceData, swapchain, depthTexture, null);
 		presentationTasks = new ArrayList<>();
 		for (int i = 0; i < frames.length; i++) presentationTasks.add(new LinkedList<>());
+		
 		screen = BlackScreen.BLACK_SCREEN;
+		eventRegistry = new EventRegistry();
 	}
 	
 	private @Nullable Texture createDepthTexture(SurfaceData surfaceData) throws VulkanException
@@ -565,10 +570,12 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			
 			Swapchain oldSwapchain = swapchain;
 			FrameData[] oldFrames = frames;
-			@Nullable Texture oldDepthTexture = depthTexture;
+			@Nullable
+			Texture oldDepthTexture = depthTexture;
 			
 			Swapchain newSwapchain = createSwapchain(surfaceData, oldSwapchain);
-			@Nullable Texture newDepthTexture = oldDepthTexture != null ? createDepthTexture(surfaceData) : null;
+			@Nullable
+			Texture newDepthTexture = oldDepthTexture != null ? createDepthTexture(surfaceData) : null;
 			FrameData[] newFrames = prepareFrameBuffers(surfaceData, newSwapchain, newDepthTexture, oldFrames);
 			
 			for (VulkanConsumer<SurfaceData> callback : onSwapchainRecreationCallbacks) callback.accept(surfaceData);
@@ -597,6 +604,11 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	public void addOnSwapchainRecreationCallback(VulkanConsumer<SurfaceData> callback)
 	{
 		onSwapchainRecreationCallbacks.add(callback);
+	}
+	
+	public void removeOnSwapchainRecreationCallback(VulkanConsumer<SurfaceData> callback)
+	{
+		onSwapchainRecreationCallbacks.remove(callback);
 	}
 	
 	public enum PresentationResult {
@@ -722,50 +734,38 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		}
 	}
 	
-	public PresentationResult renderScreen() throws VulkanException
+	public PresentationResult renderScreenOnce() throws VulkanException
 	{
-		Screen screen = this.screen;
-		CommandBuffer commandBuffer = commandBuffers.get(getFrameIndex());
-		PresentationResult r = startPresentation();
-		if (r != PresentationResult.SUCCESS) return r;
-		screen.clearRenderingData();
-		/*
-		if (!screen.isInitialized()) screen.initializeRendering(null);//TODO
-		if (!screen.isRendered()) screen.render(new Matrix4f().orthographicPositive(width, height), renderer);
-		if (drawCount++ < 3)//WIP
+		if (oldScreen != null)
 		{
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
-				renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
-				renderPassBeginInfo.pNext(0);
-				
-				renderPassBeginInfo.renderPass(screen.getRenderPass().getVk());
-				
-				VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
-				clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
-				clearValues.get().depthStencil().depth(1).stencil(0);
-				renderPassBeginInfo.pClearValues(clearValues.rewind());
-				
-				FrameBuffer frameBuffer = presenter.getFrameBuffer(getFrameIndex());
-				renderPassBeginInfo.framebuffer(frameBuffer.getVk());
-				
-				VkRect2D renderArea = VkRect2D.calloc(stack);
-				renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
-				renderPassBeginInfo.renderArea(renderArea);
-				
-				commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
-			}
-			
-			commandBuffer.setScissor(0, 0, getWidth(), getHeight());
-			commandBuffer.setViewport(0, getHeight(), getWidth(), -getHeight(), -1000, 1000);
-			
-			screen.draw(Matrix4f.IDENTITY, commandBuffer, renderer, 0);
-			commandBuffer.endRenderPass();
+			//oldScreen.clearRenderingData();
+			oldScreen = null;
 		}
-		*/
-		commandBuffer.endRecording();
-		return endPresentation(commandBuffer);
+		Screen screen = this.screen;
+		if (!screen.isInitialized())
+		{
+			screen.init();
+		}
+		if (!screen.isOnSurface() || isSurfaceSizeChanged.get())
+		{
+			PresentationResult r = startPresentation();
+			if (r != PresentationResult.SUCCESS) return r;
+			
+			Matrix4f matrix = screenMatrix;
+			if (matrix == null) matrix = screenMatrix = new Matrix4f().orthographicPositive(width, height);
+
+			CommandBuffer commandBuffer = commandBuffers.get(getFrameIndex());
+			commandBuffer.beginRecording();
+			screen.draw(matrix, commandBuffer, BUFFERED_FRAMES_COUNT);
+			commandBuffer.endRecording();
+			return endPresentation(commandBuffer);
+		}
+		return PresentationResult.SUCCESS;
+	}
+	
+	public void awaitClose() throws InterruptedException
+	{
+		
 	}
 	
 	public void setShouldClose(boolean value)
@@ -817,6 +817,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			GLFW.glfwSetWindowSizeCallback(id, (_, w, h) -> {
 				width = w;
 				height = h;
+				screenMatrix = null;
 			});
 			GLFW.glfwSetFramebufferSizeCallback(id, (_, _, _) -> {
 				isSurfaceSizeChanged.set(true);
@@ -833,7 +834,10 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			if (callback instanceof GLFWCursorPosCallbackI i) GLFW.glfwSetCursorPosCallback(id, i);
 			if (callback instanceof GLFWDropCallbackI i) GLFW.glfwSetDropCallback(id, i);
 			if (callback instanceof GLFWKeyCallbackI i) GLFW.glfwSetKeyCallback(id, i);
-			if (callback instanceof GLFWMouseButtonCallbackI i) GLFW.glfwSetMouseButtonCallback(id, i);
+			if (callback instanceof GLFWMouseButtonCallbackI i) GLFW.glfwSetMouseButtonCallback(id, (w, b, a, m) -> {
+				i.invoke(w, b, a, m);
+				eventRegistry.runEvent(EventType.CLICK_EVENT);
+			});
 			if (callback instanceof GLFWScrollCallbackI i) GLFW.glfwSetScrollCallback(id, i);
 			if (callback instanceof GLFWWindowCloseCallbackI i) GLFW.glfwSetWindowCloseCallback(id, w -> {
 				onHide();
@@ -860,6 +864,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			if (callback instanceof GLFWWindowSizeCallbackI i) GLFW.glfwSetWindowSizeCallback(id, (p, w, h) -> {
 				width = w;
 				height = h;
+				screenMatrix = null;
 				i.invoke(p, w, h);
 			});
 			if (callback instanceof GLFWFramebufferSizeCallbackI i) GLFW.glfwSetFramebufferSizeCallback(id, (p, w, h) -> {
@@ -871,7 +876,9 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	
 	public void setScreen(Screen screen)
 	{
+		if (screen.isInitialized()) oldScreen = this.screen;
 		this.screen = Objects.requireNonNull(screen);
+		screen.setWindow(this);
 	}
 	
 	public Screen getScreen()
@@ -963,6 +970,11 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	{
 		return surface;
 	}
+
+	public boolean hasDepthBuffer()
+	{
+		return depthTexture != null;
+	}
 	
 	public int getWidth()
 	{
@@ -1012,11 +1024,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		return commandBuffers.get(frameIndex);
 	}
 	
-	public void setShaderProgram(ShaderProgram shaderProgram)
-	{
-		this.shaderProgram = shaderProgram;
-	}
-	
 	public boolean isLost()
 	{
 		return isLost;
@@ -1036,6 +1043,12 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				catch (VulkanException e)
 				{}
 			}
+			try
+			{
+				screen.close();
+			}
+			catch (VulkanException e)
+			{}
 			for (FrameData frame : frames) frame.close();
 			swapchain.close();
 			device.waitIdle();
@@ -1063,6 +1076,5 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		Debug.print("Size: " + width + "x" + height);
 		Debug.print("Surface: ", surface);
 		Debug.print("Swapchain: ", swapchain);
-		Debug.print("ShaderProgram: " + shaderProgram.getShaders());
 	}
 }

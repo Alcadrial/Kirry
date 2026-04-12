@@ -1,14 +1,17 @@
 package com.alcadrial.renderengine.render.window;
 
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4i;
+import com.alcadrial.kector.vector.getter.Vector2fGetter;
+import com.alcadrial.kector.vector.getter.Vector2iGetter;
+import com.alcadrial.kector.vector.getter.Vector3iGetter;
 import com.alcadrial.renderengine.core.util.EmptyImplementation;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.texture.Atlas;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public abstract class AbstractWidget implements Widget {
@@ -47,10 +50,15 @@ public abstract class AbstractWidget implements Widget {
 	}
 	
 	@Override
-	public void initializeRendering(StaticBigBuffer staticBuffer) throws VulkanException
+	public void initBuffers(StaticBigBuffer staticBuffer) throws VulkanException
 	{
 		setInternalStateBit(INITIALIZED_BIT, true);
 	}
+	
+	@EmptyImplementation
+	@Override
+	public void initAtlas(Atlas atlas)
+	{}
 	
 	@Override
 	public void render(Matrix4f matrix, Renderer renderer)
@@ -58,15 +66,15 @@ public abstract class AbstractWidget implements Widget {
 		setInternalStateBit(RENDERED_BIT, true);
 	}
 	
+	@EmptyImplementation
 	@Override
 	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer manager, float partialFrame) throws VulkanException
-	{
-	}
+	{}
 	
 	@Override
 	public Vector4i drawingArea(Matrix4f matrix, float partialFrame)
 	{
-		return Vector4i.of(Vector2i.of(pos.multiply(matrix).xy()), Vector2i.of(getPos().add(size).multiply(matrix).xy()));
+		return Vector4i.of(Vector2i.of(pos.multiply(matrix).xy()), Vector2i.of(pos.xyz().add(size).multiply(matrix).xy()));
 	}
 	
 	@Override
@@ -106,29 +114,29 @@ public abstract class AbstractWidget implements Widget {
 	}
 	
 	@Override
-	public boolean isHovered(Vector2i v)
+	public boolean isHovered(Vector2iGetter v)
 	{
 		return v.x() > pos.x() && v.x() < pos.x() + size.x() && v.y() > pos.y() && v.y() < pos.y() + size.y();
 	}
 	
 	@Override
-	public boolean isHovered(Vector2f v)
+	public boolean isHovered(Vector2fGetter v)
 	{
 		return v.x() > pos.x() && v.x() < pos.x() + size.x() && v.y() > pos.y() && v.y() < pos.y() + size.y();
 	}
 	
-	protected void onMouseEnter(Vector2i enterPos)
+	protected void onMouseEnter(Vector2iGetter enterPos)
 	{
 		setInternalStateBit(HOVERED_BIT, true);
 	}
 	
-	protected void onMouseExit(Vector2i exitPos)
+	protected void onMouseExit(Vector2iGetter exitPos)
 	{
 		setInternalStateBit(HOVERED_BIT, false);
 	}
 	
 	@Override
-	public void onMouseMove(Vector2i oldPos, Vector2i newPos)
+	public void onMouseMove(Vector2iGetter oldPos, Vector2iGetter newPos)
 	{
 		boolean wasOvered = isMouseHover();
 		boolean isPassedThrough = wasOvered ^ isHovered(newPos);
@@ -137,34 +145,32 @@ public abstract class AbstractWidget implements Widget {
 	}
 	
 	@EmptyImplementation
-	protected void move(Vector3i newPos)
-	{
-	}
+	protected void move(Vector3iGetter newPos)
+	{}
 	
 	@Override
-	public void setSize(Vector2i size)
+	public void setSize(Vector2iGetter size)
 	{
-		Vector2i oldSize = Vector2i.copyOf(this.size.xy());
+		Vector2i oldSize = Vector2i.copyOf(this.size);
 		resize(size);
-		this.size = size.xy();
+		this.size.setX(size.x()).setY(size.y());
 		onResize(oldSize, size);
 	}
 	
 	@EmptyImplementation
-	protected void resize(Vector2i newSize)
+	protected void resize(Vector2iGetter newSize)
+	{}
+	
+	@Override
+	public Vector3iGetter getPos()
 	{
+		return pos;
 	}
 	
 	@Override
-	public Vector3i getPos()
+	public Vector2iGetter getSize()
 	{
-		return Vector3i.copyOf(pos);
-	}
-	
-	@Override
-	public Vector2i getSize()
-	{
-		return Vector2i.copyOf(size);
+		return size;
 	}
 	
 	@Override
@@ -198,61 +204,59 @@ public abstract class AbstractWidget implements Widget {
 	}
 	
 	@Override
-	public void setPos(Vector3i pos)
+	public void setPos(Vector3iGetter pos)
 	{
 		Vector3i oldPos = Vector3i.copyOf(this.pos);
 		move(pos);
-		this.pos = pos.xyz();
+		this.pos.setX(pos.x()).setY(pos.y()).setZ(pos.z());
 		onMove(oldPos, pos);
 	}
 	
 	@EmptyImplementation
-	protected void onMove(Vector3i oldPos, Vector3i newPos)
-	{
-	}
+	protected void onMove(Vector3iGetter oldPos, Vector3iGetter newPos)
+	{}
 	
 	@EmptyImplementation
-	protected void onResize(Vector2i oldSize, Vector2i newSize)
-	{
-	}
+	protected void onResize(Vector2iGetter oldSize, Vector2iGetter newSize)
+	{}
 	
 	@Override
 	@EmptyImplementation
-	public ActionResult onPress(int button, Vector2i mousePos)
+	public ActionResult onPress(int button, Vector2iGetter mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
 	
 	@Override
 	@EmptyImplementation
-	public ActionResult onRelease(int button, Vector2i mousePos)
+	public ActionResult onRelease(int button, Vector2iGetter mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
 	
 	@Override
 	@EmptyImplementation
-	public ActionResult onClick(int button, int count, Vector2i mousePos)
+	public ActionResult onClick(int button, int count, Vector2iGetter mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
 	
 	@Override
 	@EmptyImplementation
-	public ActionResult onScroll(double xScroll, double yScroll, Vector2i mousePos)
+	public ActionResult onScroll(double xScroll, double yScroll, Vector2iGetter mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
 	
 	@Override
-	public ActionResult onDragStart(Vector2i mousePos)
+	public ActionResult onDragStart(Vector2iGetter mousePos)
 	{
 		setInternalStateBit(DRAGGING_BIT, true);
 		return ActionResult.CONSUME;
 	}
 	
 	@Override
-	public ActionResult onDragEnd(Vector2i startPos, Vector2i mousePos)
+	public ActionResult onDragEnd(Vector2iGetter startPos, Vector2iGetter mousePos)
 	{
 		setInternalStateBit(DRAGGING_BIT, false);
 		return ActionResult.CONSUME;

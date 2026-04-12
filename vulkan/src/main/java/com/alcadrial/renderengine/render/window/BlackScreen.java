@@ -6,9 +6,9 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class BlackScreen implements Screen {
 	
@@ -20,36 +20,26 @@ public class BlackScreen implements Screen {
 	public static final Screen BLACK_SCREEN = new BlackScreen();
 	
 	private BlackScreen()
-	{
-		
-	}
+	{}
 	
 	@Override
-	public void initializeRendering(StaticBigBuffer staticBigBuffer)
-	{
-		
-	}
+	public void init()
+	{}
 	
 	@Override
 	public void render(Matrix4f matrix, Renderer renderer)
-	{
-		
-	}
+	{}
 	
 	@Override
-	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame)
-	{
-		
-	}
+	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, float enlapsedTime) throws VulkanException
+	{}
 	
 	@Override
 	public void clearRenderingData()
-	{
-		
-	}
+	{}
 	
 	@Override
-	public boolean isOnScreen()
+	public boolean isOnSurface()
 	{
 		return true;
 	}
@@ -68,15 +58,11 @@ public class BlackScreen implements Screen {
 	
 	@Override
 	public void requestRender()
-	{
-		
-	}
+	{}
 	
 	@Override
 	public void requestDraw()
-	{
-		
-	}
+	{}
 	
 	@Override
 	public boolean isDragging()
@@ -104,9 +90,7 @@ public class BlackScreen implements Screen {
 	
 	@Override
 	public void onMouseMove(Vector2i oldPos, Vector2i newPos)
-	{
-		
-	}
+	{}
 	
 	@Override
 	public ActionResult onDragStart(Vector2i mousePos)
@@ -125,11 +109,23 @@ public class BlackScreen implements Screen {
 	{
 		return ActionResult.CONSUME;
 	}
-
+	
 	@Override
 	public RenderPass getRenderPass()
 	{
 		//Not used if #isOnScreen() is always true
 		return (@NonNull RenderPass) null;
 	}
+	
+	@Override
+	public void setWindow(VulkanWindow window)
+	{}
+	
+	@Override
+	public void registerEvents(EventRegistry events)
+	{}
+	
+	@Override
+	public void close()
+	{}
 }

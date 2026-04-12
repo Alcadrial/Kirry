@@ -1,49 +1,56 @@
 package com.alcadrial.renderengine.render.window.widget;
 
-import org.jspecify.annotations.NonNull;
 import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3i;
-import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.Renderer;
+import com.alcadrial.renderengine.render.RenderingDataUtils;
 import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.texture.Atlas;
+import com.alcadrial.renderengine.render.texture.TextureBuffer;
 import com.alcadrial.renderengine.render.texture.TextureRegion;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.AbstractWidget;
+import com.alcadrial.renderengine.render.window.EventRegistry;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class Sprite extends AbstractWidget {
 	
-	static
-	{
-		RenderEngine.assertLoaded();
-	}
-	
 	private VulkanBuffer vertexBuffer;
 	private VulkanBuffer indexBuffer;
+	private TextureBuffer textureBuffer;
 	private TextureRegion texture;
 	
-	public Sprite(VulkanWindow window, Vector3i pos, Vector2i size, TextureRegion texture)
+	public Sprite(VulkanWindow window, Vector3i pos, Vector2i size, TextureBuffer texture)
 	{
 		super(window, pos, size);
-		this.texture = texture;
+		this.textureBuffer = texture;
 	}
 	
-	
+	@Override
+	public void initAtlas(Atlas atlas)
+	{
+		texture = atlas.add(textureBuffer);
+	}
 	
 	@Override
-	public void initializeRendering(StaticBigBuffer staticBigBuffer) throws VulkanException
+	public int estimateMemoryUsage()
 	{
-		super.initializeRendering(staticBigBuffer);
-		vertexBuffer = staticBigBuffer.allocate((3 + 4) * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		return (5 * 4 + 6) * 4;
+	}
+	
+	@Override
+	public void initBuffers(StaticBigBuffer staticBigBuffer) throws VulkanException
+	{
+		super.initBuffers(staticBigBuffer);
+		vertexBuffer = staticBigBuffer.allocate((5 * 4) * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		indexBuffer = staticBigBuffer.allocate(6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 		
 		try (PhysicalDeviceTransferState transfer = staticBigBuffer.startLocalBuffering())
@@ -51,15 +58,16 @@ public class Sprite extends AbstractWidget {
 			BufferWriter localVertexWriter = transfer.beginTransfer(vertexBuffer);
 			BufferWriter localIndexWriter = transfer.beginTransfer(indexBuffer);
 			
-			Vector3f pos = Vector3f.of(this.pos);
-			Vector2f end = Vector2f.of(this.pos.add(size).xy());
+			Vector2f end = Vector2f.of(pos.xy().add(size));
+			Vector2f uvStart = texture.getUvStart();
+			Vector2f uvEnd = texture.getUvEnd();
 			
-			//RenderingDataUtils.loadRectangleUv(localVertexWriter, localIndexWriter, 0, pos.x(), pos.y(), end.x(), end.y(), 0, texture.getUvStart().x(), texture.getUvStart().y(), texture.getUvEnd().x(), texture.getUvEnd().y());
+			RenderingDataUtils.loadRectangleUv(localVertexWriter, localIndexWriter, 0, pos.x(), pos.y(), end.x(), end.y(), 1, uvStart.x(), uvStart.y(), uvEnd.x(), uvEnd.y());
 		}
 	}
 	
 	@Override
-	public void render(@NonNull Matrix4f matrix, @NonNull Renderer renderer)
+	public void render(Matrix4f matrix, Renderer renderer)
 	{
 		super.render(matrix, renderer);
 	}
@@ -69,6 +77,17 @@ public class Sprite extends AbstractWidget {
 	{
 		renderer.setBuffer(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
-		renderer.draw(commandBuffer);
+	}
+	
+	@Override
+	public void registerEvents(EventRegistry registry)
+	{
+		
+	}
+	
+	@Override
+	public void clearRenderingData()
+	{
+		throw new UnsupportedOperationException();
 	}
 }

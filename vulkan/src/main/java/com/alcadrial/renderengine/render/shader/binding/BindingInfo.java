@@ -64,7 +64,7 @@ public sealed class BindingInfo permits BufferBindingInfo, ImageBindingInfo {
 		return new BufferBindingInfo(uniformBuffer, stages, Type.UNIFORM_BUFFER, size, variables);
 	}
 	
-	public static BindingInfo ofTexture(int stages, Texture texture, TextureSampler sampler, ShaderVariable variable)
+	public static BindingInfo ofTexture(Texture texture, TextureSampler sampler, int stages, ShaderVariable variable)
 	{
 		return ofTextures(stages).add(texture, sampler, variable).build();
 	}

@@ -1,146 +1,125 @@
 package com.alcadrial.renderengine.render.test.widgets;
 
+import java.io.IOException;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWKeyCallbackI;
+
+import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.PhysicalDevice;
+import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
+import com.alcadrial.renderengine.render.test.util.TestProperties;
+import com.alcadrial.renderengine.render.texture.Texture;
+import com.alcadrial.renderengine.render.texture.TextureBuffer;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.window.BlackScreen;
+import com.alcadrial.renderengine.render.window.Screen;
+import com.alcadrial.renderengine.render.window.VulkanWindow;
+import com.alcadrial.renderengine.render.window.widget.Sprite;
 
 public class ScreenTest extends RenderTest {
-	/*
-		public static void main(String[] args)
+	
+	public static void main(String[] args)
+	{
+		mainTest(args, ScreenTest::start, ScreenTest::loop, ScreenTest::end, false);
+	}
+	
+	private static final String SHADER = "shader4";
+	private static final List<Screen> SCREENS = new LinkedList<>();
+	
+	private static int index = 0;
+	
+	public static void start() throws VulkanException
+	{
+		ShaderProgram shaderProgram;
+		try
 		{
-			mainTest(args, ScreenTest::start, ScreenTest::loop, ScreenTest::end);
+			shaderProgram = ShaderProgram.create().add(loadShader(SHADER + ".vert"), loadShader(SHADER + ".frag")).build();
 		}
-	
-		private static final String SHADER = "shader0";
-		private static int index = 0;
-		private static final List<Screen> SCREENS = new LinkedList<>();
-	
-		public static void start()
+		catch (IOException e)
 		{
-			ShaderProgram shaderProgram;
-			try
+			e.printStackTrace(System.out);
+			RenderEngine.terminate();
+			return;
+		}
+		
+		VulkanWindow window = VulkanWindow.defaultBuilder()
+			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
+			.deviceFeatures(f -> f
+				.samplerAnisotropy(true)
+			)
+			.build(1080, 720, "Test");
+		window.setCallback((GLFWKeyCallbackI) (_, k, _, a, _) -> {
+			
+			if (a == GLFW.GLFW_RELEASE)
 			{
-				shaderProgram = ShaderProgram.create().add(loadShader(SHADER + ".vert"), loadShader(SHADER + ".frag")).build();
-			}
-			catch (IOException e)
-			{
-				e.printStackTrace(System.out);
-				RenderEngine.terminate();
-				return;
-			}
-	
-			Vulkan vulkan = RenderEngine.getVulkan();
-	
-			RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
-	
-			VulkanWindow window = new VulkanWindow(1080, 720, "Vulkan");
-			vulkan.setWindow(window);
-			window.setCallback((GLFWKeyCallbackI) (w, key, code, action, mods) -> {
-	
-				if (action == GLFW.GLFW_RELEASE)
+				switch (k)
 				{
-					switch (key)
-					{
-						case GLFW.GLFW_KEY_UP -> {
-							if (index > 0)
-							{
-								index--;
-							}
-							window.setScreen(SCREENS.get(index));
-						}
-						case GLFW.GLFW_KEY_DOWN -> {
-							if (index < SCREENS.size() - 1)
-							{
-								index++;
-							}
-							window.setScreen(SCREENS.get(index));
-						}
+					case GLFW.GLFW_KEY_UP -> {
+						if (index > 0) index--;
+					}
+					case GLFW.GLFW_KEY_DOWN -> {
+						if (index < SCREENS.size() - 1) index++;
+					}
+					default -> {
+						return;
 					}
 				}
-			});
-			window.setShaderProgram(shaderProgram);
-	
-			if (!pickPhysicalDevice(window))
-			{
-				return;
+				System.out.println("New screen: " + index);
+				window.setScreen(SCREENS.get(index));
 			}
-	
-			VkPhysicalDeviceFeatures deviceFeatures = VkPhysicalDeviceFeatures.calloc();
-			deviceFeatures.wideLines(true);
-			deviceFeatures.samplerAnisotropy(true);
-			Device device = vulkan.createDevice(deviceFeatures, KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME, EXTDepthRangeUnrestricted.VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME);
-			window.init(device);
-	
-			Texture textureKhishweTransparent;
-			Texture textureIcon;
-	
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				BufferedImage khishweTransparent = ImageIO.read(getFile("KhishweTransparent.png"));
-	
-				textureKhishweTransparent = Texture.create2dTexture(device, khishweTransparent.getWidth(), khishweTransparent.getHeight(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
-	
-				CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
-	
-				textureKhishweTransparent.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-				IntBuffer buffer = textureKhishweTransparent.getBuffer().asIntBuffer();
-				for (int element : khishweTransparent.getRGB(0, 0, khishweTransparent.getWidth(), khishweTransparent.getHeight(), null, 0, khishweTransparent.getWidth()))
-				{
-					buffer.put(element);
-				}
-				textureKhishweTransparent.sendToPhysicalDevice(commandBuffer);
-				textureKhishweTransparent.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	
-				device.submitSingleUseCommandBuffer(stack, commandBuffer);
-	
-				BufferedImage icon = ImageIO.read(getFile("icon.png"));
-	
-				textureIcon = Texture.create2dTexture(device, icon.getWidth(), icon.getHeight(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
-	
-				commandBuffer = device.createSingleUseCommandBuffer(stack);
-	
-				textureIcon.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-				buffer = textureIcon.getBuffer().asIntBuffer();
-				for (int element : icon.getRGB(0, 0, icon.getWidth(), icon.getHeight(), null, 0, icon.getWidth()))
-				{
-					buffer.put(element);
-				}
-				textureIcon.sendToPhysicalDevice(commandBuffer);
-				textureIcon.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	
-				device.submitSingleUseCommandBuffer(stack, commandBuffer);
-	
-				//	renderPass = RenderPassTemplate.initColorTextureTemplate(window.getSurface().getFormat().format()).createRenderPass(device);
-			}
-			catch (IOException e)
-			{
-				e.printStackTrace(System.out);
-				RenderEngine.terminate();
-				return;
-			}
-	
-			SCREENS.add(BlackScreen.BLACK_SCREEN);
-			BasicScreen s = new BasicScreen();
-			s.add(new Sprite(window, Vector2i.of(20, 20), Vector2i.of(256, 256), new TextureRegion(textureKhishweTransparent, Vector2f.origin(), Vector2f.of(1, 1))));
-			s.add(new Sprite(window, Vector2i.of(296, 20), Vector2i.of(256, 256), new TextureRegion(textureIcon, Vector2f.origin(), Vector2f.of(1, 1))));
-			s.add(new Sprite(window, Vector2i.of(20, 296), Vector2i.of(256, 256), new TextureRegion(textureIcon, Vector2f.origin(), Vector2f.of(1, 1))));
-			s.add(new Sprite(window, Vector2i.of(296, 296), Vector2i.of(256, 256), new TextureRegion(textureKhishweTransparent, Vector2f.origin(), Vector2f.of(1, 1))));
-			SCREENS.add(s);
-	
-			window.setScreen(SCREENS.get(0));
-		}
-	
-		public static void loop()
+		});
+		Device device = window.getDevice();
+		
+		TextureBuffer textureIcon;
+		TextureBuffer textureIcon0;
+		try
 		{
-			VulkanWindow window = RenderEngine.getVulkan().getWindow();
-	
-			while (!window.shouldClose())
-			{
-				window.pollEvents();
-				window.update();
-			}
+			textureIcon = Texture.loadToBufferFromFile(device, getFile("icon.png")).get();
+			textureIcon0 = Texture.loadToBufferFromFile(device, getFile("icon0.png")).get();
 		}
-	
-		public static void end()
+		catch (InterruptedException _)
 		{
 			RenderEngine.terminate();
-		}*/
+			return;
+		}
+		
+		SCREENS.add(BlackScreen.BLACK_SCREEN);
+		BasicScreen s = new BasicScreen();
+		s.add(new Sprite(window, Vector2i.of(20, 20), Vector2i.of(256, 256), textureIcon0));
+		s.add(new Sprite(window, Vector2i.of(296, 20), Vector2i.of(256, 256), textureIcon));
+		s.add(new Sprite(window, Vector2i.of(20, 296), Vector2i.of(256, 256), textureIcon));
+		s.add(new Sprite(window, Vector2i.of(296, 296), Vector2i.of(256, 256), textureIcon0));
+		s.setShaderProgram(shaderProgram);
+		SCREENS.add(s);
+		
+		index = 1;
+		window.setScreen(SCREENS.get(index));
+	}
+	
+	public static void loop() throws VulkanException
+	{
+		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		try
+		{
+			while (!window.shouldClose())
+			{
+				window.renderScreenOnce();
+				window.pollEvents();
+				Thread.sleep(50);
+			}
+		}
+		catch (InterruptedException _)
+		{}
+	}
+	
+	public static void end()
+	{
+		RenderEngine.terminate();
+	}
 }

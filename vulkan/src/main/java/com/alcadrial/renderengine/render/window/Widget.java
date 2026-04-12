@@ -1,29 +1,36 @@
 package com.alcadrial.renderengine.render.window;
 
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kector.vector.Vector2f;
-import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4i;
+import com.alcadrial.kector.vector.getter.Vector2fGetter;
+import com.alcadrial.kector.vector.getter.Vector2iGetter;
+import com.alcadrial.kector.vector.getter.Vector3iGetter;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.texture.Atlas;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public interface Widget {
-	
+
+	/**
+	 * Use to load textures into an atlas, called only once before {@link #initBuffers(StaticBigBuffer)}.
+	 * @param atlas
+	 */
+	void initAtlas(Atlas atlas);
+	int estimateMemoryUsage();
 	/**
 	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, Renderer) render} method.
 	 * @param staticBuffer
 	 * @throws VulkanException 
 	 */
-	void initializeRendering(StaticBigBuffer staticBuffer) throws VulkanException;
+	void initBuffers(StaticBigBuffer staticBuffer) throws VulkanException;
 	/**
 	 * Draws textures and collects vertices to use in the {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw} method.
 	 * <p>
-	 * This method is called after {@link #initializeRendering(StaticBigBuffer) initializeRendering}.
+	 * This method is called after {@link #initBuffers(StaticBigBuffer) initializeRendering}.
 	 * 
 	 * @param matrix a custom matrix
 	 * @param renderer
@@ -43,7 +50,7 @@ public interface Widget {
 	 */
 	void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer manager, float partialFrame) throws VulkanException;
 	/**
-	 * Closes any resource previously allocated in {@link #initializeRendering(StaticBigBuffer) initializeRendering}.
+	 * Closes any resource previously allocated in {@link #initBuffers(StaticBigBuffer) initializeRendering}.
 	 * <p>
 	 * The invokation this method will allow another invokation of initializeRendering.
 	 */
@@ -78,20 +85,20 @@ public interface Widget {
 	void requestRender();
 	
 	boolean isMouseHover();
-	boolean isHovered(Vector2i v);
-	boolean isHovered(Vector2f v);
+	boolean isHovered(Vector2iGetter v);
+	boolean isHovered(Vector2fGetter v);
 	
 	boolean isDragging();
 	
-	ActionResult onClick(int button, int count, Vector2i mousePos);
-	ActionResult onPress(int button, Vector2i mousePos);
-	ActionResult onRelease(int button, Vector2i mousePos);
+	ActionResult onClick(int button, int count, Vector2iGetter mousePos);
+	ActionResult onPress(int button, Vector2iGetter mousePos);
+	ActionResult onRelease(int button, Vector2iGetter mousePos);
 	
-	void onMouseMove(Vector2i oldPos, Vector2i newPos);
+	void onMouseMove(Vector2iGetter oldPos, Vector2iGetter newPos);
 	
-	ActionResult onDragStart(Vector2i mousePos);
-	ActionResult onDragEnd(Vector2i startPos, Vector2i endPos);
-	ActionResult onScroll(double xScroll, double yScroll, Vector2i mousePos);
+	ActionResult onDragStart(Vector2iGetter mousePos);
+	ActionResult onDragEnd(Vector2iGetter startPos, Vector2iGetter endPos);
+	ActionResult onScroll(double xScroll, double yScroll, Vector2iGetter mousePos);
 	
 	int getX();
 	int getY();
@@ -99,8 +106,9 @@ public interface Widget {
 	int getWidth();
 	int getHeight();
 	
-	Vector3i getPos();
-	Vector2i getSize();
-	void setPos(Vector3i pos);
-	void setSize(Vector2i size);
+	Vector3iGetter getPos();
+	Vector2iGetter getSize();
+	void setPos(Vector3iGetter pos);
+	void setSize(Vector2iGetter size);
+	void registerEvents(EventRegistry registry);
 }
