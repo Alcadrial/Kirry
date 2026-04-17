@@ -35,4 +35,10 @@ public class TextureRegion {
 	{
 		return uvEnd;
 	}
+	
+	@Override
+	public String toString()
+	{
+		return "TextureRegion{texture=" + texture + ", uv=[" + uvStart.x() + ";" + uvStart.y() + "]->[" + uvEnd.x() + ";" + uvEnd.y() + "]}";
+	}
 }

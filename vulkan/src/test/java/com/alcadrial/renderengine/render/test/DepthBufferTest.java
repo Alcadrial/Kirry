@@ -57,7 +57,7 @@ public class DepthBufferTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, DepthBufferTest::start, () -> defaultAnimationLoop(DepthBufferTest::loop), DepthBufferTest::end, false);
+		mainTest(args, DepthBufferTest::start, () -> defaultAnimationLoop(DepthBufferTest::loop), DepthBufferTest::end);
 	}
 	
 	private static RenderPass renderPass;

@@ -59,7 +59,7 @@ public class TextureTest extends RenderTest {
 		mainTest(args, TextureTest::start, () -> staticLoop(TextureTest::loop, r -> {
 			render = r;
 			RenderEngine.getVulkan().getWindow().show();
-		}), TextureTest::end, false);
+		}), TextureTest::end);
 	}
 	
 	private static Renderer renderer;

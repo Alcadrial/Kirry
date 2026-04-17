@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.math.RoundingMode;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -15,25 +16,56 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
 import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
+import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.EXTDebugUtils;
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkClearValue;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
+import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
+import org.lwjgl.vulkan.VkDescriptorPoolSize;
+import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
+import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo;
+import org.lwjgl.vulkan.VkExtent2D;
+import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
+import org.lwjgl.vulkan.VkRect2D;
+import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.angle.AngleUnit;
 import com.alcadrial.kector.annotation.Angle;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kroperties.Property;
 import com.alcadrial.renderengine.render.Debug;
+import com.alcadrial.renderengine.render.Device;
+import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngine.Builder;
+import com.alcadrial.renderengine.render.RenderEngineProperties;
+import com.alcadrial.renderengine.render.Renderer;
+import com.alcadrial.renderengine.render.buffer.BufferWriter;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
+import com.alcadrial.renderengine.render.pipeline.GraphicsPipelineTemplate;
+import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
+import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.Shader;
+import com.alcadrial.renderengine.render.shader.ShaderInputType;
+import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderType;
+import com.alcadrial.renderengine.render.shader.ShaderVariable;
+import com.alcadrial.renderengine.render.shader.binding.BindingInfo;
+import com.alcadrial.renderengine.render.shader.descriptor.DescriptorPool;
+import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSet;
+import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSetLayout;
 import com.alcadrial.renderengine.render.texture.Texture;
-import com.alcadrial.renderengine.render.util.Properties;
+import com.alcadrial.renderengine.render.texture.TextureSampler;
 import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
+import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.ExternalException;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.util.functional.VulkanBiConsumer;
@@ -47,19 +79,29 @@ public class RenderTest {
 	private static final String[] TYPES = new String[] {"UNKNOWN", "GENERAL", "VALIDATION", "PERFORMANCE"};
 	private static final AtomicBoolean hasValidationError = new AtomicBoolean(false);
 	
-	public static void mainTest(String[] args, VulkanRunnable start, VulkanRunnable loop, VulkanRunnable end, boolean multithreaded)
+	public static void mainTest(String[] args, VulkanRunnable start, VulkanRunnable loop, VulkanRunnable end)
+	{
+		mainTest(args, start, loop, end, _ -> {});
+	}
+	
+	public static void mainTest(String[] args, VulkanRunnable start, VulkanRunnable loop, VulkanRunnable end, Consumer<RenderEngine.Builder> config)
 	{
 		try
 		{
 			TestProperties.init(args);
 			//Properties.DEVICE_DESTRUCTION_LIST_THRESHOLD.setValue(0);
 			
-			if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
+			if (RenderEngineProperties.DEBUG.getValue()) RenderEngine.enableDebug();
 			
-			println("RenderEngine initialization", multithreaded ? RenderTest::initMultiThreadRenderEngine : RenderTest::initRenderEngine, TestProperties.PRINT_LOADING_TIMES);
+			VulkanRunnable init = () -> {
+				RenderEngine.Builder builder = initRenderEngine();
+				config.accept(builder);
+				builder.initialize();
+			};
+			println("RenderEngine initialization", init, TestProperties.PRINT_LOADING_TIMES);
 			if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
 			
-			if (Properties.DEBUG.getValue())
+			if (RenderEngineProperties.DEBUG.getValue())
 			{
 				Debug.setEnabledAllocationDebug(true);
 				Debug.setEnabledDeallocationFail(true);
@@ -67,7 +109,7 @@ public class RenderTest {
 			
 			Thread mainThread = null;
 			
-			if (multithreaded)
+			if (RenderEngine.isMultiThreading())
 			{
 				mainThread = Thread.ofPlatform().name("Main").start(RenderEngine::serveRenderEngine);
 			}
@@ -305,11 +347,11 @@ public class RenderTest {
 		int maxfps = TestProperties.MAX_FRAME_RATE.getValue();
 		long period = 1000000000 / maxfps;
 		if (period <= 0) period = 1;
-
+		
 		long firstHighMilestone = 1000000000;
 		long time = System.nanoTime();
 		long[] lastCurrent = {time};
-		long[] frame = { 0 };
+		long[] frame = {0};
 		long[] highMilestone = {firstHighMilestone};
 		
 		service.scheduleAtFixedRate(() -> {
@@ -359,7 +401,8 @@ public class RenderTest {
 			service.shutdownNow();
 			return;
 		}
-		finally {
+		finally
+		{
 			if (lastError[0] != null) throw lastError[0];
 		}
 		
@@ -393,26 +436,14 @@ public class RenderTest {
 		});
 	}
 	
-	public static void initRenderEngine() throws VulkanException
+	public static Builder initRenderEngine() throws VulkanException
 	{
-		RenderEngine.Builder builder = RenderEngine.create("Test", new Version(0, 0, 1, 0));
-		builder.messengerCallback(RenderTest::debugCallback);
-		builder.instanceLayersDebug("VK_LAYER_KHRONOS_validation");
-		builder.instanceExtensionsDebug(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-		builder.multiThreading(false);
-		builder.useWindowSystem(true);
-		builder.initialize();
-	}
-	
-	public static void initMultiThreadRenderEngine() throws VulkanException
-	{
-		RenderEngine.Builder builder = RenderEngine.create("Test", new Version(0, 0, 1, 0));
-		builder.messengerCallback(RenderTest::debugCallback);
-		builder.instanceLayersDebug("VK_LAYER_KHRONOS_validation");
-		builder.instanceExtensionsDebug(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-		builder.multiThreading(true);
-		builder.useWindowSystem(true);
-		builder.initialize();
+		return RenderEngine.create("Test", new Version(0, 0, 1, 0))
+			.messengerCallback(RenderTest::debugCallback)
+			.instanceLayersDebug("VK_LAYER_KHRONOS_validation")
+			.instanceExtensionsDebug(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+			.multiThreading(false)
+			.useWindowSystem(true);
 	}
 	
 	public static int debugCallback(int messageSeverity, int messageType, long callbackDataId, long userDataId)
@@ -453,7 +484,7 @@ public class RenderTest {
 	
 	public static File getFile(String path)
 	{
-		return new File(Properties.RESOURCE_PATH.getValue(), "assets/renderengine/" + path);
+		return new File(RenderEngineProperties.RESOURCE_PATH.getValue(), "assets/renderengine/" + path);
 	}
 	
 	public static PreparedShader loadShader(String path) throws IOException
@@ -554,5 +585,179 @@ public class RenderTest {
 		public abstract void start() throws VulkanException;
 		public abstract void loop() throws VulkanException;
 		public abstract void end() throws VulkanException;
+	}
+	
+	public static void renderTexture(VulkanWindow window, Texture texture) throws VulkanException
+	{
+		renderTexture(window, texture, 1);
+	}
+	
+	public static void renderTexture(VulkanWindow window, Texture texture, int samples) throws VulkanException
+	{
+		final String shader = "shader4";
+		
+		VulkanFuture<ShaderProgram> shaderProgramFuture = RenderEngine.submitAsync(() -> {
+			PreparedShader vertexShader = loadShader(shader + ".vert");
+			PreparedShader fragmentShader = loadShader(shader + ".frag");
+			return ShaderProgram.create().add(vertexShader, fragmentShader).build();
+		});
+		
+		Device device = window.getDevice();
+		
+		VulkanBuffer vertexBuffer = new VulkanBuffer(device, 28 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		VulkanBuffer indexBuffer = new VulkanBuffer(device, 6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		VulkanBuffer uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 1);
+		uniformBuffer.getMemory().mapMemory();
+		
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VulkanBuffer localVertexBuffer = VulkanBuffer.asLocal(vertexBuffer);
+			VulkanBuffer localIndexBuffer = VulkanBuffer.asLocal(indexBuffer);
+			
+			localVertexBuffer.getMemory().mapMemory();
+			localIndexBuffer.getMemory().mapMemory();
+			
+			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
+			
+			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			BufferWriter vertexBufferWriter = new BufferWriter(localVertexBuffer, vertexBuffer);
+			vertexBufferWriter.setCommandBuffer(commandBuffer);
+			BufferWriter indexBufferWriter = new BufferWriter(localIndexBuffer, indexBuffer);
+			indexBufferWriter.setCommandBuffer(commandBuffer);
+			
+			RenderingDataUtils.loadRectangleUv(vertexBufferWriter, indexBufferWriter, 0, -1, -1, 1, 1, 1, 0, 0, 1, 1);
+			vertexBufferWriter.close();
+			indexBufferWriter.close();
+			commandBuffer.endRecording();
+			
+			device.submitSingleUseCommandBuffer(stack, commandBuffer).join();
+			
+			localVertexBuffer.getMemory().unmapMemory();
+			localIndexBuffer.getMemory().unmapMemory();
+			localVertexBuffer.close();
+			localIndexBuffer.close();
+			
+			RenderPass renderPass = window.getRenderPass();
+			
+			VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = VkDescriptorPoolCreateInfo.malloc(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
+				.pNext(0)
+				.flags(0)
+				.maxSets(1)
+				.pPoolSizes(VkDescriptorPoolSize.malloc(2, stack)
+					.apply(b -> b
+						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+						.descriptorCount(1)
+					)
+					.apply(b -> b
+						.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+						.descriptorCount(1)
+					)
+					.rewind()
+				);
+			
+			VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
+				.pNext(0)
+				.flags(0)
+				.pBindings(VkDescriptorSetLayoutBinding.malloc(2, stack)
+					.apply(b -> b
+						.binding(0)
+						.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+						.descriptorCount(1)
+						.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
+						.pImmutableSamplers(null))
+					.apply(b -> b
+						.binding(1)
+						.descriptorType(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+						.descriptorCount(1)
+						.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
+						.pImmutableSamplers(null))
+					.rewind()
+				);
+			
+			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
+			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
+			DescriptorSet descriptorSet = descriptorPool.allocate(descriptorSetLayout);
+			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
+				.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
+			PipelineLayout pipelineLayout = new PipelineLayout(device, pipelineLayoutInfo);
+			
+			GraphicsPipelineTemplate graphicsPipelineTemplate = GraphicsPipelineTemplate.createScreenRenderingPipeline()
+				.configureVertexInputState(s -> s
+					.addBinding(0, 20, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
+					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
+					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_2, 12)
+				)
+				.configureMultisampleState(s -> s
+					.rasterizationSamples(samples)
+				)
+				.build();
+			ShaderProgram shaderProgram = shaderProgramFuture.forceGet();
+			GraphicsPipeline graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
+			Renderer renderer = Renderer.builder()
+				.graphicsPipeline(graphicsPipeline)
+				.descriptorSets(descriptorSet)
+				.bindings(
+					BindingInfo.ofUniform(uniformBuffer, VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
+						ShaderVariable.TRANSFORMATION,
+						ShaderVariable.MODEL
+					)),
+					BindingInfo.ofTexture(texture, new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
+				)
+				.build();
+			
+			renderer.setBuffer(0, vertexBuffer);
+			renderer.setIndexBuffer(indexBuffer);
+			
+			float textureAspectRatio = (float) texture.getHeight() / texture.getWidth();
+			float scale = Math.min(window.getWidth(), window.getHeight());
+			Matrix4f transformation = new Matrix4f().scale(Vector3f.of(scale / window.getWidth() / textureAspectRatio, scale / window.getHeight(), 0.02F));
+			Matrix4f model = new Matrix4f();
+			
+			renderer.useBufferLayoutWriter(0, 0, writer -> {
+				writer.set(ShaderVariable.TRANSFORMATION, transformation);
+				writer.set(ShaderVariable.MODEL, model);
+				writer.flushAndInvalidate();
+			});
+			
+			switch (window.startPresentation())
+			{
+				case EMPTY_SURFACE:
+					return;
+				case SURFACE_LOST, OUT_OF_MEMORY, FATAL_ERROR:
+					throw new VulkanException("Presentaton error");
+			}
+			
+			FrameBuffer frameBuffer = window.getCurrentFrameBuffer();
+			commandBuffer = window.getCurrentCommandBuffer();
+			
+			VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
+			renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
+			renderPassBeginInfo.pNext(0);
+			renderPassBeginInfo.renderPass(renderPass.getVk());
+			renderPassBeginInfo.framebuffer(frameBuffer.getVk());
+			
+			VkRect2D renderArea = VkRect2D.calloc(stack);
+			renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
+			renderPassBeginInfo.renderArea(renderArea);
+			
+			VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
+			clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
+			clearValues.get().depthStencil().depth(1).stencil(0);
+			renderPassBeginInfo.pClearValues(clearValues.rewind());
+			
+			commandBuffer.beginRecording();
+			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
+			renderer.draw(commandBuffer, 0);
+			commandBuffer.endRenderPass();
+			commandBuffer.endRecording();
+			
+			window.endPresentation(commandBuffer, () -> {
+				graphicsPipeline.close();
+				graphicsPipelineTemplate.close();
+				pipelineLayout.close();
+			});
+		}
 	}
 }

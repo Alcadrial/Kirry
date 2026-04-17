@@ -7,7 +7,7 @@ import com.alcadrial.kroperties.IntegerProperty;
 import com.alcadrial.kroperties.Property;
 import com.alcadrial.kroperties.VoidProperty;
 import com.alcadrial.renderengine.core.util.OperativeSystem;
-import com.alcadrial.renderengine.render.util.Properties;
+import com.alcadrial.renderengine.render.RenderEngineProperties;
 
 public class TestProperties {
 
@@ -20,7 +20,7 @@ public class TestProperties {
 
 	private static <T> Property<T> register(Property<T> property)
 	{
-		return Properties.register(property);
+		return RenderEngineProperties.register(property);
 	}
 
 	private static String invalidArgument(Property<?> property)
@@ -30,7 +30,7 @@ public class TestProperties {
 
 	public static void init(String[] values)
 	{
-		Property.parseProperties(values, Properties.PROPERTIES);
+		Property.parseProperties(values, RenderEngineProperties.PROPERTIES);
 		if (HELP.isPresent())
 		{
 			System.out.println("Usage:");
@@ -40,7 +40,7 @@ public class TestProperties {
 			System.out.println("Following the list of available properties and their default value.");
 			System.out.println();
 			int max = 0;
-			for (Property<?> property : Properties.PROPERTIES)
+			for (Property<?> property : RenderEngineProperties.PROPERTIES)
 			{
 				if (property.getName().length() > max)
 				{
@@ -49,7 +49,7 @@ public class TestProperties {
 			}
 			String maxSpace = " ".repeat(max + 2);
 
-			for (Property<?> property : Properties.PROPERTIES)
+			for (Property<?> property : RenderEngineProperties.PROPERTIES)
 			{
 				String name = property.getName();
 				String space = " ".repeat(max - name.length());
@@ -67,10 +67,10 @@ public class TestProperties {
 			}
 			System.exit(0);
 		}
-		File glslc = OperativeSystem.OS.withExecutableExtension(new File(Properties.SHADER_COMPILER_PATH.getValue(), "glslc"));
+		File glslc = OperativeSystem.OS.withExecutableExtension(new File(RenderEngineProperties.SHADER_COMPILER_PATH.getValue(), "glslc"));
 		if (!glslc.exists())
 		{
-			if (Properties.SHADER_COMPILER_PATH.isDefault())
+			if (RenderEngineProperties.SHADER_COMPILER_PATH.isDefault())
 			{
 				System.err.println("Cannot find \"glslc\" in " + glslc.getParent() + ", try using \"shaderCompilerPath=...\"");
 			}
@@ -80,7 +80,7 @@ public class TestProperties {
 			}
 			System.exit(-1);
 		}
-		if (!Properties.RESOURCE_PATH.isPresent())
+		if (!RenderEngineProperties.RESOURCE_PATH.isPresent())
 		{
 			System.err.println("Missing parameter \"resourcePath=...\", cannot start without");
 			System.exit(-2);

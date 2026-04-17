@@ -24,6 +24,7 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineProperties;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
@@ -45,7 +46,6 @@ import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSetLayout;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
-import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
@@ -58,7 +58,7 @@ public class TestReinit extends RenderTest {
 	{
 		TestProperties.init(args);
 		
-		if (Properties.DEBUG.getValue()) RenderEngine.enableDebug();
+		if (RenderEngineProperties.DEBUG.getValue()) RenderEngine.enableDebug();
 		
 		Logic logic = new Logic();
 		
@@ -68,10 +68,10 @@ public class TestReinit extends RenderTest {
 			for (int i = 0; i < 100 && flag.get(); i++)
 			{
 				System.out.println("Iteration " + i);
-				println("Render Engine initialization", RenderTest::initMultiThreadRenderEngine, TestProperties.PRINT_LOADING_TIMES);
+				println("Render Engine initialization", () -> RenderTest.initRenderEngine().multiThreading(true).initialize(), TestProperties.PRINT_LOADING_TIMES);
 				if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
 				
-				if (Properties.DEBUG.getValue())
+				if (RenderEngineProperties.DEBUG.getValue())
 				{
 					Debug.setEnabledAllDebug(true);
 					Debug.setEnabledExtraTimePrecision(true);

@@ -26,7 +26,7 @@ public class ScreenTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, ScreenTest::start, ScreenTest::loop, ScreenTest::end, false);
+		mainTest(args, ScreenTest::start, ScreenTest::loop, ScreenTest::end, b -> b.useFont(true));
 	}
 	
 	private static final String SHADER = "shader4";

@@ -55,7 +55,7 @@ public class InstancingTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, InstancingTest::start, () -> defaultAnimationLoop(InstancingTest::loop), InstancingTest::end, false);
+		mainTest(args, InstancingTest::start, () -> defaultAnimationLoop(InstancingTest::loop), InstancingTest::end);
 	}
 	
 	private static RenderPass renderPass;

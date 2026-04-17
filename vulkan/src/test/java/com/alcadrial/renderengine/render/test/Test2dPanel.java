@@ -70,7 +70,7 @@ public class Test2dPanel extends RenderTest {
 		mainTest(args, Test2dPanel::start, () -> staticLoop(Test2dPanel::loop, r -> {
 			render = r;
 			RenderEngine.getVulkan().getWindow().show();
-		}), Test2dPanel::end, false);
+		}), Test2dPanel::end);
 	}
 	
 	private static RenderPass renderPass;

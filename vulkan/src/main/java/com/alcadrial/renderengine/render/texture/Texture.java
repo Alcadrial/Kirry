@@ -338,4 +338,10 @@ public class Texture extends MemoryResource {
 		Debug.print("ImageView", view);
 		Debug.print("Memory", memory);
 	}
+	
+	@Override
+	public String toString()
+	{
+		return "Texture{vk=" + Debug.address(vk) + ", size=" + width + (imageType >= VK10.VK_IMAGE_TYPE_2D ? "x" + height : "") + (imageType >= VK10.VK_IMAGE_TYPE_3D ? "x" + depth : "") + "}";
+	}
 }

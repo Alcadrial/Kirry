@@ -29,6 +29,7 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWVulkan;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.util.freetype.FreeType;
 import org.lwjgl.vulkan.EXTDebugUtils;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VK13;
@@ -40,6 +41,7 @@ import org.lwjgl.vulkan.VkInstanceCreateInfo;
 import com.alcadrial.renderengine.core.RenderEngineCore;
 import com.alcadrial.renderengine.render.util.DebugMessengerSeverity;
 import com.alcadrial.renderengine.render.util.DebugMessengerType;
+import com.alcadrial.renderengine.render.util.FreeTypeErrorUtils;
 import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanFuture;
@@ -60,6 +62,7 @@ public class RenderEngine extends RenderEngineCore {
 	
 	private static volatile @Nullable Exception initException = null;
 	private static volatile @Nullable Vulkan vulkan = null;
+	private static volatile long ftLibrary = 0;
 	private static volatile @Nullable ExecutorService executor = null;
 	private static volatile boolean multiThreading = false;
 	private static volatile @Nullable Thread mainThread = null;
@@ -103,7 +106,33 @@ public class RenderEngine extends RenderEngineCore {
 	
 	private static void initialize(Builder builder) throws VulkanException
 	{
-		if (!initializated && (builder.useWindowSystem ? GLFW.glfwInit() : true)) initVulkan(builder);
+		if (initializated) return;
+		if (builder.useWindowSystem && !GLFW.glfwInit()) throw new VulkanException("Failed to init GLFW");
+		if (builder.useFont)
+		{
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				PointerBuffer p = stack.mallocPointer(1);
+				int error = FreeType.FT_Init_FreeType(p);
+				if (error != 0)
+				{
+					GLFW.glfwTerminate();
+					throw new VulkanException("Failed to init FreeType (" + error + ")");
+				}
+				ftLibrary = p.get(0);
+			}
+		}
+		try
+		{
+			initVulkan(builder);
+		}
+		catch (VulkanException e)
+		{
+			GLFW.glfwTerminate();
+			FreeType.FT_Done_Library(ftLibrary);
+			ftLibrary = 0;
+			throw e;
+		}
 	}
 	
 	private static void initVulkan(Builder builder) throws VulkanException
@@ -210,6 +239,11 @@ public class RenderEngine extends RenderEngineCore {
 			if (executor != null) executor.shutdown();
 			((@NonNull Vulkan) vulkan).close();
 			vulkan = null;
+			if (ftLibrary != 0)
+			{
+				FreeType.FT_Done_Library(ftLibrary);
+				ftLibrary = 0;
+			}
 			VulkanFuture<?> f = requestMainThread(() -> {
 				GLFW.glfwTerminate();
 				if (executor != null)
@@ -259,6 +293,11 @@ public class RenderEngine extends RenderEngineCore {
 		return "Using RenderEngine Vulkan without initialization, use RenderEngine#initialize before anything";
 	}
 	
+	public static String initializationFTErrorMessage()
+	{
+		return "To use font-related features RenderEngine.Builder#useFont must be set to true before initialization";
+	}
+	
 	public static void setWindowHint(int hint, boolean value)
 	{
 		assertLoaded();
@@ -269,6 +308,11 @@ public class RenderEngine extends RenderEngineCore {
 	{
 		assertLoaded();
 		requestMainThread(() -> GLFW.glfwWindowHint(hint, value));
+	}
+	
+	public static boolean isMultiThreading()
+	{
+		return multiThreading;
 	}
 	
 	public static boolean isDebug()
@@ -289,6 +333,11 @@ public class RenderEngine extends RenderEngineCore {
 	public static @Nullable Exception getLastInitializationException()
 	{
 		return initException;
+	}
+	
+	public static long getFTLibrary()
+	{
+		return FreeTypeErrorUtils.nonNull(ftLibrary, initializationFTErrorMessage());
 	}
 	
 	public static Vulkan getVulkan()
@@ -729,6 +778,7 @@ public class RenderEngine extends RenderEngineCore {
 		private Version version;
 		private boolean multiThreading;
 		private boolean useWindowSystem;
+		private boolean useFont;
 		private @Nullable VkDebugUtilsMessengerCallbackEXTI messengerCallback;
 		private EnumSet<DebugMessengerSeverity> messengerSeverities;
 		private EnumSet<DebugMessengerType> messengerTypes;
@@ -743,6 +793,7 @@ public class RenderEngine extends RenderEngineCore {
 			this.version = version;
 			multiThreading = true;
 			useWindowSystem = false;
+			useFont = false;
 			instanceLayers = new LinkedList<>();
 			debugLayersCount = 0;
 			instanceExtensions = new LinkedList<>();
@@ -772,6 +823,12 @@ public class RenderEngine extends RenderEngineCore {
 		public Builder useWindowSystem(boolean useWindowSystem)
 		{
 			this.useWindowSystem = useWindowSystem;
+			return this;
+		}
+		
+		public Builder useFont(boolean useFont)
+		{
+			this.useFont = useFont;
 			return this;
 		}
 		

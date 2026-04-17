@@ -74,6 +74,7 @@ public class Atlas {
 		}
 		
 		abstract void copy(CommandBuffer commandBuffer, Texture atlasTexture, int x, int y);
+		abstract void close();
 	}
 	
 	private class TextureResource extends Resource {
@@ -91,6 +92,12 @@ public class Atlas {
 		{
 			commandBuffer.copyImage(texture, 0, 0, 0, atlasTexture, x, y, 0, width, height, 1);
 		}
+		
+		@Override
+		void close()
+		{
+			texture.close();
+		}
 	}
 	
 	private class VulkanBufferResource extends Resource {
@@ -107,6 +114,12 @@ public class Atlas {
 		void copy(CommandBuffer commandBuffer, Texture atlasTexture, int x, int y)
 		{
 			commandBuffer.copyBufferToImage(buffer, 0, atlasTexture, x, y, 0, width, height, 1);
+		}
+		
+		@Override
+		void close()
+		{
+			buffer.close();
 		}
 	}
 	
@@ -385,7 +398,7 @@ public class Atlas {
 						Region region = regions.get(j);
 						if (oldRegion.isDirty)
 						{
-							oldRegion.resource.copy(commandBuffer, newTexture, region.x, region.y);
+							region.resource.copy(commandBuffer, newTexture, region.x, region.y);
 							oldRegion.isDirty = false;
 						}
 						else
@@ -467,15 +480,24 @@ public class Atlas {
 				texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			}).join();
 		}
+		for (Region region : regions) region.resource.close();
 		
 		isDirty = false;
 	}
 	
 	public void clear()
 	{
+		clear(width, height);
+	}
+	
+	public void clear(int width, int height)
+	{
 		isDirty |= !regions.isEmpty();
+		this.width = width;
+		this.height = height;
 		emptySlots();
 		regions.clear();
+		resources.clear();
 	}
 	
 	private void emptySlots()
@@ -483,6 +505,11 @@ public class Atlas {
 		slots.clear();
 		slots.add(new Slot(0, 0, width, height));
 		availableArea = width * height;
+	}
+	
+	public void tryFit()
+	{
+		mixTextures();
 	}
 	
 	public Texture getTexture()
@@ -499,9 +526,15 @@ public class Atlas {
 	{
 		return height;
 	}
-
+	
 	public void close()
 	{
 		texture.close();
+	}
+	
+	@Override
+	public String toString()
+	{
+		return "Atlas{" + texture + "}";
 	}
 }

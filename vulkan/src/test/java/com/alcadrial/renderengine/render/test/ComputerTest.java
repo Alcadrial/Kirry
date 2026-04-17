@@ -72,7 +72,7 @@ public class ComputerTest extends RenderTest {
 	
 	public static void main(String[] args)
 	{
-		mainTest(args, ComputerTest::start, () -> defaultAnimationLoop(ComputerTest::loop), ComputerTest::end, false);
+		mainTest(args, ComputerTest::start, () -> defaultAnimationLoop(ComputerTest::loop), ComputerTest::end);
 	}
 	
 	private static final int DIM = 8;
