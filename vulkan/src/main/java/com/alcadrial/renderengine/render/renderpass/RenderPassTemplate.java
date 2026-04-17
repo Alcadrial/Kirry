@@ -169,7 +169,6 @@ public class RenderPassTemplate implements AutoCloseable {
 				.dstAccessMask(VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
 			).build();
 	}
-	
 	public static RenderPassTemplate initColorDepthTextureTemplate(int format)
 	{
 		return create()

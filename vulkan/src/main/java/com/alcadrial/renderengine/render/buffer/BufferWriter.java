@@ -1,6 +1,8 @@
 package com.alcadrial.renderengine.render.buffer;
 
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -182,7 +184,11 @@ public class BufferWriter implements AutoCloseable {
 	{
 		registerCopy();
 		cursor = lastSetCursor = 0;
-		if (bufferCopyCount == MAX_COPY_COUNT) transfer();
+		if (bufferCopyCount == MAX_COPY_COUNT)
+		{
+			if (preferFlush) flushAndInvalidate();
+			else transfer();
+		}
 		return this;
 	}
 	
@@ -193,7 +199,11 @@ public class BufferWriter implements AutoCloseable {
 		{
 			registerCopy();
 			cursor = lastSetCursor = index;
-			if (bufferCopyCount == MAX_COPY_COUNT) transfer();
+			if (bufferCopyCount == MAX_COPY_COUNT)
+			{
+				if (preferFlush) flushAndInvalidate();
+				else transfer();
+			}
 		}
 		return this;
 	}
@@ -244,6 +254,14 @@ public class BufferWriter implements AutoCloseable {
 		return this;
 	}
 	
+	public BufferWriter put(ByteBuffer value, int offset, int size)
+	{
+		isModified = true;
+		buffer.put(cursor * 4, value, offset, size);
+		cursor += Math.ceilDiv(size, 4);
+		return this;
+	}
+	
 	public BufferWriter put(byte[] value, int offset, int size)
 	{
 		isModified = true;
@@ -278,57 +296,60 @@ public class BufferWriter implements AutoCloseable {
 	
 	public BufferWriter put(Vector2f value)
 	{
-		isModified = true;
-		buffer.asFloatBuffer().put(cursor, value.getValuesArray());
-		cursor += 2;
-		return this;
+		return put(value.getValuesArray());
 	}
 	
 	public BufferWriter put(Vector3f value)
 	{
-		isModified = true;
-		buffer.asFloatBuffer().put(cursor, value.getValuesArray());
-		cursor += 3;
-		return this;
+		return put(value.getValuesArray());
 	}
 	
 	public BufferWriter put(Vector4f value)
 	{
-		isModified = true;
-		buffer.asFloatBuffer().put(cursor, value.getValuesArray());
-		cursor += 4;
-		return this;
+		return put(value.getValuesArray());
 	}
 	
 	public BufferWriter put(Vector2i value)
 	{
-		isModified = true;
-		buffer.asIntBuffer().put(cursor, value.getValuesArray());
-		cursor += 2;
-		return this;
+		return put(value.getValuesArray());
 	}
 	
 	public BufferWriter put(Vector3i value)
 	{
-		isModified = true;
-		buffer.asIntBuffer().put(cursor, value.getValuesArray());
-		cursor += 3;
-		return this;
+		return put(value.getValuesArray());
 	}
 	
 	public BufferWriter put(Vector4i value)
 	{
-		isModified = true;
-		buffer.asIntBuffer().put(cursor, value.getValuesArray());
-		cursor += 4;
-		return this;
+		return put(value.getValuesArray());
 	}
 	
 	public BufferWriter put(Matrix4f value)
 	{
+		return put(value.toArray());
+	}
+	
+	public BufferWriter fill(byte value)
+	{
 		isModified = true;
-		buffer.asFloatBuffer().put(cursor, value.toArray());
-		cursor += 16;
+		for (int i = cursor * 4; i < buffer.limit(); i++) buffer.put(i, value);
+		cursor = Math.ceilDiv(buffer.limit(), 4);
+		return this;
+	}
+	
+	public BufferWriter fill(int value)
+	{
+		isModified = true;
+		IntBuffer b = buffer.asIntBuffer();
+		while (cursor < b.limit()) b.put(cursor++, value);
+		return this;
+	}
+	
+	public BufferWriter fill(float value)
+	{
+		isModified = true;
+		FloatBuffer b = buffer.asFloatBuffer();
+		while (cursor < b.limit()) b.put(cursor++, value);
 		return this;
 	}
 	

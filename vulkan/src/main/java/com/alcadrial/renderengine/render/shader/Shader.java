@@ -12,8 +12,8 @@ import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 
 import com.alcadrial.renderengine.render.Debug;
+import com.alcadrial.renderengine.render.RenderEngineProperties;
 import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
 /**
@@ -31,7 +31,7 @@ public class Shader {
 		RenderEngine.assertLoaded();
 	}
 	
-	public static final File GLSLC = new File(Properties.SHADER_COMPILER_PATH.getValue(), "glslc");
+	public static final File GLSLC = new File(RenderEngineProperties.SHADER_COMPILER_PATH.getValue(), "glslc");
 	public static final String GLSLC_PATH = GLSLC.toString();
 	public static final Pattern SHADER_FILE_EXTENSION = Pattern.compile(".*(\\.vert|\\.tesc|\\.tese|\\.geom|\\.frag|\\.comp)");
 	

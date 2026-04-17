@@ -21,13 +21,14 @@ eclipse-collections         = {module = "org.eclipse.collections:eclipse-collect
 jackson-eclipse-collections = {module = "tools.jackson.datatype:jackson-datatype-eclipse-collections", version.ref = "jackson"}
 jspecify                    = {module = "org.jspecify:jspecify", version.ref = "jspecify"}
 
-lwjgl        = {module = "org.lwjgl:lwjgl", version.ref = "lwjgl"}
-lwjgl-glfw   = {module = "org.lwjgl:lwjgl-glfw", version.ref = "lwjgl"}
-lwjgl-opengl = {module = "org.lwjgl:lwjgl-opengl", version.ref = "lwjgl"}
-lwjgl-openal = {module = "org.lwjgl:lwjgl-openal", version.ref = "lwjgl"}
-lwjgl-fmod   = {module = "org.lwjgl:lwjgl-fmod", version.ref = "lwjgl"}
-lwjgl-stb   = {module = "org.lwjgl:lwjgl-stb", version.ref = "lwjgl"}
-lwjgl-vulkan = {module = "org.lwjgl:lwjgl-vulkan", version.ref = "lwjgl"}
+lwjgl          = {module = "org.lwjgl:lwjgl", version.ref = "lwjgl"}
+lwjgl-freetype = {module = "org.lwjgl:lwjgl-freetype", version.ref = "lwjgl"}
+lwjgl-glfw     = {module = "org.lwjgl:lwjgl-glfw", version.ref = "lwjgl"}
+lwjgl-opengl   = {module = "org.lwjgl:lwjgl-opengl", version.ref = "lwjgl"}
+lwjgl-openal   = {module = "org.lwjgl:lwjgl-openal", version.ref = "lwjgl"}
+lwjgl-fmod     = {module = "org.lwjgl:lwjgl-fmod", version.ref = "lwjgl"}
+lwjgl-stb      = {module = "org.lwjgl:lwjgl-stb", version.ref = "lwjgl"}
+lwjgl-vulkan   = {module = "org.lwjgl:lwjgl-vulkan", version.ref = "lwjgl"}
 
 [bundles]
 

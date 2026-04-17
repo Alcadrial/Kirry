@@ -48,7 +48,6 @@ import com.alcadrial.renderengine.render.texture.TextureView;
 import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
 import com.alcadrial.renderengine.render.util.OverflowException;
-import com.alcadrial.renderengine.render.util.Properties;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
@@ -477,7 +476,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		if (vk != null)
 		{
 			waitIdle();
-			int threshold = Properties.DEVICE_DESTRUCTION_LIST_THRESHOLD.getValue();
+			int threshold = RenderEngineProperties.DEVICE_DESTRUCTION_LIST_THRESHOLD.getValue();
 			if (destructionList.size() > threshold)
 			{
 				int limit = Math.max(Math.min(destructionList.size(), 100), threshold);
