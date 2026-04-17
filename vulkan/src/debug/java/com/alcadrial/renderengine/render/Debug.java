@@ -65,7 +65,7 @@ public class Debug {
 	
 	public static long getIncrementalId(Object obj)
 	{
-		return idMap.compute(obj, (k, v) -> v == null ? 0L : v + 1);
+		return idMap.compute(obj, (_, v) -> v == null ? 0L : v + 1);
 	}
 	
 	public static void printState(String name, @Nullable VulkanDebug vk)

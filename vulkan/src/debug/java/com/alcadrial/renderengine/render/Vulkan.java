@@ -14,6 +14,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.linux.UNISTD;
 import org.lwjgl.system.windows.Kernel32;
 import org.lwjgl.vulkan.EXTDebugUtils;
 import org.lwjgl.vulkan.VK10;
@@ -61,11 +62,12 @@ public class Vulkan implements AutoCloseable {
 			window = defaultWindow;
 			newWindows = new ConcurrentLinkedDeque<>();
 			physicalDeviceFilter = defaultPhysicalDeviceFilter;
-			threadId = switch (OperativeSystem.OS)
+			threadId = Integer.toUnsignedLong(switch (OperativeSystem.OS)
 			{
 				case WINDOWS -> Kernel32.GetCurrentThreadId();
+				case LINUX -> UNISTD.gettid();
 				default -> -1;
-			};
+			});
 		}
 	}
 	
@@ -97,7 +99,7 @@ public class Vulkan implements AutoCloseable {
 			instance = new VkInstance(p.get(0), createInfo);
 		}
 		this.debugUtilsExtensionEnabled = debugUtilsExtensionEnabled;
-		defaultPhysicalDeviceFilter = d -> true;
+		defaultPhysicalDeviceFilter = _ -> true;
 		data = new ConcurrentHashMap<>();
 		physicalDevicesMonitor = new Object();
 	}
@@ -135,17 +137,14 @@ public class Vulkan implements AutoCloseable {
 	
 	public boolean activateDebugMessenger(VkDebugUtilsMessengerCreateInfoEXT info)
 	{
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			long[] p = new long[1];
-			
-			if (VK10.vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT") == 0) return false;
-			if (EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(instance, info, null, p) != VK10.VK_SUCCESS) return false;
-			
-			createInfo.pNext(info.address());
-			debugMessengerId = p[0];
-			return true;
-		}
+		long[] p = new long[1];
+		
+		if (VK10.vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT") == 0) return false;
+		if (EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(instance, info, null, p) != VK10.VK_SUCCESS) return false;
+		
+		createInfo.pNext(info.address());
+		debugMessengerId = p[0];
+		return true;
 	}
 	
 	public void setDefaultPhysicalDeviceFilter(Predicate<PhysicalDevice> physicalDeviceFilter)
@@ -343,7 +342,7 @@ public class Vulkan implements AutoCloseable {
 	
 	ThreadData getData()
 	{
-		return data.computeIfAbsent(Thread.currentThread(), t -> new ThreadData());
+		return data.computeIfAbsent(Thread.currentThread(), _ -> new ThreadData());
 	}
 	
 	Map<Thread, ThreadData> getAllData()
