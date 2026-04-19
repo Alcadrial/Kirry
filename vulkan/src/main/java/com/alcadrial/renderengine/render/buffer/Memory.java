@@ -38,7 +38,7 @@ public class Memory extends RawDeviceResource {
 		
 		public ByteBuffer getBuffer()
 		{
-			if (!valid) return buffer.asReadOnlyBuffer();
+			if (!valid) return buffer.asReadOnlyBuffer().order(buffer.order());
 			return buffer;
 		}
 		

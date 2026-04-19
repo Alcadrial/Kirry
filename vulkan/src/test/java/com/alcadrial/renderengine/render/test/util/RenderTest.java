@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
@@ -414,7 +415,7 @@ public class RenderTest {
 		VulkanWindow window = RenderEngine.getVulkan().getWindow();
 		Vector2i oldPos = Vector2i.of(0, 0);
 		Vector2f oldMousePos = Vector2f.of(0, 0);
-		boolean[] pressing = new boolean[2];
+		boolean[] pressing = new boolean[1];
 		window.setCallback((GLFWMouseButtonCallbackI) (_, button, action, _) -> {
 			if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT)
 			{
@@ -425,13 +426,42 @@ public class RenderTest {
 			}
 		});
 		window.setCallback((GLFWCursorPosCallbackI) (_, x, y) -> {
-			if (pressing[0] && !pressing[1])
+			if (pressing[0])
 			{
-				pressing[1] = true;
 				window.getPos(oldPos);
 				window.setPos(Vector2i.of((float) x - oldMousePos.x() + oldPos.x(), (float) y - oldMousePos.y() + oldPos.y(), RoundingMode.FLOOR));
 				window.getMousePos(oldMousePos);
-				pressing[1] = false;
+			}
+		});
+	}
+	
+	public static void registerRotating(BiConsumer<@Angle(AngleUnit.RADIANS) Float, @Angle(AngleUnit.RADIANS) Float> callback)
+	{
+		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		Vector2f oldMousePos = Vector2f.of(0, 0);
+		Vector2f rotation = Vector2f.of(0, 0);
+		Vector2f oldRotation = Vector2f.of(0, 0);
+		boolean[] pressing = new boolean[1];
+		window.setCallback((GLFWMouseButtonCallbackI) (_, button, action, _) -> {
+			if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT)
+			{
+				if (pressing[0] = action == GLFW.GLFW_PRESS)
+				{
+					window.getMousePos(oldMousePos);
+				}
+				else
+				{
+					oldRotation.add(rotation);
+				}
+			}
+		});
+		window.setCallback((GLFWCursorPosCallbackI) (_, x, y) -> {
+			if (pressing[0])
+			{
+				float yRotation = (float) AngleUnit.RADIANS.fromTurns((x - oldMousePos.x()) / window.getWidth());
+				float xRotation = (float) AngleUnit.RADIANS.fromTurns((y - oldMousePos.y()) / window.getHeight());
+				rotation.setAll(xRotation, yRotation);
+				callback.accept(rotation.x() + oldRotation.x(), -rotation.y() - oldRotation.y());
 			}
 		});
 	}

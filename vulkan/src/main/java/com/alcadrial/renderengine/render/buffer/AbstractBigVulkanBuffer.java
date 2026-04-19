@@ -146,7 +146,7 @@ public abstract class AbstractBigVulkanBuffer<D extends AbstractBigVulkanBuffer.
 			Debug.debugClose(() -> "Destroyed BigBuffer Local of " + localData);
 		}
 		clear();
-		remoteData.close();
+		if (remoteData != null) remoteData.close();
 		super.close();
 	}
 	

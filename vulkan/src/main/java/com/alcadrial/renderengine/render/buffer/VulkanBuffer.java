@@ -1,5 +1,7 @@
 package com.alcadrial.renderengine.render.buffer;
 
+import java.nio.ByteBuffer;
+
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -16,39 +18,6 @@ public class VulkanBuffer extends MemoryResource {
 	static
 	{
 		RenderEngine.assertLoaded();
-	}
-	
-	public static VulkanBuffer ofMemory(MemoryResource parent, int usage) throws VulkanException
-	{
-		return ofMemory(parent, parent.getMemory().getSize(), usage);
-	}
-
-	public static VulkanBuffer ofMemory(MemoryResource parent, int size, int usage) throws VulkanException
-	{
-		return ofMemory(parent, 0, size, usage);
-	}
-
-	public static VulkanBuffer ofMemory(MemoryResource parent, long offset, int size, int usage) throws VulkanException
-	{
-		return new VulkanBuffer(parent, offset, size, usage);
-	}
-	
-	/** Does not need to be closed */
-	public static VulkanBuffer view(MemoryResource parent) throws VulkanException
-	{
-		return view(parent, parent.getMemory().getSize());
-	}
-
-	/** Does not need to be closed */
-	public static VulkanBuffer view(MemoryResource parent, int size) throws VulkanException
-	{
-		return view(parent, 0, size);
-	}
-
-	/** Does not need to be closed */
-	public static VulkanBuffer view(MemoryResource parent, long offset, int size) throws VulkanException
-	{
-		return new VulkanBuffer(parent, parent.getVk(), offset, size, 0, true);
 	}
 	
 	/** Does not need to be closed */
@@ -101,7 +70,7 @@ public class VulkanBuffer extends MemoryResource {
 		return new VulkanBuffer(device, size, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK10.VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
 	}
 	
-	private @Nullable MemoryResource parent;
+	private @Nullable VulkanBuffer parent;
 	
 	protected final long offset;
 	protected final int size;
@@ -140,6 +109,7 @@ public class VulkanBuffer extends MemoryResource {
 		isView = false;
 	}
 	
+	/*
 	public VulkanBuffer(MemoryResource buffer, long offset, int size, int usage) throws VulkanException
 	{
 		long vk;
@@ -156,7 +126,7 @@ public class VulkanBuffer extends MemoryResource {
 		parent = buffer;
 		isView = false;
 		bindMemory();
-	}
+	}*/
 	
 	public VulkanBuffer(VulkanBuffer buffer, long offset, int size, int usage) throws VulkanException
 	{
@@ -186,7 +156,7 @@ public class VulkanBuffer extends MemoryResource {
 		this(buffer, buffer.offset, buffer.size, buffer.usage);
 	}
 	
-	protected VulkanBuffer(MemoryResource parent, long vk, long offset, int size, int usage, boolean isView) throws VulkanException
+	protected VulkanBuffer(/*MemoryResource*/VulkanBuffer parent, long vk, long offset, int size, int usage, boolean isView) throws VulkanException
 	{
 		super(parent.getDevice(), parent.getMemory());
 		this.offset = offset;
@@ -234,6 +204,14 @@ public class VulkanBuffer extends MemoryResource {
 	public int getUsage()
 	{
 		return usage;
+	}
+	
+	public ByteBuffer asBuffer()
+	{
+		long offset = this.offset;
+		for (VulkanBuffer buffer = parent; buffer != null; buffer = buffer.parent) offset += buffer.offset;
+		ByteBuffer buffer = VulkanErrorUtils.nonNull(memory.getMapping()).getBuffer();
+		return buffer.slice((int) offset, size).order(buffer.order());
 	}
 	
 	@Override

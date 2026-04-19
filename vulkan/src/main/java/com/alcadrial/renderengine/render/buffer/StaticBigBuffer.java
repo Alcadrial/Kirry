@@ -92,6 +92,7 @@ public class StaticBigBuffer extends AbstractBigVulkanBuffer<StaticBigBuffer.Dat
 	public void clear()
 	{
 		Data data = getActiveData();
+		if (data == null) return;
 		data.allocationOffset = 0;
 		for (Slot<? extends VulkanBuffer> slot : data.slots)
 		{
