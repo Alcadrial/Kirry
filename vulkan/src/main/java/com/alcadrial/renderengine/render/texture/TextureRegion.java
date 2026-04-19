@@ -39,6 +39,6 @@ public class TextureRegion {
 	@Override
 	public String toString()
 	{
-		return "TextureRegion{texture=" + texture + ", uv=[" + uvStart.x() + ";" + uvStart.y() + "]->[" + uvEnd.x() + ";" + uvEnd.y() + "]}";
+		return "TextureRegion{" + texture + ", uv=[" + uvStart.x() + ";" + uvStart.y() + "]->[" + uvEnd.x() + ";" + uvEnd.y() + "]}";
 	}
 }

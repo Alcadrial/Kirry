@@ -19,7 +19,7 @@ public class FontTest extends RenderTest {
 		{
 			TestProperties.init(args);
 			RenderEngine.enableDebug();
-			RenderTest.initRenderEngine().useFont(true).initialize();;
+			RenderTest.initRenderEngine().useFont(true).initialize();
 			
 			RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 			VulkanWindow window = VulkanWindow.defaultBuilder()
@@ -28,7 +28,6 @@ public class FontTest extends RenderTest {
 					.samplerAnisotropy(true)
 				)
 				.useDepthTexture(false)
-				.sampleCount(4)
 				.build(128, 128, "Test");
 			registerDragging();
 			

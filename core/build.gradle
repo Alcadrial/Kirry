@@ -12,6 +12,7 @@ javadoc.options.tags("apiNote::API Note:", "implSpec::Implementation Requirement
 dependencies {
 	implementation(libs.kector)
 	
+	implementation(libs.bundles.jackson.and.eclipse.collections)
 	implementation(libs.jspecify)
 	implementation(libs.lwjgl)
 	implementation(libs.lwjgl.glfw)

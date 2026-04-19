@@ -101,6 +101,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		private boolean defaultPrimary;
 		private boolean secondary;
 		private boolean useDepthTexture;
+		private int sampleCount;
 		private long vk;
 		private @Nullable VulkanWindow window;
 		
@@ -113,6 +114,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			defaultPrimary = false;
 			secondary = false;
 			useDepthTexture = true;
+			sampleCount = VK10.VK_SAMPLE_COUNT_1_BIT;
 			vk = 0;
 			window = null;
 		}
@@ -172,6 +174,13 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			return this;
 		}
 		
+		
+		public Builder sampleCount(int sampleCount)
+		{
+			this.sampleCount = sampleCount;
+			return this;
+		}
+		
 		/**
 		 * <b>WARNING:</b> the window hint {@link GLFW#GLFW_CLIENT_API CLIENT_API} is set to {@link GLFW#GLFW_NO_API NO_API}
 		 * using {@link RenderEngine#setWindowHint(int, int) RenderEngine#setWindowHint}
@@ -185,6 +194,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			Vulkan vulkan = RenderEngine.getVulkan();
 			
 			RenderEngine.setWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API);
+			RenderEngine.setWindowHint(GLFW.GLFW_SAMPLES, sampleCount);
 			vk = VulkanErrorUtils.nonNull(RenderEngine.awaitRequestMainThread(() -> GLFW.glfwCreateWindow(width, height, title, 0, 0)), "Cannot create window");
 			
 			Surface.Builder surface = Surface.builder().windowVk(vk).create();
@@ -386,7 +396,9 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		//	drawCount = 0;
 		
 		int format = surfaceData.format().format();
-		try (RenderPassTemplate renderPassTemplate = builder.useDepthTexture ? RenderPassTemplate.initColorDepthTextureTemplate(format) : RenderPassTemplate.initColorTextureTemplate(format))
+		try (RenderPassTemplate renderPassTemplate = builder.useDepthTexture ? 
+			RenderPassTemplate.initColorDepthTextureTemplate(format) : 
+				RenderPassTemplate.initColorTextureTemplate(format))
 		{
 			renderPass = renderPassTemplate.createRenderPass(device);
 		}
