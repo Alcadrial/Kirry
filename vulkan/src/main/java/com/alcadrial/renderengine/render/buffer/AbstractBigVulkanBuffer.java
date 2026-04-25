@@ -12,11 +12,10 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.OverflowException;
-import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
-public abstract class AbstractBigVulkanBuffer<D extends AbstractBigVulkanBuffer.Data> extends RawDeviceResource implements AutoCloseable {
+public abstract class AbstractBigVulkanBuffer<D extends AbstractBigVulkanBuffer.Data> implements AutoCloseable {
 	
 	static
 	{
@@ -45,25 +44,23 @@ public abstract class AbstractBigVulkanBuffer<D extends AbstractBigVulkanBuffer.
 		}
 	}
 	
+	protected Device device;
 	protected D remoteData;
 	protected @Nullable D localData;
 	
 	protected AbstractBigVulkanBuffer(Device device, int size, int flags) throws VulkanException
 	{
-		super(device);
+		this.device = device;
 		VulkanBuffer remoteBigBuffer = new VulkanBuffer(device, size, VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 		Debug.debugCreate(() -> "Created BigBuffer Remote " + remoteBigBuffer);
-		vk = remoteBigBuffer.getVk();
 		remoteData = allocateData(remoteBigBuffer);
 	}
 	
 	protected abstract D allocateData(VulkanBuffer buffer);
 	
-	@Override
 	public void setName(String name)
 	{
 		remoteData.buffer.setName(name);
-		this.name = name;
 	}
 	
 	/**
@@ -126,13 +123,14 @@ public abstract class AbstractBigVulkanBuffer<D extends AbstractBigVulkanBuffer.
 		return data.buffer;
 	}
 	
+	public Device getDevice()
+	{
+		return device;
+	}
+	
 	public abstract int getMaxAllocableSize();
 	public abstract void sync();
 	public abstract void clear();
-	
-	@Override
-	public void debug()
-	{}
 	
 	@Override
 	public void close()
@@ -147,7 +145,6 @@ public abstract class AbstractBigVulkanBuffer<D extends AbstractBigVulkanBuffer.
 		}
 		clear();
 		if (remoteData != null) remoteData.close();
-		super.close();
 	}
 	
 	public static class PhysicalDeviceTransferState implements AutoCloseable {

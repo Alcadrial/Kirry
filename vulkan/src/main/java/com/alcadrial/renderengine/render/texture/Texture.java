@@ -41,6 +41,7 @@ public class Texture extends MemoryResource {
 				
 				VulkanBuffer buffer = VulkanBuffer.forTransfer(device, data.limit());
 				buffer.getMemory().mapMemory().getBuffer().put(data).rewind();
+				buffer.getMemory().unmapMemory();
 				STBImage.stbi_image_free(data.rewind());
 				
 				return new TextureBuffer(buffer, width[0], height[0]);
@@ -66,17 +67,16 @@ public class Texture extends MemoryResource {
 				
 				VulkanBuffer buffer = VulkanBuffer.forTransfer(device, data.limit());
 				buffer.getMemory().mapMemory().getBuffer().put(data).rewind();
+				buffer.getMemory().unmapMemory();
 				STBImage.stbi_image_free(data.rewind());
 				
 				Texture texture = Texture.create2dTexture(device, width[0], height[0], VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | usage, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 				
-				CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
-				texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-				commandBuffer.copyBufferToImage(buffer, texture);
-				texture.changeLayout(commandBuffer, dstLayout);
-				commandBuffer.endRecording();
-				device.submitSingleUseCommandBuffer(stack, commandBuffer).join();
-				buffer.getMemory().unmapMemory();
+				device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
+					texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+					commandBuffer.copyBufferToImage(buffer, texture);
+					texture.changeLayout(commandBuffer, dstLayout);
+				}).join();
 				buffer.close();
 				
 				return texture;
@@ -86,32 +86,32 @@ public class Texture extends MemoryResource {
 	
 	public static Texture create1dTexture(Device device, int width, int format, int usage, int aspectMask) throws VulkanException
 	{
-		return new Texture(device, width, 1, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, 1, VK10.VK_IMAGE_TYPE_1D);
+		return create1dTexture(device, width, format, usage, aspectMask, 1, 1);
 	}
 	
-	public static Texture create1dTexture(Device device, int width, int format, int usage, int aspectMask, int mipLevels) throws VulkanException
+	public static Texture create1dTexture(Device device, int width, int format, int usage, int aspectMask, int samples, int mipLevels) throws VulkanException
 	{
-		return new Texture(device, width, 1, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_1D);
+		return new Texture(device, width, 1, 1, format, samples, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_1D);
 	}
 	
 	public static Texture create2dTexture(Device device, int width, int height, int format, int usage, int aspectMask) throws VulkanException
 	{
-		return new Texture(device, width, height, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, 1, VK10.VK_IMAGE_TYPE_2D);
+		return create2dTexture(device, width, height, format, usage, aspectMask, 1, 1);
 	}
 	
-	public static Texture create2dTexture(Device device, int width, int height, int format, int usage, int aspectMask, int mipLevels) throws VulkanException
+	public static Texture create2dTexture(Device device, int width, int height, int format, int usage, int aspectMask, int samples, int mipLevels) throws VulkanException
 	{
-		return new Texture(device, width, height, 1, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_2D);
+		return new Texture(device, width, height, 1, format, samples, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_2D);
 	}
 	
 	public static Texture create3dTexture(Device device, int width, int height, int depth, int format, int usage, int aspectMask) throws VulkanException
 	{
-		return new Texture(device, width, height, depth, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, 1, VK10.VK_IMAGE_TYPE_3D);
+		return create3dTexture(device, width, height, depth, format, usage, aspectMask, 1, 1);
 	}
 	
-	public static Texture create3dTexture(Device device, int width, int height, int depth, int format, int usage, int aspectMask, int mipLevels) throws VulkanException
+	public static Texture create3dTexture(Device device, int width, int height, int depth, int format, int usage, int aspectMask, int samples, int mipLevels) throws VulkanException
 	{
-		return new Texture(device, width, height, depth, format, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_3D);
+		return new Texture(device, width, height, depth, format, samples, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_3D);
 	}
 	
 	private TextureView view;
@@ -119,20 +119,22 @@ public class Texture extends MemoryResource {
 	private int width;
 	private int height;
 	private int depth;
-	private int mipLevels;
 	private int format;
+	private int samples;
+	private int mipLevels;
 	private int imageType;
 	private int aspectMask;
 	private int layout;
 	
-	private Texture(Device device, int width, int height, int depth, int format, int tiling, int usage, int aspectMask, int mipLevels, int imageType) throws VulkanException
+	private Texture(Device device, int width, int height, int depth, int format, int samples, int tiling, int usage, int aspectMask, int mipLevels, int imageType) throws VulkanException
 	{
 		length = width * height * depth;
 		this.width = width;
 		this.height = height;
 		this.depth = depth;
-		this.mipLevels = mipLevels;
 		this.format = format;
+		this.samples = samples;
+		this.mipLevels = mipLevels;
 		this.imageType = imageType;
 		this.aspectMask = aspectMask;
 		layout = VK10.VK_IMAGE_LAYOUT_UNDEFINED;
@@ -141,21 +143,21 @@ public class Texture extends MemoryResource {
 		Memory memory;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VkImageCreateInfo createInfo = VkImageCreateInfo.malloc(stack);
-			createInfo.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
-			createInfo.pNext(0);
-			createInfo.flags(0);
-			createInfo.imageType(imageType);
-			createInfo.format(format);
-			createInfo.extent().width(width).height(height).depth(depth);
-			createInfo.mipLevels(mipLevels);
-			createInfo.arrayLayers(1);
-			createInfo.samples(VK10.VK_SAMPLE_COUNT_1_BIT);
-			createInfo.tiling(tiling);
-			createInfo.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE);
-			createInfo.usage(usage);
-			createInfo.pQueueFamilyIndices(null);
-			createInfo.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED);
+			VkImageCreateInfo createInfo = VkImageCreateInfo.malloc(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
+				.pNext(0)
+				.flags(0)
+				.imageType(imageType)
+				.format(format)
+				.extent(e -> e.set(width, height, depth))
+				.mipLevels(mipLevels)
+				.arrayLayers(1)
+				.samples(samples)
+				.tiling(tiling)
+				.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE)
+				.usage(usage)
+				.pQueueFamilyIndices(null)
+				.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED);
 			
 			long[] p = new long[1];
 			VulkanErrorUtils.assertNoError(VK10.vkCreateImage(device.getVk(), createInfo, null, p), "Failed to create image");
@@ -297,14 +299,19 @@ public class Texture extends MemoryResource {
 		return depth;
 	}
 	
-	public int getMipmapLevels()
-	{
-		return mipLevels;
-	}
-	
 	public int getFormat()
 	{
 		return format;
+	}
+	
+	public int getSamples()
+	{
+		return samples;
+	}
+	
+	public int getMipmapLevels()
+	{
+		return mipLevels;
 	}
 	
 	public int getImageType()

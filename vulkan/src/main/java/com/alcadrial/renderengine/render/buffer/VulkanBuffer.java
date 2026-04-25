@@ -43,16 +43,18 @@ public class VulkanBuffer extends MemoryResource {
 		return new VulkanBuffer(vulkanBuffer.device, vulkanBuffer.size, vulkanBuffer.usage | VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK10.VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
 	}
 	
-	public static VulkanBuffer ofUniformsBindings(Device device, int bindingsCount) throws VulkanException
+	public static VulkanBuffer ofUniformsBindings(Device device, int bindingsCount, int bindingSize) throws VulkanException
 	{
 		int minUniformBufferOffsetAlignment = (int) device.getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment();
-		return ofUniforms(device, minUniformBufferOffsetAlignment * bindingsCount, 0);
+		int minSize = Math.ceilDiv(bindingSize, minUniformBufferOffsetAlignment) * minUniformBufferOffsetAlignment;
+		return ofUniforms(device, minSize * bindingsCount, 0);
 	}
 	
-	public static VulkanBuffer ofUniformsBindingsView(VulkanBuffer parent, int bindingsOffset, int bindingsCount) throws VulkanException
+	public static VulkanBuffer ofUniformsBindingsView(VulkanBuffer parent, int bindingsOffset, int bindingsCount, int bindingSize) throws VulkanException
 	{
-		int minUniformBufferOffsetAlignment = (int) parent.device.getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment();
-		return view(parent, minUniformBufferOffsetAlignment * bindingsOffset, minUniformBufferOffsetAlignment * bindingsCount);
+		int minUniformBufferOffsetAlignment = (int) parent.getDevice().getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment();
+		int minSize = Math.ceilDiv(bindingSize, minUniformBufferOffsetAlignment) * minUniformBufferOffsetAlignment;
+		return view(parent, minSize * bindingsOffset, minSize * bindingsCount);
 	}
 	
 	public static VulkanBuffer ofUniforms(Device device, int size) throws VulkanException
@@ -210,7 +212,7 @@ public class VulkanBuffer extends MemoryResource {
 	{
 		long offset = this.offset;
 		for (VulkanBuffer buffer = parent; buffer != null; buffer = buffer.parent) offset += buffer.offset;
-		ByteBuffer buffer = VulkanErrorUtils.nonNull(memory.getMapping()).getBuffer();
+		ByteBuffer buffer = VulkanErrorUtils.nonNull(memory.getMapping(), "Memory is not mapped").getBuffer();
 		return buffer.slice((int) offset, size).order(buffer.order());
 	}
 	

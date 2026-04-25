@@ -13,8 +13,8 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkImageCopy;
 
-import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.renderengine.core.util.color.Color;
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
@@ -174,7 +174,9 @@ public class Atlas {
 		this.debug = debug;
 		width = startWidth;
 		height = startHeight;
+		isDirty = true;
 		texture = Texture.create2dTexture(device, width, height, format, this.usage, aspectMask);
+		Debug.runOnDebug(() -> texture.setName("Atlas"));
 		device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
 			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 			if (debug)
@@ -211,6 +213,53 @@ public class Atlas {
 		List<Resource> resources = new ArrayList<>(buffers.length);
 		for (TextureBuffer buffer : buffers) resources.add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight()));
 		return addAll(resources);
+	}
+	
+	public void freeRegion(TextureRegion region)
+	{
+		int newX = region.getXStart();
+		int newY = region.getYStart();
+		int newWidth = region.getXEnd() - region.getXStart();
+		int newHeight = region.getYEnd() - region.getYStart();
+		int tests = 4;
+		for (Iterator<Slot> i = slots.iterator(); i.hasNext() && tests > 0;)
+		{
+			Slot slot = i.next();
+			if (region.getYStart() < slot.y + slot.height && region.getYEnd() < slot.y)
+			{
+				if (slot.x + slot.width == region.getXStart())
+				{
+					newX -= slot.width;
+					newWidth += slot.width;
+					i.remove();
+					tests--;
+				}
+				else if (slot.x == region.getXEnd())
+				{
+					newWidth += slot.width;
+					i.remove();
+					tests--;
+				}
+			}
+			else if (region.getXStart() < slot.x + slot.width && region.getXEnd() < slot.x)
+			{
+				if (slot.y + slot.height == region.getYStart())
+				{
+					newY -= slot.height;
+					newHeight += slot.height;
+					i.remove();
+					tests--;
+				}
+				else if (slot.y == region.getYEnd())
+				{
+					newHeight += slot.height;
+					i.remove();
+					tests--;
+				}
+			}
+		}
+		slots.add(new Slot(newX, newY, newWidth, newHeight));
+		availableArea += (region.getXEnd() - region.getXStart()) * (region.getYEnd() - region.getYStart());
 	}
 	
 	private TextureRegion add(Resource resource)
@@ -297,7 +346,7 @@ public class Atlas {
 	
 	private Region insertIntoSlot(Resource resource, Slot s)
 	{
-		TextureRegion region = new TextureRegion(texture, Vector2f.of((float) s.x / width, (float) s.y / height), Vector2f.of((float) (s.x + resource.width) / width, (float) (s.y + resource.height) / height));
+		TextureRegion region = new TextureRegion(texture, s.x, s.y, s.x + resource.width, s.y + resource.height);
 		
 		Slot regionSlot = new Slot(s.x, s.y, resource.width, resource.height);
 		int x0 = regionSlot.x;
@@ -381,7 +430,7 @@ public class Atlas {
 		if (newRegionsStartingIndex != 0)
 		{
 			Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask);
-			
+			Debug.runOnDebug(() -> newTexture.setName("Atlas"));
 			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
 				texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 				newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -444,6 +493,7 @@ public class Atlas {
 		{
 			texture.close();
 			Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask);
+			Debug.runOnDebug(() -> newTexture.setName("Atlas"));
 			
 			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
 				newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);

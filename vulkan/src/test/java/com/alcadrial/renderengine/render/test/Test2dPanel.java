@@ -70,7 +70,7 @@ public class Test2dPanel extends RenderTest {
 		mainTest(args, Test2dPanel::start, () -> staticLoop(Test2dPanel::loop, r -> {
 			render = r;
 			RenderEngine.getVulkan().getWindow().show();
-		}), Test2dPanel::end);
+		}), Test2dPanel::end, b -> b.multiThreading(false));
 	}
 	
 	private static RenderPass renderPass;
@@ -182,7 +182,7 @@ public class Test2dPanel extends RenderTest {
 		
 		vertexBuffer = staticBigBuffer.allocate(7 * 4 * SIZE * SIZE * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		indexBuffer = staticBigBuffer.allocate(6 * SIZE * SIZE * 4 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 1);
+		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 1, 16 * 4);
 		
 		staticBigBuffer.setName("StaticBigBuffer");
 		vertexBuffer.setName("VertexBuffer");

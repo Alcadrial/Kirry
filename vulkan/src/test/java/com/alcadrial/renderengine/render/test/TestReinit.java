@@ -68,7 +68,7 @@ public class TestReinit extends RenderTest {
 			for (int i = 0; i < 100 && flag.get(); i++)
 			{
 				System.out.println("Iteration " + i);
-				println("Render Engine initialization", () -> RenderTest.initRenderEngine().multiThreading(true).initialize(), TestProperties.PRINT_LOADING_TIMES);
+				println("Render Engine initialization", () -> RenderTest.initRenderEngine().initialize(), TestProperties.PRINT_LOADING_TIMES);
 				if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
 				
 				if (RenderEngineProperties.DEBUG.getValue())

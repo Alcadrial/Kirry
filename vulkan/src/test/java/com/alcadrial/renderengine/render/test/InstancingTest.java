@@ -119,7 +119,6 @@ public class InstancingTest extends RenderTest {
 			RenderEngine.terminate();
 			return;
 		}
-		
 		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
 		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
@@ -146,7 +145,7 @@ public class InstancingTest extends RenderTest {
 		vertexBuffer = staticBigBuffer.allocate(24 * 10 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		instanceVertexBuffer = staticBigBuffer.allocate(instanceCount * 3 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		indexBuffer = staticBigBuffer.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 6);
+		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 6, 16 * 2 * 4);
 		uniformBuffer.getMemory().mapMemory();
 		
 		staticBigBuffer.setName("StaticBigBuffer");
@@ -253,11 +252,11 @@ public class InstancingTest extends RenderTest {
 				.descriptorSets(descriptorSets)
 				.buffersCount(window.getFramesCount())
 				.bindings(i -> new BindingInfo[] {
-					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i, 1), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
+					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i, 1, 16 * 2 * 4), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.PROJECTION,
 						ShaderVariable.MODEL
 					)),
-					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i + 1, 1), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
+					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i + 1, 1, (3 + 1 + 1) * 4), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
 						lightPos,
 						lightIntensity,
 						spaceFogIntensity

@@ -1,5 +1,6 @@
 package com.alcadrial.renderengine.render.util;
 
+import java.util.Arrays;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.NonNull;
@@ -26,70 +27,76 @@ public class VulkanErrorUtils {
 		RenderEngine.assertLoaded();
 	}
 	
+	private static <E extends Exception> E fixException(E e)
+	{
+		e.setStackTrace(Arrays.copyOfRange(e.getStackTrace(), 1, e.getStackTrace().length));
+		return e;
+	}
+	
 	public static <O> void match(O obj, O other)
 	{
-		if (!obj.equals(other)) throw new DataIncosistenceException();
+		if (!obj.equals(other)) throw fixException(new DataIncosistenceException());
 	}
 	
 	public static <O> void match(O obj, O other, String error)
 	{
-		if (!obj.equals(other)) throw new DataIncosistenceException(error);
+		if (!obj.equals(other)) throw fixException(new DataIncosistenceException(error));
 	}
 	
 	public static <O> @NonNull O nonNull(O obj)
 	{
-		if (obj == null) throw new NullPointerException();
+		if (obj == null) throw fixException(new NullPointerException());
 		return obj;
 	}
 	
 	public static <O> @NonNull O nonNull(O obj, String error)
 	{
-		if (obj == null) throw new NullPointerException(error);
+		if (obj == null) throw fixException(new NullPointerException(error));
 		return obj;
 	}
 	
 	public static int nonNull(int id)
 	{
-		if (id == 0) throw new NullPointerException();
+		if (id == 0) throw fixException(new NullPointerException());
 		return id;
 	}
 	
 	public static int nonNull(int id, String error)
 	{
-		if (id == 0) throw new NullPointerException(error);
+		if (id == 0) throw fixException(new NullPointerException(error));
 		return id;
 	}
 	
 	public static long nonNull(long pointer)
 	{
-		if (pointer == 0) throw new NullPointerException();
+		if (pointer == 0) throw fixException(new NullPointerException());
 		return pointer;
 	}
 	
 	public static long nonNull(long pointer, String error)
 	{
-		if (pointer == 0) throw new NullPointerException(error);
+		if (pointer == 0) throw fixException(new NullPointerException(error));
 		return pointer;
 	}
 	
 	public static void assertStatement(boolean flag, String details) throws VulkanException
 	{
-		if (!flag) throw new VulkanException(details);
+		if (!flag) throw fixException(new VulkanException(details));
 	}
 	
 	public static void assertNoError(int error, Supplier<String> details) throws VulkanException
 	{
-		if (error < 0) throw new VulkanException(error, details.get() + ": " + getErrorString(error));
+		if (error < 0) throw fixException(new VulkanException(error, details.get() + ": " + getErrorString(error)));
 	}
 	
 	public static void assertNoError(int error, String details) throws VulkanException
 	{
-		if (error < 0) throw new VulkanException(error, details + ": " + getErrorString(error));
+		if (error < 0) throw fixException(new VulkanException(error, details + ": " + getErrorString(error)));
 	}
 	
 	public static void assertNoError(int error) throws VulkanException
 	{
-		if (error < 0) throw new VulkanException(error, getErrorString(error));
+		if (error < 0) throw fixException(new VulkanException(error, getErrorString(error)));
 	}
 	
 	public static String getErrorString(int error)

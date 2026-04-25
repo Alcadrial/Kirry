@@ -137,12 +137,12 @@ public class RenderPassTemplate implements AutoCloseable {
 			).build();
 	}
 	
-	public static RenderPassTemplate transformColorDepthTextureTemplate(int format)
+	public static RenderPassTemplate transformColorDepthTextureTemplate(int format, int sampleCount)
 	{
 		return create()
 			.addAttachment(config -> config
 				.format(format)
-				.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
+				.samples(sampleCount)
 				.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR)
 				.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE)
 				.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE)
@@ -151,7 +151,7 @@ public class RenderPassTemplate implements AutoCloseable {
 				.finalLayout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 			).addAttachment(config -> config
 				.format(VK10.VK_FORMAT_D24_UNORM_S8_UINT)
-				.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
+				.samples(sampleCount)
 				.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR)
 				.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE)
 				.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE)

@@ -147,7 +147,7 @@ public class BasicScreen implements Screen {
 		Device device = window.getDevice();
 		SurfaceData data = window.getSurface().getData();
 		
-		if (uniformBuffer == null) uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 2);
+		if (uniformBuffer == null) uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 2, 16 * 2 * 4);
 		
 		if (checkState(WIDGET_STATE_DIRTY))
 		{
@@ -251,7 +251,7 @@ public class BasicScreen implements Screen {
 				.graphicsPipeline(graphicsPipeline)
 				.descriptorSets(descriptorSets)
 				.bindings(
-					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 0, 1), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
+					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 0, 1, 16 * 2), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.PROJECTION,
 						ShaderVariable.MODEL
 					)),

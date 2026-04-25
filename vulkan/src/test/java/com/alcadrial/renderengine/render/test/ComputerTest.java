@@ -13,7 +13,6 @@ import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkClearValue;
-import org.lwjgl.vulkan.VkComputePipelineCreateInfo;
 import org.lwjgl.vulkan.VkDescriptorBufferInfo;
 import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
 import org.lwjgl.vulkan.VkDescriptorPoolSize;
@@ -21,7 +20,6 @@ import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo;
 import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
-import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
@@ -54,7 +52,6 @@ import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
-import com.alcadrial.renderengine.render.shader.ShaderUtils;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.binding.BindingInfo;
 import com.alcadrial.renderengine.render.shader.descriptor.DescriptorPool;
@@ -225,7 +222,7 @@ public class ComputerTest extends RenderTest {
 		staticBigBuffer = new StaticBigBuffer(device, 1 << 20);
 		VulkanBuffer vertexBuffer = staticBigBuffer.allocate(242 * 3 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		VulkanBuffer indexBuffer = staticBigBuffer.allocate(2064 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 3 * window.getFramesCount());
+		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 3 * window.getFramesCount(), 16 * 4);
 		uniformBuffer.getMemory().mapMemory();
 		VulkanBuffer colorBuffer = staticBigBuffer.allocate(PARTICLE_COUNT * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		VulkanBuffer vertexStorageBuffer = staticBigBuffer.allocate(window.getFramesCount() * size, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
@@ -346,10 +343,10 @@ public class ComputerTest extends RenderTest {
 				.descriptorSets(descriptorSets)
 				.buffersCount(window.getFramesCount())
 				.bindings(i -> new BindingInfo[] {
-					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i, 1), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
+					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i, 1, 16 * 4), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.PROJECTION
 					)),
-					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i + 1, 1), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
+					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i + 1, 1, 4), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
 						particleRadius
 					))
 				})
@@ -367,79 +364,61 @@ public class ComputerTest extends RenderTest {
 			}
 			rebuildProjectionMatrix = true;
 			
-			VkPipelineShaderStageCreateInfo shaderCreateInfo = ShaderUtils.createPipelineShaderStageCreateInfoBuffer(stack, device, computeShader);
+			createInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
+				.pNext(0)
+				.flags(0)
+				.pBindings(VkDescriptorSetLayoutBinding.malloc(3, stack)
+					.apply(b -> b
+						.binding(0)
+						.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+						.descriptorCount(1)
+						.stageFlags(VK10.VK_SHADER_STAGE_COMPUTE_BIT)
+						.pImmutableSamplers(null))
+					.apply(b -> b
+						.binding(1)
+						.descriptorType(VK10.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+						.descriptorCount(1)
+						.stageFlags(VK10.VK_SHADER_STAGE_COMPUTE_BIT)
+						.pImmutableSamplers(null))
+					.apply(b -> b
+						.binding(2)
+						.descriptorType(VK10.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+						.descriptorCount(1)
+						.stageFlags(VK10.VK_SHADER_STAGE_COMPUTE_BIT)
+						.pImmutableSamplers(null))
+					.rewind()
+				);
 			
-			try
-			{
-				createInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
-					.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
-					.pNext(0)
-					.flags(0)
-					.pBindings(VkDescriptorSetLayoutBinding.malloc(3, stack)
-						.apply(b -> b
-							.binding(0)
-							.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-							.descriptorCount(1)
-							.stageFlags(VK10.VK_SHADER_STAGE_COMPUTE_BIT)
-							.pImmutableSamplers(null))
-						.apply(b -> b
-							.binding(1)
-							.descriptorType(VK10.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
-							.descriptorCount(1)
-							.stageFlags(VK10.VK_SHADER_STAGE_COMPUTE_BIT)
-							.pImmutableSamplers(null))
-						.apply(b -> b
-							.binding(2)
-							.descriptorType(VK10.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
-							.descriptorCount(1)
-							.stageFlags(VK10.VK_SHADER_STAGE_COMPUTE_BIT)
-							.pImmutableSamplers(null))
-						.rewind()
-					);
-				
-				descriptorSetLayout = new DescriptorSetLayout(device, createInfo);
-				pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
-				computeLayout = new PipelineLayout(device, pipelineLayoutInfo);
-				
-				VkComputePipelineCreateInfo computeCreateInfo = VkComputePipelineCreateInfo.malloc(stack)
-					.sType(VK10.VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO)
-					.pNext(0)
-					.flags(0)
-					.stage(shaderCreateInfo)
-					.layout(computeLayout.getVk())
-					.basePipelineHandle(0)
-					.basePipelineIndex(0);
-				
-				computePipeline = new ComputePipeline(device, computeLayout, computeCreateInfo);
-				descriptorSets = descriptorPool.allocates(descriptorSetLayout, window.getFramesCount());
-				computer = Computer.builder()
-					.computePipeline(computePipeline)
-					.descriptorSets(descriptorSets)
-					.buffersCount(window.getFramesCount())
-					.groupCount(Vector3i.of(256, 1, 1))
-					.bindings(i -> new BindingInfo[] {
-						BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, i + 2 * window.getFramesCount(), 1), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
-							minBound,
-							maxBound,
-							enlapsedTime
-						)),
-						BindingInfo.ofStorage(VulkanBuffer.view(storageBuffers[0]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
-							ShaderVariable.POSITION,
-							ShaderVariable.VELOCITY,
-							ShaderVariable.COLOR
-						)),
-						BindingInfo.ofStorage(VulkanBuffer.view(storageBuffers[1]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
-							ShaderVariable.POSITION,
-							ShaderVariable.VELOCITY,
-							ShaderVariable.COLOR
-						))
-					})
-					.build();
-			}
-			finally
-			{
-				VK10.vkDestroyShaderModule(device.getVk(), shaderCreateInfo.module(), null);
-			}
+			descriptorSetLayout = new DescriptorSetLayout(device, createInfo);
+			pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
+			computeLayout = new PipelineLayout(device, pipelineLayoutInfo);
+			
+			computePipeline = new ComputePipeline(device, computeLayout, computeShader);
+			descriptorSets = descriptorPool.allocates(descriptorSetLayout, window.getFramesCount());
+			computer = Computer.builder()
+				.computePipeline(computePipeline)
+				.descriptorSets(descriptorSets)
+				.buffersCount(window.getFramesCount())
+				.groupCount(Vector3i.of(256, 1, 1))
+				.bindings(i -> new BindingInfo[] {
+					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, i + 2 * window.getFramesCount(), 1, 7 * 4), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+						minBound,
+						maxBound,
+						enlapsedTime
+					)),
+					BindingInfo.ofStorage(VulkanBuffer.view(storageBuffers[0]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+						ShaderVariable.POSITION,
+						ShaderVariable.VELOCITY,
+						ShaderVariable.COLOR
+					)),
+					BindingInfo.ofStorage(VulkanBuffer.view(storageBuffers[1]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+						ShaderVariable.POSITION,
+						ShaderVariable.VELOCITY,
+						ShaderVariable.COLOR
+					))
+				})
+				.build();
 			
 			for (int i = 0; i < window.getFramesCount(); i++)
 			{

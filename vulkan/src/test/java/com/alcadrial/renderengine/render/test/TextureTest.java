@@ -59,7 +59,7 @@ public class TextureTest extends RenderTest {
 		mainTest(args, TextureTest::start, () -> staticLoop(TextureTest::loop, r -> {
 			render = r;
 			RenderEngine.getVulkan().getWindow().show();
-		}), TextureTest::end);
+		}), TextureTest::end, b -> b.multiThreading(false));
 	}
 	
 	private static Renderer renderer;
@@ -145,7 +145,7 @@ public class TextureTest extends RenderTest {
 		
 		vertexBuffer = new VulkanBuffer(device, 28 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		indexBuffer = new VulkanBuffer(device, 6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 1);
+		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 1, 16 * 4);
 		uniformBuffer.getMemory().mapMemory();
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
@@ -290,7 +290,7 @@ public class TextureTest extends RenderTest {
 			{
 				isModifiedMatrix = false;
 				float scale = Math.min(window.getWidth(), window.getHeight());
-				Matrix4f transformation = new Matrix4f().scale(Vector3f.of(scale / window.getWidth(), -scale / window.getHeight(), 0.02F));
+				Matrix4f transformation = new Matrix4f().scale(Vector3f.of(scale / window.getWidth(), scale / window.getHeight(), 0.02F));
 				Matrix4f model = new Matrix4f().translateTo(panelPos);
 				transformation.multiply(model);
 				renderer.useBufferLayoutWriter(0, 0, writer -> {
@@ -329,9 +329,12 @@ public class TextureTest extends RenderTest {
 	
 	public static void end()
 	{
+		uniformBuffer.close();
+		vertexBuffer.close();
 		graphicsPipeline.close();
 		graphicsPipelineTemplate.close();
 		pipelineLayout.close();
+		
 		RenderEngine.terminate();
 	}
 }

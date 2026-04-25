@@ -8,7 +8,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Queue;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 import org.jspecify.annotations.NonNull;
@@ -173,7 +175,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			this.useDepthTexture = useDepthTexture;
 			return this;
 		}
-		
 		
 		public Builder sampleCount(int sampleCount)
 		{
@@ -354,7 +355,9 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private final PresentQueue presentQueue;
 	
 	private final Surface surface;
-	private final AtomicBoolean isSurfaceSizeChanged;
+	private final Lock surfaceSizeChangedLock;
+	private volatile boolean isSurfaceSizeChanged;
+	private final Condition swapchainRecreatedCondition;
 	
 	private @Nullable Texture depthTexture;
 	private final RenderPass renderPass;
@@ -390,15 +393,15 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		this.device = device;
 		presentQueue = (@NonNull PresentQueue) device.getPresentQueue();
 		surface = surfaceBuilder.window(this).build();
-		isSurfaceSizeChanged = new AtomicBoolean(false);
+		surfaceSizeChangedLock = new ReentrantLock();
+		swapchainRecreatedCondition = surfaceSizeChangedLock.newCondition();
+		
 		SurfaceData surfaceData = surface.getData();
 		resetCallbacks();
 		//	drawCount = 0;
 		
 		int format = surfaceData.format().format();
-		try (RenderPassTemplate renderPassTemplate = builder.useDepthTexture ? 
-			RenderPassTemplate.initColorDepthTextureTemplate(format) : 
-				RenderPassTemplate.initColorTextureTemplate(format))
+		try (RenderPassTemplate renderPassTemplate = builder.useDepthTexture ? RenderPassTemplate.initColorDepthTextureTemplate(format) : RenderPassTemplate.initColorTextureTemplate(format))
 		{
 			renderPass = renderPassTemplate.createRenderPass(device);
 		}
@@ -575,41 +578,48 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	{
 		SurfaceData surfaceData = surface.reinit();
 		for (Queue<VulkanRunnable> queue : presentationTasks) while (!queue.isEmpty()) queue.poll().run();
-		while (true)
+		try
 		{
-			VkExtent2D extent = surfaceData.extent();
-			if (extent.width() == 0 || extent.height() == 0) return false;
-			
-			Swapchain oldSwapchain = swapchain;
-			FrameData[] oldFrames = frames;
-			@Nullable
-			Texture oldDepthTexture = depthTexture;
-			
-			Swapchain newSwapchain = createSwapchain(surfaceData, oldSwapchain);
-			@Nullable
-			Texture newDepthTexture = oldDepthTexture != null ? createDepthTexture(surfaceData) : null;
-			FrameData[] newFrames = prepareFrameBuffers(surfaceData, newSwapchain, newDepthTexture, oldFrames);
-			
-			for (VulkanConsumer<SurfaceData> callback : onSwapchainRecreationCallbacks) callback.accept(surfaceData);
-			frames = newFrames;
-			if (name != null) newSwapchain.setName("Swapchain (" + name + ")");
-			depthTexture = newDepthTexture;
-			swapchain = newSwapchain;
-			
-			for (int i = 0; i < frames.length; i++)
+			while (true)
 			{
-				int i0 = i;
-				presentationTasks.get(i0).add(() -> {
-					FrameData frame = oldFrames[i0];
-					frame.frameBuffer.close();
-					VK10.vkDestroyImageView(device.getVk(), frame.imageView, null);
+				VkExtent2D extent = surfaceData.extent();
+				if (extent.width() == 0 || extent.height() == 0) return false;
+				
+				Swapchain oldSwapchain = swapchain;
+				FrameData[] oldFrames = frames;
+				@Nullable
+				Texture oldDepthTexture = depthTexture;
+				
+				Swapchain newSwapchain = createSwapchain(surfaceData, oldSwapchain);
+				@Nullable
+				Texture newDepthTexture = oldDepthTexture != null ? createDepthTexture(surfaceData) : null;
+				FrameData[] newFrames = prepareFrameBuffers(surfaceData, newSwapchain, newDepthTexture, oldFrames);
+				
+				for (VulkanConsumer<SurfaceData> callback : onSwapchainRecreationCallbacks) callback.accept(surfaceData);
+				frames = newFrames;
+				if (name != null) newSwapchain.setName("Swapchain (" + name + ")");
+				depthTexture = newDepthTexture;
+				swapchain = newSwapchain;
+				
+				for (int i = 0; i < frames.length; i++)
+				{
+					int i0 = i;
+					presentationTasks.get(i0).add(() -> {
+						FrameData frame = oldFrames[i0];
+						frame.frameBuffer.close();
+						VK10.vkDestroyImageView(device.getVk(), frame.imageView, null);
+					});
+				}
+				presentationTasks.get(frameIndex).add(() -> {
+					oldSwapchain.close();
+					if (oldDepthTexture != null) oldDepthTexture.close();
 				});
+				return true;
 			}
-			presentationTasks.get(frameIndex).add(() -> {
-				oldSwapchain.close();
-				if (oldDepthTexture != null) oldDepthTexture.close();
-			});
-			return true;
+		}
+		finally
+		{
+			swapchainRecreatedCondition.signal();
 		}
 	}
 	
@@ -637,47 +647,56 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	 */
 	public PresentationResult startPresentation() throws VulkanException
 	{
-		if (isSurfaceSizeChanged.getAndSet(false))
+		surfaceSizeChangedLock.lock();
+		try
 		{
-			if (!recreateSwapchain()) return PresentationResult.EMPTY_SURFACE;
-		}
-		else
-		{
-			SurfaceData surfaceData = surface.getData();
-			if (surfaceData.size().x() == 0 || surfaceData.size().y() == 0) return PresentationResult.EMPTY_SURFACE;
-		}
-		
-		while (true)
-		{
-			Swapchain swapchain = this.swapchain;
-			FrameData frame = frames[frameIndex];
-			device.waitForFences(frame.getFence());
-			
-			for (Queue<VulkanRunnable> tasks = this.presentationTasks.get(frameIndex); !tasks.isEmpty();) tasks.poll().run();
-			
-			switch (KHRSwapchain.vkAcquireNextImageKHR(device.getVk(), swapchain.getVk(), Integer.MAX_VALUE, frame.getImageAvailable(), 0, frame.getImageIndex()))
+			if (isSurfaceSizeChanged)
 			{
-				case VK10.VK_SUCCESS, VK10.VK_NOT_READY, VK10.VK_TIMEOUT, KHRSwapchain.VK_SUBOPTIMAL_KHR -> {
-					frame.setSwapchain(swapchain);
-					return PresentationResult.SUCCESS;
-				}
-				case KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR -> {
-					if (!recreateSwapchain()) return PresentationResult.EMPTY_SURFACE;
-				}
-				case EXTFullScreenExclusive.VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT -> {//not yet supported
-					return PresentationResult.FULL_SCREEN_LOST;
-				}
-				case KHRSurface.VK_ERROR_SURFACE_LOST_KHR -> {
-					isLost = true;
-					return PresentationResult.SURFACE_LOST;
-				}
-				case VK10.VK_ERROR_OUT_OF_DEVICE_MEMORY -> {
-					return PresentationResult.OUT_OF_MEMORY;
-				}
-				default -> {
-					return PresentationResult.FATAL_ERROR;
-				}
-			};
+				isSurfaceSizeChanged = false;
+				if (!recreateSwapchain()) return PresentationResult.EMPTY_SURFACE;
+			}
+			else
+			{
+				SurfaceData surfaceData = surface.getData();
+				if (surfaceData.size().x() == 0 || surfaceData.size().y() == 0) return PresentationResult.EMPTY_SURFACE;
+			}
+			
+			while (true)
+			{
+				Swapchain swapchain = this.swapchain;
+				FrameData frame = frames[frameIndex];
+				device.waitForFences(frame.getFence());
+				
+				for (Queue<VulkanRunnable> tasks = this.presentationTasks.get(frameIndex); !tasks.isEmpty();) tasks.poll().run();
+				
+				switch (KHRSwapchain.vkAcquireNextImageKHR(device.getVk(), swapchain.getVk(), Integer.MAX_VALUE, frame.getImageAvailable(), 0, frame.getImageIndex()))
+				{
+					case VK10.VK_SUCCESS, VK10.VK_NOT_READY, VK10.VK_TIMEOUT, KHRSwapchain.VK_SUBOPTIMAL_KHR -> {
+						frame.setSwapchain(swapchain);
+						return PresentationResult.SUCCESS;
+					}
+					case KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR -> {
+						if (!recreateSwapchain()) return PresentationResult.EMPTY_SURFACE;
+					}
+					case EXTFullScreenExclusive.VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT -> {//not yet supported
+						return PresentationResult.FULL_SCREEN_LOST;
+					}
+					case KHRSurface.VK_ERROR_SURFACE_LOST_KHR -> {
+						isLost = true;
+						return PresentationResult.SURFACE_LOST;
+					}
+					case VK10.VK_ERROR_OUT_OF_DEVICE_MEMORY -> {
+						return PresentationResult.OUT_OF_MEMORY;
+					}
+					default -> {
+						return PresentationResult.FATAL_ERROR;
+					}
+				};
+			}
+		}
+		finally
+		{
+			surfaceSizeChangedLock.unlock();
 		}
 	}
 	
@@ -732,7 +751,16 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				case KHRSwapchain.VK_SUBOPTIMAL_KHR, KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR -> {
 					frameIndex = (frameIndex + 1) % BUFFERED_FRAMES_COUNT;
 					
-					recreateSwapchain();
+					surfaceSizeChangedLock.lock();
+					try
+					{
+						recreateSwapchain();
+					}
+					finally
+					{
+						swapchainRecreatedCondition.signal();
+						surfaceSizeChangedLock.unlock();
+					}
 					yield PresentationResult.SUCCESS;
 				}
 				case EXTFullScreenExclusive.VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT -> PresentationResult.FULL_SCREEN_LOST;
@@ -758,14 +786,14 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		{
 			screen.init();
 		}
-		if (!screen.isOnSurface() || isSurfaceSizeChanged.get())
+		if (!screen.isOnSurface() || isSurfaceSizeChanged)
 		{
 			PresentationResult r = startPresentation();
 			if (r != PresentationResult.SUCCESS) return r;
 			
 			Matrix4f matrix = screenMatrix;
 			if (matrix == null) matrix = screenMatrix = new Matrix4f().orthographicPositive(width, height);
-
+			
 			CommandBuffer commandBuffer = commandBuffers.get(getFrameIndex());
 			commandBuffer.beginRecording();
 			screen.draw(matrix, commandBuffer, BUFFERED_FRAMES_COUNT);
@@ -832,7 +860,21 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				screenMatrix = null;
 			});
 			GLFW.glfwSetFramebufferSizeCallback(id, (_, _, _) -> {
-				isSurfaceSizeChanged.set(true);
+				if (!RenderEngine.isMultiThreading())
+				{
+					isSurfaceSizeChanged = true;
+					return;
+				}
+				surfaceSizeChangedLock.lock();
+				try
+				{
+					isSurfaceSizeChanged = true;
+					swapchainRecreatedCondition.awaitUninterruptibly();
+				}
+				finally
+				{
+					surfaceSizeChangedLock.unlock();
+				}
 			});
 		});
 	}
@@ -880,7 +922,23 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				i.invoke(p, w, h);
 			});
 			if (callback instanceof GLFWFramebufferSizeCallbackI i) GLFW.glfwSetFramebufferSizeCallback(id, (p, w, h) -> {
-				isSurfaceSizeChanged.set(true);
+				
+				if (!RenderEngine.isMultiThreading())
+				{
+					isSurfaceSizeChanged = true;
+					i.invoke(p, w, h);
+					return;
+				}
+				surfaceSizeChangedLock.lock();
+				try
+				{
+					isSurfaceSizeChanged = true;
+					swapchainRecreatedCondition.awaitUninterruptibly();
+				}
+				finally
+				{
+					surfaceSizeChangedLock.unlock();
+				}
 				i.invoke(p, w, h);
 			});
 		});
@@ -982,7 +1040,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	{
 		return surface;
 	}
-
+	
 	public boolean hasDepthBuffer()
 	{
 		return depthTexture != null;

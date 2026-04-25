@@ -19,7 +19,7 @@ public class FontTest extends RenderTest {
 		{
 			TestProperties.init(args);
 			RenderEngine.enableDebug();
-			RenderTest.initRenderEngine().useFont(true).initialize();
+			RenderTest.initRenderEngine().multiThreading(false).useFont(true).initialize();
 			
 			RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 			VulkanWindow window = VulkanWindow.defaultBuilder()

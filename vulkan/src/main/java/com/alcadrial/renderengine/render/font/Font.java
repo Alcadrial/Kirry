@@ -13,7 +13,6 @@ import org.lwjgl.util.freetype.FT_GlyphSlot;
 import org.lwjgl.util.freetype.FreeType;
 import org.lwjgl.vulkan.VK10;
 
-import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
@@ -89,7 +88,7 @@ public class Font implements AutoCloseable {
 			
 			if (bitmap.rows() == 0)
 			{
-				return new TextureRegion(atlas.getTexture(), Vector2f.origin(), Vector2f.origin());
+				return new TextureRegion(atlas.getTexture(), 0, 0, 0, 0);
 			}
 			
 			ByteBuffer data = FreeTypeErrorUtils.nonNull(bitmap.buffer(bitmap.rows() * bitmap.pitch()));

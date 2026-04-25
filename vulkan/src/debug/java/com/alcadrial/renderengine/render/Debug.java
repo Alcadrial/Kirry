@@ -182,6 +182,11 @@ public class Debug {
 		return "0x" + Long.toHexString(p);
 	}
 	
+	public static String address(@Nullable Long p)
+	{
+		return p == null ? "0x0" : address(p.longValue());
+	}
+	
 	public static void debug()
 	{
 		debugOutput.println();

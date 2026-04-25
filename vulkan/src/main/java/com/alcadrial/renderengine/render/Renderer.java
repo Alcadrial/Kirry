@@ -325,17 +325,17 @@ public class Renderer implements VulkanDebug, AutoCloseable {
 		for (int i = 0; i < bindings.length; i++) updateDescriptorSet(i);
 	}
 	
-	public void draw(CommandBuffer commandBuffer, int frameIndex) throws VulkanException
+	public void draw(CommandBuffer commandBuffer, int frameIndex)
 	{
 		draw(commandBuffer, frameIndex, 1);
 	}
 	
-	public void draw(CommandBuffer commandBuffer, int frameIndex, int instanceCount) throws VulkanException
+	public void draw(CommandBuffer commandBuffer, int frameIndex, int instanceCount)
 	{
 		draw(commandBuffer, frameIndex, instanceCount, indexBuffer != null ? indexBuffer.getSize() / 4 : 0);
 	}
 	
-	public void draw(CommandBuffer commandBuffer, int frameIndex, int instanceCount, int count) throws VulkanException
+	public void draw(CommandBuffer commandBuffer, int frameIndex, int instanceCount, int count)
 	{
 		if (count == 0) return;
 		

@@ -472,7 +472,7 @@ public class RenderTest {
 			.messengerCallback(RenderTest::debugCallback)
 			.instanceLayersDebug("VK_LAYER_KHRONOS_validation")
 			.instanceExtensionsDebug(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
-			.multiThreading(false)
+			.multiThreading(true)
 			.useWindowSystem(true);
 	}
 	
@@ -636,7 +636,7 @@ public class RenderTest {
 		
 		VulkanBuffer vertexBuffer = new VulkanBuffer(device, 28 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		VulkanBuffer indexBuffer = new VulkanBuffer(device, 6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-		VulkanBuffer uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 1);
+		VulkanBuffer uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 1, 16 * 2 * 4);
 		uniformBuffer.getMemory().mapMemory();
 		
 		try (MemoryStack stack = MemoryStack.stackPush())

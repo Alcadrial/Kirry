@@ -125,7 +125,7 @@ public class DepthBufferTest extends RenderTest {
 		
 		vertexBuffer = staticBigBuffer.allocate(24 * 10 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		indexBuffer = staticBigBuffer.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 6);
+		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 6, 16 * 2 * 4);
 		uniformBuffer.getMemory().mapMemory();
 		
 		Color[] colors = new Color[] {
@@ -213,11 +213,11 @@ public class DepthBufferTest extends RenderTest {
 				.buffersCount(window.getFramesCount())
 				.descriptorSets(descriptorSets)
 				.bindings(i -> new BindingInfo[] {
-					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i, 1), 1, List.of(
+					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i, 1, 16 * 2 * 4), 1, List.of(
 						ShaderVariable.PROJECTION,
 						ShaderVariable.MODEL
 					)),
-					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i + 1, 1), 1, List.of(
+					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i + 1, 1, (3 + 1 + 1) * 4), 1, List.of(
 						ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS"),
 						ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY"),
 						ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY")
