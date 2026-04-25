@@ -1,7 +1,8 @@
 package com.alcadrial.renderengine.core.component;
 
 
-public interface ComponentType {
+public interface ComponentType<C extends Component<?, ?>> {
+	
 	
 	/**
 	 * This value is used by an {@link Entity} for indexing,

@@ -15,16 +15,16 @@ import org.eclipse.collections.api.list.MutableList;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import com.alcadrial.renderengine.core.component.Component;
+import com.alcadrial.renderengine.core.component.AbstractComponent;
 import com.alcadrial.renderengine.core.component.ComponentInitParams;
 import com.alcadrial.renderengine.core.component.ComponentProperties;
 import com.alcadrial.renderengine.core.component.ComponentType;
 import com.alcadrial.renderengine.render.RenderEngine;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 
-public class MeshComponent implements Component<MeshComponent.Type> {
+public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshComponent.Properties> {
 	
-	public enum Type implements ComponentType {
+	public enum Type implements ComponentType<MeshComponent> {
 		
 		INSTANCE;
 		
@@ -36,21 +36,21 @@ public class MeshComponent implements Component<MeshComponent.Type> {
 	}
 	
 	public record Params(
-		int vertexLength,
-		@Nullable VulkanBuffer vertexBuffer, int vertexStride,
-		@Nullable VulkanBuffer indexBuffer,
-		@Nullable VulkanBuffer textureUvBuffer, int textureUvStride,
-		@Nullable VulkanBuffer normalBuffer, int normalStride
-	) implements ComponentInitParams<Type> {}
+		@Nullable VulkanBuffer vertexBuffer, int vertexStride, int vertexOffset,
+		@Nullable VulkanBuffer textureUvBuffer, int textureUvStride, int textureUvOffset,
+		@Nullable VulkanBuffer normalBuffer, int normalStride, int normalOffset,
+		@Nullable VulkanBuffer indexBuffer
+	) implements ComponentInitParams {}
 	
 	public record Properties(
+		int vertexCount,
 		boolean useTextureUv,
 		boolean useNormals,
 		int vertexesSize,
 		int indicesSize,
 		int textureUvSize,
 		int normalsSize
-	) implements ComponentProperties<Type> {}
+	) implements ComponentProperties {}
 	
 	public static MeshComponent ofFileObj(File file)
 	{
@@ -65,12 +65,6 @@ public class MeshComponent implements Component<MeshComponent.Type> {
 	}
 	
 	@Override
-	public CompletableFuture<?> load()
-	{
-		return reload();
-	}
-	
-	@Override
 	public CompletableFuture<?> reload()
 	{
 		CompletableFuture<?> future = new CompletableFuture<>();
@@ -79,6 +73,7 @@ public class MeshComponent implements Component<MeshComponent.Type> {
 			{
 				loader.load();
 				future.complete(null);
+				reloadCounter++;
 			}
 			catch (Throwable e)
 			{
@@ -90,31 +85,26 @@ public class MeshComponent implements Component<MeshComponent.Type> {
 	}
 	
 	@Override
-	public void init(ComponentInitParams<Type> p)
-	{
-		reinit(p);
-	}
-	
-	@Override
-	public void reinit(ComponentInitParams<Type> p)
+	public void reinit(Params params)
 	{
 		MutableList<float[]> vertexes = loader.vertexes;
 		MutableList<Integer[]> indices = loader.indices;
 		MutableList<float[]> textureUv = loader.textureUv;
 		MutableList<float[]> normals = loader.normals;
-		int positionLength = loader.vertexLength;
+		int vertexLength = loader.vertexLength;
 		int textureUvLength = loader.textureUvLength;
 		if (indices == null || vertexes == null) return;
 		
-		Params params = (Params) p;
-		int vertexLength = params.vertexLength;
 		VulkanBuffer vertexBuffer = params.vertexBuffer;
 		int vertexStride = params.vertexStride;
-		VulkanBuffer indexBuffer = params.indexBuffer;
+		int vertexOffset = params.vertexOffset;
 		VulkanBuffer textureUvBuffer = params.textureUvBuffer;
 		int textureUvStride = params.textureUvStride;
+		int textureUvOffset = params.textureUvOffset;
 		VulkanBuffer normalBuffer = params.normalBuffer;
 		int normalStride = params.normalStride;
+		int normalOffset = params.normalOffset;
+		VulkanBuffer indexBuffer = params.indexBuffer;
 		
 		boolean useVertexes = vertexBuffer != null;
 		boolean useTextureUv = textureUv != null && textureUvBuffer != null;
@@ -132,13 +122,13 @@ public class MeshComponent implements Component<MeshComponent.Type> {
 				{
 					Integer[] index = indices.get(i);
 					if (useVertexes) ((@NonNull FloatBuffer) vertexWriter)
-						.position(i * vertexLength + vertexStride)
-						.put(vertexes.get(index[0]), 0, positionLength);
+						.position(i * vertexStride + vertexOffset)
+						.put(vertexes.get(index[0]), 0, vertexLength);
 					if (useTextureUv) ((@NonNull FloatBuffer) textureUvWriter)
-						.position(i * vertexLength + textureUvStride)
+						.position(i * textureUvStride + textureUvOffset)
 						.put(((@NonNull MutableList<float[]>) textureUv).get(index[1]), 0, textureUvLength);
 					if (useNormals) ((@NonNull FloatBuffer) normalWriter)
-						.position(i * vertexLength + normalStride)
+						.position(i * normalStride + normalOffset)
 						.put(((@NonNull MutableList<float[]>) normals).get(index[2]));
 				}
 			}
@@ -152,13 +142,13 @@ public class MeshComponent implements Component<MeshComponent.Type> {
 				{
 					Integer[] index = indices.get(i);
 					if (useVertexes) ((@NonNull FloatBuffer) vertexWriter)
-						.position(i * vertexLength + vertexStride)
-						.put(vertexes.get(index[0]), 0, positionLength);
+						.position(i * vertexStride + vertexOffset)
+						.put(vertexes.get(index[0]), 0, vertexLength);
 					if (useTextureUv) ((@NonNull FloatBuffer) textureUvWriter)
-						.position(i * vertexLength + textureUvStride)
+						.position(i * textureUvStride + textureUvOffset)
 						.put(((@NonNull MutableList<float[]>) textureUv).get(index[1]), 0, textureUvLength);
 					if (useNormals) ((@NonNull FloatBuffer) normalWriter)
-						.position(i * vertexLength + normalStride)
+						.position(i * normalStride + normalOffset)
 						.put(((@NonNull MutableList<float[]>) normals).get(index[2]));
 					indexWriter.put(i);
 				}
@@ -171,20 +161,18 @@ public class MeshComponent implements Component<MeshComponent.Type> {
 	@Override
 	public Properties getProperties()
 	{
-		MutableList<float[]> vertexes = loader.vertexes;
-		MutableList<Integer[]> indices = loader.indices;
-		MutableList<float[]> textureUv = loader.textureUv;
-		MutableList<float[]> normals = loader.normals;
 		int vertexLength = loader.vertexLength;
 		int textureUvLength = loader.textureUvLength;
-		if (indices == null || vertexes == null) return new Properties(false, false, 0, 0, 0, 0);
+		boolean useTextureUv = loader.useTextureUv;
+		boolean useNormals = loader.useNormals;
+		int vertexCount = loader.vertexCount;
 		
-		int vSize = indices.size() * vertexLength * 4;
-		int iSize = indices.size() * 4;
-		int tSize = textureUv != null ? indices.size() * textureUvLength * 4 : 0;
-		int nSize = normals != null ? indices.size() * 3 * 4 : 0;
+		int vSize = vertexCount * vertexLength * 4;
+		int iSize = vertexCount * 4;
+		int tSize = useTextureUv ? vertexCount * textureUvLength * 4 : 0;
+		int nSize = useNormals ? vertexCount * 3 * 4 : 0;
 		
-		return new Properties(textureUv != null, normals != null, vSize, iSize, tSize, nSize);
+		return new Properties(vertexCount, useTextureUv, useNormals, vSize, iSize, tSize, nSize);
 	}
 	
 	@Override
@@ -222,8 +210,11 @@ public class MeshComponent implements Component<MeshComponent.Type> {
 		@Nullable
 		MutableList<float[]> normals;
 		
+		int vertexCount;
 		int vertexLength;
 		int textureUvLength;
+		boolean useNormals;
+		boolean useTextureUv;
 		
 		public abstract void load() throws IOException;
 	}
@@ -343,8 +334,9 @@ public class MeshComponent implements Component<MeshComponent.Type> {
 					}
 				}
 				
-				boolean useTextureUv = faces.getAny()[0][1] != null;
-				boolean useNormals = faces.getAny()[0][2] != null;
+				vertexCount = indices.size();
+				useTextureUv = faces.getAny()[0][1] != null;
+				useNormals = faces.getAny()[0][2] != null;
 				if (!useTextureUv) textureUv.clear();
 				if (!useNormals) normals.clear();
 				this.vertexes = vertexes;

@@ -8,7 +8,7 @@ import org.jspecify.annotations.Nullable;
 public class EntityImpl implements Entity {
 	
 	private int maxComponentId;
-	private FastList<@Nullable Component<?>> components;
+	private FastList<@Nullable Component<?, ?>> components;
 	
 	public EntityImpl(int maxComponentId)
 	{
@@ -16,7 +16,7 @@ public class EntityImpl implements Entity {
 		components = new FastList<>() {
 			
 			@Override
-			public @Nullable Component<?> set(int index, @Nullable Component<?> element)
+			public @Nullable Component<?, ?> set(int index, @Nullable Component<?, ?> element)
 			{
 				if (index >= size)
 				{
@@ -31,15 +31,15 @@ public class EntityImpl implements Entity {
 	
 	@SuppressWarnings({"unchecked"})
 	@Override
-	public <T extends ComponentType> @Nullable Component<T> getComponent(T type)
+	public <C extends Component<?, ?>> @Nullable C getComponent(ComponentType<C> type)
 	{
 		int id = type.getId();
-		if (id > components.size()) return null;
-		return (Component<T>) components.get(id);
+		if (id >= components.size()) return null;
+		return (C) components.get(id);
 	}
 	
 	@Override
-	public <T extends ComponentType> boolean setComponent(T type, Component<T> component)
+	public <C extends Component<?, ?>> boolean setComponent(ComponentType<C> type, C component)
 	{
 		int id = type.getId();
 		if (id > maxComponentId) return false;
@@ -52,7 +52,7 @@ public class EntityImpl implements Entity {
 	public CompletableFuture<?> load()
 	{
 		FastList<CompletableFuture<?>> futures = new FastList<>();
-		for (Component<?> component : components) if (component != null) futures.add(component.load());
+		for (Component<?, ?> component : components) if (component != null) futures.add(component.load());
 		return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
 	}
 	
@@ -61,13 +61,13 @@ public class EntityImpl implements Entity {
 	public CompletableFuture<?> reload()
 	{
 		FastList<CompletableFuture<?>> futures = new FastList<>();
-		for (Component<?> component : components) if (component != null) futures.add(component.reload());
+		for (Component<?, ?> component : components) if (component != null) futures.add(component.reload());
 		return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
 	}
 	
 	@Override
 	public void close()
 	{
-		for (Component<?> component : components) if (component != null) component.close();
+		for (Component<?, ?> component : components) if (component != null) component.close();
 	}
 }

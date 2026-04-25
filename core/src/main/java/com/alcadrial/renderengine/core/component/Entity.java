@@ -11,8 +11,8 @@ public interface Entity {
 		return new EntityImpl(maxComponentId);
 	}
 	
-	<T extends ComponentType> @Nullable Component<T> getComponent(T type);
-	<T extends ComponentType> boolean setComponent(T type, Component<T> component);
+	<C extends Component<?, ?>> @Nullable C getComponent(ComponentType<C> type);
+	<C extends Component<?, ?>> boolean setComponent(ComponentType<C> type, C component);
 	
 	CompletableFuture<?> load();
 	CompletableFuture<?> reload();
