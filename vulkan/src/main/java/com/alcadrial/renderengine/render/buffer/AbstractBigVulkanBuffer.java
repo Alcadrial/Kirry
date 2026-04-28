@@ -9,7 +9,7 @@ import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.OverflowException;
 import com.alcadrial.renderengine.render.util.VulkanFuture;
@@ -19,7 +19,7 @@ public abstract class AbstractBigVulkanBuffer<D extends AbstractBigVulkanBuffer.
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	protected static class Data implements AutoCloseable {
@@ -198,7 +198,7 @@ public abstract class AbstractBigVulkanBuffer<D extends AbstractBigVulkanBuffer.
 		
 		public VulkanFuture<?> waitIdle()
 		{
-			return RenderEngine.submitAsync(() -> {
+			return RenderEngineVulkan.submitAsync(() -> {
 				for (BufferWriter writer : writers) writer.getLoad().join();
 			});
 		}

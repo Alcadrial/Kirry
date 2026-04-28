@@ -4,14 +4,14 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 
 public abstract sealed class ShaderBufferLayout extends ShaderLayout permits ShaderUniformBufferLayout, ShaderStorageBufferLayout, ShaderCombinedImageSamplerLayout {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private final int binding;

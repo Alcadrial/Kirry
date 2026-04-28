@@ -4,7 +4,7 @@ import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 
 /**
@@ -15,7 +15,7 @@ public class DescriptorSet extends RawDeviceResource {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private DescriptorPool pool;

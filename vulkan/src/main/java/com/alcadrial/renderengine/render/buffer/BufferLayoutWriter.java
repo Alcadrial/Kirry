@@ -7,7 +7,7 @@ import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -16,7 +16,7 @@ public class BufferLayoutWriter implements AutoCloseable {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private final BufferLayout layout;

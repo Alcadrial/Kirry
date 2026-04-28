@@ -3,7 +3,7 @@ package com.alcadrial.renderengine.render.commandbuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.Lock;
 
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.queue.Queue;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanFuture;
@@ -13,7 +13,7 @@ public class SynchronizedCommandBufferStream extends CommandBufferStream {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private Lock lock;

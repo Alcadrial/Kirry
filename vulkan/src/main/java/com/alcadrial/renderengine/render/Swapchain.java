@@ -17,7 +17,7 @@ public class Swapchain extends RawDeviceResource {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public Swapchain(Device device, VkSwapchainCreateInfoKHR createInfo) throws VulkanException

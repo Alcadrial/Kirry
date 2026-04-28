@@ -23,7 +23,7 @@ import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
@@ -58,7 +58,7 @@ public class TextureTest extends RenderTest {
 	{
 		mainTest(args, TextureTest::start, () -> staticLoop(TextureTest::loop, r -> {
 			render = r;
-			RenderEngine.getVulkan().getWindow().show();
+			RenderEngineVulkan.getVulkan().getWindow().show();
 		}), TextureTest::end, b -> b.multiThreading(false));
 	}
 	
@@ -81,10 +81,10 @@ public class TextureTest extends RenderTest {
 	
 	public static void start() throws VulkanException
 	{
-		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
-		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
-		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
-		RenderEngine.setWindowHint(GLFW.GLFW_VISIBLE, false);
+		RenderEngineVulkan.setWindowHint(GLFW.GLFW_RESIZABLE, true);
+		RenderEngineVulkan.setWindowHint(GLFW.GLFW_DECORATED, true);
+		RenderEngineVulkan.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
+		RenderEngineVulkan.setWindowHint(GLFW.GLFW_VISIBLE, false);
 		
 		VulkanWindow window = VulkanWindow.defaultBuilder()
 			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
@@ -137,7 +137,7 @@ public class TextureTest extends RenderTest {
 		
 		VulkanFuture<Texture> textureFuture = Texture.loadFromFile(device, getFile("icon.png"), VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		VulkanFuture<Texture> texture0Future = Texture.loadFromFile(device, getFile("icon0.png"), VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		VulkanFuture<ShaderProgram> shaderProgramFuture = RenderEngine.submitAsync(() -> {
+		VulkanFuture<ShaderProgram> shaderProgramFuture = RenderEngineVulkan.submitAsync(() -> {
 			PreparedShader vertexShader = loadShader(SHADER + ".vert");
 			PreparedShader fragmentShader = loadShader(SHADER + ".frag");
 			return ShaderProgram.create().add(vertexShader, fragmentShader).build();
@@ -268,7 +268,7 @@ public class TextureTest extends RenderTest {
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VulkanWindow window = RenderEngine.getVulkan().getWindow();
+			VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 			switch (window.startPresentation())
 			{
 				case EMPTY_SURFACE:
@@ -335,6 +335,6 @@ public class TextureTest extends RenderTest {
 		graphicsPipelineTemplate.close();
 		pipelineLayout.close();
 		
-		RenderEngine.terminate();
+		RenderEngineVulkan.terminate();
 	}
 }

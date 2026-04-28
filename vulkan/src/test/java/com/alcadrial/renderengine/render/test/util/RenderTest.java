@@ -41,9 +41,9 @@ import com.alcadrial.kroperties.Property;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
-import com.alcadrial.renderengine.render.RenderEngine;
-import com.alcadrial.renderengine.render.RenderEngine.Builder;
 import com.alcadrial.renderengine.render.RenderEngineProperties;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
+import com.alcadrial.renderengine.render.RenderEngineVulkan.Builder;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
@@ -85,22 +85,22 @@ public class RenderTest {
 		mainTest(args, start, loop, end, _ -> {});
 	}
 	
-	public static void mainTest(String[] args, VulkanRunnable start, VulkanRunnable loop, VulkanRunnable end, Consumer<RenderEngine.Builder> config)
+	public static void mainTest(String[] args, VulkanRunnable start, VulkanRunnable loop, VulkanRunnable end, Consumer<RenderEngineVulkan.Builder> config)
 	{
 		try
 		{
 			TestProperties.init(args);
 			//Properties.DEVICE_DESTRUCTION_LIST_THRESHOLD.setValue(0);
 			
-			if (RenderEngineProperties.DEBUG.getValue()) RenderEngine.enableDebug();
+			if (RenderEngineProperties.DEBUG.getValue()) RenderEngineVulkan.enableDebug();
 			
 			VulkanRunnable init = () -> {
-				RenderEngine.Builder builder = initRenderEngine();
+				RenderEngineVulkan.Builder builder = initRenderEngine();
 				config.accept(builder);
 				builder.initialize();
 			};
 			println("RenderEngine initialization", init, TestProperties.PRINT_LOADING_TIMES);
-			if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
+			if (!RenderEngineVulkan.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngineVulkan.getLastInitializationException());
 			
 			if (RenderEngineProperties.DEBUG.getValue())
 			{
@@ -110,18 +110,18 @@ public class RenderTest {
 			
 			Thread mainThread = null;
 			
-			if (RenderEngine.isMultiThreading())
+			if (RenderEngineVulkan.isMultiThreading())
 			{
-				mainThread = Thread.ofPlatform().name("Main").start(RenderEngine::serveRenderEngine);
+				mainThread = Thread.ofPlatform().name("Main").start(RenderEngineVulkan::serveRenderEngine);
 			}
 			
 			try
 			{
 				println("Start", start, TestProperties.PRINT_LOADING_TIMES);
-				if (!RenderEngine.isInitializated()) return;
+				if (!RenderEngineVulkan.isInitializated()) return;
 				
 				println("Loop", loop, TestProperties.PRINT_LOADING_TIMES);
-				if (!RenderEngine.isInitializated()) return;
+				if (!RenderEngineVulkan.isInitializated()) return;
 				
 				println("End", end, TestProperties.PRINT_LOADING_TIMES);
 			}
@@ -129,7 +129,7 @@ public class RenderTest {
 			{
 				try
 				{
-					if (RenderEngine.isInitializated()) RenderEngine.terminate();
+					if (RenderEngineVulkan.isInitializated()) RenderEngineVulkan.terminate();
 				}
 				catch (Throwable e)
 				{
@@ -150,7 +150,7 @@ public class RenderTest {
 	
 	public static void defaultLoop(VulkanBiConsumer<Long, Long> action) throws VulkanException
 	{
-		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 		String title = window.getTitle();
 		
 		VulkanException[] lastError = new VulkanException[1];
@@ -225,7 +225,7 @@ public class RenderTest {
 	
 	public static void staticLoop(VulkanBiConsumer<Long, Long> action, @Nullable Consumer<Runnable> forceRender) throws VulkanException
 	{
-		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 		
 		VulkanException[] lastError = new VulkanException[1];
 		
@@ -289,7 +289,7 @@ public class RenderTest {
 	
 	public static void noEventsloop(VulkanBiConsumer<Long, Long> action) throws VulkanException
 	{
-		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 		String title = window.getTitle();
 		
 		int maxfps = TestProperties.MAX_FRAME_RATE.getValue();
@@ -340,7 +340,7 @@ public class RenderTest {
 	
 	public static void defaultAnimationLoop(VulkanBiConsumer<Long, Long> action) throws VulkanException
 	{
-		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 		String title = window.getTitle();
 		ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
 		VulkanException[] lastError = new VulkanException[1];
@@ -412,7 +412,7 @@ public class RenderTest {
 	
 	public static void registerDragging()
 	{
-		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 		Vector2i oldPos = Vector2i.of(0, 0);
 		Vector2f oldMousePos = Vector2f.of(0, 0);
 		boolean[] pressing = new boolean[1];
@@ -437,7 +437,7 @@ public class RenderTest {
 	
 	public static void registerRotating(BiConsumer<@Angle(AngleUnit.RADIANS) Float, @Angle(AngleUnit.RADIANS) Float> callback)
 	{
-		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 		Vector2f oldMousePos = Vector2f.of(0, 0);
 		Vector2f rotation = Vector2f.of(0, 0);
 		Vector2f oldRotation = Vector2f.of(0, 0);
@@ -468,7 +468,7 @@ public class RenderTest {
 	
 	public static Builder initRenderEngine() throws VulkanException
 	{
-		return RenderEngine.create("Test", new Version(0, 0, 1, 0))
+		return RenderEngineVulkan.create("Test", new Version(0, 0, 1, 0))
 			.messengerCallback(RenderTest::debugCallback)
 			.instanceLayersDebug("VK_LAYER_KHRONOS_validation")
 			.instanceExtensionsDebug(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
@@ -507,7 +507,7 @@ public class RenderTest {
 	
 	public static Texture createDepthTexture(int width, int height) throws VulkanException
 	{
-		Texture depthTexture = Texture.create2dTexture(RenderEngine.getVulkan().getDevice(), width, height, VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
+		Texture depthTexture = Texture.create2dTexture(RenderEngineVulkan.getVulkan().getDevice(), width, height, VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
 		depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL).join();
 		return depthTexture;
 	}
@@ -522,7 +522,7 @@ public class RenderTest {
 		File file = getFile(path);
 		String name = file.getName();
 		Shader shader = new Shader(file);
-		ShaderType type = ShaderType.fromExtension(name.contains(".") ? name.substring(name.indexOf('.') + 1) : name);
+		ShaderType type = ShaderType.fromExtension(name.contains(".") ? name.substring(name.lastIndexOf('.') + 1) : name);
 		if (TestProperties.FORCE_RECOMPILE_SHADERS.getValue()) shader.compile(type);
 		else
 		{
@@ -626,7 +626,7 @@ public class RenderTest {
 	{
 		final String shader = "shader4";
 		
-		VulkanFuture<ShaderProgram> shaderProgramFuture = RenderEngine.submitAsync(() -> {
+		VulkanFuture<ShaderProgram> shaderProgramFuture = RenderEngineVulkan.submitAsync(() -> {
 			PreparedShader vertexShader = loadShader(shader + ".vert");
 			PreparedShader fragmentShader = loadShader(shader + ".frag");
 			return ShaderProgram.create().add(vertexShader, fragmentShader).build();

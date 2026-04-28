@@ -1,6 +1,7 @@
 package com.alcadrial.renderengine.render;
 
 import java.math.RoundingMode;
+import java.util.Arrays;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
@@ -31,7 +32,7 @@ public class Computer implements VulkanDebug, AutoCloseable {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static final class Builder {
@@ -240,6 +241,33 @@ public class Computer implements VulkanDebug, AutoCloseable {
 			writeDescriptorSetsResult[i] = writeDescriptorSets.rewind();
 		}
 		return new InitResult(info, writeDescriptorSetsResult);
+	}
+	
+	public void changePipeline(@Nullable ComputePipeline newPipeline, DescriptorSet @Nullable [] newSets) throws VulkanException
+	{
+		if (newPipeline == null)
+		{
+			if (newSets == null) return;
+			if (Arrays.equals(descriptorSets, newSets)) return;
+			updateInfo();
+			return;
+		}
+		this.computePipeline = newPipeline;
+		if (newPipeline.getDevice() != this.device || !newPipeline.getLayout().equals(computePipeline.getLayout())) updateInfo();
+	}
+	
+	private void updateInfo() throws VulkanException
+	{
+		InitResult result = initInfo();
+		info = result.info;
+		writeDescriptorSets = result.writeDescriptorSets;
+		for (BufferLayoutWriter[] bindingWriters : writers) for (BufferLayoutWriter writer : bindingWriters) if (writer != null) writer.close();
+		writers = new BufferLayoutWriter[info.length][];
+		for (int i = 0; i < bindings.length; i++)
+		{
+			writers[i] = new BufferLayoutWriter[bindings[i].length];
+			updateDescriptorSet(i);
+		}
 	}
 	
 	public BufferLayout getBufferLayout(int frameIndex, int binding)

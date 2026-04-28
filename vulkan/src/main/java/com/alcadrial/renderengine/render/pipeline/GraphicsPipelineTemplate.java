@@ -38,7 +38,7 @@ import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Surface;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
@@ -51,7 +51,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static Builder create()

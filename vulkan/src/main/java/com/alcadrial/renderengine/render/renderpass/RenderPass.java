@@ -5,15 +5,15 @@ import org.lwjgl.vulkan.VkRenderPassCreateInfo;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 /**
- * An Object that knows the src and dest images in 1 pipeline execution (enough for now)
+ * A description of the objects used by the pipeline
  * <p>
- * It's indipendent from the pipeline
+ * It's independent from the pipeline
  * 
  * @author Alcadrial
  */
@@ -21,7 +21,7 @@ public class RenderPass extends RawDeviceResource {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private Device device;
@@ -40,18 +40,6 @@ public class RenderPass extends RawDeviceResource {
 	{
 		device.setObjectDebugName(this, name);
 		this.name = name;
-	}
-	
-	/**
-	 * Must be called after all submitted commands that refer to renderPass have completed execution
-	 */
-	public void recreate(Device device, VkRenderPassCreateInfo renderPassInfo) throws VulkanException
-	{
-		close();
-		this.device = device;
-		long[] p = new long[1];
-		VulkanErrorUtils.assertNoError(VK10.vkCreateRenderPass(device.getVk(), renderPassInfo, null, p), "Failed to recreate render pass");
-		vk = p[0];
 	}
 	
 	/**

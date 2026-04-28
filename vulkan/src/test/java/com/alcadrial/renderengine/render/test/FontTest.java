@@ -3,7 +3,7 @@ package com.alcadrial.renderengine.render.test;
 import org.lwjgl.glfw.GLFW;
 
 import com.alcadrial.renderengine.render.PhysicalDevice;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.font.Font;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
@@ -18,10 +18,10 @@ public class FontTest extends RenderTest {
 		try
 		{
 			TestProperties.init(args);
-			RenderEngine.enableDebug();
+			RenderEngineVulkan.enableDebug();
 			RenderTest.initRenderEngine().multiThreading(false).useFont(true).initialize();
 			
-			RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
+			RenderEngineVulkan.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 			VulkanWindow window = VulkanWindow.defaultBuilder()
 				.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
 				.deviceFeatures(f -> f
@@ -86,7 +86,7 @@ public class FontTest extends RenderTest {
 		}
 		finally
 		{
-			RenderEngine.terminate();
+			RenderEngineVulkan.terminate();
 		}
 	}
 }

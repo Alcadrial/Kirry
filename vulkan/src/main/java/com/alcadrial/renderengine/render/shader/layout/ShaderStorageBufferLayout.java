@@ -6,7 +6,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 
 import tools.jackson.databind.JsonNode;
@@ -15,7 +15,7 @@ public final class ShaderStorageBufferLayout extends ShaderBufferLayout {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static ShaderStorageBufferLayout parse(JsonNode json) throws IOException

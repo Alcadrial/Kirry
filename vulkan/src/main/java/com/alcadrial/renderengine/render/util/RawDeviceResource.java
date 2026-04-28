@@ -1,13 +1,13 @@
 package com.alcadrial.renderengine.render.util;
 
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 
 public abstract class RawDeviceResource extends AbstractDeviceResource<Long> {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public RawDeviceResource(Device device)

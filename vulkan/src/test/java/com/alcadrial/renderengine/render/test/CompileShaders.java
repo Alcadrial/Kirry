@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.alcadrial.renderengine.core.util.Pair;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderType;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
@@ -26,7 +26,7 @@ public class CompileShaders extends RenderTest {
 	{
 		try
 		{
-			RenderEngine.initialize("compiler", new Version(0, 1, 0, 0));
+			RenderEngineVulkan.initialize("compiler", new Version(0, 1, 0, 0));
 		}
 		catch (VulkanException e)
 		{
@@ -92,6 +92,6 @@ public class CompileShaders extends RenderTest {
 				System.out.println(p);
 			}
 		}
-		RenderEngine.terminate();
+		RenderEngineVulkan.terminate();
 	}
 }

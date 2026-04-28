@@ -25,7 +25,7 @@ import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
@@ -97,13 +97,13 @@ public class DepthBufferTest extends RenderTest {
 		catch (IOException e)
 		{
 			e.printStackTrace(System.out);
-			RenderEngine.terminate();
+			RenderEngineVulkan.terminate();
 			return;
 		}
 		
-		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
-		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
-		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
+		RenderEngineVulkan.setWindowHint(GLFW.GLFW_RESIZABLE, true);
+		RenderEngineVulkan.setWindowHint(GLFW.GLFW_DECORATED, true);
+		RenderEngineVulkan.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
 		VulkanWindow window = VulkanWindow.defaultBuilder()
 			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
@@ -147,7 +147,7 @@ public class DepthBufferTest extends RenderTest {
 		catch (OverflowException e)
 		{
 			e.printStackTrace(System.out);
-			RenderEngine.terminate();
+			RenderEngineVulkan.terminate();
 			return;
 		}
 
@@ -258,7 +258,7 @@ public class DepthBufferTest extends RenderTest {
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VulkanWindow window = RenderEngine.getVulkan().getWindow();
+			VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 			switch (window.startPresentation())
 			{
 				case EMPTY_SURFACE:
@@ -327,6 +327,6 @@ public class DepthBufferTest extends RenderTest {
 		pipelineLayout.close();
 		uniformBuffer.close();
 		staticBigBuffer.close();
-		RenderEngine.terminate();
+		RenderEngineVulkan.terminate();
 	}
 }

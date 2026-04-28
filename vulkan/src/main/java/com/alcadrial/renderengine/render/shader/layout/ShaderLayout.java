@@ -8,13 +8,13 @@ import org.lwjgl.vulkan.QCOMImageProcessing;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VK13;
 
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 
 public abstract sealed class ShaderLayout permits ShaderBufferLayout, ShaderLocalSizeLayout, ShaderInputLayout {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public enum Type {

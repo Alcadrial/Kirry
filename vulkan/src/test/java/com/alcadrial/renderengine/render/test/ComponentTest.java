@@ -2,12 +2,14 @@ package com.alcadrial.renderengine.render.test;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.list.mutable.FastList;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -25,7 +27,7 @@ import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.component.ColorTextureComponent;
@@ -55,6 +57,8 @@ public class ComponentTest extends RenderTest {
 	private static EntityRenderer entityRenderer;
 	private static SpatialEngine spatialEngine;
 	
+	private static List<ShaderProgram> shaders;
+	private static int currentShaderIndex;
 	private static StaticBigBuffer staticBigBuffer;
 	
 	private static ShaderVariable lightPos = ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS");
@@ -66,6 +70,7 @@ public class ComponentTest extends RenderTest {
 	private static @Angle(AngleUnit.RADIANS) float zRotation;
 	private static boolean isModifiedModel;
 	private static boolean isModified;
+	private static boolean reloadShaders;
 	
 	private static Matrix4f buildModelMatrix(@Angle(AngleUnit.RADIANS) float xRotation, @Angle(AngleUnit.RADIANS) float yRotation, @Angle(AngleUnit.RADIANS) float zRotation)
 	{
@@ -80,25 +85,31 @@ public class ComponentTest extends RenderTest {
 	
 	public static void start() throws VulkanException
 	{
+		shaders = Lists.mutable.empty();
 		ShaderProgram shaderProgram;
 		PreparedShader initComputeShader;
 		PreparedShader transformComputeShader;
 		try
 		{
-			shaderProgram = ShaderProgram.create().add(loadShader(SHADER + ".vert"), loadShader(SHADER + ".frag")).build();
+			PreparedShader vertexShader = loadShader(SHADER + ".vert");
+			shaders.add(ShaderProgram.create().add(vertexShader, loadShader(SHADER + ".frag")).build());
+			shaders.add(ShaderProgram.create().add(vertexShader, loadShader(SHADER + ".1.frag")).build());
+			shaderProgram = shaders.getFirst();
+			currentShaderIndex = 0;
+			
 			initComputeShader = loadShader("shaders/" + EntityRenderer.INIT_COMPUTE_SHADER_NAME);
 			transformComputeShader = loadShader("shaders/" + EntityRenderer.TRANSFORM_COMPUTE_SHADER_NAME);
 		}
 		catch (IOException e)
 		{
 			e.printStackTrace(System.out);
-			RenderEngine.terminate();
+			RenderEngineVulkan.terminate();
 			return;
 		}
 		
-		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
-		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
-		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
+		RenderEngineVulkan.setWindowHint(GLFW.GLFW_RESIZABLE, true);
+		RenderEngineVulkan.setWindowHint(GLFW.GLFW_DECORATED, true);
+		RenderEngineVulkan.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
 		VulkanWindow window = VulkanWindow.defaultBuilder()
 			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
@@ -117,7 +128,7 @@ public class ComponentTest extends RenderTest {
 			entities.add(e);
 		}
 		
-		VulkanFuture<?> entitiesLoading = RenderEngine.submitAsync(() -> {
+		VulkanFuture<?> entitiesLoading = RenderEngineVulkan.submitAsync(() -> {
 			FastList<CompletableFuture<?>> futures = new FastList<>();
 			for (Entity e : entities)
 			{
@@ -132,6 +143,39 @@ public class ComponentTest extends RenderTest {
 		
 		window.setCallback((GLFWWindowSizeCallbackI) (_, _, _) -> {
 			isModified = true;
+		});
+		window.setCallback((GLFWKeyCallbackI) (_, k, _, a, _) -> {
+			if (a == GLFW.GLFW_PRESS)
+			{
+				switch (k)
+				{
+					case GLFW.GLFW_KEY_UP -> {
+						currentShaderIndex = (currentShaderIndex == 0 ? shaders.size() : currentShaderIndex) - 1;
+						reloadShaders = true;
+					}
+					case GLFW.GLFW_KEY_DOWN -> {
+						currentShaderIndex = (currentShaderIndex == shaders.size() - 1 ? 0 : currentShaderIndex + 1);
+						reloadShaders = true;
+					}
+					case GLFW.GLFW_KEY_F2 -> {
+						List<ShaderProgram> newShaders = Lists.mutable.empty();
+						try
+						{
+							PreparedShader vertexShader = loadShader(SHADER + ".vert");
+							newShaders.add(ShaderProgram.create().add(vertexShader, loadShader(SHADER + ".frag")).build());
+							newShaders.add(ShaderProgram.create().add(vertexShader, loadShader(SHADER + ".1.frag")).build());
+						}
+						catch (IOException e)
+						{
+							System.out.println("Failed to reload shaders: " + e.getLocalizedMessage());
+							return;
+						}
+						shaders.clear();
+						shaders = newShaders;
+						reloadShaders = true;
+					}
+				}
+			}
 		});
 		
 		registerRotating((x, y) -> {
@@ -177,7 +221,7 @@ public class ComponentTest extends RenderTest {
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VulkanWindow window = RenderEngine.getVulkan().getWindow();
+			VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 			switch (window.startPresentation())
 			{
 				case EMPTY_SURFACE:
@@ -185,22 +229,24 @@ public class ComponentTest extends RenderTest {
 				case SURFACE_LOST, OUT_OF_MEMORY, FATAL_ERROR:
 					throw new VulkanException("Presentaton error");
 			}
-			if (isModified)
+			if (isModified || reloadShaders)
 			{
-				isModified = false;
-				
-				//entityRenderer.reinit();
-				
-				Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
-				entityRenderer.setUniforms((i, writer) -> {
-					switch (i)
-					{
-						case 0 -> {
-							writer.set(ShaderVariable.PROJECTION, projectionMatrix);
-							writer.flushAndInvalidate();
+				entityRenderer.reinit(new EntityRenderer.ReinitParams(reloadShaders ? shaders.get(currentShaderIndex) : null, null, null, isModified ? new EntityRenderer.SurfaceTarget(window) : null));
+				if (isModified)
+				{
+					Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
+					entityRenderer.setUniforms((i, writer) -> {
+						switch (i)
+						{
+							case 0 -> {
+								writer.set(ShaderVariable.PROJECTION, projectionMatrix);
+								writer.flushAndInvalidate();
+							}
 						}
-					}
-				});
+					});
+				}
+				reloadShaders = false;
+				isModified = false;
 			}
 			if (isModifiedModel)
 			{
@@ -249,6 +295,6 @@ public class ComponentTest extends RenderTest {
 	public static void end()
 	{
 		staticBigBuffer.close();
-		RenderEngine.terminate();
+		RenderEngineVulkan.terminate();
 	}
 }

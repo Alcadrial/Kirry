@@ -27,7 +27,7 @@ import com.alcadrial.renderengine.core.util.NotYetImplementedException;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.pipeline.Pipeline;
 import com.alcadrial.renderengine.render.texture.Texture;
@@ -40,7 +40,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private boolean isRecording;

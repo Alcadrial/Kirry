@@ -3,14 +3,14 @@ package com.alcadrial.renderengine.render.buffer;
 import java.util.TreeSet;
 
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class DynamicBigBuffer extends AbstractBigVulkanBuffer<AbstractBigVulkanBuffer.Data> {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	protected int maxAllocableBufferSize;

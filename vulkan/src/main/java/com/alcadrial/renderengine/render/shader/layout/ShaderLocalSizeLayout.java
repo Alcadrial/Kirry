@@ -3,7 +3,7 @@ package com.alcadrial.renderengine.render.shader.layout;
 import java.io.IOException;
 
 import com.alcadrial.kector.vector.Vector3i;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 
 import tools.jackson.databind.JsonNode;
 
@@ -11,7 +11,7 @@ public final class ShaderLocalSizeLayout extends ShaderLayout {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static ShaderLocalSizeLayout parse(JsonNode json) throws IOException

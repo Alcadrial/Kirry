@@ -7,7 +7,7 @@ import org.eclipse.collections.api.factory.Maps;
 import org.jspecify.annotations.Nullable;
 
 import com.alcadrial.renderengine.render.Debug;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.util.VulkanDebug;
 
@@ -15,7 +15,7 @@ public class BufferLayout implements VulkanDebug {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private final Map<ShaderVariable, Integer> marks;

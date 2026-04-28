@@ -3,13 +3,13 @@ package com.alcadrial.renderengine.render.queue;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
 
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 
 public class QueueFamily {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private @Nullable VkQueueFamilyProperties properties;

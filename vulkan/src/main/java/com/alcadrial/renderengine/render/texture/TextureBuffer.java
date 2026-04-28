@@ -1,13 +1,13 @@
 package com.alcadrial.renderengine.render.texture;
 
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 
 public class TextureBuffer {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private VulkanBuffer buffer;

@@ -34,7 +34,7 @@ import com.alcadrial.renderengine.core.util.Test;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
@@ -69,7 +69,7 @@ public class Test2dPanel extends RenderTest {
 	{
 		mainTest(args, Test2dPanel::start, () -> staticLoop(Test2dPanel::loop, r -> {
 			render = r;
-			RenderEngine.getVulkan().getWindow().show();
+			RenderEngineVulkan.getVulkan().getWindow().show();
 		}), Test2dPanel::end, b -> b.multiThreading(false));
 	}
 	
@@ -91,9 +91,9 @@ public class Test2dPanel extends RenderTest {
 	
 	public static void start() throws VulkanException
 	{
-		RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, true);
-		RenderEngine.setWindowHint(GLFW.GLFW_DECORATED, true);
-		RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
+		RenderEngineVulkan.setWindowHint(GLFW.GLFW_RESIZABLE, true);
+		RenderEngineVulkan.setWindowHint(GLFW.GLFW_DECORATED, true);
+		RenderEngineVulkan.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 		
 		VulkanWindow window = VulkanWindow.defaultBuilder()
 			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
@@ -167,7 +167,7 @@ public class Test2dPanel extends RenderTest {
 		catch (IOException e)
 		{
 			e.printStackTrace(System.out);
-			RenderEngine.terminate();
+			RenderEngineVulkan.terminate();
 			return;
 		}
 		
@@ -274,7 +274,7 @@ public class Test2dPanel extends RenderTest {
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VulkanWindow window = RenderEngine.getVulkan().getWindow();
+			VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 			switch (window.startPresentation())
 			{
 				case EMPTY_SURFACE:
@@ -342,6 +342,6 @@ public class Test2dPanel extends RenderTest {
 		pipelineLayout.close();
 		uniformBuffer.close();
 		staticBigBuffer.close();
-		RenderEngine.terminate();
+		RenderEngineVulkan.terminate();
 	}
 }

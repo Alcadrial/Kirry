@@ -1,11 +1,11 @@
 package com.alcadrial.renderengine.render.shader;
 
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 
 public record PreparedShader(Shader shader, ShaderType type) {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 }

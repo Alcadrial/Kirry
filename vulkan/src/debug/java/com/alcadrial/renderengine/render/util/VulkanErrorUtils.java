@@ -17,14 +17,14 @@ import org.lwjgl.vulkan.NVGLSLShader;
 import org.lwjgl.vulkan.VK13;
 
 import com.alcadrial.renderengine.core.util.DataIncosistenceException;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class VulkanErrorUtils {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private static <E extends Exception> E fixException(E e)

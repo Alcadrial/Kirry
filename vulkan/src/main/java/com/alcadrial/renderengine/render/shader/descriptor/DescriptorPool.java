@@ -9,7 +9,7 @@ import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -18,7 +18,7 @@ public class DescriptorPool extends RawDeviceResource {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private final int flags;

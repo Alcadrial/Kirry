@@ -20,14 +20,14 @@ import org.lwjgl.vulkan.VkSubpassDependency;
 import org.lwjgl.vulkan.VkSubpassDescription;
 
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class RenderPassTemplate implements AutoCloseable {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static Builder create()
@@ -211,7 +211,7 @@ public class RenderPassTemplate implements AutoCloseable {
 	
 	public RenderPass createRenderPass() throws VulkanException
 	{
-		return createRenderPass(RenderEngine.getVulkan().getDevice());
+		return createRenderPass(RenderEngineVulkan.getVulkan().getDevice());
 	}
 	
 	public RenderPass createRenderPass(Device device) throws VulkanException

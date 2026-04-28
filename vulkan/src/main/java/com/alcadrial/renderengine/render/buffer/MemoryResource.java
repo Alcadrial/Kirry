@@ -1,7 +1,7 @@
 package com.alcadrial.renderengine.render.buffer;
 
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 
 
@@ -9,7 +9,7 @@ public abstract class MemoryResource extends RawDeviceResource {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	protected Memory memory;

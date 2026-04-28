@@ -23,7 +23,7 @@ import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.RenderEngineProperties;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Vulkan;
@@ -58,7 +58,7 @@ public class TestReinit extends RenderTest {
 	{
 		TestProperties.init(args);
 		
-		if (RenderEngineProperties.DEBUG.getValue()) RenderEngine.enableDebug();
+		if (RenderEngineProperties.DEBUG.getValue()) RenderEngineVulkan.enableDebug();
 		
 		Logic logic = new Logic();
 		
@@ -69,7 +69,7 @@ public class TestReinit extends RenderTest {
 			{
 				System.out.println("Iteration " + i);
 				println("Render Engine initialization", () -> RenderTest.initRenderEngine().initialize(), TestProperties.PRINT_LOADING_TIMES);
-				if (!RenderEngine.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngine.getLastInitializationException());
+				if (!RenderEngineVulkan.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngineVulkan.getLastInitializationException());
 				
 				if (RenderEngineProperties.DEBUG.getValue())
 				{
@@ -92,10 +92,10 @@ public class TestReinit extends RenderTest {
 					finally
 					{
 						System.out.println("Terminate");
-						RenderEngine.terminate();
+						RenderEngineVulkan.terminate();
 					}
 				});
-				RenderEngine.serveRenderEngine();
+				RenderEngineVulkan.serveRenderEngine();
 			}
 			System.out.println("Test " + (flag.get() ? "SUCCESS" : "FAIL"));
 		}
@@ -128,8 +128,8 @@ public class TestReinit extends RenderTest {
 		
 		public void start() throws VulkanException
 		{
-			RenderEngine.setWindowHint(GLFW.GLFW_RESIZABLE, false);
-			RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
+			RenderEngineVulkan.setWindowHint(GLFW.GLFW_RESIZABLE, false);
+			RenderEngineVulkan.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 			
 			println("Window init", this::initWindow, TestProperties.PRINT_LOADING_TIMES);
 			println("Buffers and Renderer init", this::initBuffersAndRenderer, TestProperties.PRINT_LOADING_TIMES);
@@ -147,7 +147,7 @@ public class TestReinit extends RenderTest {
 		
 		private void initBuffersAndRenderer() throws VulkanException
 		{
-			Vulkan vulkan = RenderEngine.getVulkan();
+			Vulkan vulkan = RenderEngineVulkan.getVulkan();
 			Device device = vulkan.getDevice();
 			VulkanWindow window = vulkan.getWindow();
 			
@@ -283,9 +283,9 @@ public class TestReinit extends RenderTest {
 		public void loop() throws VulkanException
 		{
 			RenderTest.defaultAnimationLoop((_, _) -> {
-				if (++i == 30) RenderEngine.getVulkan().getWindow().setShouldClose(true);
+				if (++i == 30) RenderEngineVulkan.getVulkan().getWindow().setShouldClose(true);
 				
-				VulkanWindow window = RenderEngine.getVulkan().getWindow();
+				VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 				try (MemoryStack stack = MemoryStack.stackPush())
 				{
 					switch (window.startPresentation())

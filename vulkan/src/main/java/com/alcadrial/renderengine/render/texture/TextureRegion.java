@@ -2,13 +2,13 @@ package com.alcadrial.renderengine.render.texture;
 
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.getter.Vector2iGetter;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 
 public class TextureRegion {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private Texture texture;

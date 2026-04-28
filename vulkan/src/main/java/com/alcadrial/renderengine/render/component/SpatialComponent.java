@@ -6,8 +6,6 @@ import org.jspecify.annotations.Nullable;
 
 import com.alcadrial.kector.vector.getter.Vector3fGetter;
 import com.alcadrial.renderengine.core.component.Component;
-import com.alcadrial.renderengine.core.component.ComponentInitParams;
-import com.alcadrial.renderengine.core.component.ComponentProperties;
 import com.alcadrial.renderengine.core.component.ComponentType;
 
 public class SpatialComponent implements Component<SpatialComponent.Params, SpatialComponent.Properties> {
@@ -26,11 +24,11 @@ public class SpatialComponent implements Component<SpatialComponent.Params, Spat
 	public record Params(
 		@Nullable Vector3fGetter position,
 		@Nullable Vector3fGetter movement
-	) implements ComponentInitParams {}
+	) {}
 	
 	public record Properties(
 		boolean isDirty
-	) implements ComponentProperties {}
+	) {}
 	
 	private @Nullable Vector3fGetter position;
 	private @Nullable Vector3fGetter movement;

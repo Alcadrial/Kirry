@@ -6,13 +6,13 @@ import org.jspecify.annotations.Nullable;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 
 public abstract class AbstractDeviceResource<VK> extends AbstractVulkanResource<VK> {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	protected final Device device;

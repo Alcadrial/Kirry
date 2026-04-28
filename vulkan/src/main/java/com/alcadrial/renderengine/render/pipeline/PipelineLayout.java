@@ -5,7 +5,7 @@ import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -14,7 +14,7 @@ public class PipelineLayout extends RawDeviceResource {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public PipelineLayout(Device device, VkPipelineLayoutCreateInfo createInfo) throws VulkanException

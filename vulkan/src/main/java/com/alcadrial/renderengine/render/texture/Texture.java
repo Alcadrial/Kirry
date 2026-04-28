@@ -12,7 +12,7 @@ import org.lwjgl.vulkan.VkImageMemoryBarrier;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.buffer.Memory;
 import com.alcadrial.renderengine.render.buffer.MemoryResource;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
@@ -25,12 +25,12 @@ public class Texture extends MemoryResource {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static VulkanFuture<TextureBuffer> loadToBufferFromFile(Device device, File file) throws VulkanException
 	{
-		return RenderEngine.submitAsync(() -> {
+		return RenderEngineVulkan.submitAsync(() -> {
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
 				int[] width = new int[1];
@@ -56,7 +56,7 @@ public class Texture extends MemoryResource {
 	
 	public static VulkanFuture<Texture> loadFromFile(Device device, File file, int usage, int dstLayout) throws VulkanException
 	{
-		return RenderEngine.submitAsync(() -> {
+		return RenderEngineVulkan.submitAsync(() -> {
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
 				int[] width = new int[1];
@@ -190,7 +190,7 @@ public class Texture extends MemoryResource {
 				return device.submitSingleUseCommandBuffer(stack, commandBuffer);
 			}
 		}
-		return RenderEngine.completedTask();
+		return RenderEngineVulkan.completedTask();
 	}
 	
 	public void changeLayout(CommandBuffer commandBuffer, int layout)

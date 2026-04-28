@@ -9,7 +9,7 @@ public abstract class VulkanObject implements AutoCloseable, VulkanDebug {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private static final MutableList<VulkanObject> VULKAN_INSTANCE_LIST = Lists.mutable.<VulkanObject>empty().asSynchronized();

@@ -38,13 +38,13 @@ import org.lwjgl.vulkan.VkViewport;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
 import com.alcadrial.renderengine.core.util.Pair;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 
 public class VulkanUtils {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static <S extends Struct<S>> S copy(S struct, Function<Long, S> builder)

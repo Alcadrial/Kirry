@@ -7,7 +7,7 @@ import org.lwjgl.vulkan.VkImageSubresourceRange;
 import org.lwjgl.vulkan.VkImageViewCreateInfo;
 
 import com.alcadrial.renderengine.render.Debug;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -16,7 +16,7 @@ public class TextureView extends RawDeviceResource {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	TextureView(Texture texture) throws VulkanException

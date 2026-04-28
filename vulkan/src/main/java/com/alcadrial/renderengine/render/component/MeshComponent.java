@@ -16,10 +16,8 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import com.alcadrial.renderengine.core.component.AbstractComponent;
-import com.alcadrial.renderengine.core.component.ComponentInitParams;
-import com.alcadrial.renderengine.core.component.ComponentProperties;
 import com.alcadrial.renderengine.core.component.ComponentType;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 
 public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshComponent.Properties> {
@@ -40,7 +38,7 @@ public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshC
 		@Nullable VulkanBuffer textureUvBuffer, int textureUvStride, int textureUvOffset,
 		@Nullable VulkanBuffer normalBuffer, int normalStride, int normalOffset,
 		@Nullable VulkanBuffer indexBuffer
-	) implements ComponentInitParams {}
+	) {}
 	
 	public record Properties(
 		int vertexCount,
@@ -50,7 +48,7 @@ public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshC
 		int indicesSize,
 		int textureUvSize,
 		int normalsSize
-	) implements ComponentProperties {}
+	) {}
 	
 	public static MeshComponent ofFileObj(File file)
 	{
@@ -68,7 +66,7 @@ public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshC
 	public CompletableFuture<?> reload()
 	{
 		CompletableFuture<?> future = new CompletableFuture<>();
-		RenderEngine.submitAsync(() -> {
+		RenderEngineVulkan.submitAsync(() -> {
 			try
 			{
 				loader.load();

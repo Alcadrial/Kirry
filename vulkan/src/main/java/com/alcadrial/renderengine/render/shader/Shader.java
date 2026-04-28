@@ -13,7 +13,7 @@ import org.jspecify.annotations.Nullable;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.RenderEngineProperties;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
 /**
@@ -28,7 +28,7 @@ public class Shader {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static final File GLSLC = new File(RenderEngineProperties.SHADER_COMPILER_PATH.getValue(), "glslc");

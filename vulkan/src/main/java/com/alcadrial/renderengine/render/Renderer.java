@@ -33,7 +33,7 @@ public class Renderer implements VulkanDebug, AutoCloseable {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static final class Builder {

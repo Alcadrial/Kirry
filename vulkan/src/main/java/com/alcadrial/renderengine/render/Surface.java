@@ -24,7 +24,7 @@ public class Surface extends AbstractVulkanResource<Long> {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static class Builder {
@@ -69,7 +69,7 @@ public class Surface extends AbstractVulkanResource<Long> {
 				windowVk = VulkanErrorUtils.nonNull(this.windowVk, "Window must be set before creating a surface");
 			}
 			long[] p = new long[1];
-			VulkanErrorUtils.assertNoError(GLFWVulkan.glfwCreateWindowSurface(((@NonNull Vulkan) RenderEngine.getUnsafeVulkan()).getInstance(), windowVk, null, p), "Failed to create surface");
+			VulkanErrorUtils.assertNoError(GLFWVulkan.glfwCreateWindowSurface(((@NonNull Vulkan) RenderEngineVulkan.getUnsafeVulkan()).getInstance(), windowVk, null, p), "Failed to create surface");
 			vk = p[0];
 			return this;
 		}
@@ -211,7 +211,7 @@ public class Surface extends AbstractVulkanResource<Long> {
 		SurfaceData data = this.data;
 		data.format.free();
 		data.extent.free();
-		KHRSurface.vkDestroySurfaceKHR(RenderEngine.getVulkan().getInstance(), vk, null);
+		KHRSurface.vkDestroySurfaceKHR(RenderEngineVulkan.getVulkan().getInstance(), vk, null);
 		vk = 0L;
 		super.close();
 	}

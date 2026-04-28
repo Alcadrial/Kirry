@@ -58,7 +58,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private Deque<AbstractDeviceResource<?>> destructionList;
@@ -79,7 +79,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		this.physicalDevice = VulkanErrorUtils.nonNull(physicalDevice);
 		destructionList = new LinkedList<>();
 		
-		if (RenderEngine.isDebug() && RenderEngine.getVulkan().isDebugUtilsExtensionEnabled()) debugNames = new HashMap<>(1024);
+		if (RenderEngineVulkan.isDebug() && RenderEngineVulkan.getVulkan().isDebugUtilsExtensionEnabled()) debugNames = new HashMap<>(1024);
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			long[] p = new long[1];
@@ -95,7 +95,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			poolInfo.flags(VK10.VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
 			VulkanErrorUtils.assertNoError(VK10.vkCreateCommandPool(device, poolInfo, null, p), "Failed to create short lived command pool");
 			singleUseCommandPool = new CommandPool(this, p[0]);
-			if (RenderEngine.isDebug() && RenderEngine.getVulkan().isDebugUtilsExtensionEnabled())
+			if (RenderEngineVulkan.isDebug() && RenderEngineVulkan.getVulkan().isDebugUtilsExtensionEnabled())
 			{
 				multiUseCommandPool.setName("MultiUseCommandPool(" + device + ")");
 				singleUseCommandPool.setName("SingleUseCommandPool(" + device + ")");
@@ -247,7 +247,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 				configure.accept(commandBuffer);
 				commandBuffer.endRecording();
 			});
-			return RenderEngine.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
+			return RenderEngineVulkan.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 				destroyFences(fences);
 				synchronized (singleUseCommandPool)
 				{
@@ -297,7 +297,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	public VulkanFuture<?> submitSingleUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer, Queue queue) throws VulkanException
 	{
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
-		return RenderEngine.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
+		return RenderEngineVulkan.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 			destroyFences(fences);
 			synchronized (commandBuffer.getPool())
 			{
@@ -314,7 +314,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	public VulkanFuture<?> submitMultiUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer, Queue queue) throws VulkanException
 	{
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
-		return RenderEngine.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
+		return RenderEngineVulkan.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 			destroyFences(fences);
 		});
 	}
@@ -327,7 +327,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	public VulkanFuture<?> submitAndResetMultiUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer, Queue queue) throws VulkanException
 	{
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
-		return RenderEngine.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
+		return RenderEngineVulkan.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 			destroyFences(fences);
 			commandBuffer.reset();
 		});
@@ -353,7 +353,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	public VulkanFuture<Device> waitIdleAsync()
 	{
-		return RenderEngine.submitAsync(this::waitIdle);
+		return RenderEngineVulkan.submitAsync(this::waitIdle);
 	}
 	
 	// FENCES
@@ -366,7 +366,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	public VulkanFuture<long[]> waitForFencesAsync(long... fences)
 	{
-		return RenderEngine.submitAsync(() -> {
+		return RenderEngineVulkan.submitAsync(() -> {
 			while (VK10.vkWaitForFences(vk, fences, true, 0xFFFFFFFF) == VK10.VK_TIMEOUT);
 			return fences;
 		});
@@ -517,7 +517,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	private <@Nullable T> T applyDebugNames(Function<Map<Object, String>, T> action)
 	{
-		if (RenderEngine.isDebug() && RenderEngine.getVulkan().isDebugUtilsExtensionEnabled())
+		if (RenderEngineVulkan.isDebug() && RenderEngineVulkan.getVulkan().isDebugUtilsExtensionEnabled())
 		{
 			if (debugNames == null) debugNames = new HashMap<>(1024);
 			return action.apply(debugNames);

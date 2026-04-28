@@ -11,7 +11,7 @@ public class FrameBuffer extends RawDeviceResource {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private final int type;

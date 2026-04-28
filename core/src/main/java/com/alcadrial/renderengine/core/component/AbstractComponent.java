@@ -4,7 +4,7 @@ import java.util.concurrent.CompletableFuture;
 
 import org.jspecify.annotations.NonNull;
 
-public abstract class AbstractComponent<I extends ComponentInitParams, P extends ComponentProperties> implements Component<I, P> {
+public abstract class AbstractComponent<I, P> implements Component<I, P> {
 	
 	protected /*volatile*/ boolean isLoaded = false;
 	protected volatile int reloadCounter = 0;

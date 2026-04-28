@@ -11,11 +11,9 @@ import org.lwjgl.stb.STBImage;
 import org.lwjgl.system.MemoryStack;
 
 import com.alcadrial.renderengine.core.component.AbstractComponent;
-import com.alcadrial.renderengine.core.component.ComponentInitParams;
-import com.alcadrial.renderengine.core.component.ComponentProperties;
 import com.alcadrial.renderengine.core.component.ComponentType;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.texture.Atlas;
 import com.alcadrial.renderengine.render.texture.TextureBuffer;
@@ -37,11 +35,11 @@ public class ColorTextureComponent extends AbstractComponent<ColorTextureCompone
 	
 	public record Params(
 		Atlas atlas
-	) implements ComponentInitParams {}
+	) {}
 	
 	public record Properties(
 		@Nullable TextureRegion region
-	) implements ComponentProperties {}
+	) {}
 	
 	public static ColorTextureComponent ofFile(Device device, File file)
 	{
@@ -60,7 +58,7 @@ public class ColorTextureComponent extends AbstractComponent<ColorTextureCompone
 	public CompletableFuture<?> reload()
 	{
 		CompletableFuture<?> future = new CompletableFuture<>();
-		RenderEngine.submitAsync(() -> {
+		RenderEngineVulkan.submitAsync(() -> {
 			try
 			{
 				loader.load();

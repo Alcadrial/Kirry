@@ -8,7 +8,7 @@ import org.lwjgl.vulkan.VkMemoryRequirements;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.util.OverflowException;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
@@ -16,15 +16,15 @@ public class StaticBigBuffer extends AbstractBigVulkanBuffer<StaticBigBuffer.Dat
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static class Data extends AbstractBigVulkanBuffer.Data {
 		
 		protected int allocationOffset;
-		protected LinkedList<Slot<? extends VulkanBuffer>> slots;
+		protected LinkedList<AbstractBigVulkanBuffer<Data>.Slot<VulkanBuffer>> slots;
 		
-		public Data(VulkanBuffer buffer, int allocationOffset, LinkedList<AbstractBigVulkanBuffer<Data>.Slot<? extends VulkanBuffer>> slots)
+		public Data(VulkanBuffer buffer, int allocationOffset, LinkedList<AbstractBigVulkanBuffer<Data>.Slot<VulkanBuffer>> slots)
 		{
 			super(buffer);
 			this.allocationOffset = allocationOffset;
@@ -94,7 +94,7 @@ public class StaticBigBuffer extends AbstractBigVulkanBuffer<StaticBigBuffer.Dat
 		Data data = getActiveData();
 		if (data == null) return;
 		data.allocationOffset = 0;
-		for (Slot<? extends VulkanBuffer> slot : data.slots)
+		for (AbstractBigVulkanBuffer<Data>.Slot<VulkanBuffer> slot : data.slots)
 		{
 			VulkanBuffer buffer = slot.getBuffer();
 			Debug.debugAllocation(() -> "Deallocated " + (isLocalBufferingActive() ? "Local " : "Remote ") + buffer + " of " + this);

@@ -10,7 +10,7 @@ import org.lwjgl.glfw.GLFWKeyCallbackI;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.PhysicalDevice;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
@@ -44,7 +44,7 @@ public class ScreenTest extends RenderTest {
 		catch (IOException e)
 		{
 			e.printStackTrace(System.out);
-			RenderEngine.terminate();
+			RenderEngineVulkan.terminate();
 			return;
 		}
 		
@@ -85,7 +85,7 @@ public class ScreenTest extends RenderTest {
 		}
 		catch (InterruptedException _)
 		{
-			RenderEngine.terminate();
+			RenderEngineVulkan.terminate();
 			return;
 		}
 		
@@ -104,7 +104,7 @@ public class ScreenTest extends RenderTest {
 	
 	public static void loop() throws VulkanException
 	{
-		VulkanWindow window = RenderEngine.getVulkan().getWindow();
+		VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 		try
 		{
 			while (!window.shouldClose())
@@ -120,6 +120,6 @@ public class ScreenTest extends RenderTest {
 	
 	public static void end()
 	{
-		RenderEngine.terminate();
+		RenderEngineVulkan.terminate();
 	}
 }

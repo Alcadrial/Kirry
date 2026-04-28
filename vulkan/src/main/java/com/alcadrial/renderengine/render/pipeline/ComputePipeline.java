@@ -7,7 +7,7 @@ import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderUtils;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
@@ -17,7 +17,7 @@ public class ComputePipeline extends Pipeline {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public ComputePipeline(Device device, PipelineLayout layout, PreparedShader shader) throws VulkanException

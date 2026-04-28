@@ -66,7 +66,7 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.PhysicalDevice.PhysicalDevicePickFilter;
 import com.alcadrial.renderengine.render.PhysicalDevice.PhysicalDevicePickStrategy;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Surface;
 import com.alcadrial.renderengine.render.Surface.SurfaceData;
 import com.alcadrial.renderengine.render.Swapchain;
@@ -91,7 +91,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static class Builder {
@@ -184,7 +184,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		
 		/**
 		 * <b>WARNING:</b> the window hint {@link GLFW#GLFW_CLIENT_API CLIENT_API} is set to {@link GLFW#GLFW_NO_API NO_API}
-		 * using {@link RenderEngine#setWindowHint(int, int) RenderEngine#setWindowHint}
+		 * using {@link RenderEngineVulkan#setWindowHint(int, int) RenderEngine#setWindowHint}
 		 * before creating the window and is never restored to the previous value if different.
 		 * <p>
 		 * Must be called from the main thread if single threaded otherwise it will block waiting for the main thread.
@@ -192,11 +192,11 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		 */
 		public VulkanWindow build(int width, int height, String title) throws VulkanException
 		{
-			Vulkan vulkan = RenderEngine.getVulkan();
+			Vulkan vulkan = RenderEngineVulkan.getVulkan();
 			
-			RenderEngine.setWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API);
-			RenderEngine.setWindowHint(GLFW.GLFW_SAMPLES, sampleCount);
-			vk = VulkanErrorUtils.nonNull(RenderEngine.awaitRequestMainThread(() -> GLFW.glfwCreateWindow(width, height, title, 0, 0)), "Cannot create window");
+			RenderEngineVulkan.setWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API);
+			RenderEngineVulkan.setWindowHint(GLFW.GLFW_SAMPLES, sampleCount);
+			vk = VulkanErrorUtils.nonNull(RenderEngineVulkan.awaitRequestMainThread(() -> GLFW.glfwCreateWindow(width, height, title, 0, 0)), "Cannot create window");
 			
 			Surface.Builder surface = Surface.builder().windowVk(vk).create();
 			vulkan.setPhysicalDeviceFilter(p -> filter.filter(p, surface));
@@ -218,7 +218,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		
 		public VulkanWindow rebuild(VulkanWindow oldWindow) throws VulkanException
 		{
-			Vulkan vulkan = RenderEngine.getVulkan();
+			Vulkan vulkan = RenderEngineVulkan.getVulkan();
 			
 			vk = oldWindow.id;
 			
@@ -729,7 +729,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				.pSignalSemaphores(p1);
 			
 			device.resetFences(frame.getFence());
-			RenderEngine.composeAfter(device.getGraphicsQueue().submitAsync(submitInfo, frame.getFence()), _ -> {
+			RenderEngineVulkan.composeAfter(device.getGraphicsQueue().submitAsync(submitInfo, frame.getFence()), _ -> {
 				onCommandBufferEndAction.run();
 			});
 			
@@ -816,12 +816,12 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	@Override
 	public void pollEvents()
 	{
-		RenderEngine.requestMainThread(GLFW::glfwPollEvents);
+		RenderEngineVulkan.requestMainThread(GLFW::glfwPollEvents);
 	}
 	
 	public void waitEvents()
 	{
-		RenderEngine.awaitRequestMainThread(GLFW::glfwWaitEvents);
+		RenderEngineVulkan.awaitRequestMainThread(GLFW::glfwWaitEvents);
 	}
 	
 	public void postEmptyEvent()
@@ -831,7 +831,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	
 	public final void resetCallbacks()
 	{
-		RenderEngine.awaitRequestMainThread(() -> {
+		RenderEngineVulkan.awaitRequestMainThread(() -> {
 			GLFW.glfwSetCharCallback(id, null);
 			GLFW.glfwSetCharModsCallback(id, null);
 			GLFW.glfwSetCursorEnterCallback(id, null);
@@ -860,7 +860,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				screenMatrix = null;
 			});
 			GLFW.glfwSetFramebufferSizeCallback(id, (_, _, _) -> {
-				if (!RenderEngine.isMultiThreading())
+				if (!RenderEngineVulkan.isMultiThreading())
 				{
 					isSurfaceSizeChanged = true;
 					return;
@@ -881,7 +881,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	
 	public final void setCallback(CallbackI callback)
 	{
-		RenderEngine.awaitRequestMainThread(() -> {
+		RenderEngineVulkan.awaitRequestMainThread(() -> {
 			if (callback instanceof GLFWCharCallbackI i) GLFW.glfwSetCharCallback(id, i);
 			if (callback instanceof GLFWCharModsCallbackI i) GLFW.glfwSetCharModsCallback(id, i);
 			if (callback instanceof GLFWCursorEnterCallbackI i) GLFW.glfwSetCursorEnterCallback(id, i);
@@ -923,7 +923,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			});
 			if (callback instanceof GLFWFramebufferSizeCallbackI i) GLFW.glfwSetFramebufferSizeCallback(id, (p, w, h) -> {
 				
-				if (!RenderEngine.isMultiThreading())
+				if (!RenderEngineVulkan.isMultiThreading())
 				{
 					isSurfaceSizeChanged = true;
 					i.invoke(p, w, h);
@@ -959,21 +959,21 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	public final Vector2f getMousePos(Vector2f holder)
 	{
 		double[][] p = new double[2][1];
-		RenderEngine.awaitRequestMainThread(() -> GLFW.glfwGetCursorPos(id, p[0], p[1]));
+		RenderEngineVulkan.awaitRequestMainThread(() -> GLFW.glfwGetCursorPos(id, p[0], p[1]));
 		return holder.setAll((float) p[0][0], (float) p[1][0]);
 	}
 	
 	public final Vector2f getMousePos()
 	{
 		double[][] p = new double[2][1];
-		RenderEngine.awaitRequestMainThread(() -> GLFW.glfwGetCursorPos(id, p[0], p[1]));
+		RenderEngineVulkan.awaitRequestMainThread(() -> GLFW.glfwGetCursorPos(id, p[0], p[1]));
 		return Vector2f.of((float) p[0][0], (float) p[1][0]);
 	}
 	
 	public final Pair<Double, Double> getHighPrecisionMousePos(Pair<Double, Double> holder)
 	{
 		double[][] p = new double[2][1];
-		RenderEngine.awaitRequestMainThread(() -> GLFW.glfwGetCursorPos(id, p[0], p[1]));
+		RenderEngineVulkan.awaitRequestMainThread(() -> GLFW.glfwGetCursorPos(id, p[0], p[1]));
 		holder.setLeft(p[0][0]);
 		holder.setRight(p[1][0]);
 		return holder;
@@ -982,42 +982,42 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	public final Pair<Double, Double> getHighPrecisionMousePos()
 	{
 		double[][] p = new double[2][1];
-		RenderEngine.awaitRequestMainThread(() -> GLFW.glfwGetCursorPos(id, p[0], p[1]));
+		RenderEngineVulkan.awaitRequestMainThread(() -> GLFW.glfwGetCursorPos(id, p[0], p[1]));
 		return new Pair<>(p[0][0], p[1][0]);
 	}
 	
 	public final void setMousePos(Vector2f pos)
 	{
-		RenderEngine.requestMainThread(() -> GLFW.glfwSetCursorPos(id, pos.x(), pos.y()));
+		RenderEngineVulkan.requestMainThread(() -> GLFW.glfwSetCursorPos(id, pos.x(), pos.y()));
 	}
 	
 	public final void setMousePos(Pair<Double, Double> pos)
 	{
-		RenderEngine.requestMainThread(() -> GLFW.glfwSetCursorPos(id, pos.l(), pos.r()));
+		RenderEngineVulkan.requestMainThread(() -> GLFW.glfwSetCursorPos(id, pos.l(), pos.r()));
 	}
 	
 	public final Vector2i getPos(Vector2i holder)
 	{
 		int[][] p = new int[2][1];
-		RenderEngine.awaitRequestMainThread(() -> GLFW.glfwGetWindowPos(id, p[0], p[1]));
+		RenderEngineVulkan.awaitRequestMainThread(() -> GLFW.glfwGetWindowPos(id, p[0], p[1]));
 		return holder.setAll(p[0][0], p[1][0]);
 	}
 	
 	public final Vector2i getPos()
 	{
 		int[][] p = new int[2][1];
-		RenderEngine.awaitRequestMainThread(() -> GLFW.glfwGetWindowPos(id, p[0], p[1]));
+		RenderEngineVulkan.awaitRequestMainThread(() -> GLFW.glfwGetWindowPos(id, p[0], p[1]));
 		return Vector2i.of(p[0][0], p[1][0]);
 	}
 	
 	public final void setPos(Vector2i pos)
 	{
-		RenderEngine.requestMainThread(() -> GLFW.glfwSetWindowPos(id, pos.x(), pos.y()));
+		RenderEngineVulkan.requestMainThread(() -> GLFW.glfwSetWindowPos(id, pos.x(), pos.y()));
 	}
 	
 	public final void setSize(int width, int height)
 	{
-		RenderEngine.requestMainThread(() -> GLFW.glfwSetWindowSize(id, width, height));
+		RenderEngineVulkan.requestMainThread(() -> GLFW.glfwSetWindowSize(id, width, height));
 	}
 	
 	@Override
@@ -1063,7 +1063,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	
 	public void setTitle(String title)
 	{
-		RenderEngine.requestMainThread(() -> {
+		RenderEngineVulkan.requestMainThread(() -> {
 			GLFW.glfwSetWindowTitle(id, title);
 			this.title = title;
 		});
@@ -1126,7 +1126,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			if (depthTexture != null) depthTexture.close();
 			
 			surface.close();
-			RenderEngine.awaitRequestMainThread(() -> GLFW.glfwDestroyWindow(id));
+			RenderEngineVulkan.awaitRequestMainThread(() -> GLFW.glfwDestroyWindow(id));
 			id = 0L;
 		}
 	}

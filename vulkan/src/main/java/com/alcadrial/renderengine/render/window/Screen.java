@@ -13,7 +13,6 @@ public interface Screen extends AutoCloseable {
 	
 	/**
 	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, Renderer)} method.
-	 * @param staticBigBuffer
 	 * @throws VulkanException 
 	 */
 	void init() throws VulkanException;
@@ -36,7 +35,6 @@ public interface Screen extends AutoCloseable {
 	 * 
 	 * @param matrix the transformation matrix
 	 * @param commandBuffer
-	 * @param renderer
 	 * @param enlapsedTime
 	 * @throws VulkanException 
 	 */

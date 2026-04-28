@@ -11,7 +11,7 @@ import org.lwjgl.vulkan.VkSubmitInfo;
 
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanFuture;
@@ -21,7 +21,7 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static Queue createQueue(Device device, int familyIndex)
@@ -97,7 +97,7 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 	
 	public Future<?> waitAsyncIdle(Runnable action)
 	{
-		return RenderEngine.getExecutor().submit(() -> {
+		return RenderEngineVulkan.getExecutor().submit(() -> {
 			waitIdle();
 			action.run();
 		});
@@ -105,7 +105,7 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 	
 	public Future<?> waitAsyncIdle(Consumer<Queue> action)
 	{
-		return RenderEngine.getExecutor().submit(() -> {
+		return RenderEngineVulkan.getExecutor().submit(() -> {
 			waitIdle();
 			action.accept(this);
 		});

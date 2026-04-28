@@ -3,7 +3,7 @@ package com.alcadrial.renderengine.render.pipeline;
 import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.util.RawDeviceResource;
 
 /**
@@ -15,7 +15,7 @@ public abstract class Pipeline extends RawDeviceResource {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	protected PipelineLayout layout;

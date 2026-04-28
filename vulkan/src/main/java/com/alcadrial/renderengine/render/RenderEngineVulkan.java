@@ -52,7 +52,7 @@ import com.alcadrial.renderengine.render.util.functional.VulkanFunction;
 import com.alcadrial.renderengine.render.util.functional.VulkanRunnable;
 import com.alcadrial.renderengine.render.util.functional.VulkanSupplier;
 
-public class RenderEngine extends RenderEngineCore {
+public class RenderEngineVulkan extends RenderEngineCore {
 	
 	private static volatile List<String> instanceLayers = List.of();
 	private static volatile List<String> instanceExtensions = List.of();
@@ -497,7 +497,7 @@ public class RenderEngine extends RenderEngineCore {
 		
 		protected void start()
 		{
-			if (RenderEngine.debug) Thread.ofVirtual().name("Task thread").start(this::run);
+			if (RenderEngineVulkan.debug) Thread.ofVirtual().name("Task thread").start(this::run);
 			else Thread.startVirtualThread(this::run);
 		}
 		
@@ -909,7 +909,7 @@ public class RenderEngine extends RenderEngineCore {
 		
 		public void initialize() throws VulkanException
 		{
-			RenderEngine.initialize(this);
+			RenderEngineVulkan.initialize(this);
 		}
 	}
 }

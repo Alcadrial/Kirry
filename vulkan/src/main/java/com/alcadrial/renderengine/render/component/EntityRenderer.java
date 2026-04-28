@@ -18,9 +18,6 @@ import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3i;
-import com.alcadrial.renderengine.core.component.EngineInitParams;
-import com.alcadrial.renderengine.core.component.EngineProperties;
-import com.alcadrial.renderengine.core.component.EngineUpdateParams;
 import com.alcadrial.renderengine.core.component.Entity;
 import com.alcadrial.renderengine.core.component.EntityEngine;
 import com.alcadrial.renderengine.render.Computer;
@@ -54,7 +51,7 @@ import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.util.functional.VulkanBiConsumer;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
-public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, EntityRenderer.UpdateParams, EntityRenderer.Properties, VulkanException> {
+public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, EntityRenderer.ReinitParams, EntityRenderer.UpdateParams, EntityRenderer.Properties, VulkanException> {
 	
 	public static final String INIT_COMPUTE_SHADER_NAME = "uvInitShader.comp";
 	public static final String TRANSFORM_COMPUTE_SHADER_NAME = "uvTransformShader.comp";
@@ -67,16 +64,23 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		PipelineOutputTarget target,
 		MutableList<ShaderVariable> vertexStageUniforms,
 		MutableList<ShaderVariable> fragmentStageUniforms
-	) implements EngineInitParams {}
+	) {}
+	
+	public record ReinitParams(
+		@Nullable ShaderProgram program,
+		@Nullable PreparedShader initComputeShader,
+		@Nullable PreparedShader transformComputeShader,
+		@Nullable PipelineOutputTarget target
+	) {}
 	
 	public record UpdateParams(
 		CommandBuffer commandBuffer,
 		int frameIndex
-	) implements EngineUpdateParams {}
+	) {}
 	
 	public record Properties(
 		int bufferSize
-	) implements EngineProperties {}
+	) {}
 	
 	public static sealed interface PipelineOutputTarget permits SurfaceTarget, TextureTarget {}
 	
@@ -84,20 +88,55 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 	
 	public record TextureTarget(Texture texture) implements PipelineOutputTarget {}
 	
-	private record Data(
-		AbstractBigVulkanBuffer<?> bigBuffer,
-		VulkanBuffer vertexBuffer,
-		VulkanBuffer textureUvBuffer,
-		VulkanBuffer uniformBuffer,
-		PipelineLayout pipelineLayout,
-		GraphicsPipeline graphicsPipeline,
-		Renderer renderer,
-		Computer initComputer,
-		Computer transformComputer,
-		Atlas atlas,
-		boolean[] isFrameUniformsDirty,
-		int vertexCount
-	) {}
+	private class Data {
+		
+		AbstractBigVulkanBuffer<?> bigBuffer;
+		VulkanBuffer vertexBuffer;
+		VulkanBuffer textureUvBuffer;
+		VulkanBuffer uniformBuffer;
+		RenderPass renderPass;
+		Vector2i outputSize;
+		int buffersCount;
+		ShaderProgram program;
+		PipelineLayout pipelineLayout;
+		GraphicsPipelineTemplate graphicsPipelineTemplate;
+		GraphicsPipeline graphicsPipeline;
+		Renderer renderer;
+		PipelineLayout initComputePipelineLayout;
+		ComputePipeline initComputePipeline;
+		Computer initComputer;
+		PipelineLayout transformComputePipelineLayout;
+		ComputePipeline transformComputePipeline;
+		Computer transformComputer;
+		Atlas atlas;
+		boolean[] isFrameUniformsDirty;
+		int vertexCount;
+		
+		public Data(AbstractBigVulkanBuffer<?> bigBuffer, VulkanBuffer vertexBuffer, VulkanBuffer textureUvBuffer, VulkanBuffer uniformBuffer, PipelineOutputTarget target, RenderPass renderPass, Vector2i outputSize, int buffersCount, ShaderProgram program, PipelineLayout pipelineLayout, GraphicsPipelineTemplate graphicsPipelineTemplate, GraphicsPipeline graphicsPipeline, Renderer renderer, PipelineLayout initComputePipelineLayout, ComputePipeline initComputePipeline, Computer initComputer, PipelineLayout transformComputePipelineLayout, ComputePipeline transformComputePipeline, Computer transformComputer, Atlas atlas, boolean[] isFrameUniformsDirty, int vertexCount)
+		{
+			this.bigBuffer = bigBuffer;
+			this.vertexBuffer = vertexBuffer;
+			this.textureUvBuffer = textureUvBuffer;
+			this.uniformBuffer = uniformBuffer;
+			this.renderPass = renderPass;
+			this.outputSize = outputSize;
+			this.buffersCount = buffersCount;
+			this.program = program;
+			this.pipelineLayout = pipelineLayout;
+			this.graphicsPipelineTemplate = graphicsPipelineTemplate;
+			this.graphicsPipeline = graphicsPipeline;
+			this.renderer = renderer;
+			this.initComputePipelineLayout = initComputePipelineLayout;
+			this.initComputePipeline = initComputePipeline;
+			this.initComputer = initComputer;
+			this.transformComputePipelineLayout = transformComputePipelineLayout;
+			this.transformComputePipeline = transformComputePipeline;
+			this.transformComputer = transformComputer;
+			this.atlas = atlas;
+			this.isFrameUniformsDirty = isFrameUniformsDirty;
+			this.vertexCount = vertexCount;
+		}
+	}
 	
 	private Device device;
 	private MutableList<Entity> entities;
@@ -206,7 +245,6 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 				)
 				.build();
 			GraphicsPipeline graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, program, outputSize, pipelineLayout, renderPass, 0);
-			graphicsPipelineTemplate.close();
 			
 			descriptorSetLayout = new DescriptorSetLayout(device, VkDescriptorSetLayoutCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
@@ -304,7 +342,7 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 			renderer.setBuffer(1, textureUvBuffer);
 			
 			int offset = renderingUniformSize * buffersCount;
-				
+			
 			Computer initComputer = Computer.builder()
 				.computePipeline(initComputePipeline)
 				.descriptorSets(computingDescriptorSets)
@@ -320,7 +358,6 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 					))
 				})
 				.build();
-			
 			
 			Computer transformComputer = Computer.builder()
 				.computePipeline(transformComputePipeline)
@@ -341,7 +378,7 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 			
 			boolean[] isFrameUniformsDirty = new boolean[buffersCount];
 			if (uniformUpdates != null) Arrays.fill(isFrameUniformsDirty, true);
-			data = new Data(bigBuffer, vertexBuffer, textureUvBuffer, uniformBuffer, pipelineLayout, graphicsPipeline, renderer, initComputer, transformComputer, atlas, isFrameUniformsDirty, vertexCount);
+			data = new Data(bigBuffer, vertexBuffer, textureUvBuffer, uniformBuffer, params.target, renderPass, outputSize, buffersCount, program, pipelineLayout, graphicsPipelineTemplate, graphicsPipeline, renderer, computeLayout, initComputePipeline, initComputer, computeLayout, transformComputePipeline, transformComputer, atlas, isFrameUniformsDirty, vertexCount);
 			
 			boolean useTextureUv = false;
 			try (PhysicalDeviceTransferState transfert = bigBuffer.startLocalBuffering())
@@ -392,12 +429,67 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		}
 	}
 	
-	public void setUniforms(VulkanBiConsumer<Integer, BufferLayoutWriter> action)
+	//TODO: support dynamic entities (add/remove)
+	@Override
+	public void reinit(ReinitParams params) throws VulkanException
 	{
-		uniformUpdates = action;
-		Data data = this.data;
-		if (data == null) return;
-		Arrays.fill(data.isFrameUniformsDirty, true);
+		Data data = getData();
+		ShaderProgram program = params.program;
+		PreparedShader initComputeShader = params.initComputeShader;
+		PreparedShader transformComputeShader = params.transformComputeShader;
+		RenderPass renderPass;
+		Vector2i outputSize;
+		//TODO: handle buffersCount change
+		//int buffersCount;
+		switch (params.target)
+		{
+			case null -> {
+				renderPass = data.renderPass;
+				outputSize = data.outputSize;
+				//buffersCount = data.buffersCount;
+			}
+			case SurfaceTarget s -> {
+				VulkanWindow window = s.window;
+				renderPass = window.getRenderPass();
+				outputSize = window.getSurface().getData().size();
+				//buffersCount = window.getFramesCount();
+			}
+			case TextureTarget t -> {
+				Texture texture = t.texture;
+				try (RenderPassTemplate template = RenderPassTemplate.transformColorDepthTextureTemplate(texture.getFormat(), texture.getSamples()))
+				{
+					renderPass = template.createRenderPass(device);
+				}
+				outputSize = Vector2i.of(texture.getWidth(), texture.getHeight());
+				//buffersCount = 1;
+			}
+		}
+		
+		if (program != null || !data.outputSize.equals(outputSize) || !data.renderPass.equals(renderPass))
+		{
+			if (program == null) program = data.program;
+			GraphicsPipeline graphicsPipeline = data.graphicsPipelineTemplate.createPipeline(device, program, outputSize, data.pipelineLayout, renderPass, 0);
+			data.renderer.changePipeline(graphicsPipeline, null);
+			data.graphicsPipeline.close();
+			data.graphicsPipeline = graphicsPipeline;
+			data.outputSize = outputSize;
+			data.renderPass = renderPass;
+			data.program = program;
+		}
+		if (initComputeShader != null)
+		{
+			ComputePipeline computePipeline = new ComputePipeline(device, data.initComputePipelineLayout, initComputeShader);
+			data.initComputer.changePipeline(computePipeline, null);
+			data.initComputePipeline.close();
+			data.initComputePipeline = computePipeline;
+		}
+		if (transformComputeShader != null)
+		{
+			ComputePipeline computePipeline = new ComputePipeline(device, data.transformComputePipelineLayout, transformComputeShader);
+			data.transformComputer.changePipeline(computePipeline, null);
+			data.transformComputePipeline.close();
+			data.transformComputePipeline = computePipeline;
+		}
 	}
 	
 	@Override
@@ -449,11 +541,11 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 					
 					vertexBufferOffset += vertexSize;
 					textureUvBufferOffset += textureUvSize;
-				}/*
-				device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
+				} /*
+					device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
 					commandBuffer.copyBuffer(localVertexBuffer, 0, data.vertexBuffer, 0, data.vertexBuffer.getSize());
 					commandBuffer.copyBuffer(localTextureUvBuffer, 0, data.textureUvBuffer, 0, data.textureUvBuffer.getSize());
-				}).join();*/
+					}).join();*/
 			}
 		}
 		
@@ -526,6 +618,7 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		data.renderer.draw(params.commandBuffer, params.frameIndex, 1, data.vertexCount);
 	}
 	
+	@Override
 	public Properties getProperties()
 	{
 		int textureUvSize = 0;
@@ -552,6 +645,14 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 	public void close()
 	{
 		
+	}
+	
+	public void setUniforms(VulkanBiConsumer<Integer, BufferLayoutWriter> action)
+	{
+		uniformUpdates = action;
+		Data data = this.data;
+		if (data == null) return;
+		Arrays.fill(data.isFrameUniformsDirty, true);
 	}
 	
 	private Data getData()

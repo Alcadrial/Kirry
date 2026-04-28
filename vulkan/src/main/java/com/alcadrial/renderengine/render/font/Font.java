@@ -14,7 +14,7 @@ import org.lwjgl.util.freetype.FreeType;
 import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.texture.Atlas;
@@ -41,7 +41,7 @@ public class Font implements AutoCloseable {
 			this.file = file;
 			this.faceIndex = faceIndex;
 			PointerBuffer p = stack.mallocPointer(1);
-			FreeTypeErrorUtils.assertNoError(FreeType.FT_New_Face(RenderEngine.getFTLibrary(), file.getPath(), faceIndex, p), "Failed to load font file");
+			FreeTypeErrorUtils.assertNoError(FreeType.FT_New_Face(RenderEngineVulkan.getFTLibrary(), file.getPath(), faceIndex, p), "Failed to load font file");
 			face = FT_Face.create(p.get(0));
 			atlas = new Atlas(device, 16, 16, VK10.VK_FORMAT_B8G8R8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, true);
 			setSize(16);
@@ -129,7 +129,7 @@ public class Font implements AutoCloseable {
 			FreeType.FT_Done_Face(face);
 			atlas.close();
 			PointerBuffer p = stack.mallocPointer(1);
-			FreeTypeErrorUtils.assertNoError(FreeType.FT_New_Face(RenderEngine.getFTLibrary(), file.getPath(), faceIndex, p), "Failed to load font file");
+			FreeTypeErrorUtils.assertNoError(FreeType.FT_New_Face(RenderEngineVulkan.getFTLibrary(), file.getPath(), faceIndex, p), "Failed to load font file");
 			face = FT_Face.create(p.get(0));
 			atlas = new Atlas(device, 16, 16, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 			setSize(16);

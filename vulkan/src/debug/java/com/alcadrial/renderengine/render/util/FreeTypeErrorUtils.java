@@ -6,14 +6,14 @@ import org.jspecify.annotations.NonNull;
 import org.lwjgl.util.freetype.FreeType;
 
 import com.alcadrial.renderengine.core.util.DataIncosistenceException;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.util.exception.FreeTypeException;
 
 public class FreeTypeErrorUtils {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static <O> void match(O obj, O other)

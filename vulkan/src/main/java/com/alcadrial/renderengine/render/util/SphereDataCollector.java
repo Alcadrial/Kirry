@@ -4,7 +4,7 @@ import java.math.RoundingMode;
 
 import com.alcadrial.kector.Math;
 import com.alcadrial.kector.vector.Vector3f;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
@@ -12,7 +12,7 @@ public class SphereDataCollector {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static void collect(BufferWriter vertexBuffer, BufferWriter indexBuffer, Vector3f origin, float radius, int scan) throws VulkanException

@@ -2,14 +2,14 @@ package com.alcadrial.renderengine.render.shader;
 
 import java.util.List;
 
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.shader.layout.ShaderLayout;
 
 public class ShaderLayoutBinding {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private int stages;

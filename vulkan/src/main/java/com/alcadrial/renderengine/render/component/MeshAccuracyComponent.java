@@ -5,12 +5,10 @@ import java.util.concurrent.CompletableFuture;
 import org.jspecify.annotations.Nullable;
 
 import com.alcadrial.renderengine.core.component.AbstractComponent;
-import com.alcadrial.renderengine.core.component.ComponentInitParams;
-import com.alcadrial.renderengine.core.component.ComponentProperties;
 import com.alcadrial.renderengine.core.component.ComponentType;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 
-public class MeshAccuracyComponent extends AbstractComponent<ComponentInitParams, ComponentProperties> {
+public class MeshAccuracyComponent extends AbstractComponent<MeshAccuracyComponent.Params, MeshAccuracyComponent.Properties> {
 	
 	public enum Type implements ComponentType<MeshComponent> {
 		
@@ -29,7 +27,7 @@ public class MeshAccuracyComponent extends AbstractComponent<ComponentInitParams
 		@Nullable VulkanBuffer indexBuffer,
 		@Nullable VulkanBuffer textureUvBuffer, int textureUvStride,
 		@Nullable VulkanBuffer normalBuffer, int normalStride
-	) implements ComponentInitParams {}
+	) {}
 	
 	public record Properties(
 		boolean useTextureUv,
@@ -38,7 +36,7 @@ public class MeshAccuracyComponent extends AbstractComponent<ComponentInitParams
 		int indicesSize,
 		int textureUvSize,
 		int normalsSize
-	) implements ComponentProperties {}
+	) {}
 	
 	@Override
 	public CompletableFuture<?> reload()
@@ -47,13 +45,13 @@ public class MeshAccuracyComponent extends AbstractComponent<ComponentInitParams
 	}
 	
 	@Override
-	public void reinit(ComponentInitParams params)
+	public void reinit(Params params)
 	{
 		throw new UnsupportedOperationException("WIP");
 	}
 	
 	@Override
-	public ComponentProperties getProperties()
+	public Properties getProperties()
 	{
 		throw new UnsupportedOperationException("WIP");
 	}

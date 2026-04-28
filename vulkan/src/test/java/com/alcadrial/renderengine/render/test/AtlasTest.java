@@ -7,7 +7,7 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.renderengine.render.PhysicalDevice;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
 import com.alcadrial.renderengine.render.texture.Atlas;
@@ -23,10 +23,10 @@ public class AtlasTest {
 		try
 		{
 			TestProperties.init(args);
-			RenderEngine.enableDebug();
+			RenderEngineVulkan.enableDebug();
 			RenderTest.initRenderEngine().multiThreading(false).initialize();
 
-			RenderEngine.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
+			RenderEngineVulkan.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
 			VulkanWindow window = VulkanWindow.defaultBuilder()
 				.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
 				.deviceFeatures(f -> f
@@ -83,7 +83,7 @@ public class AtlasTest {
 			e.printStackTrace(System.out);
 		}
 		finally {
-			RenderEngine.terminate();
+			RenderEngineVulkan.terminate();
 		}
 	}
 }

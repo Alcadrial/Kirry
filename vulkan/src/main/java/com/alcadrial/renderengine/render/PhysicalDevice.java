@@ -39,7 +39,7 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private static final int[] BEST_MATCHER_MAP = new int[] {4, 2, 0, 1, 3};

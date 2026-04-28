@@ -3,14 +3,14 @@ package com.alcadrial.renderengine.render.util;
 import org.jspecify.annotations.Nullable;
 
 import com.alcadrial.renderengine.render.Debug;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.VulkanObject;
 
 public abstract class AbstractVulkanResource<VK> extends VulkanObject {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	protected VK vk;

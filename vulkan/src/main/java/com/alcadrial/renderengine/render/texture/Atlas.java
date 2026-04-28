@@ -16,7 +16,7 @@ import org.lwjgl.vulkan.VkImageCopy;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -25,7 +25,7 @@ public class Atlas {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private class Slot implements Comparable<@NonNull Slot> {
@@ -94,6 +94,12 @@ public class Atlas {
 		}
 		
 		@Override
+		public boolean equals(@Nullable Object obj)
+		{
+			return texture.equals(obj);
+		}
+		
+		@Override
 		void close()
 		{
 			texture.close();
@@ -114,6 +120,12 @@ public class Atlas {
 		void copy(CommandBuffer commandBuffer, Texture atlasTexture, int x, int y)
 		{
 			commandBuffer.copyBufferToImage(buffer, 0, atlasTexture, x, y, 0, width, height, 1);
+		}
+		
+		@Override
+		public boolean equals(@Nullable Object obj)
+		{
+			return buffer.equals(obj);
 		}
 		
 		@Override
@@ -222,7 +234,7 @@ public class Atlas {
 		int newWidth = region.getXEnd() - region.getXStart();
 		int newHeight = region.getYEnd() - region.getYStart();
 		int tests = 4;
-		for (Iterator<Slot> i = slots.iterator(); i.hasNext() && tests > 0;)
+		for (Iterator<Slot> i = slots.reversed().iterator(); i.hasNext() && tests > 0;)
 		{
 			Slot slot = i.next();
 			if (region.getYStart() < slot.y + slot.height && region.getYEnd() < slot.y)

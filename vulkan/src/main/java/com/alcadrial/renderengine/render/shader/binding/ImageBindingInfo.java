@@ -2,7 +2,7 @@ package com.alcadrial.renderengine.render.shader.binding;
 
 import java.util.List;
 
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.shader.layout.ShaderLayout.Type;
 import com.alcadrial.renderengine.render.texture.Texture;
@@ -12,7 +12,7 @@ public final class ImageBindingInfo extends BindingInfo {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private List<Texture> textures;

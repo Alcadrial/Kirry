@@ -40,7 +40,7 @@ public class Vulkan implements AutoCloseable {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	class ThreadData {
@@ -282,7 +282,7 @@ public class Vulkan implements AutoCloseable {
 				createInfo.sType(VK10.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO);
 				createInfo.pQueueCreateInfos(queueCreateInfos);
 				createInfo.pEnabledFeatures(deviceFeatures);
-				createInfo.ppEnabledLayerNames(RenderEngine.getInstanceLayers(stack));
+				createInfo.ppEnabledLayerNames(RenderEngineVulkan.getInstanceLayers(stack));
 				createInfo.ppEnabledExtensionNames(deviceExtensionBuffer);
 				
 				PointerBuffer devicePointer = stack.pointers(VK10.VK_NULL_HANDLE);
@@ -364,7 +364,7 @@ public class Vulkan implements AutoCloseable {
 		});
 		if (debugMessengerId != 0) EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(instance, debugMessengerId, null);
 		if (physicalDevices != null) for (PhysicalDevice physicalDevice : physicalDevices) physicalDevice.close();
-		if (RenderEngine.isDebug()) for (VulkanObject vulkanObject : Debug.getAvailableVulkanObjects()) Debug.debug("Warning object not released: " + vulkanObject);
+		if (RenderEngineVulkan.isDebug()) for (VulkanObject vulkanObject : Debug.getAvailableVulkanObjects()) Debug.debug("Warning object not released: " + vulkanObject);
 		VK10.vkDestroyInstance(instance, null);
 	}
 }

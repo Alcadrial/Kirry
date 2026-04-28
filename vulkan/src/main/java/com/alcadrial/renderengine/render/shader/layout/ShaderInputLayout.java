@@ -9,7 +9,7 @@ import org.eclipse.collections.api.list.ImmutableList;
 import org.jspecify.annotations.Nullable;
 
 import com.alcadrial.renderengine.core.util.Pair;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 
 import tools.jackson.databind.JsonNode;
@@ -18,7 +18,7 @@ public final class ShaderInputLayout extends ShaderLayout {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 
 	public static ShaderInputLayout parse(JsonNode json) throws IOException

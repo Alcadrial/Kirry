@@ -9,7 +9,7 @@ import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.VulkanFuture;
 
@@ -17,7 +17,7 @@ final class NullBufferWriter extends BufferWriter {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	static final NullBufferWriter INSTANCE = new NullBufferWriter();
@@ -144,7 +144,7 @@ final class NullBufferWriter extends BufferWriter {
 	@Override
 	public VulkanFuture<?> getLoad()
 	{
-		return RenderEngine.completedTask();
+		return RenderEngineVulkan.completedTask();
 	}
 	
 	@Override

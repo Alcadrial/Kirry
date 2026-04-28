@@ -3,9 +3,6 @@ package com.alcadrial.renderengine.render.component;
 import org.eclipse.collections.api.list.MutableList;
 import org.jspecify.annotations.Nullable;
 
-import com.alcadrial.renderengine.core.component.EngineInitParams;
-import com.alcadrial.renderengine.core.component.EngineProperties;
-import com.alcadrial.renderengine.core.component.EngineUpdateParams;
 import com.alcadrial.renderengine.core.component.Entity;
 import com.alcadrial.renderengine.core.component.EntityEngine;
 import com.alcadrial.renderengine.render.Computer;
@@ -14,22 +11,28 @@ import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
-public class SpatialEngine implements EntityEngine<SpatialEngine.InitParams, SpatialEngine.UpdateParams, SpatialEngine.Properties, VulkanException> {
+public class SpatialEngine implements EntityEngine<SpatialEngine.InitParams, SpatialEngine.ReinitParams, SpatialEngine.UpdateParams, SpatialEngine.Properties, VulkanException> {
 	
 	public record InitParams(
 		int vertexLength,
 		VulkanBuffer vertexBuffer, int vertexStride,
 		@Nullable VulkanBuffer normalBuffer, int normalStride
-	) implements EngineInitParams {}
+	) {}
+	
+	public record ReinitParams(
+		int vertexLength,
+		VulkanBuffer vertexBuffer, int vertexStride,
+		@Nullable VulkanBuffer normalBuffer, int normalStride
+	) {}
 	
 	public record UpdateParams(
 		CommandBuffer commandBuffer,
 		int frameIndex,
 		float enlapsedTime
-	) implements EngineUpdateParams {}
+	) {}
 	
 	public record Properties(
-	) implements EngineProperties {}
+	) {}
 	
 	private @Nullable Computer computer;
 	private MutableList<Entity> entities;
@@ -49,9 +52,12 @@ public class SpatialEngine implements EntityEngine<SpatialEngine.InitParams, Spa
 			.groupCount(Vector3i.of(0, 0, 0))
 			.build();*/
 	}
+	@Override
+	public void reinit(ReinitParams params) throws VulkanException
+	{}
 	
 	@Override
-	public void update(UpdateParams params)
+	public void update(UpdateParams params) throws VulkanException
 	{
 		Computer computer = VulkanErrorUtils.nonNull(this.computer, "Spatial engine was not initialized");
 		float enlapsedTime = params.enlapsedTime;

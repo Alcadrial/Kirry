@@ -10,7 +10,7 @@ import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
 import org.lwjgl.vulkan.VkShaderModuleCreateInfo;
 
 import com.alcadrial.renderengine.render.Device;
-import com.alcadrial.renderengine.render.RenderEngine;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
@@ -18,7 +18,7 @@ public class ShaderUtils {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	public static VkDescriptorSetLayoutBinding.Buffer createDescriptorSetLayoutBindingBuffer(MemoryStack stack, Map<Integer, ShaderLayoutBinding> bindingFlags)

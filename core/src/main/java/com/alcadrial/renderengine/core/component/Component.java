@@ -4,7 +4,7 @@ import java.util.concurrent.CompletableFuture;
 
 import org.jspecify.annotations.NonNull;
 
-public interface Component<I extends ComponentInitParams, P extends ComponentProperties> {
+public interface Component<I, P> {
 
 	CompletableFuture<?> load();
 	CompletableFuture<?> reload();

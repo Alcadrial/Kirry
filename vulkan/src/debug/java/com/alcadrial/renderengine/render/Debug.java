@@ -25,7 +25,7 @@ public class Debug {
 	
 	static
 	{
-		RenderEngine.assertLoaded();
+		RenderEngineVulkan.assertLoaded();
 	}
 	
 	private static volatile PrintStream debugOutput;
@@ -84,7 +84,7 @@ public class Debug {
 	
 	public static void printState()
 	{
-		Vulkan vulkan = RenderEngine.getVulkan();
+		Vulkan vulkan = RenderEngineVulkan.getVulkan();
 		
 		print("Current vulkan state:");
 		print("{");
@@ -194,7 +194,7 @@ public class Debug {
 	
 	public static void debug(Object x)
 	{
-		Vulkan vulkan = RenderEngine.getUnsafeVulkan();
+		Vulkan vulkan = RenderEngineVulkan.getUnsafeVulkan();
 		if (vulkan != null) debugOutput.println(time() + "[DEBUG|" + Thread.currentThread().getName() + "/" + vulkan.getData().threadId + "] " + x);
 		else debugOutput.println(time() + "[DEBUG] " + x);
 	}

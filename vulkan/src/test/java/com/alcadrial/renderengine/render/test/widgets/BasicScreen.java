@@ -404,20 +404,20 @@ public class BasicScreen implements Screen {
 	@Override
 	public void close() throws VulkanException
 	{
-		staticBigBuffer.close();
-		uniformBuffer.close();
-		atlas.close();
+		if (staticBigBuffer != null) staticBigBuffer.close();
+		if (uniformBuffer != null) uniformBuffer.close();
+		if (atlas != null) atlas.close();
 		
-		renderPassTemplate.close();
-		renderPass.close();
-		pipelineLayout.close();
-		graphicsPipelineTemplate.close();
-		graphicsPipeline.close();
+		if (renderPassTemplate != null) renderPassTemplate.close();
+		if (renderPass != null) renderPass.close();
+		if (pipelineLayout != null) pipelineLayout.close();
+		if (graphicsPipelineTemplate != null) graphicsPipelineTemplate.close();
+		if (graphicsPipeline != null) graphicsPipeline.close();
 		
-		for (DescriptorSet descriptorSet : descriptorSets) descriptorSet.close();
-		descriptorSetLayout.close();
-		descriptorPool.close();
+		if (descriptorSets != null) for (DescriptorSet descriptorSet : descriptorSets) descriptorSet.close();
+		if (descriptorSetLayout != null) descriptorSetLayout.close();
+		if (descriptorPool != null) descriptorPool.close();
 		
-		renderer.close();
+		if (renderer != null) renderer.close();
 	}
 }
