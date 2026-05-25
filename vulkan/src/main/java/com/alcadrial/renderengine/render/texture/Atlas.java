@@ -1,18 +1,26 @@
 package com.alcadrial.renderengine.render.texture;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.TreeSet;
+import java.util.function.Function;
 
+import org.eclipse.collections.api.factory.Maps;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.list.mutable.FastList;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkImageCopy;
 
+import com.alcadrial.renderengine.core.util.Pair;
 import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
@@ -66,24 +74,38 @@ public class Atlas {
 		
 		protected int width;
 		protected int height;
+		private Object id;
 		
-		public Resource(int width, int height)
+		public Resource(int width, int height, Object id)
 		{
 			this.width = width;
 			this.height = height;
+			this.id = id;
 		}
 		
 		abstract void copy(CommandBuffer commandBuffer, Texture atlasTexture, int x, int y);
 		abstract void close();
+		
+		@Override
+		public boolean equals(@Nullable Object obj)
+		{
+			return obj instanceof Resource r && r.id.equals(id);
+		}
+		
+		@Override
+		public int hashCode()
+		{
+			return id.hashCode();
+		}
 	}
 	
 	private class TextureResource extends Resource {
 		
 		Texture texture;
 		
-		public TextureResource(Texture texture)
+		public TextureResource(Texture texture, Object id)
 		{
-			super(texture.getWidth(), texture.getHeight());
+			super(texture.getWidth(), texture.getHeight(), id);
 			this.texture = texture;
 		}
 		
@@ -91,12 +113,6 @@ public class Atlas {
 		void copy(CommandBuffer commandBuffer, Texture atlasTexture, int x, int y)
 		{
 			commandBuffer.copyImage(texture, 0, 0, 0, atlasTexture, x, y, 0, width, height, 1);
-		}
-		
-		@Override
-		public boolean equals(@Nullable Object obj)
-		{
-			return texture.equals(obj);
 		}
 		
 		@Override
@@ -110,9 +126,9 @@ public class Atlas {
 		
 		VulkanBuffer buffer;
 		
-		public VulkanBufferResource(VulkanBuffer buffer, int width, int height)
+		public VulkanBufferResource(VulkanBuffer buffer, int width, int height, Object id)
 		{
-			super(width, height);
+			super(width, height, id);
 			this.buffer = buffer;
 		}
 		
@@ -120,12 +136,6 @@ public class Atlas {
 		void copy(CommandBuffer commandBuffer, Texture atlasTexture, int x, int y)
 		{
 			commandBuffer.copyBufferToImage(buffer, 0, atlasTexture, x, y, 0, width, height, 1);
-		}
-		
-		@Override
-		public boolean equals(@Nullable Object obj)
-		{
-			return buffer.equals(obj);
 		}
 		
 		@Override
@@ -159,10 +169,10 @@ public class Atlas {
 	private Texture texture;
 	private boolean isDirty;
 	
-	private List<Region> oldRegions;
-	private List<Region> regions;
+	private MutableList<Region> oldRegions;
+	private MutableList<Region> regions;
 	private TreeSet<Slot> slots;
-	private Set<Resource> resources;
+	private Map<Resource, Region> resources;
 	private int availableArea;
 	
 	private boolean debug;
@@ -197,33 +207,84 @@ public class Atlas {
 			}
 		});
 		slots = new TreeSet<>();
-		oldRegions = new ArrayList<>();
-		regions = new ArrayList<>();
-		resources = new HashSet<>();
+		oldRegions = Lists.mutable.of();
+		regions = Lists.mutable.of();
+		resources = Maps.mutable.of();
 		emptySlots();
 	}
 	
-	public TextureRegion add(Texture texture)
+	public TextureRegion add(Texture texture, Object id)
 	{
-		return add(new TextureResource(texture));
+		return add(new TextureResource(texture, id));
 	}
 	
-	public List<TextureRegion> addAll(Texture... textures)
+	public <T> List<TextureRegion> addAllTextures(Function<T, Texture> getTexture, Function<T, Object> getId, @SuppressWarnings("unchecked") T... textures)
 	{
 		List<Resource> resources = new ArrayList<>(textures.length);
-		for (Texture texture : textures) resources.add(new TextureResource(texture));
+		for (T texture : textures) resources.add(new TextureResource(getTexture.apply(texture), getId.apply(texture)));
+		return addAll(resources);
+	}
+	
+	public <T> List<TextureRegion> addAllTextures(Map<T, Texture> textures)
+	{
+		List<Resource> resources = new ArrayList<>(textures.size());
+		for (Entry<T, Texture> e : textures.entrySet()) resources.add(new TextureResource(e.getValue(), e.getKey()));
 		return addAll(resources);
 	}
 	
 	public TextureRegion add(TextureBuffer buffer)
 	{
-		return add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight()));
+		return add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), buffer.getId()));
 	}
 	
-	public List<TextureRegion> addAll(TextureBuffer... buffers)
+	public TextureRegion add(TextureBuffer buffer, Object id)
+	{
+		return add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), id));
+	}
+	
+	public List<TextureRegion> addAllBuffers(Iterable<TextureBuffer> buffers)
+	{
+		List<Resource> resources = new ArrayList<>();
+		for (TextureBuffer buffer : buffers) resources.add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), buffer.getId()));
+		return addAll(resources);
+	}
+	
+	public List<TextureRegion> addAllBuffers(Collection<TextureBuffer> buffers)
+	{
+		List<Resource> resources = new ArrayList<>(buffers.size());
+		for (TextureBuffer buffer : buffers) resources.add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), buffer.getId()));
+		return addAll(resources);
+	}
+	
+	public List<TextureRegion> addAllBuffers(TextureBuffer... buffers)
 	{
 		List<Resource> resources = new ArrayList<>(buffers.length);
-		for (TextureBuffer buffer : buffers) resources.add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight()));
+		for (TextureBuffer buffer : buffers)
+		{
+			resources.add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), buffer.getId()));
+		}
+		return addAll(resources);
+	}
+	
+	public <T> List<TextureRegion> addAllBuffers(Function<T, TextureBuffer> getBuffer, Function<T, Object> getId, @SuppressWarnings("unchecked") T... buffers)
+	{
+		List<Resource> resources = new ArrayList<>(buffers.length);
+		for (T bufferT : buffers)
+		{
+			TextureBuffer buffer = getBuffer.apply(bufferT);
+			resources.add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), getId.apply(bufferT)));
+		}
+		return addAll(resources);
+	}
+	
+	public <T> List<TextureRegion> addAllBuffers(Map<T, TextureBuffer> buffers)
+	{
+		List<Resource> resources = new ArrayList<>(buffers.size());
+		for (Entry<T, TextureBuffer> e : buffers.entrySet())
+		{
+			TextureBuffer buffer = e.getValue();
+			resources.add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), e.getKey()));
+		}
 		return addAll(resources);
 	}
 	
@@ -281,60 +342,69 @@ public class Atlas {
 	
 	private List<TextureRegion> addAll(List<Resource> resources)
 	{
-		List<Resource> newResources = new ArrayList<>(resources.size());
-		for (Resource resource : resources) if (!this.resources.contains(resource))
-		{
-			newResources.add(resource);
-			this.resources.add(resource);
-		}
+		record Holder(Resource r, int i) {}
 		
-		if (newResources.isEmpty()) return List.of();
-		isDirty = true;
-		List<Resource> l = new ArrayList<>(newResources);
-		l.sort((t0, t1) -> -Integer.compare(t0.width, t1.width));
-		
-		int requiredArea = 0;
-		for (Resource resource : newResources) requiredArea += resource.width * resource.height;
-		
-		int currentArea = availableArea;
-		while (currentArea < requiredArea)
+		FastList<Holder> newResources = new FastList<>(resources.size());
+		TextureRegion[] newRegions = new TextureRegion[resources.size()];
 		{
-			if (height < width) height *= 2;
-			else width *= 2;
-			currentArea *= 2;
-		}
-		if (currentArea != availableArea)
-		{
-			mixTextures();
-			availableArea = currentArea;
-		}
-		
-		List<TextureRegion> newRegions = new ArrayList<>(texture.getSize());
-		for (Resource resource : l)
-		{
-			boolean isMixed = false;
-			Region region;
-			while ((region = tryInsert(resource)) == null)
+			int i = 0;
+			for (Resource resource : resources)
 			{
-				if (isMixed)
-				{
-					growAtlas(l);
-					mixTextures(l);
-					isMixed = false;
-				}
-				else
-				{
-					mixTextures(l);
-					isMixed = true;
-				}
+				Region r = this.resources.get(resource);
+				if (r != null) newRegions[i++] = r.texture;
+				else newResources.add(new Holder(resource, i++));
 			}
-			newRegions.add(region.texture);
-			regions.add(region);
 		}
-		return newRegions;
+		
+		if (!newResources.isEmpty())
+		{
+			isDirty = true;
+			
+			newResources.sortThis((t0, t1) -> -Integer.compare(t0.r.width, t1.r.width));
+			
+			int requiredArea = 0;
+			for (Holder h : newResources) requiredArea += h.r.width * h.r.height;
+			
+			int currentArea = availableArea;
+			while (currentArea < requiredArea)
+			{
+				if (height < width) height *= 2;
+				else width *= 2;
+				currentArea *= 2;
+			}
+			if (currentArea != availableArea)
+			{
+				mixTextures();
+				availableArea = currentArea;
+			}
+			
+			for (Holder h : newResources)
+			{
+				boolean isMixed = false;
+				Region region;
+				while ((region = tryInsert(h.r, null)) == null)
+				{
+					if (isMixed)
+					{
+						growAtlas();
+						mixTextures();
+						isMixed = false;
+					}
+					else
+					{
+						mixTextures();
+						isMixed = true;
+					}
+				}
+				newRegions[h.i] = region.texture;
+				this.regions.add(region);
+				this.resources.put(h.r, region);
+			}
+		}
+		return Arrays.asList(newRegions);
 	}
 	
-	private @Nullable Region tryInsert(Resource resource)
+	private @Nullable Region tryInsert(Resource resource, @Nullable TextureRegion oldRegion)
 	{
 		Iterator<Slot> i = slots.tailSet(new Slot(resource.width)).iterator();
 		while (i.hasNext())
@@ -343,7 +413,7 @@ public class Atlas {
 			if (slot.height >= resource.height)
 			{
 				i.remove();
-				return insertIntoSlot(resource, slot);
+				return insertIntoSlot(resource, oldRegion, slot);
 			}
 		}
 		return null;
@@ -356,9 +426,9 @@ public class Atlas {
 		return true;
 	}
 	
-	private Region insertIntoSlot(Resource resource, Slot s)
+	private Region insertIntoSlot(Resource resource, @Nullable TextureRegion oldRegion, Slot s)
 	{
-		TextureRegion region = new TextureRegion(texture, s.x, s.y, s.x + resource.width, s.y + resource.height);
+		TextureRegion region = oldRegion != null ? oldRegion : new TextureRegion(texture, s.x, s.y, s.x + resource.width, s.y + resource.height);
 		
 		Slot regionSlot = new Slot(s.x, s.y, resource.width, resource.height);
 		int x0 = regionSlot.x;
@@ -411,22 +481,26 @@ public class Atlas {
 	
 	private void mixTextures()
 	{
-		mixTextures(List.of());
-	}
-	
-	private void mixTextures(List<Resource> resources)
-	{
 		List<Resource> copy = new ArrayList<>(regions.size());
 		for (Region region : regions) copy.add(region.resource);
 		
 		oldRegions.clear();
 		oldRegions.addAll(regions);
+		regions.clear();
 		
-		clear();
-		addAll(copy);
+		isDirty = true;
+		List<Pair<Resource, TextureRegion>> l = oldRegions.collect(r -> new Pair<>(r.resource, r.texture));
+		l.sort((t0, t1) -> -Integer.compare(t0.left.width, t1.left.width));
+		
+		for (Pair<Resource, TextureRegion> p : l)
+		{
+			Region region;
+			while ((region = tryInsert(p.left, p.right)) == null) growAtlas();
+			regions.add(region);
+		}
 	}
 	
-	private void growAtlas(List<Resource> resources)
+	private void growAtlas()
 	{
 		if (height < width) height *= 2;
 		else width *= 2;
@@ -480,6 +554,7 @@ public class Atlas {
 									.layerCount(1)
 								)
 								.extent(e -> e.set(region.width, region.height, 1));
+							oldRegion.texture.update(newTexture, region.x, region.y, region.x + region.width, region.y + region.height);
 						}
 					}
 					oldRegions.clear();
@@ -572,6 +647,11 @@ public class Atlas {
 	public void tryFit()
 	{
 		mixTextures();
+	}
+	
+	public Device getDevice()
+	{
+		return device;
 	}
 	
 	public Texture getTexture()

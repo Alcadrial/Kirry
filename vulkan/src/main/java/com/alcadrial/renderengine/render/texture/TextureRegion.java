@@ -35,6 +35,15 @@ public class TextureRegion {
 		this.yEnd = uvEnd.y();
 	}
 	
+	public void update(Texture texture, int xStart, int yStart, int xEnd, int yEnd)
+	{
+		this.texture = texture;
+		this.xStart = xStart;
+		this.yStart = yStart;
+		this.xEnd = xEnd;
+		this.yEnd = yEnd;
+	}
+	
 	public Texture getTexture()
 	{
 		return texture;

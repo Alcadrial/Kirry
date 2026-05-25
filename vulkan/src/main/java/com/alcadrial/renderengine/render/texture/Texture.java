@@ -46,7 +46,7 @@ public class Texture extends MemoryResource {
 				buffer.getMemory().unmapMemory();
 				STBImage.stbi_image_free(data.rewind());
 				
-				return new TextureBuffer(buffer, width[0], height[0]);
+				return TextureBuffer.create(buffer, widthHeightChannels.get(0), widthHeightChannels.get(1), path);
 			}
 		});
 	}
