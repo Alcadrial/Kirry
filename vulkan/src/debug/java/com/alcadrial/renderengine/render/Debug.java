@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import org.eclipse.collections.impl.utility.LazyIterate;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.system.Pointer;
@@ -65,7 +66,7 @@ public class Debug {
 	
 	public static long getIncrementalId(Object obj)
 	{
-		return idMap.compute(obj, (_, v) -> v == null ? 0L : v + 1);
+		return ((@NonNull Long) idMap.compute(obj, (_, v) -> v == null ? 0L : v + 1)).longValue();
 	}
 	
 	public static void printState(String name, @Nullable VulkanDebug vk)
@@ -193,6 +194,13 @@ public class Debug {
 	}
 	
 	public static void debug(Object x)
+	{
+		Vulkan vulkan = RenderEngineVulkan.getUnsafeVulkan();
+		if (vulkan != null) debugOutput.println(time() + "[DEBUG|" + Thread.currentThread().getName() + "/" + vulkan.getData().threadId + "] " + x);
+		else debugOutput.println(time() + "[DEBUG] " + x);
+	}
+	
+	public static void error(Object x)
 	{
 		Vulkan vulkan = RenderEngineVulkan.getUnsafeVulkan();
 		if (vulkan != null) debugOutput.println(time() + "[DEBUG|" + Thread.currentThread().getName() + "/" + vulkan.getData().threadId + "] " + x);

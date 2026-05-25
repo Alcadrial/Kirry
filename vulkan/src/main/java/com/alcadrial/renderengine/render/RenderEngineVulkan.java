@@ -30,6 +30,7 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWVulkan;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.freetype.FreeType;
+import org.lwjgl.util.renderdoc.RenderDoc;
 import org.lwjgl.vulkan.EXTDebugUtils;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VK13;
@@ -107,7 +108,19 @@ public class RenderEngineVulkan extends RenderEngineCore {
 	private static void initialize(Builder builder) throws VulkanException
 	{
 		if (initializated) return;
-		if (builder.useWindowSystem && !GLFW.glfwInit()) throw new VulkanException("Failed to init GLFW");
+		if (builder.useWindowSystem && !GLFW.glfwInit())
+		{
+			GLFW.glfwTerminate();
+			if (!GLFW.glfwInit())
+			{
+				try (MemoryStack stack = MemoryStack.stackPush())
+				{
+					PointerBuffer p = stack.mallocPointer(1);
+					GLFW.glfwGetError(p);
+					throw new VulkanException("Failed to init GLFW: " + p.getStringUTF8());
+				}
+			}
+		}
 		if (builder.useFont)
 		{
 			try (MemoryStack stack = MemoryStack.stackPush())
@@ -120,6 +133,17 @@ public class RenderEngineVulkan extends RenderEngineCore {
 					throw new VulkanException("Failed to init FreeType (" + error + ")");
 				}
 				ftLibrary = p.get(0);
+			}
+		}
+		if (RenderEngineVulkan.debug)
+		{
+		try
+		{
+				RenderDoc.create();
+			}
+			catch (Exception e)
+			{
+				System.err.println(e.getLocalizedMessage());
 			}
 		}
 		try
@@ -258,6 +282,7 @@ public class RenderEngineVulkan extends RenderEngineCore {
 					Debug.debug("Terminated RenderEngine");
 					executor = null;
 				}
+				getMainThreadActions().add(() -> Thread.currentThread().interrupt());
 				mainThreadActions = null;
 				initializated = false;
 			});
@@ -637,7 +662,7 @@ public class RenderEngineVulkan extends RenderEngineCore {
 				}
 				catch (ExecutionException e)
 				{
-					throw (RuntimeException) e.getCause();
+					throw (@NonNull RuntimeException) e.getCause();
 				}
 			}
 			if (interrupted) Thread.currentThread().interrupt();
@@ -706,7 +731,7 @@ public class RenderEngineVulkan extends RenderEngineCore {
 				}
 				catch (ExecutionException e)
 				{
-					throw (RuntimeException) e.getCause();
+					throw (@NonNull RuntimeException) e.getCause();
 				}
 			} while (!f.isDone());
 			try
@@ -747,7 +772,7 @@ public class RenderEngineVulkan extends RenderEngineCore {
 			{
 				try
 				{
-					for (LinkedBlockingQueue<Runnable> mainThreadActions = getMainThreadActions(); !mainThreadActions.isEmpty();) mainThreadActions.take().run();
+					for (LinkedBlockingQueue<Runnable> mainThreadActions = getMainThreadActions();;) mainThreadActions.take().run();
 				}
 				catch (InterruptedException e)
 				{}
@@ -767,7 +792,7 @@ public class RenderEngineVulkan extends RenderEngineCore {
 			if (mainThread != null) throw new DuplicateMainThreadException();
 			mainThread = Thread.currentThread();
 			LinkedBlockingQueue<Runnable> actions = getMainThreadActions();
-			while (initializated && actions.peek() != null) actions.poll().run();
+			while (initializated && actions.peek() != null) ((@NonNull Runnable) actions.poll()).run();
 			mainThread = null;
 		}
 	}

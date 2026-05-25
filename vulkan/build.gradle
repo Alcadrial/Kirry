@@ -30,6 +30,8 @@ dependencies {
 	runtimeOnly("org.lwjgl:lwjgl-glfw::${lwjglNatives}")
 	runtimeOnly("org.lwjgl:lwjgl-stb::${lwjglNatives}")
 	if (lwjglNatives == "natives-macos" || lwjglNatives == "natives-macos-arm64") runtimeOnly("org.lwjgl:lwjgl-vulkan::${lwjglNatives}")
+	
+	implementation(libs.lwjgl.renderdoc)
 }
 
 sourceSets {
