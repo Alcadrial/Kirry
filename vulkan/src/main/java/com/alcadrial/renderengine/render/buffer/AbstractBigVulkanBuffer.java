@@ -12,8 +12,8 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.OverflowException;
-import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 
 public abstract class AbstractBigVulkanBuffer<D extends AbstractBigVulkanBuffer.Data> implements AutoCloseable {
 	
@@ -198,7 +198,7 @@ public abstract class AbstractBigVulkanBuffer<D extends AbstractBigVulkanBuffer.
 		
 		public VulkanFuture<?> waitIdle()
 		{
-			return RenderEngineVulkan.submitAsync(() -> {
+			return VulkanFuture.submitAsync(() -> {
 				for (BufferWriter writer : writers) writer.getLoad().join();
 			});
 		}

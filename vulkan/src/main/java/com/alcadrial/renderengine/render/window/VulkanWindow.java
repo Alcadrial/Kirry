@@ -83,6 +83,7 @@ import com.alcadrial.renderengine.render.util.VulkanUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.util.functional.VulkanConsumer;
 import com.alcadrial.renderengine.render.util.functional.VulkanRunnable;
+import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 import com.alcadrial.renderengine.render.window.event.EventType;
 
 public class VulkanWindow extends Window implements VulkanResource<Long> {
@@ -577,7 +578,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private boolean recreateSwapchain() throws VulkanException
 	{
 		SurfaceData surfaceData = surface.reinit();
-		for (Queue<VulkanRunnable> queue : presentationTasks) while (!queue.isEmpty()) queue.poll().run();
+		for (Queue<@NonNull VulkanRunnable> queue : presentationTasks) while (!queue.isEmpty()) ((@NonNull VulkanRunnable) queue.poll()).run();
 		try
 		{
 			while (true)
@@ -667,7 +668,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				FrameData frame = frames[frameIndex];
 				device.waitForFences(frame.getFence());
 				
-				for (Queue<VulkanRunnable> tasks = this.presentationTasks.get(frameIndex); !tasks.isEmpty();) tasks.poll().run();
+				for (Queue<@NonNull VulkanRunnable> queue : presentationTasks) while (!queue.isEmpty()) ((@NonNull VulkanRunnable) queue.poll()).run();
 				
 				switch (KHRSwapchain.vkAcquireNextImageKHR(device.getVk(), swapchain.getVk(), Integer.MAX_VALUE, frame.getImageAvailable(), 0, frame.getImageIndex()))
 				{
@@ -729,7 +730,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				.pSignalSemaphores(p1);
 			
 			device.resetFences(frame.getFence());
-			RenderEngineVulkan.composeAfter(device.getGraphicsQueue().submitAsync(submitInfo, frame.getFence()), _ -> {
+			VulkanFuture.composeAfter(device.getGraphicsQueue().submitAsync(submitInfo, frame.getFence()), _ -> {
 				onCommandBufferEndAction.run();
 			});
 			
@@ -1108,7 +1109,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			{
 				try
 				{
-					queue.poll().run();
+					((@NonNull VulkanRunnable) queue.poll()).run();
 				}
 				catch (VulkanException e)
 				{}

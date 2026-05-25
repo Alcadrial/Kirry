@@ -9,6 +9,7 @@ import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VK13;
 
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
+import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
 public abstract sealed class ShaderLayout permits ShaderBufferLayout, ShaderLocalSizeLayout, ShaderInputLayout {
 	
@@ -49,7 +50,7 @@ public abstract sealed class ShaderLayout permits ShaderBufferLayout, ShaderLoca
 		
 		public static Type of(String typeName)
 		{
-			return OF_MAP.get(typeName);
+			return VulkanErrorUtils.nonNull(OF_MAP.get(typeName));
 		}
 		
 		private String name;

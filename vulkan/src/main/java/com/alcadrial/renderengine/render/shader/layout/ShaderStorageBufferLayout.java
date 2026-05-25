@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
@@ -26,7 +27,7 @@ public final class ShaderStorageBufferLayout extends ShaderBufferLayout {
 	public static ShaderStorageBufferLayout parse(JsonNode json, String location) throws IOException
 	{
 		int binding = json.get("binding").intValue();
-		int descriptorCount = json.optional("descriptorCount").map(n -> n.asInt(1)).orElse(1);
+		int descriptorCount = ((@NonNull Integer) json.optional("descriptorCount").map(n -> n.asInt(1)).orElse(1)).intValue();
 		if (descriptorCount <= 0) throw new IOException("Invalid descriptorCount of " + location);
 		String name = json.optional("name").map(n -> n.stringValue(null)).orElse(null);
 		JsonNode variablesNode = json.get("variables").requireNonNull();

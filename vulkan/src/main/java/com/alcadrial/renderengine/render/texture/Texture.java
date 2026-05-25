@@ -30,7 +30,7 @@ public class Texture extends MemoryResource {
 	
 	public static VulkanFuture<TextureBuffer> loadToBufferFromFile(Device device, File file) throws VulkanException
 	{
-		return RenderEngineVulkan.submitAsync(() -> {
+		return VulkanFuture.submitAsync(() -> {
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
 				int[] width = new int[1];
@@ -56,7 +56,7 @@ public class Texture extends MemoryResource {
 	
 	public static VulkanFuture<Texture> loadFromFile(Device device, File file, int usage, int dstLayout) throws VulkanException
 	{
-		return RenderEngineVulkan.submitAsync(() -> {
+		return VulkanFuture.submitAsync(() -> {
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
 				int[] width = new int[1];
@@ -190,7 +190,7 @@ public class Texture extends MemoryResource {
 				return device.submitSingleUseCommandBuffer(stack, commandBuffer);
 			}
 		}
-		return RenderEngineVulkan.completedTask();
+		return VulkanFuture.completedTask();
 	}
 	
 	public void changeLayout(CommandBuffer commandBuffer, int layout)

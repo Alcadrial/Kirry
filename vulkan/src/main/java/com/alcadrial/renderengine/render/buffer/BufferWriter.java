@@ -23,8 +23,8 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.buffer.Memory.Mapping;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
-import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 
 public class BufferWriter implements AutoCloseable {
 	
@@ -47,7 +47,7 @@ public class BufferWriter implements AutoCloseable {
 		writer.put(data);
 		src.getMemory().unmapMemory();
 		writer.transfer();
-		return RenderEngineVulkan.composeAfter(writer.getLoad(), () -> {
+		return VulkanFuture.composeAfter(writer.getLoad(), () -> {
 			src.close();
 			writer.close();
 		});
@@ -62,7 +62,7 @@ public class BufferWriter implements AutoCloseable {
 		writer.put(data);
 		src.getMemory().unmapMemory();
 		writer.transfer();
-		return RenderEngineVulkan.composeAfter(writer.getLoad(), () -> {
+		return VulkanFuture.composeAfter(writer.getLoad(), () -> {
 			src.close();
 			writer.close();
 		});
@@ -77,7 +77,7 @@ public class BufferWriter implements AutoCloseable {
 		writer.put(data);
 		src.getMemory().unmapMemory();
 		writer.transfer();
-		return RenderEngineVulkan.composeAfter(writer.getLoad(), () -> {
+		return VulkanFuture.composeAfter(writer.getLoad(), () -> {
 			src.close();
 			writer.close();
 		});
@@ -484,7 +484,7 @@ public class BufferWriter implements AutoCloseable {
 	
 	public VulkanFuture<?> getLoad()
 	{
-		return RenderEngineVulkan.submitAsync(() -> {
+		return VulkanFuture.submitAsync(() -> {
 			for (Work work = firstWork; work != null; work = work.next)
 			{
 				work.work.join();

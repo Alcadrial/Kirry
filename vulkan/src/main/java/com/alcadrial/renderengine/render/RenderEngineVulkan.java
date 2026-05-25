@@ -8,9 +8,7 @@ import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,13 +43,9 @@ import com.alcadrial.renderengine.render.util.DebugMessengerType;
 import com.alcadrial.renderengine.render.util.FreeTypeErrorUtils;
 import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
-import com.alcadrial.renderengine.render.util.VulkanFuture;
-import com.alcadrial.renderengine.render.util.exception.ExternalException;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
-import com.alcadrial.renderengine.render.util.functional.VulkanConsumer;
-import com.alcadrial.renderengine.render.util.functional.VulkanFunction;
-import com.alcadrial.renderengine.render.util.functional.VulkanRunnable;
-import com.alcadrial.renderengine.render.util.functional.VulkanSupplier;
+import com.alcadrial.renderengine.render.util.future.CompletableTaskHandler;
+import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 
 public class RenderEngineVulkan extends RenderEngineCore {
 	
@@ -137,8 +131,8 @@ public class RenderEngineVulkan extends RenderEngineCore {
 		}
 		if (RenderEngineVulkan.debug)
 		{
-		try
-		{
+			try
+			{
 				RenderDoc.create();
 			}
 			catch (Exception e)
@@ -385,255 +379,6 @@ public class RenderEngineVulkan extends RenderEngineCore {
 		return (@NonNull LinkedBlockingQueue<Runnable>) mainThreadActions;
 	}
 	
-	public static VulkanFuture<?> completedTask()
-	{
-		return new CompletedTaskHandler<>(null);
-	}
-	
-	public static <V> VulkanFuture<V> completedTask(V value)
-	{
-		return new CompletedTaskHandler<>(value);
-	}
-	
-	public static CompletableTaskHandler<?> completableTask()
-	{
-		return new CompletableTaskHandler<>();
-	}
-	
-	public static VulkanFuture<?> submitAsync(VulkanRunnable action)
-	{
-		return new AsyncRunnableTaskHandler(action);
-	}
-	
-	public static <V> VulkanFuture<V> submitAsync(Callable<V> action)
-	{
-		return new AsyncSupplierTaskHandler<>(action);
-	}
-	
-	public static VulkanFuture<?> composeAfter(VulkanFuture<?> future, VulkanRunnable action)
-	{
-		return new AsyncDependentTaskHandler<>(future, _ -> {
-			action.run();
-			return null;
-		});
-	}
-	
-	public static <V> VulkanFuture<V> composeAfter(VulkanFuture<?> future, VulkanSupplier<V> action)
-	{
-		return new AsyncDependentTaskHandler<>(future, _ -> action.get());
-	}
-	
-	public static <V> VulkanFuture<?> composeAfter(VulkanFuture<V> future, VulkanConsumer<V> action)
-	{
-		return new AsyncDependentTaskHandler<>(future, v -> {
-			action.accept(v);
-			return null;
-		});
-	}
-	
-	public static <V, W> VulkanFuture<W> composeAfter(VulkanFuture<V> future, VulkanFunction<V, W> action)
-	{
-		return new AsyncDependentTaskHandler<>(future, action);
-	}
-	
-	private static class CompletedTaskHandler<V> implements VulkanFuture<V> {
-		
-		private V value;
-		
-		public CompletedTaskHandler(V value)
-		{
-			this.value = value;
-		}
-		
-		@Override
-		public void await() throws InterruptedException
-		{}
-		
-		@Override
-		public V get() throws VulkanException, InterruptedException
-		{
-			return value;
-		}
-	}
-	
-	public static class CompletableTaskHandler<V> implements VulkanFuture<V> {
-		
-		private CountDownLatch termination;
-		@Nullable
-		private VulkanException exception;
-		@Nullable
-		private V value;
-		private boolean isCompleted;
-		
-		public CompletableTaskHandler()
-		{
-			termination = new CountDownLatch(1);
-			isCompleted = false;
-		}
-		
-		public void complete(V value)
-		{
-			if (!isCompleted)
-			{
-				this.value = value;
-				termination.countDown();
-			}
-		}
-		
-		public void throwComplete(VulkanException exception)
-		{
-			if (!isCompleted)
-			{
-				this.exception = exception;
-				termination.countDown();
-			}
-		}
-		
-		@Override
-		public void await() throws InterruptedException
-		{
-			if (!isCompleted) termination.await();
-		}
-		
-		@Override
-		public V get() throws VulkanException, InterruptedException
-		{
-			await();
-			if (exception != null) throw exception;
-			return value;
-		}
-	}
-	
-	private static abstract class AsyncTaskHandler<V> implements VulkanFuture<V> {
-		
-		private CountDownLatch termination;
-		@Nullable
-		private V result;
-		@Nullable
-		private VulkanException exception;
-		private StackTraceElement[] callerStackTrace;
-		
-		public AsyncTaskHandler()
-		{
-			termination = new CountDownLatch(1);
-			result = null;
-			callerStackTrace = new Exception().getStackTrace();
-		}
-		
-		protected void start()
-		{
-			if (RenderEngineVulkan.debug) Thread.ofVirtual().name("Task thread").start(this::run);
-			else Thread.startVirtualThread(this::run);
-		}
-		
-		protected abstract V execute() throws VulkanException;
-		
-		private void run()
-		{
-			try
-			{
-				result = execute();
-			}
-			catch (VulkanException e)
-			{
-				StackTraceElement[] errorStackTrace = e.getStackTrace();
-				StackTraceElement[] stackTrace = new StackTraceElement[errorStackTrace.length + callerStackTrace.length - 2];
-				System.arraycopy(errorStackTrace, 0, stackTrace, 0, errorStackTrace.length);
-				System.arraycopy(callerStackTrace, 2, stackTrace, errorStackTrace.length, callerStackTrace.length - 2);
-				e.setStackTrace(stackTrace);
-				exception = e;
-			}
-			catch (Throwable e)
-			{
-				VulkanException exception = new ExternalException(e);
-				StackTraceElement[] stackTrace = new StackTraceElement[callerStackTrace.length - 2];
-				System.arraycopy(callerStackTrace, 2, stackTrace, 0, callerStackTrace.length - 2);
-				exception.setStackTrace(stackTrace);
-				this.exception = exception;
-			}
-			finally
-			{
-				termination.countDown();
-			}
-		}
-		
-		@Override
-		public void await() throws InterruptedException
-		{
-			termination.await();
-		}
-		
-		@Override
-		public V get() throws VulkanException, InterruptedException
-		{
-			await();
-			if (exception != null) throw exception;
-			return result;
-		}
-	}
-	
-	private static class AsyncRunnableTaskHandler extends AsyncTaskHandler<@Nullable Void> {
-		
-		private VulkanRunnable action;
-		
-		public AsyncRunnableTaskHandler(VulkanRunnable action)
-		{
-			this.action = action;
-			start();
-		}
-		
-		@Override
-		protected @Nullable Void execute() throws VulkanException
-		{
-			action.run();
-			return null;
-		}
-	}
-	
-	private static class AsyncSupplierTaskHandler<V> extends AsyncTaskHandler<V> {
-		
-		private Callable<V> action;
-		
-		public AsyncSupplierTaskHandler(Callable<V> action)
-		{
-			this.action = action;
-			start();
-		}
-		
-		@Override
-		protected V execute() throws VulkanException
-		{
-			try
-			{
-				return action.call();
-			}
-			catch (Exception e)
-			{
-				throw new ExternalException(e);
-			}
-		}
-	}
-	
-	private static class AsyncDependentTaskHandler<V, W> extends AsyncTaskHandler<W> {
-		
-		private VulkanFuture<V> other;
-		private VulkanFunction<V, W> action;
-		
-		public AsyncDependentTaskHandler(VulkanFuture<V> other, VulkanFunction<V, W> action)
-		{
-			this.other = other;
-			this.action = action;
-			start();
-		}
-		
-		@Override
-		protected W execute() throws VulkanException
-		{
-			other.join();
-			return action.apply(other.forceGet());
-		}
-	}
-	
 	public static void setDebugOutput(PrintStream debugOutput)
 	{
 		Debug.setDebugOutput(debugOutput);
@@ -675,7 +420,7 @@ public class RenderEngineVulkan extends RenderEngineCore {
 		assertLoaded();
 		if (multiThreading && mainThread != Thread.currentThread())
 		{
-			CompletableTaskHandler<?> f = completableTask();
+			CompletableTaskHandler<?> f = VulkanFuture.completableTask();
 			getMainThreadActions().add(() -> {
 				action.run();
 				f.complete(null);
@@ -685,7 +430,7 @@ public class RenderEngineVulkan extends RenderEngineCore {
 		else
 		{
 			action.run();
-			return completedTask();
+			return VulkanFuture.completedTask();
 		}
 	}
 	

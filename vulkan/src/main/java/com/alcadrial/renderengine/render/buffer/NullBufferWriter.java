@@ -11,7 +11,7 @@ import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
-import com.alcadrial.renderengine.render.util.VulkanFuture;
+import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 
 final class NullBufferWriter extends BufferWriter {
 	
@@ -144,7 +144,7 @@ final class NullBufferWriter extends BufferWriter {
 	@Override
 	public VulkanFuture<?> getLoad()
 	{
-		return RenderEngineVulkan.completedTask();
+		return VulkanFuture.completedTask();
 	}
 	
 	@Override

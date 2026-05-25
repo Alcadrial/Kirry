@@ -49,10 +49,10 @@ import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.AbstractVulkanResource;
 import com.alcadrial.renderengine.render.util.OverflowException;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
-import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.util.functional.VulkanConsumer;
+import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 
 public class Device extends AbstractVulkanResource<VkDevice> {
 	
@@ -247,7 +247,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 				configure.accept(commandBuffer);
 				commandBuffer.endRecording();
 			});
-			return RenderEngineVulkan.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
+			return VulkanFuture.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 				destroyFences(fences);
 				synchronized (singleUseCommandPool)
 				{
@@ -297,7 +297,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	public VulkanFuture<?> submitSingleUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer, Queue queue) throws VulkanException
 	{
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
-		return RenderEngineVulkan.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
+		return VulkanFuture.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 			destroyFences(fences);
 			synchronized (commandBuffer.getPool())
 			{
@@ -314,7 +314,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	public VulkanFuture<?> submitMultiUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer, Queue queue) throws VulkanException
 	{
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
-		return RenderEngineVulkan.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
+		return VulkanFuture.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 			destroyFences(fences);
 		});
 	}
@@ -327,7 +327,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	public VulkanFuture<?> submitAndResetMultiUseCommandBuffer(MemoryStack stack, CommandBuffer commandBuffer, Queue queue) throws VulkanException
 	{
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
-		return RenderEngineVulkan.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
+		return VulkanFuture.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 			destroyFences(fences);
 			commandBuffer.reset();
 		});
@@ -353,7 +353,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	public VulkanFuture<Device> waitIdleAsync()
 	{
-		return RenderEngineVulkan.submitAsync(this::waitIdle);
+		return VulkanFuture.submitAsync(this::waitIdle);
 	}
 	
 	// FENCES
@@ -366,7 +366,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	public VulkanFuture<long[]> waitForFencesAsync(long... fences)
 	{
-		return RenderEngineVulkan.submitAsync(() -> {
+		return VulkanFuture.submitAsync(() -> {
 			while (VK10.vkWaitForFences(vk, fences, true, 0xFFFFFFFF) == VK10.VK_TIMEOUT);
 			return fences;
 		});

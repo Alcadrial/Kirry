@@ -17,8 +17,8 @@ import org.lwjgl.vulkan.VkSubmitInfo;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.queue.Queue;
-import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 
 public class CommandBufferStream {
 	
@@ -113,13 +113,13 @@ public class CommandBufferStream {
 				info.pCommandBuffers(p.rewind());
 				info.pSignalSemaphores(null);
 				Device device = queue.getDevice();
-				return RenderEngineVulkan.composeAfter(queue.submitAsync(info, device.createFence(stack, false)), fences -> {
+				return VulkanFuture.composeAfter(queue.submitAsync(info, device.createFence(stack, false)), fences -> {
 					device.destroyFences(fences); 
 					for (Entry<VkCommandBuffer, CompletableFuture<?>> e : buffers) e.getValue().complete(null);
 				});
 			}
 		}
-		return RenderEngineVulkan.completedTask();
+		return VulkanFuture.completedTask();
 	}
 	
 	protected List<Entry<VkCommandBuffer, CompletableFuture<?>>> extractBuffers()
