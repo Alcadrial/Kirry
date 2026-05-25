@@ -8,8 +8,13 @@ public class AllTests {
 		//TestReinit.main(args);
 		Test2dPanel.main(args);
 		TextureTest.main(args);
+		AtlasTest.main(args);
+		//FontTest.main(args);
+		//fails GLFW.terminate();
+		/*
 		DepthBufferTest.main(args);
 		InstancingTest.main(args);
 		ComputerTest.main(args);
+		*/
 	}
 }

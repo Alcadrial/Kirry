@@ -31,10 +31,10 @@ public class FontTest extends RenderTest {
 				.build(128, 128, "Test");
 			registerDragging();
 			
-			Font font = new Font(window.getDevice(), getFile("ITCBLKAD.TTF"), 0);
-			//Font font = new Font(window.getDevice(), getFile("ARIALI.TTF"), 0);
+			Font font = new Font(window.getDevice(), getPath("fonts/ITCBLKAD.TTF"), 0);
+			//Font font = new Font(window.getDevice(), getFile("fonts/ARIALI.TTF"), 0);
 			System.out.println(font);
-			font.setSize(256);
+			font.setSize(64);
 			println("Indexing", () -> {
 				for (char c : """
 									Alkaisr Tuilla
@@ -65,7 +65,7 @@ public class FontTest extends RenderTest {
 			
 			int w = texture.getWidth();
 			int h = texture.getHeight();
-			float scale = 1024F / w;
+			float scale = 512F / w;
 			
 			window.setSize((int) (w * scale), (int) (h * scale));
 			window.pollEvents();

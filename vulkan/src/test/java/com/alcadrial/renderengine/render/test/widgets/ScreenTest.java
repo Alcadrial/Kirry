@@ -29,7 +29,7 @@ public class ScreenTest extends RenderTest {
 		mainTest(args, ScreenTest::start, ScreenTest::loop, ScreenTest::end, b -> b.useFont(true));
 	}
 	
-	private static final String SHADER = "shader4";
+	private static final String SHADER = "shaders/shader4";
 	private static final List<Screen> SCREENS = new LinkedList<>();
 	
 	private static int index = 0;
@@ -80,8 +80,8 @@ public class ScreenTest extends RenderTest {
 		TextureBuffer textureIcon0;
 		try
 		{
-			textureIcon = Texture.loadToBufferFromFile(device, getFile("icon.png")).get();
-			textureIcon0 = Texture.loadToBufferFromFile(device, getFile("icon0.png")).get();
+			textureIcon = Texture.loadToBufferFromFile(device, getPath("images/icon.png")).get();
+			textureIcon0 = Texture.loadToBufferFromFile(device, getPath("images/icon0.png")).get();
 		}
 		catch (InterruptedException _)
 		{

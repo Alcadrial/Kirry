@@ -45,14 +45,14 @@ import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
 import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
-import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
 public class TextureTest extends RenderTest {
 	
-	private static final String SHADER = "shader0";
+	private static final String SHADER = "shaders/shader0";
 	
 	public static void main(String[] args)
 	{
@@ -79,7 +79,7 @@ public class TextureTest extends RenderTest {
 	private static boolean isModifiedMatrix;
 	private static boolean isRendererDirty;
 	
-	public static void start() throws VulkanException
+	public static void start() throws VulkanException, InterruptedException
 	{
 		RenderEngineVulkan.setWindowHint(GLFW.GLFW_RESIZABLE, true);
 		RenderEngineVulkan.setWindowHint(GLFW.GLFW_DECORATED, true);
@@ -135,9 +135,9 @@ public class TextureTest extends RenderTest {
 		});
 		Device device = window.getDevice();
 		
-		VulkanFuture<Texture> textureFuture = Texture.loadFromFile(device, getFile("icon.png"), VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		VulkanFuture<Texture> texture0Future = Texture.loadFromFile(device, getFile("icon0.png"), VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		VulkanFuture<ShaderProgram> shaderProgramFuture = RenderEngineVulkan.submitAsync(() -> {
+		VulkanFuture<Texture> textureFuture = Texture.loadFromFile(device, getPath("images/icon.png"), VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		VulkanFuture<Texture> texture0Future = Texture.loadFromFile(device, getPath("images/icon0.png"), VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		VulkanFuture<ShaderProgram> shaderProgramFuture = VulkanFuture.submitAsync(() -> {
 			PreparedShader vertexShader = loadShader(SHADER + ".vert");
 			PreparedShader fragmentShader = loadShader(SHADER + ".frag");
 			return ShaderProgram.create().add(vertexShader, fragmentShader).build();
@@ -175,8 +175,8 @@ public class TextureTest extends RenderTest {
 			localVertexBuffer.close();
 			localIndexBuffer.close();
 
-			texture = textureFuture.forceGet();
-			texture0 = texture0Future.forceGet();
+			texture = textureFuture.get();
+			texture0 = texture0Future.get();
 			
 			renderPass = window.getRenderPass();
 			
@@ -231,7 +231,7 @@ public class TextureTest extends RenderTest {
 					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_2, 12)
 				)
 				.build();
-			shaderProgram = shaderProgramFuture.forceGet();
+			shaderProgram = shaderProgramFuture.get();
 			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
 			renderer = Renderer.builder()
 				.graphicsPipeline(graphicsPipeline)
@@ -264,7 +264,7 @@ public class TextureTest extends RenderTest {
 		}
 	}
 	
-	public static void loop(long time, long enlapsed) throws VulkanException
+	public static void loop(long time, long enlapsed) throws VulkanException, InterruptedException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{

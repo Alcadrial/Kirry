@@ -1,10 +1,13 @@
 package com.alcadrial.renderengine.render.test.util;
 
-import java.io.File;
 import java.io.IOException;
 import java.math.RoundingMode;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +55,8 @@ import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipelineTemplate;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
+import com.alcadrial.renderengine.render.resources.FileManager;
+import com.alcadrial.renderengine.render.resources.ShaderResource;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
@@ -66,26 +71,41 @@ import com.alcadrial.renderengine.render.texture.Texture;
 import com.alcadrial.renderengine.render.texture.TextureSampler;
 import com.alcadrial.renderengine.render.util.Version;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
-import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.ExternalException;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.util.functional.VulkanBiConsumer;
 import com.alcadrial.renderengine.render.util.functional.VulkanRunnable;
+import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class RenderTest {
+	
+	public static final String ASSETS = "assets/renderengine/";
+	public static final String SHADERS = ASSETS + "shaders/";
+	public static final String MODELS = ASSETS + "models/";
+	public static final String TEXTURES = ASSETS + "textures/";
+	public static final String FONTS = ASSETS + "fonts/";
+	public static final String MATERIALS = ASSETS + "materials/";
+	public static final String IMAGES = ASSETS + "images/";
 	
 	protected static final Object MONITOR = new Object();
 	private static final String[] SEVERITIES = new String[] {"UNKNOWN", "VERBOSE", "INFO", "WARNING", "ERROR"};
 	private static final String[] TYPES = new String[] {"UNKNOWN", "GENERAL", "VALIDATION", "PERFORMANCE"};
 	private static final AtomicBoolean hasValidationError = new AtomicBoolean(false);
 	
-	public static void mainTest(String[] args, VulkanRunnable start, VulkanRunnable loop, VulkanRunnable end)
+	protected static FileManager fileManager;
+	
+	public interface TestRunnable {
+		
+		void run() throws VulkanException, InterruptedException;
+	}
+	
+	public static void mainTest(String[] args, TestRunnable start, TestRunnable loop, TestRunnable end)
 	{
 		mainTest(args, start, loop, end, _ -> {});
 	}
 	
-	public static void mainTest(String[] args, VulkanRunnable start, VulkanRunnable loop, VulkanRunnable end, Consumer<RenderEngineVulkan.Builder> config)
+	public static void mainTest(String[] args, TestRunnable start, TestRunnable loop, TestRunnable end, Consumer<RenderEngineVulkan.Builder> config)
 	{
 		try
 		{
@@ -94,7 +114,7 @@ public class RenderTest {
 			
 			if (RenderEngineProperties.DEBUG.getValue()) RenderEngineVulkan.enableDebug();
 			
-			VulkanRunnable init = () -> {
+			TestRunnable init = () -> {
 				RenderEngineVulkan.Builder builder = initRenderEngine();
 				config.accept(builder);
 				builder.initialize();
@@ -106,6 +126,12 @@ public class RenderTest {
 			{
 				Debug.setEnabledAllocationDebug(true);
 				Debug.setEnabledDeallocationFail(true);
+				GLFW.glfwSetErrorCallback((e, m) -> {
+					try (MemoryStack stack = MemoryStack.stackPush())
+					{
+						Debug.error("GLFW Error " + e + ": " + stack.pointers(m).getStringUTF8());
+					}
+				});
 			}
 			
 			Thread mainThread = null;
@@ -135,7 +161,7 @@ public class RenderTest {
 				{
 					e.printStackTrace(System.out);
 				}
-				throw t;
+				if (!(t instanceof InterruptedException)) throw t;
 			}
 			finally
 			{
@@ -146,9 +172,17 @@ public class RenderTest {
 		{
 			t.printStackTrace(System.out);
 		}
+		finally
+		{
+			if (RenderEngineVulkan.isInitializated())
+			{
+				System.err.println("RenderEngine was not terminated");
+				RenderEngineVulkan.terminate();
+			}
+		}
 	}
 	
-	public static void defaultLoop(VulkanBiConsumer<Long, Long> action) throws VulkanException
+	public static void defaultLoop(VulkanBiConsumer<Long, Long> action) throws VulkanException, InterruptedException
 	{
 		VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 		String title = window.getTitle();
@@ -218,12 +252,17 @@ public class RenderTest {
 		window.getDevice().waitIdle();
 	}
 	
-	public static void staticLoop(VulkanBiConsumer<Long, Long> action) throws VulkanException
+	public interface TestLoop {
+		
+		void run(long enlapsed, long enlapsedFrame) throws VulkanException, InterruptedException;
+	}
+	
+	public static void staticLoop(TestLoop action) throws VulkanException
 	{
 		staticLoop(action, null);
 	}
 	
-	public static void staticLoop(VulkanBiConsumer<Long, Long> action, @Nullable Consumer<Runnable> forceRender) throws VulkanException
+	public static void staticLoop(TestLoop action, @Nullable Consumer<Runnable> forceRender) throws VulkanException
 	{
 		VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 		
@@ -243,12 +282,14 @@ public class RenderTest {
 				long current = System.nanoTime();
 				long enlapsed = current - time;
 				long enlapsedFrame = current - lastCurrent[0];
-				action.accept(enlapsed, enlapsedFrame);
+				action.run(enlapsed, enlapsedFrame);
 			}
 			catch (VulkanException e)
 			{
 				lastError[0] = e;
 			}
+			catch (InterruptedException _)
+			{}
 			catch (Throwable e)
 			{
 				lastError[0] = new ExternalException(e);
@@ -287,7 +328,7 @@ public class RenderTest {
 		window.getDevice().waitIdle();
 	}
 	
-	public static void noEventsloop(VulkanBiConsumer<Long, Long> action) throws VulkanException
+	public static void noEventsloop(TestLoop action) throws VulkanException, InterruptedException
 	{
 		VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 		String title = window.getTitle();
@@ -330,7 +371,7 @@ public class RenderTest {
 				frame = 0;
 				highMilestone += (enlapsed - highMilestone + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
 			}
-			println("Frame " + frame, () -> action.accept(enlapsed, enlapsedFrame), TestProperties.PRINT_FRAME_TIMES);
+			println("Frame " + frame, () -> action.run(enlapsed, enlapsedFrame), TestProperties.PRINT_FRAME_TIMES);
 			
 			frame++;
 			lastCurrent = current;
@@ -338,7 +379,7 @@ public class RenderTest {
 		window.getDevice().waitIdle();
 	}
 	
-	public static void defaultAnimationLoop(VulkanBiConsumer<Long, Long> action) throws VulkanException
+	public static void defaultAnimationLoop(TestLoop action) throws VulkanException, InterruptedException
 	{
 		VulkanWindow window = RenderEngineVulkan.getVulkan().getWindow();
 		String title = window.getTitle();
@@ -367,7 +408,7 @@ public class RenderTest {
 					frame[0] = 0;
 					highMilestone[0] += (enlapsed - highMilestone[0] + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
 				}
-				println("Frame " + frame, () -> action.accept(enlapsed, enlapsedFrame), TestProperties.PRINT_FRAME_TIMES);
+				println("Frame " + frame, () -> action.run(enlapsed, enlapsedFrame), TestProperties.PRINT_FRAME_TIMES);
 				frame[0]++;
 				lastCurrent[0] = current;
 				if (window.shouldClose()) window.postEmptyEvent();
@@ -375,6 +416,12 @@ public class RenderTest {
 			catch (VulkanException e)
 			{
 				lastError[0] = e;
+				service.shutdown();
+				window.setShouldClose(true);
+				window.postEmptyEvent();
+			}
+			catch (InterruptedException _)
+			{
 				service.shutdown();
 				window.setShouldClose(true);
 				window.postEmptyEvent();
@@ -512,40 +559,73 @@ public class RenderTest {
 		return depthTexture;
 	}
 	
-	public static File getFile(String path)
+	public static Path getPath(String path)
 	{
-		return new File(RenderEngineProperties.RESOURCE_PATH.getValue(), "assets/renderengine/" + path);
+		if (fileManager != null)
+		{
+			return fileManager.getPath(path);
+		}
+		URL url = ClassLoader.getSystemClassLoader().getResource("assets/renderengine/" + path);
+		if (url != null)
+		{
+			try
+			{
+				return Path.of(url.toURI());
+			}
+			catch (URISyntaxException _)
+			{}
+		}
+		if (RenderEngineProperties.RESOURCE_PATH.isPresent()) return Path.of(RenderEngineProperties.RESOURCE_PATH.getValue(), "assets/renderengine/" + path);
+		return Path.of("assets/renderengine/" + path);
 	}
 	
-	public static PreparedShader loadShader(String path) throws IOException
+	public static PreparedShader loadShader(String pathname) throws IOException
 	{
-		File file = getFile(path);
-		String name = file.getName();
-		Shader shader = new Shader(file);
-		ShaderType type = ShaderType.fromExtension(name.contains(".") ? name.substring(name.lastIndexOf('.') + 1) : name);
+		if (fileManager != null)
+		{
+			ShaderResource resource = fileManager.getResource(pathname, ShaderResource.TYPE);
+			resource.setForceRecompile(TestProperties.FORCE_RECOMPILE_SHADERS.getValue());
+			try
+			{
+				resource.load().join();
+			}
+			catch (CompletionException e)
+			{
+				Throwable cause = e.getCause();
+				if (cause instanceof IOException ioe) throw ioe;
+				throw new IOException(cause);
+			}
+			catch (Exception e)
+			{
+				throw new IOException(e);
+			}
+		}
+		Path path = getPath(pathname);
+		Shader shader = new Shader(path);
+		ShaderType type = ShaderType.fromPath(path);
 		if (TestProperties.FORCE_RECOMPILE_SHADERS.getValue()) shader.compile(type);
 		else
 		{
-			File binFile = getFile(path + ".bin");
-			if (binFile.canRead()) shader.loadCompiled(binFile);
+			Path binPath = getPath(pathname + ".bin");
+			if (Files.isReadable(binPath)) shader.loadCompiled(binPath);
 			else shader.compile(type);
 		}
-		if (!shader.isCompilationSuccessfull()) throw new IOException("Shader " + shader.getFile() + " has errors");
+		if (!shader.isCompilationSuccessfull()) throw new IOException("Shader " + shader.getPath() + " has errors");
 		return new PreparedShader(shader, type);
 	}
 	
 	public static void saveShaderBinary(Shader shader) throws IOException
 	{
-		Files.write(new File(VulkanErrorUtils.nonNull(shader.getFile()).getPath() + ".bin").toPath(), shader.getLastCompilation().get().binary());
+		Files.write(Path.of(VulkanErrorUtils.nonNull(shader.getPath()) + ".bin"), shader.getLastCompilation().get().binary());
 	}
 	
-	public static void println(String s, VulkanRunnable action, Property<Boolean> printProperty) throws VulkanException
+	public static void println(String s, TestRunnable action, Property<Boolean> printProperty) throws VulkanException, InterruptedException
 	{
 		if (printProperty.getValue()) System.out.println(s + " time = " + recordTime(action, TimeUnit.MICROSECONDS) / 1000D + "ms");
 		else action.run();
 	}
 	
-	public static long recordTime(VulkanRunnable runnable, TimeUnit unit) throws VulkanException
+	public static long recordTime(TestRunnable runnable, TimeUnit unit) throws VulkanException, InterruptedException
 	{
 		long startTime;
 		TimeUnit localUnit;
@@ -617,16 +697,16 @@ public class RenderTest {
 		public abstract void end() throws VulkanException;
 	}
 	
-	public static void renderTexture(VulkanWindow window, Texture texture) throws VulkanException
+	public static void renderTexture(VulkanWindow window, Texture texture) throws VulkanException, InterruptedException
 	{
 		renderTexture(window, texture, 1);
 	}
 	
-	public static void renderTexture(VulkanWindow window, Texture texture, int samples) throws VulkanException
+	public static void renderTexture(VulkanWindow window, Texture texture, int samples) throws VulkanException, InterruptedException
 	{
-		final String shader = "shader4";
+		final String shader = "shaders/shader4";
 		
-		VulkanFuture<ShaderProgram> shaderProgramFuture = RenderEngineVulkan.submitAsync(() -> {
+		VulkanFuture<ShaderProgram> shaderProgramFuture = VulkanFuture.submitAsync(() -> {
 			PreparedShader vertexShader = loadShader(shader + ".vert");
 			PreparedShader fragmentShader = loadShader(shader + ".frag");
 			return ShaderProgram.create().add(vertexShader, fragmentShader).build();
@@ -723,7 +803,7 @@ public class RenderTest {
 					.rasterizationSamples(samples)
 				)
 				.build();
-			ShaderProgram shaderProgram = shaderProgramFuture.forceGet();
+			ShaderProgram shaderProgram = shaderProgramFuture.get();
 			GraphicsPipeline graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
 			Renderer renderer = Renderer.builder()
 				.graphicsPipeline(graphicsPipeline)

@@ -23,8 +23,8 @@ import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
-import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.RenderEngineProperties;
+import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
@@ -62,12 +62,13 @@ public class TestReinit extends RenderTest {
 		
 		Logic logic = new Logic();
 		
+		int testIndex = 0;
 		try
 		{
 			AtomicBoolean flag = new AtomicBoolean(true);
-			for (int i = 0; i < 100 && flag.get(); i++)
+			for (testIndex = 0; testIndex < 100 && flag.get(); testIndex++)
 			{
-				System.out.println("Iteration " + i);
+				System.out.println("Iteration " + testIndex);
 				println("Render Engine initialization", () -> RenderTest.initRenderEngine().initialize(), TestProperties.PRINT_LOADING_TIMES);
 				if (!RenderEngineVulkan.isInitializated()) throw new RuntimeException("Cannot initialize RenderEngine", RenderEngineVulkan.getLastInitializationException());
 				
@@ -103,6 +104,10 @@ public class TestReinit extends RenderTest {
 		{
 			e.printStackTrace(System.out);
 		}
+		catch (InterruptedException _)
+		{
+			System.out.println("Interrupted at test " + testIndex);
+		}
 	}
 	
 	public static final class Logic {
@@ -126,7 +131,7 @@ public class TestReinit extends RenderTest {
 				.build();
 		}
 		
-		public void start() throws VulkanException
+		public void start() throws VulkanException, InterruptedException
 		{
 			RenderEngineVulkan.setWindowHint(GLFW.GLFW_RESIZABLE, false);
 			RenderEngineVulkan.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
@@ -280,7 +285,7 @@ public class TestReinit extends RenderTest {
 			}
 		}
 		
-		public void loop() throws VulkanException
+		public void loop() throws VulkanException, InterruptedException
 		{
 			RenderTest.defaultAnimationLoop((_, _) -> {
 				if (++i == 30) RenderEngineVulkan.getVulkan().getWindow().setShouldClose(true);
@@ -317,7 +322,7 @@ public class TestReinit extends RenderTest {
 					commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 					renderer.draw(commandBuffer, 0);
 					commandBuffer.endRenderPass();
-					if (!commandBuffer.endRecording()) System.out.println("not recording");
+					commandBuffer.endRecording();
 					
 					window.endPresentation(commandBuffer);
 					

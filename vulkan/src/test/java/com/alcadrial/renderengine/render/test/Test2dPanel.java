@@ -62,7 +62,7 @@ import com.alcadrial.renderengine.render.window.VulkanWindow;
 @Test
 public class Test2dPanel extends RenderTest {
 	
-	private static final String SHADER = "shader";
+	private static final String SHADER = "shaders/shader";
 	private static final int SIZE = 256;
 	
 	public static void main(String[] args)
@@ -270,7 +270,7 @@ public class Test2dPanel extends RenderTest {
 		isModifiedMatrix = true;
 	}
 	
-	public static void loop(long time, long enlapsed) throws VulkanException
+	public static void loop(long time, long enlapsed) throws VulkanException, InterruptedException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{

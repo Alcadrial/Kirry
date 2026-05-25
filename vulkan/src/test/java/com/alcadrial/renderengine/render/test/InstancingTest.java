@@ -51,7 +51,7 @@ import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class InstancingTest extends RenderTest {
 	
-	private static final String SHADER = "shader2";
+	private static final String SHADER = "shaders/shader2";
 	
 	public static void main(String[] args)
 	{
@@ -288,7 +288,7 @@ public class InstancingTest extends RenderTest {
 		}
 	}
 	
-	public static void loop(long time, long enlapsed) throws VulkanException
+	public static void loop(long time, long enlapsed) throws VulkanException, InterruptedException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{

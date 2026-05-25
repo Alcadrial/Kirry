@@ -53,12 +53,12 @@ public class CompileShaders extends RenderTest {
 					{
 						File file = path.toFile();
 						String name = file.getName();
-						Shader shader = new Shader(file);
+						Shader shader = new Shader(path);
 						ShaderType type = ShaderType.fromExtension(name.contains(".") ? name.substring(name.indexOf('.') + 1) : name);
 						shader.compile(type);
 						if (!shader.isCompilationSuccessfull())
 						{
-							throw new IOException("Shader " + shader.getFile() + " has errors: \n" + Arrays.stream(shader.getCode()).collect(Collectors.joining("\n")));
+							throw new IOException("Shader " + shader.getPath() + " has errors: \n" + Arrays.stream(shader.getCode()).collect(Collectors.joining("\n")));
 						}
 						saveShaderBinary(shader);
 					}

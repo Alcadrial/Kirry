@@ -1,9 +1,13 @@
 package com.alcadrial.renderengine.render.test;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.WatchEvent.Kind;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
@@ -30,34 +34,39 @@ import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
-import com.alcadrial.renderengine.render.component.ColorTextureComponent;
 import com.alcadrial.renderengine.render.component.EntityRenderer;
 import com.alcadrial.renderengine.render.component.MeshComponent;
 import com.alcadrial.renderengine.render.component.SpatialEngine;
+import com.alcadrial.renderengine.render.resources.FileManager;
+import com.alcadrial.renderengine.render.resources.Mesh;
+import com.alcadrial.renderengine.render.resources.ShaderResource;
+import com.alcadrial.renderengine.render.resources.TextureResource;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
-import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class ComponentTest extends RenderTest {
 	
-	private static final String SHADER = "shader5";
+	private static final String SHADER = SHADERS + "shader5";
 	
 	public static void main(String[] args)
 	{
 		mainTest(args, ComponentTest::start, () -> defaultAnimationLoop(ComponentTest::loop), ComponentTest::end);
 	}
 	
+	private static MutableList<Mesh> models;
 	private static MutableList<Entity> entities;
 	private static EntityRenderer entityRenderer;
 	private static SpatialEngine spatialEngine;
 	
-	private static List<ShaderProgram> shaders;
+	private static MutableList<ShaderProgram> shaderPrograms;
+	private static MutableList<PreparedShader> shaders;
 	private static int currentShaderIndex;
 	private static StaticBigBuffer staticBigBuffer;
 	
@@ -71,6 +80,7 @@ public class ComponentTest extends RenderTest {
 	private static boolean isModifiedModel;
 	private static boolean isModified;
 	private static boolean reloadShaders;
+	private static boolean reloadModels;
 	
 	private static Matrix4f buildModelMatrix(@Angle(AngleUnit.RADIANS) float xRotation, @Angle(AngleUnit.RADIANS) float yRotation, @Angle(AngleUnit.RADIANS) float zRotation)
 	{
@@ -85,25 +95,114 @@ public class ComponentTest extends RenderTest {
 	
 	public static void start() throws VulkanException
 	{
-		shaders = Lists.mutable.empty();
-		ShaderProgram shaderProgram;
-		PreparedShader initComputeShader;
-		PreparedShader transformComputeShader;
 		try
 		{
-			PreparedShader vertexShader = loadShader(SHADER + ".vert");
-			shaders.add(ShaderProgram.create().add(vertexShader, loadShader(SHADER + ".frag")).build());
-			shaders.add(ShaderProgram.create().add(vertexShader, loadShader(SHADER + ".1.frag")).build());
-			shaderProgram = shaders.getFirst();
-			currentShaderIndex = 0;
-			
-			initComputeShader = loadShader("shaders/" + EntityRenderer.INIT_COMPUTE_SHADER_NAME);
-			transformComputeShader = loadShader("shaders/" + EntityRenderer.TRANSFORM_COMPUTE_SHADER_NAME);
+			fileManager = FileManager.of(
+				"src/test/resources",
+				"src/main/resources",
+				FileManager.loaderJarResourceUri(ASSETS)
+			);
+			fileManager.registerResourceType(ShaderResource.TYPE, ShaderResource::new);
+			fileManager.registerResourceType(TextureResource.TYPE, TextureResource::new);
+			fileManager.registerResourceType(Mesh.TYPE, (p, m) -> new Mesh(p, m.getPath(MATERIALS), m.getPath(TEXTURES), m));
 		}
 		catch (IOException e)
 		{
 			e.printStackTrace(System.out);
-			RenderEngineVulkan.terminate();
+			end();
+			return;
+		}
+		
+		shaderPrograms = Lists.mutable.empty();
+		shaders = Lists.mutable.empty();
+		try
+		{
+			ShaderResource vertexShaderResource = fileManager.getResource(SHADER + ".vert", ShaderResource.TYPE);
+			ShaderResource fragmentShaderResource = fileManager.getResource(SHADER + ".frag", ShaderResource.TYPE);
+			ShaderResource fragment1ShaderResource = fileManager.getResource(SHADER + ".1.frag", ShaderResource.TYPE);
+			ShaderResource initComputeShaderResource = fileManager.getResource(EntityRenderer.INIT_COMPUTE_SHADER_PATHNAME, ShaderResource.TYPE);
+			ShaderResource transformComputeShaderResource = fileManager.getResource(EntityRenderer.TRANSFORM_COMPUTE_SHADER_PATHNAME, ShaderResource.TYPE);
+			
+			vertexShaderResource.setForceRecompile(TestProperties.FORCE_RECOMPILE_SHADERS.getValue());
+			fragmentShaderResource.setForceRecompile(TestProperties.FORCE_RECOMPILE_SHADERS.getValue());
+			fragment1ShaderResource.setForceRecompile(TestProperties.FORCE_RECOMPILE_SHADERS.getValue());
+			initComputeShaderResource.setForceRecompile(TestProperties.FORCE_RECOMPILE_SHADERS.getValue());
+			transformComputeShaderResource.setForceRecompile(TestProperties.FORCE_RECOMPILE_SHADERS.getValue());
+			
+			try
+			{
+				CompletableFuture.allOf(
+					vertexShaderResource.load(),
+					fragmentShaderResource.load(),
+					fragment1ShaderResource.load(),
+					initComputeShaderResource.load(),
+					transformComputeShaderResource.load()
+				).join();
+			}
+			catch (CompletionException e)
+			{
+				Throwable cause = e.getCause();
+				if (cause instanceof IOException ioe) throw ioe;
+				throw new IOException(cause);
+			}
+			catch (Exception e)
+			{
+				throw new IOException(e);
+			}
+			
+			PreparedShader vertexShader = vertexShaderResource.getShader();
+			shaderPrograms.add(ShaderProgram.create().add(vertexShader, fragmentShaderResource.getShader()).build());
+			shaderPrograms.add(ShaderProgram.create().add(vertexShader, fragment1ShaderResource.getShader()).build());
+			currentShaderIndex = 0;
+			
+			shaders.add(initComputeShaderResource.getShader());
+			shaders.add(transformComputeShaderResource.getShader());
+			
+			fileManager.registerForChanges(vertexShaderResource, r -> {
+				MutableList<ShaderProgram> newShaders = Lists.mutable.empty();
+
+				r.reload().join();
+				PreparedShader shader = r.getShader();
+				newShaders.add(ShaderProgram.create().add(shader, shaderPrograms.get(0).getShaders().get(1)).build());
+				newShaders.add(ShaderProgram.create().add(shader, shaderPrograms.get(1).getShaders().get(1)).build());
+				
+				MutableList<ShaderProgram> oldShaders = shaderPrograms;
+				shaderPrograms = newShaders;
+				oldShaders.clear();
+				reloadShaders = true;
+			});
+			fileManager.registerForChanges(fragmentShaderResource, r -> {
+				MutableList<ShaderProgram> newShaders = Lists.mutable.empty();
+
+				r.reload().join();
+				PreparedShader shader = r.getShader();
+				newShaders.add(ShaderProgram.create().add(shaderPrograms.get(0).getShaders().get(0), shader).build());
+				newShaders.add(shaderPrograms.get(1));
+
+				MutableList<ShaderProgram> oldShaders = shaderPrograms;
+				shaderPrograms = newShaders;
+				oldShaders.clear();
+				reloadShaders = true;
+			});
+			fileManager.registerForChanges(fragment1ShaderResource, r -> {
+				MutableList<ShaderProgram> newShaders = Lists.mutable.empty();
+				
+				r.reload().join();
+				PreparedShader shader = r.getShader();
+				newShaders.add(shaderPrograms.get(0));
+				newShaders.add(ShaderProgram.create().add(shaderPrograms.get(0).getShaders().get(0), shader).build());
+
+				MutableList<ShaderProgram> oldShaders = shaderPrograms;
+				shaderPrograms = newShaders;
+				oldShaders.clear();
+				reloadShaders = true;
+			});
+			fileManager.startWatchingResources();
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace(System.out);
+			end();
 			return;
 		}
 		
@@ -119,46 +218,73 @@ public class ComponentTest extends RenderTest {
 			.build(1080, 720, "Test");
 		Device device = window.getDevice();
 		
-		entities = Lists.mutable.of();
-		for (int i = 0; i < 10; i++)
+		models = Lists.mutable.empty();
+		try (DirectoryStream<Path> stream = Files.newDirectoryStream(fileManager.getPath(ASSETS + "models"), "*.obj"))
 		{
-			Entity e = Entity.of(ColorTextureComponent.Type.INSTANCE.getId());
-			e.setComponent(MeshComponent.Type.INSTANCE, MeshComponent.ofFileObj(getFile("models/model" + i + ".obj")));
-			e.setComponent(ColorTextureComponent.Type.INSTANCE, ColorTextureComponent.ofFile(device, getFile("textures/model" + i + ".png")));
-			entities.add(e);
+			for (Path path : stream)
+			{
+				models.add(fileManager.getResource(path, Mesh.TYPE));
+			}
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace(System.out);
+			end();
+			return;
 		}
 		
-		VulkanFuture<?> entitiesLoading = RenderEngineVulkan.submitAsync(() -> {
+		if (models.isEmpty())
+		{
+			System.out.println("0 models found");
+			end();
+			return;
+		}
+		
+		entities = Lists.mutable.of();
+		
+		VulkanFuture<?> modelsLoading = VulkanFuture.submitAsync(() -> {
+			
+			for (Mesh mesh : models)
+			{
+				for (int i = 0; i < 2; i++)
+				{
+					Entity e = Entity.of(MeshComponent.TYPE.getId());
+					e.setComponent(MeshComponent.TYPE, MeshComponent.ofMesh(mesh));
+					entities.add(e);
+				}
+			}
+			
 			FastList<CompletableFuture<?>> futures = new FastList<>();
+			
 			for (Entity e : entities)
 			{
 				futures.add(e.load().exceptionally(ex -> {
-					System.out.println("Failed to load model " + e.getComponent(MeshComponent.Type.INSTANCE));
-					if (!FileNotFoundException.class.isAssignableFrom(ex.getCause().getClass())) ex.getCause().printStackTrace();
+					System.out.println("Failed to load entity: " + ex.getLocalizedMessage());
 					return null;
 				}));
 			}
+			
 			CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
 		});
 		
 		window.setCallback((GLFWWindowSizeCallbackI) (_, _, _) -> {
 			isModified = true;
 		});
-		window.setCallback((GLFWKeyCallbackI) (_, k, _, a, _) -> {
+		window.setCallback((GLFWKeyCallbackI) (_, k, _, a, m) -> {
 			if (a == GLFW.GLFW_PRESS)
 			{
 				switch (k)
 				{
 					case GLFW.GLFW_KEY_UP -> {
-						currentShaderIndex = (currentShaderIndex == 0 ? shaders.size() : currentShaderIndex) - 1;
+						currentShaderIndex = (currentShaderIndex == 0 ? shaderPrograms.size() : currentShaderIndex) - 1;
 						reloadShaders = true;
 					}
 					case GLFW.GLFW_KEY_DOWN -> {
-						currentShaderIndex = (currentShaderIndex == shaders.size() - 1 ? 0 : currentShaderIndex + 1);
+						currentShaderIndex = (currentShaderIndex == shaderPrograms.size() - 1 ? 0 : currentShaderIndex + 1);
 						reloadShaders = true;
 					}
 					case GLFW.GLFW_KEY_F2 -> {
-						List<ShaderProgram> newShaders = Lists.mutable.empty();
+						MutableList<ShaderProgram> newShaders = Lists.mutable.empty();
 						try
 						{
 							PreparedShader vertexShader = loadShader(SHADER + ".vert");
@@ -170,9 +296,42 @@ public class ComponentTest extends RenderTest {
 							System.out.println("Failed to reload shaders: " + e.getLocalizedMessage());
 							return;
 						}
-						shaders.clear();
-						shaders = newShaders;
+						shaderPrograms.clear();
+						shaderPrograms = newShaders;
 						reloadShaders = true;
+					}
+					case GLFW.GLFW_KEY_F3 -> {
+						
+						if ((m & GLFW.GLFW_MOD_CONTROL) != 0)
+						{
+							MutableList<Mesh> newModels = Lists.mutable.empty();
+							try (DirectoryStream<Path> stream = Files.newDirectoryStream(fileManager.getPath(ASSETS + "models"), "*.obj"))
+							{
+								for (Path path : stream)
+								{
+									models.add(fileManager.getResource(path, Mesh.TYPE));
+								}
+							}
+							catch (Exception e)
+							{
+								System.out.println("Failed to reload models: " + e.getLocalizedMessage());
+								return;
+							}
+							models.clear();
+							models = newModels;
+						}
+						
+						List<CompletableFuture<?>> futures = Lists.mutable.empty();
+						for (Mesh mesh : models)
+						{
+							futures.add(mesh.load().exceptionally(ex -> {
+								String name = mesh.getName();
+								System.out.println("Failed to load model " + (name != null ? name : mesh.getPath()) + ": " + ex.getLocalizedMessage());
+								return null;
+							}));
+						}
+						
+						reloadModels = true;
 					}
 				}
 			}
@@ -187,14 +346,22 @@ public class ComponentTest extends RenderTest {
 		entityRenderer = new EntityRenderer(device, entities);
 		spatialEngine = new SpatialEngine(entities);
 		
+		modelsLoading.join();
+		
 		Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
 		Matrix4f modelMatrix = buildModelMatrix(xRotation, yRotation, zRotation);
 		
-		entitiesLoading.join();
-		
 		EntityRenderer.Properties entityRendererProperties = entityRenderer.getProperties();
+		
+		if (entityRendererProperties.bufferSize() == 0)
+		{
+			System.out.println("No data to render");
+			end();
+			return;
+		}
+		
 		staticBigBuffer = new StaticBigBuffer(device, entityRendererProperties.bufferSize());
-		entityRenderer.init(new EntityRenderer.InitParams(shaderProgram, initComputeShader, transformComputeShader, staticBigBuffer, new EntityRenderer.SurfaceTarget(window), Lists.mutable.of(ShaderVariable.PROJECTION, ShaderVariable.MODEL), Lists.mutable.of(lightPos, lightIntensity, spaceFogIntensity)));
+		entityRenderer.init(new EntityRenderer.InitParams(shaderPrograms.getFirst(), shaders.get(0), shaders.get(1), staticBigBuffer, new EntityRenderer.SurfaceTarget(window), Lists.mutable.of(ShaderVariable.PROJECTION, ShaderVariable.MODEL), Lists.mutable.of(lightPos, lightIntensity, spaceFogIntensity)));
 		entityRenderer.setUniforms((i, writer) -> {
 			switch (i)
 			{
@@ -231,7 +398,7 @@ public class ComponentTest extends RenderTest {
 			}
 			if (isModified || reloadShaders)
 			{
-				entityRenderer.reinit(new EntityRenderer.ReinitParams(reloadShaders ? shaders.get(currentShaderIndex) : null, null, null, isModified ? new EntityRenderer.SurfaceTarget(window) : null));
+				entityRenderer.reinit(new EntityRenderer.ReinitParams(reloadShaders ? shaderPrograms.get(currentShaderIndex) : null, null, null, isModified ? new EntityRenderer.SurfaceTarget(window) : null));
 				if (isModified)
 				{
 					Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
@@ -294,7 +461,18 @@ public class ComponentTest extends RenderTest {
 	
 	public static void end()
 	{
-		staticBigBuffer.close();
+		if (staticBigBuffer != null) staticBigBuffer.close();
+		try
+		{
+			fileManager.stopWatchingResources();
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace(System.out);
+		}
 		RenderEngineVulkan.terminate();
 	}
+	
+	public static void handleFileSystemEvent(Path path, Kind<?> kind)
+	{}
 }

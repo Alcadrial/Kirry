@@ -254,7 +254,7 @@ public class DepthBufferTest extends RenderTest {
 		});
 	}
 	
-	public static void loop(long time, long enlapsed) throws VulkanException
+	public static void loop(long time, long enlapsed) throws VulkanException, InterruptedException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
