@@ -14,7 +14,6 @@ import org.jspecify.annotations.Nullable;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.RenderEngineProperties;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
-import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
 /**
  * 
@@ -42,14 +41,14 @@ public class Shader {
 		return SHADER_FILE_EXTENSION.matcher(name.toString()).matches();
 	}
 	
-	private @Nullable File file;
+	private @Nullable Path path;
 	private String[] code;
 	private @Nullable CompiledShader compiled;
 	
-	public Shader(File file) throws IOException
+	public Shader(Path path) throws IOException
 	{
-		this.file = VulkanErrorUtils.nonNull(file);
-		code = Files.readAllLines(file.toPath()).toArray(String[]::new);
+		this.path = path;
+		code = Files.readAllLines(path).toArray(String[]::new);
 	}
 	
 	public Shader(String sourceCode)
@@ -59,7 +58,7 @@ public class Shader {
 	
 	public Shader(String[] sourceCodeLines)
 	{
-		file = null;
+		path = null;
 		code = sourceCodeLines;
 	}
 	
@@ -68,9 +67,9 @@ public class Shader {
 		return compiled = CompiledShader.ofSuccess(code, compiledCode);
 	}
 	
-	public CompiledShader loadCompiled(File compiledFile) throws IOException
+	public CompiledShader loadCompiled(Path compiledPath) throws IOException
 	{
-		return compiled = CompiledShader.ofSuccess(code, Files.readAllBytes(compiledFile.toPath()));
+		return compiled = CompiledShader.ofSuccess(code, Files.readAllBytes(compiledPath));
 	}
 
 	public CompiledShader compile(ShaderType type)
@@ -78,10 +77,10 @@ public class Shader {
 		Process process;
 		try
 		{
-			File file = this.file;
-			if (file != null)
+			Path path = this.path;
+			if (path != null)
 			{
-				process = new ProcessBuilder(GLSLC_PATH, "-O", "-o", "-", "-fshader-stage=" + type.toString().toLowerCase(), file.toPath().toAbsolutePath().toString()).redirectError(Redirect.INHERIT).start();
+				process = new ProcessBuilder(GLSLC_PATH, "-O", "-o", "-", "-fshader-stage=" + type.toString().toLowerCase(), path.toRealPath().toString()).redirectError(Redirect.INHERIT).start();
 			}
 			else
 			{
@@ -113,9 +112,9 @@ public class Shader {
 		return compiled != null && !compiled.hasErrors();
 	}
 	
-	public @Nullable File getFile()
+	public @Nullable Path getPath()
 	{
-		return file;
+		return path;
 	}
 	
 	public String[] getCode()

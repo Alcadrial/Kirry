@@ -1,5 +1,7 @@
 package com.alcadrial.renderengine.render.shader;
 
+import java.nio.file.Path;
+
 import org.lwjgl.vulkan.VK10;
 
 public enum ShaderType {
@@ -11,6 +13,12 @@ public enum ShaderType {
 	FRAGMENT("frag", VK10.VK_SHADER_STAGE_FRAGMENT_BIT),
 	COMPUTE("comp", VK10.VK_SHADER_STAGE_COMPUTE_BIT),
 	UNKNOWN("", 0);
+	
+	public static ShaderType fromPath(Path path)
+	{
+		String name = path.getFileName().toString();
+		return ShaderType.fromExtension(name.contains(".") ? name.substring(name.lastIndexOf('.') + 1) : name);
+	}
 	
 	public static ShaderType fromExtension(String extension)
 	{

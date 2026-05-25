@@ -68,8 +68,8 @@ public class ShaderProgram {
 		DEFAULT = create().add(new PreparedShader(shader, ShaderType.VERTEX)).build();
 	}
 	
-	private MutableList<PreparedShader> shaders;
-	private PreparedShader vertexShader;
+	private final MutableList<PreparedShader> shaders;
+	private final PreparedShader vertexShader;
 	
 	private ShaderProgram(Builder builder)
 	{

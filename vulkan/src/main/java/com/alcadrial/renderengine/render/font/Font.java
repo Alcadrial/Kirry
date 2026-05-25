@@ -1,7 +1,8 @@
 package com.alcadrial.renderengine.render.font;
 
-import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.util.HashMap;
 
 import org.lwjgl.PointerBuffer;
@@ -26,22 +27,22 @@ import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class Font implements AutoCloseable {
 	
-	private File file;
+	private Path path;
 	private long faceIndex;
 	private FT_Face face;
 	private Device device;
 	private Atlas atlas;
 	private HashMap<Integer, TextureRegion> regions;
 	
-	public Font(Device device, File file, long faceIndex) throws VulkanException, FreeTypeException
+	public Font(Device device, Path path, long faceIndex) throws VulkanException, FreeTypeException, IOException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			this.device = device;
-			this.file = file;
+			this.path = path;
 			this.faceIndex = faceIndex;
 			PointerBuffer p = stack.mallocPointer(1);
-			FreeTypeErrorUtils.assertNoError(FreeType.FT_New_Face(RenderEngineVulkan.getFTLibrary(), file.getPath(), faceIndex, p), "Failed to load font file");
+			if (FreeType.FT_New_Face(RenderEngineVulkan.getFTLibrary(), path.toRealPath().toString(), faceIndex, p) != 0) throw new IOException("Failed to load font file");
 			face = FT_Face.create(p.get(0));
 			atlas = new Atlas(device, 16, 16, VK10.VK_FORMAT_B8G8R8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, true);
 			setSize(16);
@@ -122,14 +123,14 @@ public class Font implements AutoCloseable {
 		return atlas;
 	}
 	
-	public void reload() throws FreeTypeException, VulkanException
+	public void reload() throws FreeTypeException, VulkanException, IOException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			FreeType.FT_Done_Face(face);
 			atlas.close();
 			PointerBuffer p = stack.mallocPointer(1);
-			FreeTypeErrorUtils.assertNoError(FreeType.FT_New_Face(RenderEngineVulkan.getFTLibrary(), file.getPath(), faceIndex, p), "Failed to load font file");
+			if (FreeType.FT_New_Face(RenderEngineVulkan.getFTLibrary(), path.toRealPath().toString(), faceIndex, p) != 0) throw new IOException("Failed to load font file");
 			face = FT_Face.create(p.get(0));
 			atlas = new Atlas(device, 16, 16, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 			setSize(16);
@@ -147,6 +148,6 @@ public class Font implements AutoCloseable {
 	@Override
 	public String toString()
 	{
-		return "Font{name=" + FreeType.FT_Get_Postscript_Name(face) + ", file=" + file + ", faceIndex=" + faceIndex + "}";
+		return "Font{name=" + FreeType.FT_Get_Postscript_Name(face) + ", path=" + path + ", faceIndex=" + faceIndex + "}";
 	}
 }

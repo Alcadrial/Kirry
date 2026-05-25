@@ -1,10 +1,12 @@
 package com.alcadrial.renderengine.render.texture;
 
-import java.io.File;
 import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+import java.nio.file.Path;
 
 import org.lwjgl.stb.STBImage;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkImageCreateInfo;
@@ -18,8 +20,8 @@ import com.alcadrial.renderengine.render.buffer.MemoryResource;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
-import com.alcadrial.renderengine.render.util.VulkanFuture;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 
 public class Texture extends MemoryResource {
 	
@@ -28,16 +30,16 @@ public class Texture extends MemoryResource {
 		RenderEngineVulkan.assertLoaded();
 	}
 	
-	public static VulkanFuture<TextureBuffer> loadToBufferFromFile(Device device, File file) throws VulkanException
+	public static VulkanFuture<TextureBuffer> loadToBufferFromFile(Device device, Path path) throws VulkanException
 	{
 		return VulkanFuture.submitAsync(() -> {
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
-				int[] width = new int[1];
-				int[] height = new int[1];
-				int[] channels = new int[1];
-				ByteBuffer data = STBImage.stbi_load(stack.UTF8(file.getPath()), width, height, channels, STBImage.STBI_rgb_alpha);
-				if (data == null) throw new VulkanException("Cannot load image \"" + file + "\"");
+				IntBuffer widthHeightChannels = stack.mallocInt(3);
+				long address = MemoryUtil.memAddress(widthHeightChannels);
+				long dataAddress = STBImage.nstbi_load(MemoryUtil.memAddress(stack.UTF8(path.toRealPath().toString())), address, address + 4, address + 8, STBImage.STBI_rgb_alpha);
+				if (dataAddress == 0) throw new VulkanException("Cannot load image \"" + path + "\"");
+				ByteBuffer data = MemoryUtil.memByteBuffer(dataAddress, widthHeightChannels.get(0) * widthHeightChannels.get(1) * STBImage.STBI_rgb_alpha);
 				
 				VulkanBuffer buffer = VulkanBuffer.forTransfer(device, data.limit());
 				buffer.getMemory().mapMemory().getBuffer().put(data).rewind();
@@ -49,28 +51,28 @@ public class Texture extends MemoryResource {
 		});
 	}
 	
-	public static VulkanFuture<Texture> loadFromFile(Device device, File file, int dstLayout) throws VulkanException
+	public static VulkanFuture<Texture> loadFromFile(Device device, Path path, int dstLayout) throws VulkanException
 	{
-		return loadFromFile(device, file, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, dstLayout);
+		return loadFromFile(device, path, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, dstLayout);
 	}
 	
-	public static VulkanFuture<Texture> loadFromFile(Device device, File file, int usage, int dstLayout) throws VulkanException
+	public static VulkanFuture<Texture> loadFromFile(Device device, Path path, int usage, int dstLayout) throws VulkanException
 	{
 		return VulkanFuture.submitAsync(() -> {
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
-				int[] width = new int[1];
-				int[] height = new int[1];
-				int[] channels = new int[1];
-				ByteBuffer data = STBImage.stbi_load(stack.UTF8(file.getPath()), width, height, channels, STBImage.STBI_rgb_alpha);
-				if (data == null) throw new VulkanException("Cannot load image \"" + file + "\"");
+				IntBuffer widthHeightChannels = stack.mallocInt(3);
+				long address = MemoryUtil.memAddress(widthHeightChannels);
+				long dataAddress = STBImage.nstbi_load(MemoryUtil.memAddress(stack.UTF8(path.toRealPath().toString())), address, address + 4, address + 8, STBImage.STBI_rgb_alpha);
+				if (dataAddress == 0) throw new VulkanException("Cannot load image \"" + path + "\"");
+				ByteBuffer data = MemoryUtil.memByteBuffer(dataAddress, widthHeightChannels.get(0) * widthHeightChannels.get(1) * STBImage.STBI_rgb_alpha);
 				
 				VulkanBuffer buffer = VulkanBuffer.forTransfer(device, data.limit());
 				buffer.getMemory().mapMemory().getBuffer().put(data).rewind();
 				buffer.getMemory().unmapMemory();
 				STBImage.stbi_image_free(data.rewind());
 				
-				Texture texture = Texture.create2dTexture(device, width[0], height[0], VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | usage, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+				Texture texture = Texture.create2dTexture(device, widthHeightChannels.get(0), widthHeightChannels.get(1), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | usage, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 				
 				device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
 					texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);

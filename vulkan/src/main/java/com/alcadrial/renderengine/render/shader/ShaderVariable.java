@@ -42,6 +42,10 @@ public class ShaderVariable {
 	public static final ShaderVariable VIEW = of(ShaderInputType.MATRIX_FLOAT_4X4, "VIEW");
 	public static final ShaderVariable MODEL = of(ShaderInputType.MATRIX_FLOAT_4X4, "MODEL");
 	public static final ShaderVariable TRANSFORMATION = of(ShaderInputType.MATRIX_FLOAT_4X4, "TRANSFORMATION");
+
+	public static final ShaderVariable OFFSET = of(ShaderInputType.INT, "offset");
+	public static final ShaderVariable OFFSET_1 = of(ShaderInputType.INT, "offset1");
+	public static final ShaderVariable OFFSET_2 = of(ShaderInputType.INT, "offset2");
 	
 	public static final ShaderVariable TEXTURE = of(ShaderInputType.SAMPLER_2D, "TEXTURE_SAMPLER");
 	public static final ShaderVariable ATLAS = of(ShaderInputType.SAMPLER_2D, "ATLAS");
