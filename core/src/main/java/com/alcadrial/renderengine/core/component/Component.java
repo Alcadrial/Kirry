@@ -4,7 +4,7 @@ import java.util.concurrent.CompletableFuture;
 
 import org.jspecify.annotations.NonNull;
 
-public interface Component<I, P> {
+public interface Component<I, P, E extends Exception> {
 
 	CompletableFuture<?> load();
 	CompletableFuture<?> reload();
@@ -15,8 +15,8 @@ public interface Component<I, P> {
 	 */
 	int reloadCount();
 	
-	void init(@NonNull I params);
-	void reinit(@NonNull I params);
+	void init(@NonNull I params) throws E;
+	void reinit(@NonNull I params) throws E;
 	
 	P getProperties();
 	void close();

@@ -105,8 +105,7 @@ public class Shader {
 	{
 		if (!status.isDeleted())
 		{
-			GL30.glDeleteProgram(id);
-			Util.printError("program d " + id);
+			GL30.glDeleteShader(id);
 			status = new ShaderStatus(status.isCompiled(), -1, status.getCode(), status.getInfo());
 		}
 	}

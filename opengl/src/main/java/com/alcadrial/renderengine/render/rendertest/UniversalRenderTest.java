@@ -223,6 +223,7 @@ public class UniversalRenderTest implements RenderTest {
 	@Override
 	public void start()
 	{
+		RenderEngine.enableDebug();
 		window = new OpenGlWindow(1080, 720, "Test");
 		window.create();
 		window.makeContextCurrent();

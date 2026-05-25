@@ -16,7 +16,7 @@ final class ComponentTypeFactory {
 	}
 	
 	@SuppressWarnings("unchecked")
-	static <C extends Component<?, ?>> ComponentType<C> of(Class<? extends C> clazz)
+	static <C extends Component<?, ?, ?>> ComponentType<C> of(Class<? extends C> clazz)
 	{
 		return (ComponentType<C>) CACHE.getIfAbsentPut(clazz, () -> {
 			int id = nextId++;

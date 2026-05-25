@@ -36,7 +36,7 @@ public class ElementArrayBuffer extends GlBuffer {
 	
 	public void addAll(Collection<Integer> collection)
 	{
-		values.addAll(collection);
+		values.addAll(collection);  
 		Optional<Integer> max = collection.stream().max(Integer::compare);
 		max.ifPresent(i -> this.max = i);
 		isModified = true;

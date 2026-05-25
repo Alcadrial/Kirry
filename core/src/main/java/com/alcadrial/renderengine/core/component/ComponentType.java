@@ -1,8 +1,14 @@
 package com.alcadrial.renderengine.core.component;
 
-public interface ComponentType<C extends Component<?, ?>> {
+/**
+ * The type of a {@link Component} used to select a Component from an {@link Entity}.
+ * <p>
+ * Use {@link #of(Class)} to create a new instance and cache it for the best performance.
+ * @param <C>
+ */
+public interface ComponentType<C extends Component<?, ?, ?>> {
 	
-	static <C extends Component<?, ?>> ComponentType<C> of(Class<? extends C> clazz)
+	static <C extends Component<?, ?, ?>> ComponentType<C> of(Class<? extends C> clazz)
 	{
 		return ComponentTypeFactory.of(clazz);
 	}
