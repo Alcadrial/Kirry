@@ -63,7 +63,7 @@ public class SpatialEngine implements EntityEngine<SpatialEngine.InitParams, Spa
 		float enlapsedTime = params.enlapsedTime;
 		for (Entity entity : entities)
 		{
-			SpatialComponent spatial = entity.getComponent(SpatialComponent.Type.INSTANCE);
+			SpatialComponent spatial = entity.getComponent(SpatialComponent.TYPE);
 			if (spatial != null)
 			{
 				SpatialComponent.Properties properties = spatial.getProperties();

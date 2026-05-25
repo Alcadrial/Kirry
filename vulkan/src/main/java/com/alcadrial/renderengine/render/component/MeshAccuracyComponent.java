@@ -7,8 +7,9 @@ import org.jspecify.annotations.Nullable;
 import com.alcadrial.renderengine.core.component.AbstractComponent;
 import com.alcadrial.renderengine.core.component.ComponentType;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
-public class MeshAccuracyComponent extends AbstractComponent<MeshAccuracyComponent.Params, MeshAccuracyComponent.Properties> {
+public class MeshAccuracyComponent extends AbstractComponent<MeshAccuracyComponent.Params, MeshAccuracyComponent.Properties, VulkanException> {
 	
 	public enum Type implements ComponentType<MeshComponent> {
 		

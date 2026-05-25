@@ -7,19 +7,11 @@ import org.jspecify.annotations.Nullable;
 import com.alcadrial.kector.vector.getter.Vector3fGetter;
 import com.alcadrial.renderengine.core.component.Component;
 import com.alcadrial.renderengine.core.component.ComponentType;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
-public class SpatialComponent implements Component<SpatialComponent.Params, SpatialComponent.Properties> {
-	
-	public enum Type implements ComponentType<SpatialComponent> {
-		
-		INSTANCE;
-		
-		@Override
-		public int getId()
-		{
-			return 2;
-		}
-	}
+public class SpatialComponent implements Component<SpatialComponent.Params, SpatialComponent.Properties, VulkanException> {
+
+	public static ComponentType<SpatialComponent> TYPE = ComponentType.of(SpatialComponent.class);
 	
 	public record Params(
 		@Nullable Vector3fGetter position,

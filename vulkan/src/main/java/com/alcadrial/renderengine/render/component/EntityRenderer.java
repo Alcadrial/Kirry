@@ -34,6 +34,7 @@ import com.alcadrial.renderengine.render.pipeline.GraphicsPipelineTemplate;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
+import com.alcadrial.renderengine.render.resources.Mesh.Material;
 import com.alcadrial.renderengine.render.shader.PreparedShader;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderProgram;
@@ -54,7 +55,9 @@ import com.alcadrial.renderengine.render.window.VulkanWindow;
 public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, EntityRenderer.ReinitParams, EntityRenderer.UpdateParams, EntityRenderer.Properties, VulkanException> {
 	
 	public static final String INIT_COMPUTE_SHADER_NAME = "uvInitShader.comp";
+	public static final String INIT_COMPUTE_SHADER_PATHNAME = "assets/renderengine/shaders/uvInitShader.comp";
 	public static final String TRANSFORM_COMPUTE_SHADER_NAME = "uvTransformShader.comp";
+	public static final String TRANSFORM_COMPUTE_SHADER_PATHNAME = "assets/renderengine/shaders/uvTransformShader.comp";
 	
 	public record InitParams(
 		ShaderProgram program,
@@ -276,8 +279,8 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 			
 			int vertexBindingSize = (int) vertexStageUniforms.sumOfInt(v -> v.getType().getLength());
 			int fragmentBindingSize = (int) fragmentStageUniforms.sumOfInt(v -> v.getType().getLength());
-			int initComputeBindingSize = ShaderInputType.VECTOR_FLOAT_2.getLength() * 2;
-			int transformComputeBindingSize = ShaderInputType.VECTOR_FLOAT_2.getLength() * 3;
+			int initComputeBindingSize = ShaderInputType.VECTOR_FLOAT_2.getLength() * 2 + ShaderInputType.INT.getLength();
+			int transformComputeBindingSize = ShaderInputType.VECTOR_FLOAT_2.getLength() * 3 + ShaderInputType.INT.getLength();
 			
 			int minVertexSize = Math.ceilDiv(vertexBindingSize, minUniformBufferOffsetAlignment) * minUniformBufferOffsetAlignment;
 			int minFragmentSize = Math.ceilDiv(fragmentBindingSize, minUniformBufferOffsetAlignment) * minUniformBufferOffsetAlignment;
@@ -292,26 +295,16 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 			
 			Atlas atlas = new Atlas(device, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 			
-			Renderer renderer = Renderer.builder()
-				.graphicsPipeline(graphicsPipeline)
-				.buffersCount(buffersCount)
-				.descriptorSets(renderingDescriptorSets)
-				.bindings(i -> new BindingInfo[] {
-					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, renderingUniformSize * i, minVertexSize), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, vertexStageUniforms),
-					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, renderingUniformSize * i + minVertexSize, fragmentBindingSize), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, fragmentStageUniforms),
-					BindingInfo.ofTexture(atlas.getTexture(), new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
-				})
-				.build();
-			
 			int vertexBufferSize = 0;
 			int textureUvBufferSize = 0;
 			int vertexCount = 0;
 			int[] textureUvSizes = new int[entities.size()];
+			int entityMaterialCount = 0;
 			
 			for (int i = 0; i < entities.size(); i++)
 			{
 				Entity e = entities.get(i);
-				MeshComponent mesh = (MeshComponent) e.getComponent(MeshComponent.Type.INSTANCE);
+				MeshComponent mesh = (MeshComponent) e.getComponent(MeshComponent.TYPE);
 				if (mesh == null) continue;
 				MeshComponent.Properties properties = mesh.getProperties();
 				vertexBufferSize += properties.vertexesSize();
@@ -319,7 +312,11 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 				vertexBufferSize += properties.normalsSize();
 				vertexCount += properties.vertexCount();
 				textureUvSizes[i] = Math.max(properties.textureUvSize(), 1);
+				
+				mesh.initMaterials(atlas);
+				entityMaterialCount += mesh.getMaterials().size();
 			}
+			
 			//TODO: handle missing uv
 			if (vertexBufferSize == 0 || textureUvBufferSize == 0)
 			{
@@ -328,9 +325,26 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 			}
 			int minStorageBufferOffsetAlignment = (int) device.getPhysicalDevice().getLimits().minStorageBufferOffsetAlignment();
 			
-			int[] textureUvOffsets = new int[entities.size()];
-			textureUvOffsets[0] = 0;
-			for (int i = 1; i < textureUvOffsets.length; i++) textureUvOffsets[i] = textureUvOffsets[i - 1] + Math.ceilDiv(textureUvSizes[i - 1], minStorageBufferOffsetAlignment) * minStorageBufferOffsetAlignment;
+			int[] textureUvOffsets = new int[entityMaterialCount];
+			
+			{
+				int offset = 0;
+				for (int i = 0, k = 0; i < entities.size(); i++)
+				{
+					Entity e = entities.get(i);
+					MeshComponent mesh = (MeshComponent) e.getComponent(MeshComponent.TYPE);
+					if (mesh == null) continue;
+					
+					int offset0 = 0;
+					for (Material material : mesh.getMaterials())
+					{
+						textureUvOffsets[k] = offset + offset0;
+						offset0 += Math.ceilDiv(material.colorTextureVertexCount() * mesh.getTextureUvLength(), minStorageBufferOffsetAlignment) * minStorageBufferOffsetAlignment;
+						k++;
+					}
+					offset += textureUvSizes[i];
+				}
+			}
 			
 			int textureUvOffset = Math.max(8, minStorageBufferOffsetAlignment);
 			textureUvBufferSize = vertexCount * textureUvOffset;
@@ -338,47 +352,8 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 			VulkanBuffer vertexBuffer = bigBuffer.allocate(vertexBufferSize, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 			VulkanBuffer textureUvBuffer = bigBuffer.allocate(textureUvBufferSize, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 			
-			renderer.setBuffer(0, vertexBuffer);
-			renderer.setBuffer(1, textureUvBuffer);
-			
-			int offset = renderingUniformSize * buffersCount;
-			
-			Computer initComputer = Computer.builder()
-				.computePipeline(initComputePipeline)
-				.descriptorSets(computingDescriptorSets)
-				.buffersCount(entities.size())
-				.groupCount(Vector3i.of(256, 1, 1))
-				.bindings(i -> new BindingInfo[] {
-					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, offset + minComputeSize * i, initComputeBindingSize), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
-						ShaderVariable.UV,
-						ShaderVariable.UV_EXTRA_1
-					)),
-					BindingInfo.ofStorage(VulkanBuffer.view(textureUvBuffer, textureUvOffsets[i], textureUvSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
-						ShaderVariable.UV
-					))
-				})
-				.build();
-			
-			Computer transformComputer = Computer.builder()
-				.computePipeline(transformComputePipeline)
-				.descriptorSets(computingDescriptorSets)
-				.buffersCount(entities.size())
-				.groupCount(Vector3i.of(256, 1, 1))
-				.bindings(i -> new BindingInfo[] {
-					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, offset + minComputeSize * i, transformComputeBindingSize), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
-						ShaderVariable.UV,
-						ShaderVariable.UV_EXTRA_1,
-						ShaderVariable.UV_EXTRA_2
-					)),
-					BindingInfo.ofStorage(VulkanBuffer.view(textureUvBuffer, textureUvOffsets[i], textureUvSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
-						ShaderVariable.UV
-					))
-				})
-				.build();
-			
 			boolean[] isFrameUniformsDirty = new boolean[buffersCount];
 			if (uniformUpdates != null) Arrays.fill(isFrameUniformsDirty, true);
-			data = new Data(bigBuffer, vertexBuffer, textureUvBuffer, uniformBuffer, params.target, renderPass, outputSize, buffersCount, program, pipelineLayout, graphicsPipelineTemplate, graphicsPipeline, renderer, computeLayout, initComputePipeline, initComputer, computeLayout, transformComputePipeline, transformComputer, atlas, isFrameUniformsDirty, vertexCount);
 			
 			boolean useTextureUv = false;
 			try (PhysicalDeviceTransferState transfert = bigBuffer.startLocalBuffering())
@@ -390,7 +365,7 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 				
 				for (Entity entity : entities)
 				{
-					MeshComponent mesh = entity.getComponent(MeshComponent.Type.INSTANCE);
+					MeshComponent mesh = entity.getComponent(MeshComponent.TYPE);
 					if (mesh == null) continue;
 					if (!mesh.isLoaded()) continue;
 					
@@ -406,16 +381,68 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 					
 					if (!meshProperties.useTextureUv()) continue;
 					useTextureUv = true;
-					
-					ColorTextureComponent colorTexture = entity.getComponent(ColorTextureComponent.Type.INSTANCE);
-					if (colorTexture == null) continue;
-					colorTexture.init(new ColorTextureComponent.Params(atlas));
 				}
 				device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
 					commandBuffer.copyBuffer(localVertexBuffer, 0, vertexBuffer, 0, vertexBuffer.getSize());
 					commandBuffer.copyBuffer(localTextureUvBuffer, 0, textureUvBuffer, 0, textureUvBuffer.getSize());
 				}).join();
 			}
+			
+			Renderer renderer = Renderer.builder()
+				.graphicsPipeline(graphicsPipeline)
+				.buffersCount(buffersCount)
+				.descriptorSets(renderingDescriptorSets)
+				.bindings(i -> new BindingInfo[] {
+					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, renderingUniformSize * i, minVertexSize), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, vertexStageUniforms),
+					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, renderingUniformSize * i + minVertexSize, fragmentBindingSize), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, fragmentStageUniforms),
+					BindingInfo.ofTexture(atlas.getTexture(), new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
+				})
+				.build();
+			
+			renderer.setBuffer(0, vertexBuffer);
+			renderer.setBuffer(1, textureUvBuffer);
+			
+			int offset = renderingUniformSize * buffersCount;
+			int computerBuffersCount = entityMaterialCount;
+			
+			Computer initComputer = Computer.builder()
+				.computePipeline(initComputePipeline)
+				.descriptorSets(computingDescriptorSets)
+				.buffersCount(computerBuffersCount)
+				.groupCount(Vector3i.of(256, 1, 1))
+				.bindings(i -> new BindingInfo[] {
+					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, offset + minComputeSize * i, initComputeBindingSize), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+						ShaderVariable.UV,
+						ShaderVariable.UV_EXTRA_1,
+						ShaderVariable.OFFSET
+					)),
+					BindingInfo.ofStorage(VulkanBuffer.view(textureUvBuffer, textureUvOffsets[i], textureUvSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+						ShaderVariable.UV
+					))
+				})
+				.build();
+			
+			//TODO: implement a wrapper for renderdoc
+			//	RenderDoc.RENDERDOC_StartFrameCapture(0, 0);
+			//	RenderDoc.RENDERDOC_SetCaptureTitle("transformComputer");
+			Computer transformComputer = Computer.builder()
+				.computePipeline(transformComputePipeline)
+				.descriptorSets(computingDescriptorSets)
+				.buffersCount(computerBuffersCount)
+				.groupCount(Vector3i.of(256, 1, 1))
+				.bindings(i -> new BindingInfo[] {
+					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, offset + minComputeSize * i, transformComputeBindingSize), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+						ShaderVariable.UV,
+						ShaderVariable.UV_EXTRA_1,
+						ShaderVariable.UV_EXTRA_2,
+						ShaderVariable.OFFSET
+					)),
+					BindingInfo.ofStorage(VulkanBuffer.view(textureUvBuffer, textureUvOffsets[i], textureUvSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+						ShaderVariable.UV
+					))
+				})
+				.build();
+			//	RenderDoc.RENDERDOC_EndFrameCapture(0, 0);
 			
 			if (useTextureUv)
 			{
@@ -426,6 +453,18 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 			for (int i = 0; i < buffersCount; i++) renderer.updateDescriptorSet(i, b -> {
 				((VkDescriptorImageInfo.@NonNull Buffer) b.get(2).pImageInfo()).imageView(atlasViewVk);
 			});
+			//@formatter:off
+			data = new Data(
+				bigBuffer, vertexBuffer, textureUvBuffer, uniformBuffer, 
+				params.target, renderPass, outputSize, buffersCount, 
+				program, pipelineLayout, graphicsPipelineTemplate, graphicsPipeline, renderer, 
+				computeLayout, initComputePipeline, initComputer, 
+				computeLayout, transformComputePipeline, transformComputer, 
+				atlas, 
+				isFrameUniformsDirty, 
+				vertexCount
+			);
+			//@formatter:on
 		}
 	}
 	
@@ -497,14 +536,18 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 	{
 		Data data = getData();
 		//TODO: support entity removal
-		if (reloadCounters.length < entities.size()) reloadCounters = Arrays.copyOf(reloadCounters, entities.size());
+		if (reloadCounters.length < entities.size())
+		{
+			reloadCounters = Arrays.copyOf(reloadCounters, entities.size());
+			//TODO: rebuild computers
+		}
 		
 		int reloadsCount = 0;
 		boolean[] meshReloads = new boolean[reloadCounters.length];
 		for (int i = 0; i < reloadCounters.length; i++)
 		{
 			Entity entity = entities.get(i);
-			MeshComponent mesh = entity.getComponent(MeshComponent.Type.INSTANCE);
+			MeshComponent mesh = entity.getComponent(MeshComponent.TYPE);
 			if (mesh == null || !mesh.isLoaded()) continue;
 			MeshComponent.Properties meshProperties = mesh.getProperties();
 			if (meshProperties.vertexCount() == 0) continue;
@@ -529,7 +572,7 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 				for (int i = 0; i < reloadCounters.length; i++)
 				{
 					Entity entity = entities.get(i);
-					MeshComponent mesh = entity.getComponent(MeshComponent.Type.INSTANCE);
+					MeshComponent mesh = entity.getComponent(MeshComponent.TYPE);
 					if (mesh == null || !meshReloads[i]) continue;
 					
 					MeshComponent.Properties meshProperties = mesh.getProperties();
@@ -553,12 +596,12 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		for (int i = 0; i < reloadCounters.length; i++)
 		{
 			Entity entity = entities.get(i);
-			MeshComponent mesh = entity.getComponent(MeshComponent.Type.INSTANCE);
+			MeshComponent mesh = entity.getComponent(MeshComponent.TYPE);
 			if (mesh == null || !mesh.isLoaded()) continue;
 			if (meshReloads[i])
 			{
 				//notify other components
-				SpatialComponent spatial = entity.getComponent(SpatialComponent.Type.INSTANCE);
+				SpatialComponent spatial = entity.getComponent(SpatialComponent.TYPE);
 				if (spatial != null)
 				{
 					//compute vertex data difference from gpu
@@ -566,13 +609,6 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 					
 					spatial.reinit(new SpatialComponent.Params(position, null));
 				}
-			}
-			ColorTextureComponent colorTexture = entity.getComponent(ColorTextureComponent.Type.INSTANCE);
-			if (colorTexture == null) continue;
-			if (colorTexture.isLoaded())
-			{
-				colorTexture.reinit(new ColorTextureComponent.Params(data.atlas));
-				reloadAtlas = true;
 			}
 		}
 		
@@ -627,7 +663,7 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		
 		for (Entity e : entities)
 		{
-			MeshComponent mesh = (MeshComponent) e.getComponent(MeshComponent.Type.INSTANCE);
+			MeshComponent mesh = (MeshComponent) e.getComponent(MeshComponent.TYPE);
 			if (mesh == null) continue;
 			MeshComponent.Properties properties = mesh.getProperties();
 			bufferSize += properties.vertexesSize();
@@ -663,38 +699,30 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 	private void computeInitData(Computer initComputer, VulkanBuffer uniform) throws VulkanException
 	{
 		uniform.getMemory().mapMemory();
-		for (int i = 0; i < reloadCounters.length; i++)
-		{
-			Entity entity = entities.get(i);
-			MeshComponent mesh = entity.getComponent(MeshComponent.Type.INSTANCE);
-			if (mesh == null) continue;
-			MeshComponent.Properties meshProperties = mesh.getProperties();
-			if (!meshProperties.useTextureUv()) continue;
-			ColorTextureComponent colorTexture = entity.getComponent(ColorTextureComponent.Type.INSTANCE);
-			if (colorTexture == null) continue;
-			ColorTextureComponent.Properties colorTextureProperties = colorTexture.getProperties();
-			TextureRegion region = colorTextureProperties.region();
-			if (region == null) continue;
-			
-			initComputer.useBufferLayoutWriter(i, 0, writer -> {
-				writer.set(ShaderVariable.UV, region.getUvStart());
-				writer.set(ShaderVariable.UV_EXTRA_1, region.getUvEnd());
-			});
-		}
-		uniform.getMemory().unmapMemory();
 		device.configureAndSubmitSingleUseCommandBuffer(device.getComputeQueue(), commandBuffer -> {
-			for (int i = 0; i < reloadCounters.length; i++)
+			for (int i = 0, k = 0; i < reloadCounters.length; i++)
 			{
 				Entity entity = entities.get(i);
-				MeshComponent mesh = entity.getComponent(MeshComponent.Type.INSTANCE);
+				MeshComponent mesh = entity.getComponent(MeshComponent.TYPE);
 				if (mesh == null) continue;
 				MeshComponent.Properties meshProperties = mesh.getProperties();
 				if (!meshProperties.useTextureUv()) continue;
-				ColorTextureComponent colorTexture = entity.getComponent(ColorTextureComponent.Type.INSTANCE);
-				if (colorTexture == null) continue;
 				
-				initComputer.dispatch(commandBuffer, i, meshProperties.vertexCount(), 1, 1);
+				for (Material material : mesh.getMaterials())
+				{
+					TextureRegion region = material.colorTexture();
+					
+					initComputer.useBufferLayoutWriter(k, 0, writer -> {
+						writer.set(ShaderVariable.UV, region.getUvStart());
+						writer.set(ShaderVariable.UV_EXTRA_1, region.getUvEnd());
+						writer.set(ShaderVariable.OFFSET, material.colorTextureVertexOffset());
+					});
+					
+					initComputer.dispatch(commandBuffer, k, material.colorTextureVertexCount(), 1, 1);
+					k++;
+				}
 			}
 		}).join();
+		uniform.getMemory().unmapMemory();
 	}
 }
