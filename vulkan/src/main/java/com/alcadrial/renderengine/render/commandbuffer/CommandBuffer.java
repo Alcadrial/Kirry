@@ -2,6 +2,8 @@ package com.alcadrial.renderengine.render.commandbuffer;
 
 import java.util.List;
 
+import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.list.MutableList;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
@@ -35,6 +37,7 @@ import com.alcadrial.renderengine.render.util.AbstractDeviceResource;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.VulkanUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.functional.VulkanRunnable;
 
 public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	
@@ -45,6 +48,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	
 	private boolean isRecording;
 	private CommandPool pool;
+	private MutableList<VulkanRunnable> completionActions;
 	
 	public CommandBuffer(Device device, CommandPool pool, VkCommandBuffer commandBuffer)
 	{
@@ -52,6 +56,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		vk = commandBuffer;
 		isRecording = false;
 		this.pool = pool;
+		completionActions = Lists.mutable.of();
 		Debug.debugCreate(() -> "Created " + this + " of " + pool);
 	}
 	
@@ -409,9 +414,20 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		return true;
 	}
 	
+	public void addCompletionAction(VulkanRunnable action)
+	{
+		completionActions.add(action);
+	}
+	
+	public MutableList<VulkanRunnable> getCompletionActions()
+	{
+		return completionActions;
+	}
+	
 	public void reset()
 	{
 		VK10.vkResetCommandBuffer(vk, 0);
+		completionActions.clear();
 		isRecording = false;
 	}
 	
@@ -430,13 +446,15 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	{
 		Debug.debugClose(() -> "Closing CommandBuffer " + this);
 		VK10.vkFreeCommandBuffers(device.getVk(), pool.getVk(), vk);
+		completionActions.clear();
 		super.close();
 	}
 	
 	@Override
 	public void debug()
 	{
-		Debug.print("vk: ", vk);
-		Debug.print("pool: ", pool);
+		Debug.print("vk", vk);
+		Debug.print("pool", pool);
+		Debug.print("actions", completionActions);
 	}
 }

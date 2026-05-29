@@ -508,7 +508,7 @@ public class RenderTest {
 				float yRotation = (float) AngleUnit.RADIANS.fromTurns((x - oldMousePos.x()) / window.getWidth());
 				float xRotation = (float) AngleUnit.RADIANS.fromTurns((y - oldMousePos.y()) / window.getHeight());
 				rotation.setAll(xRotation, yRotation);
-				callback.accept(rotation.x() + oldRotation.x(), -rotation.y() - oldRotation.y());
+				callback.accept(-rotation.x() - oldRotation.x(), rotation.y() + oldRotation.y());
 			}
 		});
 	}

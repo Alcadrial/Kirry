@@ -38,11 +38,11 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
-import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.memory.MemoryManager;
+import com.alcadrial.renderengine.render.memory.MemoryTransferState;
 import com.alcadrial.renderengine.render.pipeline.ComputePipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipelineTemplate;
@@ -61,11 +61,12 @@ import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
 import com.alcadrial.renderengine.render.util.SphereDataCollector;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class ComputerTest extends RenderTest {
 	
-	private static final String SHADER = "shader3";
+	private static final String SHADER = "shaders/shader3";
 	
 	public static void main(String[] args)
 	{
@@ -90,7 +91,7 @@ public class ComputerTest extends RenderTest {
 	private static RenderPass renderPass;
 	private static Renderer renderer;
 	private static Computer computer;
-	private static StaticBigBuffer staticBigBuffer;
+	private static MemoryManager memoryManager;
 	private static VulkanBuffer[] storageBuffers;
 	private static VulkanBuffer uniformBuffer;
 	
@@ -219,22 +220,22 @@ public class ComputerTest extends RenderTest {
 		Device device = window.getDevice();
 		
 		int size = PARTICLE_COUNT * 8 * 4;
-		staticBigBuffer = new StaticBigBuffer(device, 1 << 20);
-		VulkanBuffer vertexBuffer = staticBigBuffer.allocate(242 * 3 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		VulkanBuffer indexBuffer = staticBigBuffer.allocate(2064 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+		memoryManager = MemoryManager.getDefault(device);
+		
+		VulkanBuffer vertexBuffer = memoryManager.allocate(242 * 3 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		VulkanBuffer indexBuffer = memoryManager.allocate(2064 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 3 * window.getFramesCount(), 16 * 4);
 		uniformBuffer.getMemory().mapMemory();
-		VulkanBuffer colorBuffer = staticBigBuffer.allocate(PARTICLE_COUNT * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		VulkanBuffer vertexStorageBuffer = staticBigBuffer.allocate(window.getFramesCount() * size, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		VulkanBuffer colorBuffer = memoryManager.allocate(PARTICLE_COUNT * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		VulkanBuffer vertexStorageBuffer = memoryManager.allocate(window.getFramesCount() * size, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		storageBuffers = new VulkanBuffer[window.getFramesCount()];
 		for (int i = 0; i < storageBuffers.length; i++)
 		{
-			VulkanBuffer storageBuffer = new VulkanBuffer(vertexStorageBuffer, size * i, size);
+			VulkanBuffer storageBuffer = new VulkanBuffer(vertexStorageBuffer, size * i, size, i == 0 ? vertexStorageBuffer.getUsage() | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT : vertexStorageBuffer.getUsage());
 			storageBuffer.setName("StorageBuffer" + i);
 			storageBuffers[i] = storageBuffer;
 		}
 		
-		staticBigBuffer.setName("StaticBigBuffer");
 		vertexBuffer.setName("VertexBuffer");
 		indexBuffer.setName("IndexBuffer");
 		uniformBuffer.setName("UniformBuffer");
@@ -249,31 +250,34 @@ public class ComputerTest extends RenderTest {
 			Color.VERY_DARK_YELLOW, Color.VERY_DARK_RED, Color.VERY_DARK_MAGENTA, Color.VERY_DARK_GREEN, Color.VERY_DARK_CYAN, Color.VERY_DARK_BLUE
 		};
 		
-		try (PhysicalDeviceTransferState transfert = staticBigBuffer.startLocalBuffering())
-		{
-			BufferWriter vertexBufferWriter = transfert.beginTransfer(vertexBuffer);
-			BufferWriter storageBuffer0Writer = transfert.beginTransfer(storageBuffers[0]);
-			BufferWriter indexBufferWriter = transfert.beginTransfer(indexBuffer);
-			BufferWriter colorBufferWriter = transfert.beginTransfer(colorBuffer);
+		VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
 			
-			Random random = new Random();
-			
-			SphereDataCollector.collect(vertexBufferWriter, indexBufferWriter, Vector3f.origin(), 0.06F, 8);
-			
-			for (float i = -DIM; i < DIM; i++)
+			try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, storageBuffers[0], indexBuffer, colorBuffer))
 			{
-				for (float j = -DIM; j < DIM; j++)
+				BufferWriter vertexBufferWriter = transfer.getWriter(vertexBuffer);
+				BufferWriter storageBuffer0Writer = transfer.getWriter(storageBuffers[0]);
+				BufferWriter indexBufferWriter = transfer.getWriter(indexBuffer);
+				BufferWriter colorBufferWriter = transfer.getWriter(colorBuffer);
+				
+				Random random = new Random();
+				
+				SphereDataCollector.collect(vertexBufferWriter, indexBufferWriter, Vector3f.origin(), 0.06F, 8);
+				
+				for (float i = -DIM; i < DIM; i++)
 				{
-					for (float k = -DIM; k < DIM; k++)
+					for (float j = -DIM; j < DIM; j++)
 					{
-						Color c = colors[random.nextInt(colors.length)];
-						storageBuffer0Writer.put(i / 10).put(j / 10).put(k / 10).put(0);
-						storageBuffer0Writer.put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(0);
-						colorBufferWriter.put(c.r() / 255).put(c.g() / 255).put(c.b() / 255).put(c.a() / 255);
+						for (float k = -DIM; k < DIM; k++)
+						{
+							Color c = colors[random.nextInt(colors.length)];
+							storageBuffer0Writer.put(i / 10).put(j / 10).put(k / 10).put(0);
+							storageBuffer0Writer.put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(random.nextFloat(-0.1F, 0.1F)).put(0);
+							colorBufferWriter.put(c.r() / 255).put(c.g() / 255).put(c.b() / 255).put(c.a() / 255);
+						}
 					}
 				}
 			}
-		}
+		});
 		
 		try (RenderPassTemplate template = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format()))
 		{
@@ -432,6 +436,8 @@ public class ComputerTest extends RenderTest {
 		}
 		oldComputeIndex = 0;
 		computeIndex = 1;
+		
+		transferFuture.join();
 	}
 	
 	public static void loop(long time, long enlapsed) throws VulkanException
@@ -532,7 +538,7 @@ public class ComputerTest extends RenderTest {
 		pipelineLayout.close();
 		computePipeline.close();
 		computeLayout.close();
-		staticBigBuffer.close();
+		memoryManager.close();
 		uniformBuffer.close();
 		
 		RenderEngineVulkan.terminate();

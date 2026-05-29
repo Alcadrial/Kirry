@@ -12,7 +12,6 @@ import com.alcadrial.renderengine.core.util.color.Color;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.Memory.Mapping;
-import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
@@ -131,16 +130,6 @@ public class RenderingDataUtils {
 		loadRectangleIndices(indexBuffer, startIndex);
 	}
 	
-	public static void printBufferContent(StaticBigBuffer bigBuffer, VulkanBuffer buffer, int rows, boolean floats, String alphabet) throws VulkanException
-	{
-		printBufferContent(bigBuffer, buffer, 0, rows * alphabet.length(), floats, alphabet);
-	}
-	
-	public static void printBufferContent(StaticBigBuffer bigBuffer, VulkanBuffer buffer, int offset, int length, boolean floats, String alphabet) throws VulkanException
-	{
-		printBufferContent(bigBuffer.getRemoteBuffer(), buffer, offset, length, floats, alphabet);
-	}
-	
 	public static void printBufferContent(VulkanBuffer remoteBuffer, VulkanBuffer buffer, int offset, int length, boolean floats, String alphabet) throws VulkanException
 	{
 		Device device = remoteBuffer.getDevice();
@@ -155,47 +144,6 @@ public class RenderingDataUtils {
 			{
 				int[] data = new int[length];
 				m.getBuffer().asIntBuffer().position(offset).get(data);
-				
-				for (int i = 0; i < rowSize - 1; i++) System.out.print(" " + alphabet.charAt(i) + " |");
-				System.out.println(" " + alphabet.charAt(rowSize - 1));
-				if (floats)
-				{
-					for (int i = 0; i < data.length / rowSize; i++)
-					{
-						for (int j = 0; j < rowSize - 1; j++) System.out.print(" " + Float.intBitsToFloat(data[i * rowSize + j]) + " |");
-						System.out.println(" " + Float.intBitsToFloat(data[i * rowSize + rowSize - 1]));
-					}
-				}
-				else
-				{
-					for (int i = 0; i < data.length / rowSize; i++)
-					{
-						for (int j = 0; j < rowSize - 1; j++) System.out.print(" " + data[i * rowSize + j] + " |");
-						System.out.println(" " + data[i * rowSize + rowSize - 1]);
-					}
-				}
-				System.out.println();
-			}
-		}
-	}
-	
-	public static void printBufferContentStripped(StaticBigBuffer bigBuffer, VulkanBuffer buffer, boolean floats, int rows, int rowSize, String alphabet) throws VulkanException
-	{
-		Device device = bigBuffer.getDevice();
-		try (VulkanBuffer b = new VulkanBuffer(device, buffer.getSize(), VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 0))
-		{
-			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), c -> {
-				c.copyBuffer(bigBuffer.getRemoteBuffer(), buffer.getOffset(), b, 0, b.getSize());
-			}).join();
-			
-			try (Mapping m = b.getMemory().mapMemory())
-			{
-				int s = rowSize * rows;
-				int[] data = new int[s * 2];
-				m.getBuffer().asIntBuffer()
-					.get(data, 0, s)
-					.position((int) (buffer.getSize() / 4) - s)
-					.get(data, s, s);
 				
 				for (int i = 0; i < rowSize - 1; i++) System.out.print(" " + alphabet.charAt(i) + " |");
 				System.out.println(" " + alphabet.charAt(rowSize - 1));

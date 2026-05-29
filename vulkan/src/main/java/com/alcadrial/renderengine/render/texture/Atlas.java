@@ -509,6 +509,11 @@ public class Atlas {
 	
 	public void draw() throws VulkanException
 	{
+		device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), this::draw).join();
+	}
+	
+	public void draw(CommandBuffer commandBuffer) throws VulkanException
+	{
 		if (!isDirty) return;
 		
 		int newRegionsStartingIndex = oldRegions.size();
@@ -517,78 +522,49 @@ public class Atlas {
 		{
 			Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask);
 			Debug.runOnDebug(() -> newTexture.setName("Atlas"));
-			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
-				texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-				newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-				if (debug)
+			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+			newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			if (debug)
+			{
+				commandBuffer.clearColorImage(newTexture, Color.LIGHT_RED);
+			}
+			try (MemoryStack stack = MemoryStack.stackPush())
+			{
+				VkImageCopy.Buffer copyRegion = VkImageCopy.malloc(oldRegions.size(), stack);
+				for (int j = 0; j < oldRegions.size(); j++)
 				{
-					commandBuffer.clearColorImage(newTexture, Color.LIGHT_RED);
-				}
-				try (MemoryStack stack = MemoryStack.stackPush())
-				{
-					VkImageCopy.Buffer copyRegion = VkImageCopy.malloc(oldRegions.size(), stack);
-					for (int j = 0; j < oldRegions.size(); j++)
+					Region oldRegion = oldRegions.get(j);
+					Region region = regions.get(j);
+					if (oldRegion.isDirty)
 					{
-						Region oldRegion = oldRegions.get(j);
-						Region region = regions.get(j);
-						if (oldRegion.isDirty)
-						{
-							region.resource.copy(commandBuffer, newTexture, region.x, region.y);
-							oldRegion.isDirty = false;
-						}
-						else
-						{
-							copyRegion.get()
-								.srcOffset(o -> o.set(oldRegion.x, oldRegion.y, 0))
-								.srcSubresource(i -> i
-									.aspectMask(texture.getAspectMask())
-									.mipLevel(0)
-									.baseArrayLayer(0)
-									.layerCount(1)
-								)
-								.dstOffset(o -> o.set(region.x, region.y, 0))
-								.dstSubresource(i -> i
-									.aspectMask(newTexture.getAspectMask())
-									.mipLevel(0)
-									.baseArrayLayer(0)
-									.layerCount(1)
-								)
-								.extent(e -> e.set(region.width, region.height, 1));
-							oldRegion.texture.update(newTexture, region.x, region.y, region.x + region.width, region.y + region.height);
-						}
+						region.resource.copy(commandBuffer, newTexture, region.x, region.y);
+						oldRegion.isDirty = false;
 					}
-					oldRegions.clear();
-					copyRegion.flip();
-					if (copyRegion.limit() > 0) commandBuffer.copyImage(texture, newTexture, copyRegion.flip());
-					for (int i = newRegionsStartingIndex; i < regions.size(); i++)
+					else
 					{
-						Region region = regions.get(i);
-						if (region.isDirty)
-						{
-							region.resource.copy(commandBuffer, newTexture, region.x, region.y);
-							region.isDirty = false;
-						}
+						copyRegion.get()
+							.srcOffset(o -> o.set(oldRegion.x, oldRegion.y, 0))
+							.srcSubresource(i -> i
+								.aspectMask(texture.getAspectMask())
+								.mipLevel(0)
+								.baseArrayLayer(0)
+								.layerCount(1)
+							)
+							.dstOffset(o -> o.set(region.x, region.y, 0))
+							.dstSubresource(i -> i
+								.aspectMask(newTexture.getAspectMask())
+								.mipLevel(0)
+								.baseArrayLayer(0)
+								.layerCount(1)
+							)
+							.extent(e -> e.set(region.width, region.height, 1));
+						oldRegion.texture.update(newTexture, region.x, region.y, region.x + region.width, region.y + region.height);
 					}
-					newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 				}
-			}).join();
-			
-			texture.close();
-			texture = newTexture;
-		}
-		else if (texture.getWidth() < width || texture.getHeight() < height)
-		{
-			texture.close();
-			Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask);
-			Debug.runOnDebug(() -> newTexture.setName("Atlas"));
-			
-			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
-				newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-				if (debug)
-				{
-					commandBuffer.clearColorImage(newTexture, Color.LIGHT_RED);
-				}
-				for (int i = 0; i < regions.size(); i++)
+				oldRegions.clear();
+				copyRegion.flip();
+				if (copyRegion.limit() > 0) commandBuffer.copyImage(texture, newTexture, copyRegion.flip());
+				for (int i = newRegionsStartingIndex; i < regions.size(); i++)
 				{
 					Region region = regions.get(i);
 					if (region.isDirty)
@@ -598,26 +574,52 @@ public class Atlas {
 					}
 				}
 				newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-			}).join();
+			}
+			Texture oldTexture = texture;
+			commandBuffer.addCompletionAction(oldTexture::close);
+			
+			texture = newTexture;
+		}
+		else if (texture.getWidth() < width || texture.getHeight() < height)
+		{
+			texture.close();
+			Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask);
+			Debug.runOnDebug(() -> newTexture.setName("Atlas"));
+			
+			newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			if (debug)
+			{
+				commandBuffer.clearColorImage(newTexture, Color.LIGHT_RED);
+			}
+			for (int i = 0; i < regions.size(); i++)
+			{
+				Region region = regions.get(i);
+				if (region.isDirty)
+				{
+					region.resource.copy(commandBuffer, newTexture, region.x, region.y);
+					region.isDirty = false;
+				}
+			}
+			newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			texture = newTexture;
 		}
 		else
 		{
-			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
-				texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-				for (int i = 0; i < regions.size(); i++)
+			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			for (int i = 0; i < regions.size(); i++)
+			{
+				Region region = regions.get(i);
+				if (region.isDirty)
 				{
-					Region region = regions.get(i);
-					if (region.isDirty)
-					{
-						region.resource.copy(commandBuffer, texture, region.x, region.y);
-						region.isDirty = false;
-					}
+					region.resource.copy(commandBuffer, texture, region.x, region.y);
+					region.isDirty = false;
 				}
-				texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-			}).join();
+			}
+			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		}
-		for (Region region : regions) region.resource.close();
+		commandBuffer.addCompletionAction(() -> {
+			for (Region region : regions) region.resource.close();
+		});
 		
 		isDirty = false;
 	}

@@ -21,13 +21,14 @@ import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.renderengine.core.component.Entity;
 import com.alcadrial.renderengine.core.component.EntityEngine;
 import com.alcadrial.renderengine.render.Computer;
+import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer;
-import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
 import com.alcadrial.renderengine.render.buffer.BufferLayoutWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.memory.MemoryManager;
+import com.alcadrial.renderengine.render.memory.MemoryTransferState;
 import com.alcadrial.renderengine.render.pipeline.ComputePipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipelineTemplate;
@@ -52,6 +53,7 @@ import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.util.functional.VulkanBiConsumer;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
+// TODO: implement a wrapper for renderdoc
 public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, EntityRenderer.ReinitParams, EntityRenderer.UpdateParams, EntityRenderer.Properties, VulkanException> {
 	
 	public static final String INIT_COMPUTE_SHADER_NAME = "uvInitShader.comp";
@@ -63,7 +65,8 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		ShaderProgram program,
 		PreparedShader initComputeShader,
 		PreparedShader transformComputeShader,
-		AbstractBigVulkanBuffer<?> bigBuffer,
+		MemoryManager memoryManager,
+		CommandBuffer commandBuffer,
 		PipelineOutputTarget target,
 		MutableList<ShaderVariable> vertexStageUniforms,
 		MutableList<ShaderVariable> fragmentStageUniforms
@@ -93,7 +96,7 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 	
 	private class Data {
 		
-		AbstractBigVulkanBuffer<?> bigBuffer;
+		MemoryManager memoryManager;
 		VulkanBuffer vertexBuffer;
 		VulkanBuffer textureUvBuffer;
 		VulkanBuffer uniformBuffer;
@@ -115,9 +118,9 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		boolean[] isFrameUniformsDirty;
 		int vertexCount;
 		
-		public Data(AbstractBigVulkanBuffer<?> bigBuffer, VulkanBuffer vertexBuffer, VulkanBuffer textureUvBuffer, VulkanBuffer uniformBuffer, PipelineOutputTarget target, RenderPass renderPass, Vector2i outputSize, int buffersCount, ShaderProgram program, PipelineLayout pipelineLayout, GraphicsPipelineTemplate graphicsPipelineTemplate, GraphicsPipeline graphicsPipeline, Renderer renderer, PipelineLayout initComputePipelineLayout, ComputePipeline initComputePipeline, Computer initComputer, PipelineLayout transformComputePipelineLayout, ComputePipeline transformComputePipeline, Computer transformComputer, Atlas atlas, boolean[] isFrameUniformsDirty, int vertexCount)
+		public Data(MemoryManager memoryManager, VulkanBuffer vertexBuffer, VulkanBuffer textureUvBuffer, VulkanBuffer uniformBuffer, PipelineOutputTarget target, RenderPass renderPass, Vector2i outputSize, int buffersCount, ShaderProgram program, PipelineLayout pipelineLayout, GraphicsPipelineTemplate graphicsPipelineTemplate, GraphicsPipeline graphicsPipeline, Renderer renderer, PipelineLayout initComputePipelineLayout, ComputePipeline initComputePipeline, Computer initComputer, PipelineLayout transformComputePipelineLayout, ComputePipeline transformComputePipeline, Computer transformComputer, Atlas atlas, boolean[] isFrameUniformsDirty, int vertexCount)
 		{
-			this.bigBuffer = bigBuffer;
+			this.memoryManager = memoryManager;
 			this.vertexBuffer = vertexBuffer;
 			this.textureUvBuffer = textureUvBuffer;
 			this.uniformBuffer = uniformBuffer;
@@ -161,7 +164,8 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		PreparedShader transformComputeShader = params.transformComputeShader;
 		MutableList<ShaderVariable> vertexStageUniforms = params.vertexStageUniforms;
 		MutableList<ShaderVariable> fragmentStageUniforms = params.fragmentStageUniforms;
-		AbstractBigVulkanBuffer<?> bigBuffer = params.bigBuffer;
+		MemoryManager memoryManager = params.memoryManager;
+		CommandBuffer commandBuffer = params.commandBuffer;
 		RenderPass renderPass;
 		Vector2i outputSize;
 		int buffersCount;
@@ -292,6 +296,7 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 			
 			int bufferSize = renderingUniformSize * buffersCount + minComputeSize * entities.size();
 			VulkanBuffer uniformBuffer = VulkanBuffer.ofUniforms(device, bufferSize);
+			uniformBuffer.getMemory().mapMemory();
 			
 			Atlas atlas = new Atlas(device, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 			
@@ -349,17 +354,21 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 			int textureUvOffset = Math.max(8, minStorageBufferOffsetAlignment);
 			textureUvBufferSize = vertexCount * textureUvOffset;
 			
-			VulkanBuffer vertexBuffer = bigBuffer.allocate(vertexBufferSize, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-			VulkanBuffer textureUvBuffer = bigBuffer.allocate(textureUvBufferSize, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+			VulkanBuffer vertexBuffer = memoryManager.allocate(vertexBufferSize, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+			VulkanBuffer textureUvBuffer = memoryManager.allocate(textureUvBufferSize, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+			Debug.runOnDebug(() -> {
+				vertexBuffer.setName("EntityRenderer VertexBuffer");
+				textureUvBuffer.setName("EntityRenderer TextureUvBuffer");
+			});
 			
 			boolean[] isFrameUniformsDirty = new boolean[buffersCount];
 			if (uniformUpdates != null) Arrays.fill(isFrameUniformsDirty, true);
 			
 			boolean useTextureUv = false;
-			try (PhysicalDeviceTransferState transfert = bigBuffer.startLocalBuffering())
+			try (MemoryTransferState transfert = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, textureUvBuffer))
 			{
-				VulkanBuffer localVertexBuffer = transfert.beginTransfer(vertexBuffer).getSrcBuffer();
-				VulkanBuffer localTextureUvBuffer = transfert.beginTransfer(textureUvBuffer).getSrcBuffer();
+				VulkanBuffer localVertexBuffer = transfert.getLocal(vertexBuffer);
+				VulkanBuffer localTextureUvBuffer = transfert.getLocal(textureUvBuffer);
 				int vertexBufferOffset = 0;
 				int textureUvBufferOffset = 0;
 				
@@ -382,10 +391,8 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 					if (!meshProperties.useTextureUv()) continue;
 					useTextureUv = true;
 				}
-				device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
-					commandBuffer.copyBuffer(localVertexBuffer, 0, vertexBuffer, 0, vertexBuffer.getSize());
-					commandBuffer.copyBuffer(localTextureUvBuffer, 0, textureUvBuffer, 0, textureUvBuffer.getSize());
-				}).join();
+				commandBuffer.copyBuffer(localVertexBuffer, 0, vertexBuffer, 0, vertexBuffer.getSize());
+				commandBuffer.copyBuffer(localTextureUvBuffer, 0, textureUvBuffer, 0, textureUvBuffer.getSize());
 			}
 			
 			Renderer renderer = Renderer.builder()
@@ -397,6 +404,7 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, renderingUniformSize * i + minVertexSize, fragmentBindingSize), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, fragmentStageUniforms),
 					BindingInfo.ofTexture(atlas.getTexture(), new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
 				})
+				.initDescriptorSets(false)
 				.build();
 			
 			renderer.setBuffer(0, vertexBuffer);
@@ -422,9 +430,6 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 				})
 				.build();
 			
-			//TODO: implement a wrapper for renderdoc
-			//	RenderDoc.RENDERDOC_StartFrameCapture(0, 0);
-			//	RenderDoc.RENDERDOC_SetCaptureTitle("transformComputer");
 			Computer transformComputer = Computer.builder()
 				.computePipeline(transformComputePipeline)
 				.descriptorSets(computingDescriptorSets)
@@ -442,20 +447,19 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 					))
 				})
 				.build();
-			//	RenderDoc.RENDERDOC_EndFrameCapture(0, 0);
 			
 			if (useTextureUv)
 			{
-				computeInitData(initComputer, uniformBuffer);
+				computeInitData(initComputer, uniformBuffer, commandBuffer);
 			}
-			atlas.draw();
+			atlas.draw(commandBuffer);
 			long atlasViewVk = atlas.getTexture().getView().getVk();
 			for (int i = 0; i < buffersCount; i++) renderer.updateDescriptorSet(i, b -> {
 				((VkDescriptorImageInfo.@NonNull Buffer) b.get(2).pImageInfo()).imageView(atlasViewVk);
 			});
 			//@formatter:off
 			data = new Data(
-				bigBuffer, vertexBuffer, textureUvBuffer, uniformBuffer, 
+				memoryManager, vertexBuffer, textureUvBuffer, uniformBuffer, 
 				params.target, renderPass, outputSize, buffersCount, 
 				program, pipelineLayout, graphicsPipelineTemplate, graphicsPipeline, renderer, 
 				computeLayout, initComputePipeline, initComputer, 
@@ -562,10 +566,10 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		
 		if (reloadsCount > 0)
 		{
-			try (PhysicalDeviceTransferState transfert = data.bigBuffer.startLocalBuffering())
+			try (MemoryTransferState transfer = data.memoryManager.allocateForTransfer(params.commandBuffer, data.vertexBuffer, data.textureUvBuffer))
 			{
-				VulkanBuffer localVertexBuffer = transfert.beginTransfer(data.vertexBuffer).getSrcBuffer();
-				VulkanBuffer localTextureUvBuffer = transfert.beginTransfer(data.textureUvBuffer).getSrcBuffer();
+				VulkanBuffer localVertexBuffer = transfer.getLocal(data.vertexBuffer);
+				VulkanBuffer localTextureUvBuffer = transfer.getLocal(data.textureUvBuffer);
 				int vertexBufferOffset = 0;
 				int textureUvBufferOffset = 0;
 				
@@ -584,11 +588,9 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 					
 					vertexBufferOffset += vertexSize;
 					textureUvBufferOffset += textureUvSize;
-				} /*
-					device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
-					commandBuffer.copyBuffer(localVertexBuffer, 0, data.vertexBuffer, 0, data.vertexBuffer.getSize());
-					commandBuffer.copyBuffer(localTextureUvBuffer, 0, data.textureUvBuffer, 0, data.textureUvBuffer.getSize());
-					}).join();*/
+				}
+				params.commandBuffer.copyBuffer(localVertexBuffer, 0, data.vertexBuffer, 0, data.vertexBuffer.getSize());
+				params.commandBuffer.copyBuffer(localTextureUvBuffer, 0, data.textureUvBuffer, 0, data.textureUvBuffer.getSize());
 			}
 		}
 		
@@ -641,13 +643,11 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 			VulkanBiConsumer<Integer, BufferLayoutWriter> action = uniformUpdates;
 			if (action != null)
 			{
-				data.uniformBuffer.getMemory().mapMemory();
 				for (int i = 0; i < 2; i++)
 				{
 					int binding = i;
 					data.renderer.useBufferLayoutWriter(frameIndex, binding, writer -> action.accept(binding, writer));
 				}
-				data.uniformBuffer.getMemory().unmapMemory();
 			}
 		}
 		
@@ -696,33 +696,29 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		return VulkanErrorUtils.nonNull(data, "Renderer was not initialized");
 	}
 	
-	private void computeInitData(Computer initComputer, VulkanBuffer uniform) throws VulkanException
+	private void computeInitData(Computer initComputer, VulkanBuffer uniform, CommandBuffer commandBuffer) throws VulkanException
 	{
-		uniform.getMemory().mapMemory();
-		device.configureAndSubmitSingleUseCommandBuffer(device.getComputeQueue(), commandBuffer -> {
-			for (int i = 0, k = 0; i < reloadCounters.length; i++)
+		for (int i = 0, k = 0; i < reloadCounters.length; i++)
+		{
+			Entity entity = entities.get(i);
+			MeshComponent mesh = entity.getComponent(MeshComponent.TYPE);
+			if (mesh == null) continue;
+			MeshComponent.Properties meshProperties = mesh.getProperties();
+			if (!meshProperties.useTextureUv()) continue;
+			
+			for (Material material : mesh.getMaterials())
 			{
-				Entity entity = entities.get(i);
-				MeshComponent mesh = entity.getComponent(MeshComponent.TYPE);
-				if (mesh == null) continue;
-				MeshComponent.Properties meshProperties = mesh.getProperties();
-				if (!meshProperties.useTextureUv()) continue;
+				TextureRegion region = material.colorTexture();
 				
-				for (Material material : mesh.getMaterials())
-				{
-					TextureRegion region = material.colorTexture();
-					
-					initComputer.useBufferLayoutWriter(k, 0, writer -> {
-						writer.set(ShaderVariable.UV, region.getUvStart());
-						writer.set(ShaderVariable.UV_EXTRA_1, region.getUvEnd());
-						writer.set(ShaderVariable.OFFSET, material.colorTextureVertexOffset());
-					});
-					
-					initComputer.dispatch(commandBuffer, k, material.colorTextureVertexCount(), 1, 1);
-					k++;
-				}
+				initComputer.useBufferLayoutWriter(k, 0, writer -> {
+					writer.set(ShaderVariable.UV, region.getUvStart());
+					writer.set(ShaderVariable.UV_EXTRA_1, region.getUvEnd());
+					writer.set(ShaderVariable.OFFSET, material.colorTextureVertexOffset());
+				});
+				
+				initComputer.dispatch(commandBuffer, k, material.colorTextureVertexCount(), 1, 1);
+				k++;
 			}
-		}).join();
-		uniform.getMemory().unmapMemory();
+		}
 	}
 }

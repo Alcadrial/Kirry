@@ -24,9 +24,4 @@ public abstract class MemoryResource extends RawDeviceResource {
 	{
 		return memory;
 	}
-
-	public int getSize()
-	{
-		return memory.getSize();
-	}
 }

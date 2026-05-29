@@ -8,11 +8,11 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.RenderingDataUtils;
-import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
-import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.memory.MemoryManager;
+import com.alcadrial.renderengine.render.memory.MemoryTransferState;
 import com.alcadrial.renderengine.render.texture.Atlas;
 import com.alcadrial.renderengine.render.texture.TextureBuffer;
 import com.alcadrial.renderengine.render.texture.TextureRegion;
@@ -41,22 +41,16 @@ public class Sprite extends AbstractWidget {
 	}
 	
 	@Override
-	public int estimateMemoryUsage()
+	public void initBuffers(MemoryManager memoryManager, CommandBuffer commandBuffer) throws VulkanException
 	{
-		return (5 * 4 + 6) * 4;
-	}
-	
-	@Override
-	public void initBuffers(StaticBigBuffer staticBigBuffer) throws VulkanException
-	{
-		super.initBuffers(staticBigBuffer);
-		vertexBuffer = staticBigBuffer.allocate((5 * 4) * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		indexBuffer = staticBigBuffer.allocate(6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+		super.initBuffers(memoryManager, commandBuffer);
+		vertexBuffer = memoryManager.allocate((5 * 4) * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		indexBuffer = memoryManager.allocate(6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		
-		try (PhysicalDeviceTransferState transfer = staticBigBuffer.startLocalBuffering())
+		try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, indexBuffer))
 		{
-			BufferWriter localVertexWriter = transfer.beginTransfer(vertexBuffer);
-			BufferWriter localIndexWriter = transfer.beginTransfer(indexBuffer);
+			BufferWriter localVertexWriter = transfer.getWriter(vertexBuffer);
+			BufferWriter localIndexWriter = transfer.getWriter(indexBuffer);
 			
 			Vector2f end = Vector2f.of(pos.xy().add(size));
 			Vector2f uvStart = texture.getUvStart();

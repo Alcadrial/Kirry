@@ -25,11 +25,11 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
-import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.memory.MemoryManager;
+import com.alcadrial.renderengine.render.memory.MemoryTransferState;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipelineTemplate;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
@@ -45,8 +45,8 @@ import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSetLayout;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
-import com.alcadrial.renderengine.render.util.OverflowException;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 public class InstancingTest extends RenderTest {
@@ -64,7 +64,7 @@ public class InstancingTest extends RenderTest {
 	private static PipelineLayout pipelineLayout;
 	private static GraphicsPipelineTemplate graphicsPipelineTemplate;
 	private static GraphicsPipeline graphicsPipeline;
-	private static StaticBigBuffer staticBigBuffer;
+	private static MemoryManager memoryManager;
 	private static VulkanBuffer vertexBuffer;
 	private static VulkanBuffer instanceVertexBuffer;
 	private static VulkanBuffer indexBuffer;
@@ -140,15 +140,14 @@ public class InstancingTest extends RenderTest {
 			renderPass = template.createRenderPass(device);
 		}
 		
-		staticBigBuffer = new StaticBigBuffer(device, 65536);
+		memoryManager = MemoryManager.getDefault(device);
 		
-		vertexBuffer = staticBigBuffer.allocate(24 * 10 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		instanceVertexBuffer = staticBigBuffer.allocate(instanceCount * 3 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		indexBuffer = staticBigBuffer.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+		vertexBuffer = memoryManager.allocate(24 * 10 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		instanceVertexBuffer = memoryManager.allocate(instanceCount * 3 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		indexBuffer = memoryManager.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 6, 16 * 2 * 4);
 		uniformBuffer.getMemory().mapMemory();
 		
-		staticBigBuffer.setName("StaticBigBuffer");
 		vertexBuffer.setName("VertexBuffer");
 		instanceVertexBuffer.setName("InstanceVertexBuffer");
 		indexBuffer.setName("IndexBuffer");
@@ -162,27 +161,23 @@ public class InstancingTest extends RenderTest {
 			Color.VERY_LIGHT_CYAN,
 			Color.VERY_LIGHT_BLUE
 		};
-		
-		try (PhysicalDeviceTransferState transfert = staticBigBuffer.startLocalBuffering())
-		{
-			BufferWriter vertexBufferWriter = transfert.beginTransfer(vertexBuffer);
-			BufferWriter vertexBuffer0Writer = transfert.beginTransfer(instanceVertexBuffer);
-			BufferWriter indexBufferWriter = transfert.beginTransfer(indexBuffer);
+		VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getComputeQueue(), commandBuffer -> {
 			
-			for (int j = -size; j <= size; j += density) for (int k = -size; k <= size; k += density)
+			try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, instanceVertexBuffer, indexBuffer))
 			{
-				vertexBuffer0Writer.put(Vector3f.of(j, k, 0));
+				BufferWriter vertexBufferWriter = transfer.getWriter(vertexBuffer);
+				BufferWriter vertexBuffer0Writer = transfer.getWriter(instanceVertexBuffer);
+				BufferWriter indexBufferWriter = transfer.getWriter(indexBuffer);
+				
+				for (int j = -size; j <= size; j += density) for (int k = -size; k <= size; k += density)
+				{
+					vertexBuffer0Writer.put(Vector3f.of(j, k, 0));
+				}
+				
+				RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3f.origin(), Vector3f.of(1, 1, 1), (i, _) -> colors[i]);
 			}
-			
-			RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3f.origin(), Vector3f.of(1, 1, 1), (i, _) -> colors[i]);
-		}
-		catch (OverflowException e)
-		{
-			e.printStackTrace(System.out);
-			RenderEngineVulkan.terminate();
-			return;
-		}
-
+		});
+		
 		lightPos = ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS");
 		lightIntensity = ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY");
 		spaceFogIntensity = ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY");
@@ -285,6 +280,8 @@ public class InstancingTest extends RenderTest {
 					writer.flush();
 				});
 			}
+			
+			transferFuture.join();
 		}
 	}
 	
@@ -316,14 +313,14 @@ public class InstancingTest extends RenderTest {
 							renderer.useBufferLayoutWriter(i, 0, writer -> {
 								writer.set(ShaderVariable.PROJECTION, projectionMatrix);
 								writer.set(ShaderVariable.MODEL, buildModelMatrix(f));
-								writer.flushAndInvalidate();							
+								writer.flushAndInvalidate();
 							});
 						}
 						else
 						{
 							renderer.useBufferLayoutWriter(i, 0, writer -> {
 								writer.set(ShaderVariable.PROJECTION, projectionMatrix);
-								writer.flushAndInvalidate();							
+								writer.flushAndInvalidate();
 							});
 						}
 					}
@@ -333,7 +330,7 @@ public class InstancingTest extends RenderTest {
 			{
 				renderer.useBufferLayoutWriter(window.getFrameIndex(), 0, writer -> {
 					writer.set(ShaderVariable.MODEL, buildModelMatrix(f));
-					writer.flushAndInvalidate();							
+					writer.flushAndInvalidate();
 				});
 			}
 			
@@ -371,7 +368,7 @@ public class InstancingTest extends RenderTest {
 		graphicsPipeline.close();
 		graphicsPipelineTemplate.close();
 		pipelineLayout.close();
-		staticBigBuffer.close();
+		memoryManager.close();
 		uniformBuffer.close();
 		RenderEngineVulkan.terminate();
 	}

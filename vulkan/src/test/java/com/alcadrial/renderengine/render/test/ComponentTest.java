@@ -32,11 +32,11 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
-import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.component.EntityRenderer;
 import com.alcadrial.renderengine.render.component.MeshComponent;
 import com.alcadrial.renderengine.render.component.SpatialEngine;
+import com.alcadrial.renderengine.render.memory.MemoryManager;
 import com.alcadrial.renderengine.render.resources.FileManager;
 import com.alcadrial.renderengine.render.resources.Mesh;
 import com.alcadrial.renderengine.render.resources.ShaderResource;
@@ -68,7 +68,7 @@ public class ComponentTest extends RenderTest {
 	private static MutableList<ShaderProgram> shaderPrograms;
 	private static MutableList<PreparedShader> shaders;
 	private static int currentShaderIndex;
-	private static StaticBigBuffer staticBigBuffer;
+	private static MemoryManager memoryManager;
 	
 	private static ShaderVariable lightPos = ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS");
 	private static ShaderVariable lightIntensity = ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY");
@@ -160,7 +160,7 @@ public class ComponentTest extends RenderTest {
 			
 			fileManager.registerForChanges(vertexShaderResource, r -> {
 				MutableList<ShaderProgram> newShaders = Lists.mutable.empty();
-
+				
 				r.reload().join();
 				PreparedShader shader = r.getShader();
 				newShaders.add(ShaderProgram.create().add(shader, shaderPrograms.get(0).getShaders().get(1)).build());
@@ -173,12 +173,12 @@ public class ComponentTest extends RenderTest {
 			});
 			fileManager.registerForChanges(fragmentShaderResource, r -> {
 				MutableList<ShaderProgram> newShaders = Lists.mutable.empty();
-
+				
 				r.reload().join();
 				PreparedShader shader = r.getShader();
 				newShaders.add(ShaderProgram.create().add(shaderPrograms.get(0).getShaders().get(0), shader).build());
 				newShaders.add(shaderPrograms.get(1));
-
+				
 				MutableList<ShaderProgram> oldShaders = shaderPrograms;
 				shaderPrograms = newShaders;
 				oldShaders.clear();
@@ -191,7 +191,7 @@ public class ComponentTest extends RenderTest {
 				PreparedShader shader = r.getShader();
 				newShaders.add(shaderPrograms.get(0));
 				newShaders.add(ShaderProgram.create().add(shaderPrograms.get(0).getShaders().get(0), shader).build());
-
+				
 				MutableList<ShaderProgram> oldShaders = shaderPrograms;
 				shaderPrograms = newShaders;
 				oldShaders.clear();
@@ -351,17 +351,15 @@ public class ComponentTest extends RenderTest {
 		Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
 		Matrix4f modelMatrix = buildModelMatrix(xRotation, yRotation, zRotation);
 		
-		EntityRenderer.Properties entityRendererProperties = entityRenderer.getProperties();
+		memoryManager = MemoryManager.getDefault(device);
 		
-		if (entityRendererProperties.bufferSize() == 0)
-		{
-			System.out.println("No data to render");
-			end();
-			return;
-		}
+		Debug.runOnDebug(() -> {
+			memoryManager.setName("MemoryManager");
+		});
 		
-		staticBigBuffer = new StaticBigBuffer(device, entityRendererProperties.bufferSize());
-		entityRenderer.init(new EntityRenderer.InitParams(shaderPrograms.getFirst(), shaders.get(0), shaders.get(1), staticBigBuffer, new EntityRenderer.SurfaceTarget(window), Lists.mutable.of(ShaderVariable.PROJECTION, ShaderVariable.MODEL), Lists.mutable.of(lightPos, lightIntensity, spaceFogIntensity)));
+		VulkanFuture<?> entityRendererInitFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
+			entityRenderer.init(new EntityRenderer.InitParams(shaderPrograms.getFirst(), shaders.get(0), shaders.get(1), memoryManager, commandBuffer, new EntityRenderer.SurfaceTarget(window), Lists.mutable.of(ShaderVariable.PROJECTION, ShaderVariable.MODEL), Lists.mutable.of(lightPos, lightIntensity, spaceFogIntensity)));
+		});
 		entityRenderer.setUniforms((i, writer) -> {
 			switch (i)
 			{
@@ -378,10 +376,7 @@ public class ComponentTest extends RenderTest {
 				}
 			}
 		});
-		
-		Debug.runOnDebug(() -> {
-			staticBigBuffer.setName("Big buffer");
-		});
+		entityRendererInitFuture.join();
 	}
 	
 	public static void loop(long time, long enlapsed) throws VulkanException
@@ -461,7 +456,7 @@ public class ComponentTest extends RenderTest {
 	
 	public static void end()
 	{
-		if (staticBigBuffer != null) staticBigBuffer.close();
+		if (memoryManager != null) memoryManager.close();
 		try
 		{
 			fileManager.stopWatchingResources();

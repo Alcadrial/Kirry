@@ -9,6 +9,7 @@ import org.lwjgl.vulkan.VK10;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.DataUtils;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -109,6 +110,7 @@ public class VulkanBuffer extends MemoryResource {
 		this.size = size;
 		this.usage = usage;
 		isView = false;
+		bindMemory();
 	}
 	
 	/*
@@ -129,6 +131,34 @@ public class VulkanBuffer extends MemoryResource {
 		isView = false;
 		bindMemory();
 	}*/
+	
+	public VulkanBuffer(Memory memory, long vk, long offset, int size, int usage) throws VulkanException
+	{
+		super(memory.getDevice(), memory);
+		this.vk = vk;
+		this.offset = offset;
+		this.size = size;
+		this.usage = usage;
+		isView = false;
+		bindMemory();
+	}
+	
+	public VulkanBuffer(Memory memory, long offset, int size, int usage) throws VulkanException
+	{
+		long vk;
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			vk = memory.getDevice().createBuffer(stack, size, usage);
+			Debug.debugCreate(() -> "Created " + Debug.address(vk));
+		}
+		super(memory.getDevice(), memory);
+		this.vk = vk;
+		this.offset = offset;
+		this.size = size;
+		this.usage = usage;
+		isView = false;
+		bindMemory();
+	}
 	
 	public VulkanBuffer(VulkanBuffer buffer, long offset, int size, int usage) throws VulkanException
 	{
@@ -176,6 +206,11 @@ public class VulkanBuffer extends MemoryResource {
 	}
 	
 	protected void bindMemory(long offset) throws VulkanException
+	{
+		bindMemory(memory, offset);
+	}
+	
+	protected void bindMemory(Memory memory, long offset) throws VulkanException
 	{
 		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), vk, memory.getVk(), offset), "Failed to bind buffer memory");
 	}

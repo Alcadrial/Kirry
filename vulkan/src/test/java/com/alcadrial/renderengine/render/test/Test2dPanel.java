@@ -36,11 +36,11 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
-import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.memory.MemoryManager;
+import com.alcadrial.renderengine.render.memory.MemoryTransferState;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipelineTemplate;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
@@ -57,6 +57,7 @@ import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.RenderingDataUtils;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
@@ -79,7 +80,7 @@ public class Test2dPanel extends RenderTest {
 	private static PipelineLayout pipelineLayout;
 	private static GraphicsPipelineTemplate graphicsPipelineTemplate;
 	private static GraphicsPipeline graphicsPipeline;
-	private static StaticBigBuffer staticBigBuffer;
+	private static MemoryManager memoryManager;
 	private static VulkanBuffer vertexBuffer;
 	private static VulkanBuffer indexBuffer;
 	private static VulkanBuffer uniformBuffer;
@@ -178,32 +179,34 @@ public class Test2dPanel extends RenderTest {
 			renderPass = template.createRenderPass(device);
 		}
 		
-		staticBigBuffer = new StaticBigBuffer(device, ((7 * 4 + 6) * SIZE * SIZE * 4 + 64) * 4);
+		memoryManager = MemoryManager.getDefault(device);
 		
-		vertexBuffer = staticBigBuffer.allocate(7 * 4 * SIZE * SIZE * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		indexBuffer = staticBigBuffer.allocate(6 * SIZE * SIZE * 4 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+		vertexBuffer = memoryManager.allocate(7 * 4 * SIZE * SIZE * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		indexBuffer = memoryManager.allocate(6 * SIZE * SIZE * 4 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 1, 16 * 4);
 		
-		staticBigBuffer.setName("StaticBigBuffer");
 		vertexBuffer.setName("VertexBuffer");
 		indexBuffer.setName("IndexBuffer");
 		uniformBuffer.setName("UniformBuffer");
 		
 		long seed = Double.doubleToRawLongBits(Math.random());
 		
-		try (PhysicalDeviceTransferState transfer = staticBigBuffer.startLocalBuffering())
-		{
-			BufferWriter vertexBufferWriter = transfer.beginTransfer(vertexBuffer);
-			BufferWriter indexBufferWriter = transfer.beginTransfer(indexBuffer);
+		VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getComputeQueue(), commandBuffer -> {
 			
-			Random random = new Random(seed);
-			int k = 0;
-			for (int i = -SIZE; i < SIZE; i++) for (int j = -SIZE; j < SIZE; j++)
+			try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, indexBuffer))
 			{
-				RenderingDataUtils.loadRectangleColor(vertexBufferWriter, indexBufferWriter, k, j, i, j + 1, i + 1, 1, random.nextFloat(), random.nextFloat(), random.nextFloat(), random.nextFloat());
-				k += 4;
+				BufferWriter vertexBufferWriter = transfer.getWriter(vertexBuffer);
+				BufferWriter indexBufferWriter = transfer.getWriter(indexBuffer);
+				
+				Random random = new Random(seed);
+				int k = 0;
+				for (int i = -SIZE; i < SIZE; i++) for (int j = -SIZE; j < SIZE; j++)
+				{
+					RenderingDataUtils.loadRectangleColor(vertexBufferWriter, indexBufferWriter, k, j, i, j + 1, i + 1, 1, random.nextFloat(), random.nextFloat(), random.nextFloat(), random.nextFloat());
+					k += 4;
+				}
 			}
-		}
+		});
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -267,6 +270,8 @@ public class Test2dPanel extends RenderTest {
 		renderer.setBuffer(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
 		
+		transferFuture.join();
+		
 		isModifiedMatrix = true;
 	}
 	
@@ -302,7 +307,7 @@ public class Test2dPanel extends RenderTest {
 				uniformBuffer.getMemory().mapMemory();
 				renderer.useBufferLayoutWriter(0, 0, writer -> {
 					writer.set(ShaderVariable.TRANSFORMATION, transformation);
-					writer.flushAndInvalidate();					
+					writer.flushAndInvalidate();
 				});
 				uniformBuffer.getMemory().unmapMemory();
 			}
@@ -341,7 +346,7 @@ public class Test2dPanel extends RenderTest {
 		graphicsPipelineTemplate.close();
 		pipelineLayout.close();
 		uniformBuffer.close();
-		staticBigBuffer.close();
+		memoryManager.close();
 		RenderEngineVulkan.terminate();
 	}
 }

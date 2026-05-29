@@ -22,9 +22,9 @@ import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Surface.SurfaceData;
-import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.memory.MemoryManager;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipelineTemplate;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
@@ -63,7 +63,6 @@ public class BasicScreen implements Screen {
 	private VulkanWindow window;
 	private ShaderProgram shaderProgram;
 	
-	private StaticBigBuffer staticBigBuffer;
 	private VulkanBuffer uniformBuffer;
 	private Atlas atlas;
 	
@@ -140,7 +139,7 @@ public class BasicScreen implements Screen {
 	}
 	
 	@Override
-	public void init() throws VulkanException
+	public void init(MemoryManager memoryManager, CommandBuffer commandBuffer) throws VulkanException
 	{
 		if (!checkState(DIRTY_MASK)) return;
 		
@@ -160,20 +159,9 @@ public class BasicScreen implements Screen {
 				}
 				atlas.draw();
 			}
-			int size = 0;
 			for (Widget widget : widgets)
 			{
-				size += widget.estimateMemoryUsage();
-			}
-			if (staticBigBuffer == null) staticBigBuffer = new StaticBigBuffer(device, size * 3 / 2);
-			else if (staticBigBuffer.getMaxAllocableSize() < size)
-			{
-				staticBigBuffer.close();
-				staticBigBuffer = new StaticBigBuffer(device, size * 3 / 2);
-			}
-			for (Widget widget : widgets)
-			{
-				widget.initBuffers(staticBigBuffer);
+				widget.initBuffers(memoryManager, commandBuffer);
 			}
 		}
 		
@@ -316,7 +304,7 @@ public class BasicScreen implements Screen {
 	@Override
 	public void clearRenderingData()
 	{
-		staticBigBuffer.clear();
+		
 	}
 	
 	@Override
@@ -404,7 +392,6 @@ public class BasicScreen implements Screen {
 	@Override
 	public void close() throws VulkanException
 	{
-		if (staticBigBuffer != null) staticBigBuffer.close();
 		if (uniformBuffer != null) uniformBuffer.close();
 		if (atlas != null) atlas.close();
 		

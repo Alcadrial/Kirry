@@ -9,8 +9,8 @@ import com.alcadrial.kector.vector.getter.Vector2iGetter;
 import com.alcadrial.kector.vector.getter.Vector3iGetter;
 import com.alcadrial.renderengine.core.util.EmptyImplementation;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.memory.MemoryManager;
 import com.alcadrial.renderengine.render.texture.Atlas;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
@@ -50,7 +50,7 @@ public abstract class AbstractWidget implements Widget {
 	}
 	
 	@Override
-	public void initBuffers(StaticBigBuffer staticBuffer) throws VulkanException
+	public void initBuffers(MemoryManager memoryManager, CommandBuffer commandBuffer) throws VulkanException
 	{
 		setInternalStateBit(INITIALIZED_BIT, true);
 	}

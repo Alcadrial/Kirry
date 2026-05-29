@@ -72,6 +72,7 @@ import com.alcadrial.renderengine.render.Surface.SurfaceData;
 import com.alcadrial.renderengine.render.Swapchain;
 import com.alcadrial.renderengine.render.Vulkan;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.memory.MemoryManager;
 import com.alcadrial.renderengine.render.queue.PresentQueue;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.renderpass.RenderPassTemplate;
@@ -107,6 +108,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		private int sampleCount;
 		private long vk;
 		private @Nullable VulkanWindow window;
+		private @Nullable MemoryManager memoryManager;
 		
 		public Builder()
 		{
@@ -180,6 +182,12 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		public Builder sampleCount(int sampleCount)
 		{
 			this.sampleCount = sampleCount;
+			return this;
+		}
+		
+		public Builder memoryManager(MemoryManager memoryManager)
+		{
+			this.memoryManager = memoryManager;
 			return this;
 		}
 		
@@ -354,6 +362,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	
 	private final Device device;
 	private final PresentQueue presentQueue;
+	private final MemoryManager memoryManager;
 	
 	private final Surface surface;
 	private final Lock surfaceSizeChangedLock;
@@ -392,6 +401,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		
 		this.title = title;
 		this.device = device;
+		memoryManager = builder.memoryManager != null ? builder.memoryManager : MemoryManager.getDefault(device);
 		presentQueue = (@NonNull PresentQueue) device.getPresentQueue();
 		surface = surfaceBuilder.window(this).build();
 		surfaceSizeChangedLock = new ReentrantLock();
@@ -782,10 +792,12 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			//oldScreen.clearRenderingData();
 			oldScreen = null;
 		}
+		CommandBuffer commandBuffer = commandBuffers.get(getFrameIndex());
+		
 		Screen screen = this.screen;
 		if (!screen.isInitialized())
 		{
-			screen.init();
+			screen.init(memoryManager, commandBuffer);
 		}
 		if (!screen.isOnSurface() || isSurfaceSizeChanged)
 		{
@@ -795,7 +807,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			Matrix4f matrix = screenMatrix;
 			if (matrix == null) matrix = screenMatrix = new Matrix4f().orthographicPositive(width, height);
 			
-			CommandBuffer commandBuffer = commandBuffers.get(getFrameIndex());
 			commandBuffer.beginRecording();
 			screen.draw(matrix, commandBuffer, BUFFERED_FRAMES_COUNT);
 			commandBuffer.endRecording();

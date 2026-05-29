@@ -7,6 +7,7 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.memory.MemoryManager;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
@@ -23,7 +24,7 @@ public class BlackScreen implements Screen {
 	{}
 	
 	@Override
-	public void init()
+	public void init(MemoryManager memoryManager, CommandBuffer commandBuffer)
 	{}
 	
 	@Override

@@ -417,9 +417,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	public Memory allocateBufferMemory(MemoryStack stack, long bufferVk, int requiredProperties, int optimalProperties) throws VulkanException
 	{
-		Memory memory = allocateMemory(stack, getBufferRequirements(stack, bufferVk), requiredProperties, optimalProperties);
-		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(vk, bufferVk, memory.getVk(), 0), "Failed to bind buffer memory");
-		return memory;
+		return allocateMemory(stack, getBufferRequirements(stack, bufferVk), requiredProperties, optimalProperties);
 	}
 	
 	public Memory allocateTextureMemory(MemoryStack stack, long textureVk, int requiredProperties, int optimalProperties) throws VulkanException
@@ -429,7 +427,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		return memory;
 	}
 	
-	private Memory allocateMemory(MemoryStack stack, VkMemoryRequirements memoryRequirements, int requiredProperties, int optimalProperties) throws VulkanException
+	public Memory allocateMemory(MemoryStack stack, VkMemoryRequirements memoryRequirements, int requiredProperties, int optimalProperties) throws VulkanException
 	{
 		if (memoryRequirements.size() == 0) throw new IllegalArgumentException("Cannot allocate 0 bytes memory");
 		VkPhysicalDeviceMemoryProperties memoryProperties = VkPhysicalDeviceMemoryProperties.malloc(stack);
@@ -451,7 +449,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		
 		if (index == memoryProperties.memoryTypeCount())
 		{
-			if (minimal != optimal)
+			if (optimalProperties != 0)
 			{
 				for (index = 0; index < memoryProperties.memoryTypeCount(); index++)
 				{
@@ -467,7 +465,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		
 		LongBuffer p = stack.mallocLong(1);
 		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(vk, VulkanUtils.memoryAllocateInfo(stack, memoryRequirements.size(), index), null, p), () -> "Failed to allocate image memory (" + memoryRequirements.size() + " bytes)");
-		return new Memory(this, p.get(), (int) memoryRequirements.size(), result);
+		return new Memory(this, p.get(), (int) memoryRequirements.size(), result, index);
 	}
 	
 	@Override

@@ -64,18 +64,12 @@ public class Font implements AutoCloseable {
 	
 	public TextureRegion getCharRegion(int codepoint) throws FreeTypeException, VulkanException
 	{
-		int glyphIndex = FreeType.FT_Get_Char_Index(face, codepoint);
-		TextureRegion region = regions.get(glyphIndex);
-		if (region == null)
-		{
-			region = drawCharBitmap(glyphIndex);
-			regions.put(glyphIndex, region);
-		}
-		return region;
+		return drawCharBitmap(FreeType.FT_Get_Char_Index(face, codepoint));
 	}
 	
 	private TextureRegion drawCharBitmap(int glyphIndex) throws FreeTypeException, VulkanException
 	{
+		if (glyphIndex == 0) return new TextureRegion(atlas.getTexture(), 0, 0, 0, 0);
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			PointerBuffer p = stack.mallocPointer(1);
@@ -114,7 +108,7 @@ public class Font implements AutoCloseable {
 				}
 			}
 			buffer.getMemory().unmapMemory();
-			return atlas.add(new TextureBuffer(buffer, bitmap.width(), bitmap.rows()));
+			return atlas.add(TextureBuffer.create(buffer, bitmap.width(), bitmap.rows(), glyphIndex));
 		}
 	}
 	

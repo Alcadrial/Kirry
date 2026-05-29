@@ -27,11 +27,11 @@ import com.alcadrial.renderengine.render.RenderEngineProperties;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Vulkan;
-import com.alcadrial.renderengine.render.buffer.AbstractBigVulkanBuffer.PhysicalDeviceTransferState;
 import com.alcadrial.renderengine.render.buffer.BufferWriter;
-import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.memory.MemoryManager;
+import com.alcadrial.renderengine.render.memory.MemoryTransferState;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipelineTemplate;
 import com.alcadrial.renderengine.render.pipeline.PipelineLayout;
@@ -47,12 +47,13 @@ import com.alcadrial.renderengine.render.shader.descriptor.DescriptorSetLayout;
 import com.alcadrial.renderengine.render.test.util.RenderTest;
 import com.alcadrial.renderengine.render.test.util.TestProperties;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 import com.alcadrial.renderengine.render.window.VulkanWindow;
 
 @Test
 public class TestReinit extends RenderTest {
 	
-	private static final String SHADER = "shader";
+	private static final String SHADER = "shaders/shader";
 	
 	public static void main(String[] args)
 	{
@@ -116,7 +117,7 @@ public class TestReinit extends RenderTest {
 		private RenderPass renderPass;
 		private Renderer renderer;
 		private GraphicsPipeline pipeline;
-		private StaticBigBuffer staticBigBuffer;
+		private MemoryManager memoryManager;
 		private VulkanBuffer vertexBuffer;
 		private VulkanBuffer indexBuffer;
 		private VulkanBuffer uniformBuffer;
@@ -156,16 +157,51 @@ public class TestReinit extends RenderTest {
 			Device device = vulkan.getDevice();
 			VulkanWindow window = vulkan.getWindow();
 			
-			staticBigBuffer = new StaticBigBuffer(device, 65536);
+			memoryManager = MemoryManager.getDefault(device);
 			
-			vertexBuffer = staticBigBuffer.allocate(70 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-			indexBuffer = staticBigBuffer.allocate(24 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+			vertexBuffer = memoryManager.allocate(70 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+			indexBuffer = memoryManager.allocate(24 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 			uniformBuffer = VulkanBuffer.ofUniforms(device, 16 * 4);
 			
-			staticBigBuffer.setName("StaticBigBuffer");
 			vertexBuffer.setName("VertexBuffer");
 			indexBuffer.setName("IndexBuffer");
 			uniformBuffer.setName("UniformBuffer");
+			
+			VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getComputeQueue(), commandBuffer -> {
+				
+				try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, indexBuffer))
+				{
+					BufferWriter vertexBufferWriter = transfer.getWriter(vertexBuffer);
+					BufferWriter indexBufferWriter = transfer.getWriter(indexBuffer);
+					
+					vertexBufferWriter.put(-200F, 0, 0).put(0F, 1, 0, 1);
+					vertexBufferWriter.put(0F, 0, 0).put(1F, 0, 0, 1);
+					vertexBufferWriter.put(0F, -200, 0).put(0F, 1, 0, 1);
+					vertexBufferWriter.put(-200F, -200, 0).put(0F, 0, 1, 1);
+					vertexBufferWriter.put(-100F, -100, 0).put(0.5F, 0.5F, 0.5F, 1);
+					vertexBufferWriter.put(0F, 0, 0).put(0F, 0, 1, 1);
+					vertexBufferWriter.put(0F, 200, 0).put(1F, 1, 1, 1);
+					vertexBufferWriter.put(200F, 200, 0).put(1F, 0, 0, 1);
+					vertexBufferWriter.put(200F, 0, 0).put(0, 1F, 0, 1);
+					vertexBufferWriter.put(100F, 100, 0).put(0.5F, 0.5F, 0.5F, 1);
+					
+					indices = new int[] {
+						
+						0, 1, 4,
+						1, 2, 4,
+						4, 2, 3,
+						0, 4, 3,
+						
+						5, 6, 9,
+						6, 7, 9,
+						9, 7, 8,
+						5, 9, 8,
+					};
+					
+					indexBufferWriter.put(indices);
+				}
+			});
+			
 			
 			try (RenderPassTemplate template = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format()))
 			{
@@ -243,46 +279,15 @@ public class TestReinit extends RenderTest {
 				
 				renderer.setBuffer(0, vertexBuffer);
 				renderer.setIndexBuffer(indexBuffer);
-				
+
 				uniformBuffer.getMemory().mapMemory();
 				renderer.useBufferLayoutWriter(0, 0, writer -> {
 					writer.set(ShaderVariable.TRANSFORMATION, new Matrix4f().orthographic(window.getWidth(), window.getHeight()));
 					writer.flushAndInvalidate();
 				});
 				uniformBuffer.getMemory().unmapMemory();
-				
-				try (PhysicalDeviceTransferState transfert = staticBigBuffer.startLocalBuffering())
-				{
-					BufferWriter vertexBufferWriter = transfert.beginTransfer(vertexBuffer);
-					BufferWriter indexBufferWriter = transfert.beginTransfer(indexBuffer);
-					
-					vertexBufferWriter.put(-200F, 0, 0).put(0F, 1, 0, 1);
-					vertexBufferWriter.put(0F, 0, 0).put(1F, 0, 0, 1);
-					vertexBufferWriter.put(0F, -200, 0).put(0F, 1, 0, 1);
-					vertexBufferWriter.put(-200F, -200, 0).put(0F, 0, 1, 1);
-					vertexBufferWriter.put(-100F, -100, 0).put(0.5F, 0.5F, 0.5F, 1);
-					vertexBufferWriter.put(0F, 0, 0).put(0F, 0, 1, 1);
-					vertexBufferWriter.put(0F, 200, 0).put(1F, 1, 1, 1);
-					vertexBufferWriter.put(200F, 200, 0).put(1F, 0, 0, 1);
-					vertexBufferWriter.put(200F, 0, 0).put(0, 1F, 0, 1);
-					vertexBufferWriter.put(100F, 100, 0).put(0.5F, 0.5F, 0.5F, 1);
-					
-					indices = new int[] {
-						
-						0, 1, 4,
-						1, 2, 4,
-						4, 2, 3,
-						0, 4, 3,
-						
-						5, 6, 9,
-						6, 7, 9,
-						9, 7, 8,
-						5, 9, 8,
-					};
-					
-					indexBufferWriter.put(indices);
-				}
 			}
+			transferFuture.join();
 		}
 		
 		public void loop() throws VulkanException, InterruptedException
@@ -335,7 +340,7 @@ public class TestReinit extends RenderTest {
 		{
 			pipeline.close();
 			uniformBuffer.close();
-			staticBigBuffer.close();
+			memoryManager.close();
 		}
 	}
 }

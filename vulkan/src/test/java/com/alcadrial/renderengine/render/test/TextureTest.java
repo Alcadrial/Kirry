@@ -111,13 +111,13 @@ public class TextureTest extends RenderTest {
 						panelPos.add(0, v, 0);
 						break;
 					case 'A':
-						panelPos.add(-v, 0, 0);
+						panelPos.add(v, 0, 0);
 						break;
 					case 'S':
 						panelPos.add(0, -v, 0);
 						break;
 					case 'D':
-						panelPos.add(v, 0, 0);
+						panelPos.add(-v, 0, 0);
 						break;
 					case 'Q':
 						panelPos.add(0, 0, -v);

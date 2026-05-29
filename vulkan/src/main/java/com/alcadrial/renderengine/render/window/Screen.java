@@ -6,6 +6,7 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.memory.MemoryManager;
 import com.alcadrial.renderengine.render.renderpass.RenderPass;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
@@ -15,11 +16,11 @@ public interface Screen extends AutoCloseable {
 	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, Renderer)} method.
 	 * @throws VulkanException 
 	 */
-	void init() throws VulkanException;
+	void init(MemoryManager memoryManager, CommandBuffer commandBuffer) throws VulkanException;
 	/**
 	 * Draws textures and collects vertices to use in the {@link #draw(Matrix4f, CommandBuffer, float)} method.
 	 * <p>
-	 * This method is called after {@link #init()}.
+	 * This method is called after {@link #init(MemoryManager, CommandBuffer)}.
 	 * 
 	 * @param matrix a custom matrix
 	 * @param renderer
@@ -40,7 +41,7 @@ public interface Screen extends AutoCloseable {
 	 */
 	void draw(Matrix4f matrix, CommandBuffer commandBuffer, float enlapsedTime) throws VulkanException;
 	/**
-	 * Closes any resource previously allocated in {@link #init()}.
+	 * Closes any resource previously allocated in {@link #init(MemoryManager, CommandBuffer)}.
 	 * <p>
 	 * The invocation this method will allow another invocation of init().
 	 */

@@ -42,10 +42,12 @@ public class Renderer implements VulkanDebug, AutoCloseable {
 		private @Nullable VulkanFunction<Integer, BindingInfo[]> bindings;
 		private DescriptorSet @Nullable [] descriptorSets;
 		private int buffersCount;
+		private boolean initDescriptorSets;
 		
 		private Builder()
 		{
 			buffersCount = 1;
+			initDescriptorSets = true;
 		}
 		
 		public Builder graphicsPipeline(GraphicsPipeline graphicsPipeline)
@@ -80,6 +82,12 @@ public class Renderer implements VulkanDebug, AutoCloseable {
 		public Builder descriptorSets(DescriptorSet... descriptorSets)
 		{
 			this.descriptorSets = descriptorSets;
+			return this;
+		}
+		
+		public Builder initDescriptorSets(boolean enabled)
+		{
+			initDescriptorSets = enabled;
 			return this;
 		}
 		
@@ -145,7 +153,7 @@ public class Renderer implements VulkanDebug, AutoCloseable {
 		for (int i = 0; i < bindings.length; i++)
 		{
 			writers[i] = new BufferLayoutWriter[bindings[i].length];
-			updateDescriptorSet(i);
+			if (builder.initDescriptorSets) updateDescriptorSet(i);
 		}
 	}
 	

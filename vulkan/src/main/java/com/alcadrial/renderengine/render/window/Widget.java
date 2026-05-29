@@ -7,30 +7,30 @@ import com.alcadrial.kector.vector.getter.Vector2iGetter;
 import com.alcadrial.kector.vector.getter.Vector3iGetter;
 import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.buffer.StaticBigBuffer;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.memory.MemoryManager;
 import com.alcadrial.renderengine.render.texture.Atlas;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public interface Widget {
 
 	/**
-	 * Use to load textures into an atlas, called only once before {@link #initBuffers(StaticBigBuffer)}.
+	 * Use to load textures into an atlas, called only once before {@link #initBuffers(MemoryManager, CommandBuffer)}.
 	 * @param atlas
 	 */
 	void initAtlas(Atlas atlas);
-	int estimateMemoryUsage();
 	/**
 	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, Renderer) render} method.
-	 * @param staticBuffer
+	 * @param memoryManager
+	 * @param commandBuffer
 	 * @throws VulkanException 
 	 */
-	void initBuffers(StaticBigBuffer staticBuffer) throws VulkanException;
+	void initBuffers(MemoryManager memoryManager, CommandBuffer commandBuffer) throws VulkanException;
 	/**
 	 * Draws textures and collects vertices to use in the {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw} method.
 	 * <p>
-	 * This method is called after {@link #initBuffers(StaticBigBuffer) initializeRendering}.
+	 * This method is called after {@link #initBuffers(MemoryManager, CommandBuffer) initializeRendering}.
 	 * 
 	 * @param matrix a custom matrix
 	 * @param renderer
@@ -50,7 +50,7 @@ public interface Widget {
 	 */
 	void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer manager, float partialFrame) throws VulkanException;
 	/**
-	 * Closes any resource previously allocated in {@link #initBuffers(StaticBigBuffer) initializeRendering}.
+	 * Closes any resource previously allocated in {@link #initBuffers(MemoryManager, CommandBuffer) initializeRendering}.
 	 * <p>
 	 * The invokation this method will allow another invokation of initializeRendering.
 	 */
