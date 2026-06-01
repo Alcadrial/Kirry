@@ -9,7 +9,6 @@ import org.lwjgl.vulkan.VK10;
 import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
-import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.DataUtils;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
@@ -26,13 +25,13 @@ public class VulkanBuffer extends MemoryResource {
 	{
 		return view(parent, parent.getSize());
 	}
-
+	
 	/** Does not need to be closed */
 	public static VulkanBuffer view(VulkanBuffer parent, int size) throws VulkanException
 	{
 		return view(parent, 0, size);
 	}
-
+	
 	/** Does not need to be closed */
 	public static VulkanBuffer view(VulkanBuffer parent, long offset, int size) throws VulkanException
 	{
@@ -111,6 +110,7 @@ public class VulkanBuffer extends MemoryResource {
 		this.usage = usage;
 		isView = false;
 		bindMemory();
+		if ((requiredProperties & VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) memory.mapMemory();
 	}
 	
 	/*
@@ -215,6 +215,7 @@ public class VulkanBuffer extends MemoryResource {
 		VulkanErrorUtils.assertNoError(VK10.vkBindBufferMemory(device.getVk(), vk, memory.getVk(), offset), "Failed to bind buffer memory");
 	}
 	
+	@Override
 	public Memory getMemory()
 	{
 		return memory;

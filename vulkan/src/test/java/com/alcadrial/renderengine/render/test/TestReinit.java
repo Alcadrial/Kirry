@@ -27,8 +27,8 @@ import com.alcadrial.renderengine.render.RenderEngineProperties;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.Vulkan;
-import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.buffer.writer.DeferredBufferWriter;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.memory.MemoryManager;
 import com.alcadrial.renderengine.render.memory.MemoryTransferState;
@@ -146,9 +146,9 @@ public class TestReinit extends RenderTest {
 		private void initWindow() throws VulkanException
 		{
 			VulkanWindow.defaultBuilder()
-				.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
-				.deviceFeatures(f -> f.wideLines(true))
-				.build(1080, 720, "Test");
+			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
+			.deviceFeatures(f -> f.wideLines(true))
+			.build(1080, 720, "Test");
 		}
 		
 		private void initBuffersAndRenderer() throws VulkanException
@@ -171,8 +171,8 @@ public class TestReinit extends RenderTest {
 				
 				try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, indexBuffer))
 				{
-					BufferWriter vertexBufferWriter = transfer.getWriter(vertexBuffer);
-					BufferWriter indexBufferWriter = transfer.getWriter(indexBuffer);
+					DeferredBufferWriter vertexBufferWriter = transfer.getWriter(vertexBuffer);
+					DeferredBufferWriter indexBufferWriter = transfer.getWriter(indexBuffer);
 					
 					vertexBufferWriter.put(-200F, 0, 0).put(0F, 1, 0, 1);
 					vertexBufferWriter.put(0F, 0, 0).put(1F, 0, 0, 1);
@@ -219,13 +219,13 @@ public class TestReinit extends RenderTest {
 						.apply(b -> b
 							.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 							.descriptorCount(1)
-						)
+							)
 						.apply(b -> b
 							.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 							.descriptorCount(1)
-						)
+							)
 						.rewind()
-					);
+						);
 				VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
 					.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
 					.pNext(0)
@@ -244,7 +244,7 @@ public class TestReinit extends RenderTest {
 							.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
 							.pImmutableSamplers(null))
 						.rewind()
-					);
+						);
 				DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
 				DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
 				DescriptorSet descriptorSet = descriptorPool.allocate(descriptorSetLayout);
@@ -257,14 +257,14 @@ public class TestReinit extends RenderTest {
 						.addBinding(0, 28, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
 						.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
 						.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_4, 12)
-					)
+						)
 					.configureInputAssemblyState(s -> s
 						.topology(VK10.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP)
-					)
+						)
 					.configureRasterizationState(s -> s
 						.cullMode(VK10.VK_CULL_MODE_NONE)
 						.lineWidth(2)
-					)
+						)
 					.build())
 				{
 					pipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
@@ -274,18 +274,16 @@ public class TestReinit extends RenderTest {
 					.descriptorSets(descriptorSet)
 					.bindings(
 						BindingInfo.ofUniform(uniformBuffer, VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(ShaderVariable.TRANSFORMATION))
-					)
+						)
 					.build();
 				
 				renderer.setBuffer(0, vertexBuffer);
 				renderer.setIndexBuffer(indexBuffer);
-
-				uniformBuffer.getMemory().mapMemory();
+				
 				renderer.useBufferLayoutWriter(0, 0, writer -> {
 					writer.set(ShaderVariable.TRANSFORMATION, new Matrix4f().orthographic(window.getWidth(), window.getHeight()));
-					writer.flushAndInvalidate();
+					writer.flush();
 				});
-				uniformBuffer.getMemory().unmapMemory();
 			}
 			transferFuture.join();
 		}

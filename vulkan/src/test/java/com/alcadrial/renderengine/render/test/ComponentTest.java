@@ -101,7 +101,7 @@ public class ComponentTest extends RenderTest {
 				"src/test/resources",
 				"src/main/resources",
 				FileManager.loaderJarResourceUri(ASSETS)
-			);
+				);
 			fileManager.registerResourceType(ShaderResource.TYPE, ShaderResource::new);
 			fileManager.registerResourceType(TextureResource.TYPE, TextureResource::new);
 			fileManager.registerResourceType(Mesh.TYPE, (p, m) -> new Mesh(p, m.getPath(MATERIALS), m.getPath(TEXTURES), m));
@@ -137,7 +137,7 @@ public class ComponentTest extends RenderTest {
 					fragment1ShaderResource.load(),
 					initComputeShaderResource.load(),
 					transformComputeShaderResource.load()
-				).join();
+					).join();
 			}
 			catch (CompletionException e)
 			{
@@ -214,7 +214,7 @@ public class ComponentTest extends RenderTest {
 			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
 			.deviceFeatures(f -> f
 				.samplerAnisotropy(true)
-			)
+				)
 			.build(1080, 720, "Test");
 		Device device = window.getDevice();
 		
@@ -366,13 +366,13 @@ public class ComponentTest extends RenderTest {
 				case 0 -> {
 					writer.set(ShaderVariable.MODEL, modelMatrix);
 					writer.set(ShaderVariable.PROJECTION, projectionMatrix);
-					writer.flushAndInvalidate();
+					writer.flush();
 				}
 				case 1 -> {
 					writer.set(lightPos, Vector3f.of(0.3F, 1, 0));
 					writer.set(lightIntensity, 0.75F);
 					writer.set(spaceFogIntensity, 0.1F);
-					writer.flushAndInvalidate();
+					writer.flush();
 				}
 			}
 		});
@@ -402,7 +402,7 @@ public class ComponentTest extends RenderTest {
 						{
 							case 0 -> {
 								writer.set(ShaderVariable.PROJECTION, projectionMatrix);
-								writer.flushAndInvalidate();
+								writer.flush();
 							}
 						}
 					});
@@ -420,7 +420,7 @@ public class ComponentTest extends RenderTest {
 					{
 						case 0 -> {
 							writer.set(ShaderVariable.MODEL, modelMatrix);
-							writer.flushAndInvalidate();
+							writer.flush();
 						}
 					}
 				});

@@ -16,8 +16,8 @@ import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
-import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.buffer.writer.DirectBufferWriter;
 import com.alcadrial.renderengine.render.texture.Atlas;
 import com.alcadrial.renderengine.render.texture.TextureBuffer;
 import com.alcadrial.renderengine.render.texture.TextureRegion;
@@ -88,12 +88,11 @@ public class Font implements AutoCloseable {
 			
 			ByteBuffer data = FreeTypeErrorUtils.nonNull(bitmap.buffer(bitmap.rows() * bitmap.pitch()));
 			VulkanBuffer buffer = new VulkanBuffer(device, bitmap.width() * bitmap.rows() * 4, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 0);
-			buffer.getMemory().mapMemory();
-			BufferWriter writer = new BufferWriter(buffer);
+			DirectBufferWriter writer = new DirectBufferWriter(buffer);
 			switch (bitmap.pixel_mode())
 			{
 				case FreeType.FT_PIXEL_MODE_BGRA -> {
-					writer.put(data).flushAndInvalidate();
+					writer.put(data).flush();
 				}
 				case FreeType.FT_PIXEL_MODE_GRAY -> {
 					for (int i = 0; i < data.limit(); i++)
@@ -107,7 +106,6 @@ public class Font implements AutoCloseable {
 					throw new FreeTypeException("Unsupported format (pixel mode) " + bitmap.pixel_mode());
 				}
 			}
-			buffer.getMemory().unmapMemory();
 			return atlas.add(TextureBuffer.create(buffer, bitmap.width(), bitmap.rows(), glyphIndex));
 		}
 	}

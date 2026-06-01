@@ -1,5 +1,9 @@
 package com.alcadrial.renderengine.render.buffer;
 
+import java.util.List;
+
+import org.eclipse.collections.api.factory.Lists;
+
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
@@ -7,26 +11,24 @@ import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
-import com.alcadrial.renderengine.render.RenderEngineVulkan;
+import com.alcadrial.renderengine.render.buffer.writer.DirectBufferWriter;
 import com.alcadrial.renderengine.render.shader.ShaderInputType;
 import com.alcadrial.renderengine.render.shader.ShaderVariable;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
-public class BufferLayoutWriter implements AutoCloseable {
+public class BufferLayoutWriter {
 	
-	static
-	{
-		RenderEngineVulkan.assertLoaded();
-	}
+	private record Region(int offset, int size) {}
 	
 	private final BufferLayout layout;
-	private final BufferWriter writer;
+	private final DirectBufferWriter writer;
+	private final List<Region> regions;
 	
 	public BufferLayoutWriter(VulkanBuffer buffer, BufferLayout layout) throws VulkanException
 	{
 		this.layout = layout;
-		writer = new BufferWriter(buffer);
-		writer.setPreferFlush(true);
+		writer = new DirectBufferWriter(buffer);
+		regions = Lists.mutable.of();
 	}
 	
 	public BufferLayout getLayout()
@@ -34,7 +36,7 @@ public class BufferLayoutWriter implements AutoCloseable {
 		return layout;
 	}
 	
-	public BufferWriter getWriter()
+	public DirectBufferWriter getWriter()
 	{
 		return writer;
 	}
@@ -51,6 +53,7 @@ public class BufferLayoutWriter implements AutoCloseable {
 		{
 			checkValue(ShaderInputType.MATRIX_FLOAT_4X4, variable.getType());
 			writer.setCursor(16 * index + offset).put(value.toTransposedArray());
+			regions.add(new Region(index + offset, 16));
 		}
 	}
 	
@@ -66,6 +69,7 @@ public class BufferLayoutWriter implements AutoCloseable {
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_2, variable.getType());
 			writer.setCursor(2 * index + offset).put(value.getValuesArray());
+			regions.add(new Region(index + offset, 2));
 		}
 	}
 	
@@ -81,6 +85,7 @@ public class BufferLayoutWriter implements AutoCloseable {
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_3, variable.getType());
 			writer.setCursor(4 * index + offset).put(value.getValuesArray());
+			regions.add(new Region(index + offset, 3));
 		}
 	}
 	
@@ -96,6 +101,7 @@ public class BufferLayoutWriter implements AutoCloseable {
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_4, variable.getType());
 			writer.setCursor(4 * index + offset).put(value.getValuesArray());
+			regions.add(new Region(index + offset, 4));
 		}
 	}
 	
@@ -111,6 +117,7 @@ public class BufferLayoutWriter implements AutoCloseable {
 		{
 			checkValue(ShaderInputType.VECTOR_INT_2, variable.getType());
 			writer.setCursor(2 * index + offset).put(value.getValuesArray());
+			regions.add(new Region(index + offset, 2));
 		}
 	}
 	
@@ -126,6 +133,7 @@ public class BufferLayoutWriter implements AutoCloseable {
 		{
 			checkValue(ShaderInputType.VECTOR_INT_3, variable.getType());
 			writer.setCursor(4 * index + offset).put(value.getValuesArray());
+			regions.add(new Region(index + offset, 3));
 		}
 	}
 	
@@ -141,6 +149,7 @@ public class BufferLayoutWriter implements AutoCloseable {
 		{
 			checkValue(ShaderInputType.VECTOR_INT_4, variable.getType());
 			writer.setCursor(4 * index + offset).put(value.getValuesArray());
+			regions.add(new Region(index + offset, 4));
 		}
 	}
 	
@@ -156,6 +165,7 @@ public class BufferLayoutWriter implements AutoCloseable {
 		{
 			checkValue(ShaderInputType.INT, variable.getType());
 			writer.setCursor(index + offset).put(value);
+			regions.add(new Region(index + offset, 1));
 		}
 	}
 	
@@ -171,6 +181,7 @@ public class BufferLayoutWriter implements AutoCloseable {
 		{
 			checkValue(ShaderInputType.FLOAT, variable.getType());
 			writer.setCursor(index + offset).put(value);
+			regions.add(new Region(index + offset, 1));
 		}
 	}
 	
@@ -184,17 +195,6 @@ public class BufferLayoutWriter implements AutoCloseable {
 	
 	public void flush() throws VulkanException
 	{
-		writer.flush();
-	}
-	
-	public void flushAndInvalidate() throws VulkanException
-	{
-		writer.flushAndInvalidate();
-	}
-	
-	@Override
-	public void close() throws VulkanException
-	{
-		writer.close();
+		for (Region region : regions) writer.flush(region.offset * 4, region.size * 4);
 	}
 }

@@ -2,25 +2,23 @@ package com.alcadrial.renderengine.render;
 
 import java.io.PrintStream;
 import java.util.Collection;
-import java.util.Set;
+import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.system.Pointer;
 import org.lwjgl.system.Struct;
 import org.lwjgl.system.StructBuffer;
 
 import com.alcadrial.renderengine.render.util.VulkanDebug;
+import com.alcadrial.renderengine.render.util.exception.VulkanException;
+import com.alcadrial.renderengine.render.util.functional.VulkanSupplier;
 
 public class Debug {
 	
-	static
-	{
-		RenderEngine.assertLoaded();
-	}
-	
-	public static <T> T get(Supplier<T> debugRunnable, Supplier<T> releaseRunnable)
+	public static <T> T get(VulkanSupplier<T> debugRunnable, VulkanSupplier<T> releaseRunnable) throws VulkanException
 	{
 		return releaseRunnable.get();
 	}
@@ -59,7 +57,8 @@ public class Debug {
 	{
 		
 	}
-	public static void print(String name, String s)
+	
+	public static void print(String name, @Nullable String s)
 	{
 		
 	}
@@ -74,17 +73,17 @@ public class Debug {
 		
 	}
 	
-	public static void print(String name, VulkanDebug vk)
+	public static void print(String name, @Nullable VulkanDebug vk)
 	{
 		
 	}
 	
-	public static void print(String name, Collection<?> collection)
+	public static void print(String name, @Nullable Collection<?> collection)
 	{
 		
 	}
 	
-	public static void print(Object obj)
+	public static void print(@Nullable Object obj)
 	{
 		
 	}
@@ -109,12 +108,22 @@ public class Debug {
 		return "0x" + Long.toHexString(p);
 	}
 	
+	public static String address(@Nullable Long p)
+	{
+		return p == null ? "0x0" : address(p.longValue());
+	}
+	
 	public static void debug()
 	{
 		
 	}
 	
 	public static void debug(Object x)
+	{
+		
+	}
+	
+	public static void error(Object x)
 	{
 		
 	}
@@ -141,7 +150,7 @@ public class Debug {
 	
 	public static boolean isEnabledDeallocationFail()
 	{
-		
+		return false;
 	}
 	
 	public static void debugAllocation(Supplier<Object> x)
@@ -149,24 +158,74 @@ public class Debug {
 		
 	}
 	
-	public static void setEnableAllocationDebug(boolean enableAllocationDebug)
+	public static void setEnabledAllocationDebug(boolean enabledAllocationDebug)
 	{
 		
 	}
 	
-	public static boolean isEnableAllocationDebug()
+	public static boolean isEnabledAllocationDebug()
 	{
 		return false;
 	}
 	
-	public static void setEnableCopyDebug(boolean enableCopyDebug)
+	public static void debugCopy(Supplier<Object> x)
 	{
 		
 	}
 	
-	public static boolean isEnableCopyDebug()
+	public static void setEnabledCopyDebug(boolean enabledCopyDebug)
+	{
+		
+	}
+	
+	public static boolean isEnabledCopyDebug()
 	{
 		return false;
+	}
+	
+	public static void debugClose(Supplier<Object> x)
+	{
+		
+	}
+	
+	public static void setEnabledCloseDebug(boolean enabledCloseDebug)
+	{
+		
+	}
+	
+	public static boolean isEnabledCloseDebug()
+	{
+		return false;
+	}
+	
+	public static void debugCreate(Supplier<Object> x)
+	{
+		
+	}
+	
+	public static void setEnabledCreateDebug(boolean enabledCreateDebug)
+	{
+		
+	}
+	
+	public static boolean isEnabledCreateDebug()
+	{
+		return false;
+	}
+	
+	public static void setEnabledExtraTimePrecision(boolean enabledExtraTimePrecision)
+	{
+		
+	}
+	
+	public static boolean isEnabledExtraTimePrecision()
+	{
+		return false;
+	}
+	
+	public static void setEnabledAllDebug(boolean enabled)
+	{
+		
 	}
 	
 	public static void setDebugOutput(PrintStream debugOutput)
@@ -174,8 +233,8 @@ public class Debug {
 		
 	}
 	
-	public static Set<VulkanObject> getAvailableVulkanObjects()
+	public static List<VulkanObject> getAvailableVulkanObjects()
 	{
-		return Set.of();
+		return List.of();
 	}
 }

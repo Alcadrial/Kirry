@@ -5,7 +5,7 @@ import java.math.RoundingMode;
 import com.alcadrial.kector.Math;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
-import com.alcadrial.renderengine.render.buffer.BufferWriter;
+import com.alcadrial.renderengine.render.buffer.writer.BufferWriter;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class SphereDataCollector {

@@ -38,8 +38,8 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.buffer.writer.DeferredBufferWriter;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.memory.MemoryManager;
 import com.alcadrial.renderengine.render.memory.MemoryTransferState;
@@ -180,21 +180,21 @@ public class ComputerTest extends RenderTest {
 			if (isCameraUnlocked)
 			{
 				Vector3f v = switch (k)
-				{
-					case GLFW.GLFW_KEY_W -> NORTH;
-					case GLFW.GLFW_KEY_A -> WEST;
-					case GLFW.GLFW_KEY_S -> SOUTH;
-					case GLFW.GLFW_KEY_D -> EAST;
-					case GLFW.GLFW_KEY_SPACE -> UP;
-					case GLFW.GLFW_KEY_LEFT_SHIFT, GLFW.GLFW_KEY_LEFT_CONTROL -> DOWN;
-					default -> Vector3f.origin();
-				};
-				
-				switch (a)
-				{
-					case GLFW.GLFW_PRESS -> cameraMovement.add(v);
-					case GLFW.GLFW_RELEASE -> cameraMovement.subtract(v);
-				}
+					{
+						case GLFW.GLFW_KEY_W -> NORTH;
+						case GLFW.GLFW_KEY_A -> WEST;
+						case GLFW.GLFW_KEY_S -> SOUTH;
+						case GLFW.GLFW_KEY_D -> EAST;
+						case GLFW.GLFW_KEY_SPACE -> UP;
+						case GLFW.GLFW_KEY_LEFT_SHIFT, GLFW.GLFW_KEY_LEFT_CONTROL -> DOWN;
+						default -> Vector3f.origin();
+					};
+					
+					switch (a)
+					{
+						case GLFW.GLFW_PRESS -> cameraMovement.add(v);
+						case GLFW.GLFW_RELEASE -> cameraMovement.subtract(v);
+					}
 			}
 			
 			if (a == GLFW.GLFW_RELEASE)
@@ -225,7 +225,6 @@ public class ComputerTest extends RenderTest {
 		VulkanBuffer vertexBuffer = memoryManager.allocate(242 * 3 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		VulkanBuffer indexBuffer = memoryManager.allocate(2064 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 3 * window.getFramesCount(), 16 * 4);
-		uniformBuffer.getMemory().mapMemory();
 		VulkanBuffer colorBuffer = memoryManager.allocate(PARTICLE_COUNT * 4 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		VulkanBuffer vertexStorageBuffer = memoryManager.allocate(window.getFramesCount() * size, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		storageBuffers = new VulkanBuffer[window.getFramesCount()];
@@ -254,10 +253,10 @@ public class ComputerTest extends RenderTest {
 			
 			try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, storageBuffers[0], indexBuffer, colorBuffer))
 			{
-				BufferWriter vertexBufferWriter = transfer.getWriter(vertexBuffer);
-				BufferWriter storageBuffer0Writer = transfer.getWriter(storageBuffers[0]);
-				BufferWriter indexBufferWriter = transfer.getWriter(indexBuffer);
-				BufferWriter colorBufferWriter = transfer.getWriter(colorBuffer);
+				DeferredBufferWriter vertexBufferWriter = transfer.getWriter(vertexBuffer);
+				DeferredBufferWriter storageBuffer0Writer = transfer.getWriter(storageBuffers[0]);
+				DeferredBufferWriter indexBufferWriter = transfer.getWriter(indexBuffer);
+				DeferredBufferWriter colorBufferWriter = transfer.getWriter(colorBuffer);
 				
 				Random random = new Random();
 				
@@ -295,13 +294,13 @@ public class ComputerTest extends RenderTest {
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 						.descriptorCount(3)
-					)
+						)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
 						.descriptorCount(2)
-					)
+						)
 					.rewind()
-				);
+					);
 			
 			VkDescriptorSetLayoutCreateInfo createInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
@@ -321,7 +320,7 @@ public class ComputerTest extends RenderTest {
 						.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
 						.pImmutableSamplers(null))
 					.rewind()
-				);
+					);
 			
 			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
 			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, createInfo);
@@ -338,7 +337,7 @@ public class ComputerTest extends RenderTest {
 					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
 					.addAttribute(1, 1, ShaderInputType.VECTOR_FLOAT_3, 0)
 					.addAttribute(2, 2, ShaderInputType.VECTOR_FLOAT_4, 0)
-				)
+					)
 				.build();
 			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
 			
@@ -349,10 +348,10 @@ public class ComputerTest extends RenderTest {
 				.bindings(i -> new BindingInfo[] {
 					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i, 1, 16 * 4), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.PROJECTION
-					)),
+						)),
 					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i + 1, 1, 4), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
 						particleRadius
-					))
+						))
 				})
 				.build();
 			renderer.setBuffer(0, vertexBuffer);
@@ -363,7 +362,7 @@ public class ComputerTest extends RenderTest {
 			{
 				renderer.useBufferLayoutWriter(i, 1, writer -> {
 					writer.set(particleRadius, 0.1F);
-					writer.flushAndInvalidate();
+					writer.flush();
 				});
 			}
 			rebuildProjectionMatrix = true;
@@ -392,7 +391,7 @@ public class ComputerTest extends RenderTest {
 						.stageFlags(VK10.VK_SHADER_STAGE_COMPUTE_BIT)
 						.pImmutableSamplers(null))
 					.rewind()
-				);
+					);
 			
 			descriptorSetLayout = new DescriptorSetLayout(device, createInfo);
 			pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
@@ -410,17 +409,17 @@ public class ComputerTest extends RenderTest {
 						minBound,
 						maxBound,
 						enlapsedTime
-					)),
+						)),
 					BindingInfo.ofStorage(VulkanBuffer.view(storageBuffers[0]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.POSITION,
 						ShaderVariable.VELOCITY,
 						ShaderVariable.COLOR
-					)),
+						)),
 					BindingInfo.ofStorage(VulkanBuffer.view(storageBuffers[1]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.POSITION,
 						ShaderVariable.VELOCITY,
 						ShaderVariable.COLOR
-					))
+						))
 				})
 				.build();
 			
@@ -430,7 +429,7 @@ public class ComputerTest extends RenderTest {
 					writer.set(minBound, MIN_BOUND_VALUE);
 					writer.set(maxBound, MAX_BOUND_VALUE);
 					writer.set(enlapsedTime, 1F);
-					writer.flushAndInvalidate();
+					writer.flush();
 				});
 			}
 		}
@@ -474,7 +473,7 @@ public class ComputerTest extends RenderTest {
 			Long newBufferVk = storageBuffers[computeIndex].getVk();
 			computer.useBufferLayoutWriter(computeIndex, 0, writer -> {
 				writer.set(enlapsedTime, enlapsed / 1000000000F);
-				writer.flushAndInvalidate();
+				writer.flush();
 			});
 			computer.updateDescriptorSet(computeIndex, sets -> {
 				((VkDescriptorBufferInfo.@NonNull Buffer) sets.get(1).pBufferInfo()).buffer(oldBufferVk);
@@ -510,7 +509,7 @@ public class ComputerTest extends RenderTest {
 				{
 					renderer.useBufferLayoutWriter(i, 0, writer -> {
 						writer.set(ShaderVariable.PROJECTION, matrix);
-						writer.flushAndInvalidate();
+						writer.flush();
 					});
 				}
 				rebuildProjectionMatrix = false;

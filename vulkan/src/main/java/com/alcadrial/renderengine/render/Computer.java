@@ -28,7 +28,7 @@ import com.alcadrial.renderengine.render.util.exception.VulkanException;
 import com.alcadrial.renderengine.render.util.functional.VulkanConsumer;
 import com.alcadrial.renderengine.render.util.functional.VulkanFunction;
 
-public class Computer implements VulkanDebug, AutoCloseable {
+public class Computer implements VulkanDebug {
 	
 	static
 	{
@@ -130,11 +130,11 @@ public class Computer implements VulkanDebug, AutoCloseable {
 	
 	private Computer(Builder builder) throws VulkanException
 	{
-		this.computePipeline = VulkanErrorUtils.nonNull(builder.computePipeline);
-		this.device = computePipeline.getDevice();
-		this.descriptorSets = VulkanErrorUtils.nonNull(builder.descriptorSets);
+		computePipeline = VulkanErrorUtils.nonNull(builder.computePipeline);
+		device = computePipeline.getDevice();
+		descriptorSets = VulkanErrorUtils.nonNull(builder.descriptorSets);
 		
-		this.groupCount = VulkanErrorUtils.nonNull(builder.groupCount);
+		groupCount = VulkanErrorUtils.nonNull(builder.groupCount);
 		
 		bindings = new BindingInfo[builder.buffersCount][];
 		VulkanFunction<Integer, BindingInfo[]> bindingsFactory = VulkanErrorUtils.nonNull(builder.bindings);
@@ -252,8 +252,8 @@ public class Computer implements VulkanDebug, AutoCloseable {
 			updateInfo();
 			return;
 		}
-		this.computePipeline = newPipeline;
-		if (newPipeline.getDevice() != this.device || !newPipeline.getLayout().equals(computePipeline.getLayout())) updateInfo();
+		computePipeline = newPipeline;
+		if (newPipeline.getDevice() != device || !newPipeline.getLayout().equals(computePipeline.getLayout())) updateInfo();
 	}
 	
 	private void updateInfo() throws VulkanException
@@ -261,7 +261,6 @@ public class Computer implements VulkanDebug, AutoCloseable {
 		InitResult result = initInfo();
 		info = result.info;
 		writeDescriptorSets = result.writeDescriptorSets;
-		for (BufferLayoutWriter[] bindingWriters : writers) for (BufferLayoutWriter writer : bindingWriters) if (writer != null) writer.close();
 		writers = new BufferLayoutWriter[info.length][];
 		for (int i = 0; i < bindings.length; i++)
 		{
@@ -298,11 +297,7 @@ public class Computer implements VulkanDebug, AutoCloseable {
 	public void freeBufferLayoutWriter(int frameIndex, int binding) throws VulkanException
 	{
 		BufferLayoutWriter writer = writers[frameIndex][binding];
-		if (writer != null)
-		{
-			writer.close();
-			writers[frameIndex][binding] = null;
-		}
+		if (writer != null) writers[frameIndex][binding] = null;
 	}
 	
 	public void updateDescriptorSet(int frameIndex, VulkanConsumer<VkWriteDescriptorSet.Buffer> action) throws VulkanException
@@ -332,12 +327,6 @@ public class Computer implements VulkanDebug, AutoCloseable {
 	private int ceil(int a, int b)
 	{
 		return Math.toInt((float) a / b, RoundingMode.CEILING);
-	}
-	
-	@Override
-	public void close() throws VulkanException
-	{
-		for (BufferLayoutWriter[] bindingWriters : writers) for (BufferLayoutWriter writer : bindingWriters) if (writer != null) writer.close();
 	}
 	
 	@Override

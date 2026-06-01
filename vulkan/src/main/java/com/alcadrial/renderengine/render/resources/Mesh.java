@@ -21,6 +21,7 @@ import org.lwjgl.system.MemoryStack;
 
 import com.alcadrial.renderengine.core.resources.ResourceManager;
 import com.alcadrial.renderengine.core.resources.ResourceType;
+import com.alcadrial.renderengine.render.buffer.Memory.Mapping;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.texture.Atlas;
 import com.alcadrial.renderengine.render.texture.TextureBuffer;
@@ -40,13 +41,13 @@ public class Mesh extends AbstractVulkanResource {
 		int indicesSize,
 		int textureUvSize,
 		int normalsSize
-	) {}
+		) {}
 	
 	public record Material(
 		TextureRegion colorTexture,
 		int colorTextureVertexOffset,
 		int colorTextureVertexCount
-	) {}
+		) {}
 	
 	private volatile boolean isLoaded = false;
 	private volatile int reloadCounter;
@@ -82,7 +83,7 @@ public class Mesh extends AbstractVulkanResource {
 	
 	public void flushMaterials(Atlas atlas) throws VulkanException
 	{
-		if (this.materials != null) return;
+		if (materials != null) return;
 		
 		MutableList<Loader.Index> indices = loader.indices;
 		if (indices == null) return;
@@ -95,8 +96,7 @@ public class Mesh extends AbstractVulkanResource {
 			if (texture != null)
 			{
 				VulkanBuffer buffer = VulkanBuffer.forTransfer(atlas.getDevice(), texture.limit());
-				buffer.getMemory().mapMemory().getBuffer().put(texture);
-				buffer.getMemory().unmapMemory();
+				((@NonNull Mapping) buffer.getMemory().getMapping()).getBuffer().put(texture);
 				STBImage.stbi_image_free(texture.rewind());
 				TextureRegion region = atlas.add(TextureBuffer.create(buffer, materialIndex.material.colorTextureWidth, materialIndex.material.colorTextureHeight, (@NonNull Path) materialIndex.material.texturePath), materialIndex.material);
 				materials.add(new Material(region, 0, materialIndex.indices.size()));
@@ -143,14 +143,14 @@ public class Mesh extends AbstractVulkanResource {
 						{
 							Integer[] index = materialIndex.indices.get(j);
 							if (useVertexes) ((@NonNull FloatBuffer) vertexWriter)
-								.position(j * vertexStride + vertexOffset)
-								.put(vertexes.get(index[0]), 0, vertexLength);
+							.position(j * vertexStride + vertexOffset)
+							.put(vertexes.get(index[0]), 0, vertexLength);
 							((@NonNull FloatBuffer) textureUvWriter)
-								.position(j * textureUvStride + textureUvOffset)
-								.put(((@NonNull MutableList<float[]>) textureUv).get(index[1]), 0, textureUvLength);
+							.position(j * textureUvStride + textureUvOffset)
+							.put(((@NonNull MutableList<float[]>) textureUv).get(index[1]), 0, textureUvLength);
 							if (useNormals) ((@NonNull FloatBuffer) normalWriter)
-								.position(j * normalStride + normalOffset)
-								.put(((@NonNull MutableList<float[]>) normals).get(index[2]));
+							.position(j * normalStride + normalOffset)
+							.put(((@NonNull MutableList<float[]>) normals).get(index[2]));
 						}
 						jOffset += materialIndex.indices.size();
 					}
@@ -161,14 +161,14 @@ public class Mesh extends AbstractVulkanResource {
 						{
 							Integer[] index = materialIndex.indices.get(j);
 							if (useVertexes) ((@NonNull FloatBuffer) vertexWriter)
-								.position(j * vertexStride + vertexOffset)
-								.put(vertexes.get(index[0]), 0, vertexLength);
+							.position(j * vertexStride + vertexOffset)
+							.put(vertexes.get(index[0]), 0, vertexLength);
 							((@NonNull FloatBuffer) textureUvWriter)
-								.position(j * textureUvStride + textureUvOffset)
-								.put(((@NonNull MutableList<float[]>) textureUv).get(index[1]), 0, textureUvLength);
+							.position(j * textureUvStride + textureUvOffset)
+							.put(((@NonNull MutableList<float[]>) textureUv).get(index[1]), 0, textureUvLength);
 							if (useNormals) ((@NonNull FloatBuffer) normalWriter)
-								.position(j * normalStride + normalOffset)
-								.put(((@NonNull MutableList<float[]>) normals).get(index[2]));
+							.position(j * normalStride + normalOffset)
+							.put(((@NonNull MutableList<float[]>) normals).get(index[2]));
 							indexWriter.put(j);
 						}
 						jOffset += materialIndex.indices.size();
@@ -189,11 +189,11 @@ public class Mesh extends AbstractVulkanResource {
 						{
 							Integer[] index = materialIndex.indices.get(i);
 							if (useVertexes) ((@NonNull FloatBuffer) vertexWriter)
-								.position(i * vertexStride + vertexOffset)
-								.put(vertexes.get(index[0]), 0, vertexLength);
+							.position(i * vertexStride + vertexOffset)
+							.put(vertexes.get(index[0]), 0, vertexLength);
 							if (useNormals) ((@NonNull FloatBuffer) normalWriter)
-								.position(i * normalStride + normalOffset)
-								.put(((@NonNull MutableList<float[]>) normals).get(index[2]));
+							.position(i * normalStride + normalOffset)
+							.put(((@NonNull MutableList<float[]>) normals).get(index[2]));
 						}
 					}
 				}
@@ -209,11 +209,11 @@ public class Mesh extends AbstractVulkanResource {
 						{
 							Integer[] index = materialIndex.indices.get(i);
 							if (useVertexes) ((@NonNull FloatBuffer) vertexWriter)
-								.position(i * vertexStride + vertexOffset)
-								.put(vertexes.get(index[0]), 0, vertexLength);
+							.position(i * vertexStride + vertexOffset)
+							.put(vertexes.get(index[0]), 0, vertexLength);
 							if (useNormals) ((@NonNull FloatBuffer) normalWriter)
-								.position(i * normalStride + normalOffset)
-								.put(((@NonNull MutableList<float[]>) normals).get(index[2]));
+							.position(i * normalStride + normalOffset)
+							.put(((@NonNull MutableList<float[]>) normals).get(index[2]));
 							indexWriter.put(i);
 						}
 					}
@@ -278,6 +278,7 @@ public class Mesh extends AbstractVulkanResource {
 		return loader.name;
 	}
 	
+	@Override
 	public Path getPath()
 	{
 		return loader.getPath();
@@ -302,14 +303,14 @@ public class Mesh extends AbstractVulkanResource {
 			@Nullable ByteBuffer texture,
 			int colorTextureWidth,
 			int colorTextureHeight
-		) {}
+			) {}
 		
 		public static Material BLANK = new Material(null, null, 0, 0);
 		
 		record Index(
 			MutableList<Integer[]> indices,
 			Material material
-		) {
+			) {
 			
 			public void clear()
 			{
@@ -375,6 +376,7 @@ public class Mesh extends AbstractVulkanResource {
 			return path;
 		}
 		
+		@Override
 		void load() throws IOException
 		{
 			try (BufferedReader reader = Files.newBufferedReader(path))

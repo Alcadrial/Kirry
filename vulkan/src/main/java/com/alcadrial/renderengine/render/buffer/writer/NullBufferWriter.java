@@ -1,4 +1,4 @@
-package com.alcadrial.renderengine.render.buffer;
+package com.alcadrial.renderengine.render.buffer.writer;
 
 import java.nio.ByteBuffer;
 
@@ -9,16 +9,9 @@ import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kector.vector.Vector4i;
-import com.alcadrial.renderengine.render.RenderEngineVulkan;
-import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
-import com.alcadrial.renderengine.render.util.future.VulkanFuture;
+import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 
-final class NullBufferWriter extends BufferWriter {
-	
-	static
-	{
-		RenderEngineVulkan.assertLoaded();
-	}
+final class NullBufferWriter implements BufferWriter {
 	
 	static final NullBufferWriter INSTANCE = new NullBufferWriter();
 	
@@ -35,12 +28,6 @@ final class NullBufferWriter extends BufferWriter {
 	
 	@Override
 	public BufferWriter setCursor(int index)
-	{
-		return this;
-	}
-	
-	@Override
-	public BufferWriter put(int value)
 	{
 		return this;
 	}
@@ -71,12 +58,6 @@ final class NullBufferWriter extends BufferWriter {
 	
 	@Override
 	public BufferWriter put(int[] value, int offset, int size)
-	{
-		return this;
-	}
-	
-	@Override
-	public BufferWriter put(float value)
 	{
 		return this;
 	}
@@ -130,32 +111,44 @@ final class NullBufferWriter extends BufferWriter {
 	}
 	
 	@Override
-	public void transfer()
+	public BufferWriter put(ByteBuffer values, int offset, int size)
 	{
-		
+		return this;
 	}
 	
 	@Override
-	public void transfer(CommandBuffer commandBuffer)
+	public BufferWriter put(float[] values, int offset, int size)
 	{
-		
+		return this;
 	}
 	
 	@Override
-	public VulkanFuture<?> getLoad()
+	public int getSrcOffset()
 	{
-		return VulkanFuture.completedTask();
+		throw new IllegalStateException("Missing source");
 	}
 	
 	@Override
-	public void setCommandBuffer(CommandBuffer commandBuffer)
+	public int getDstOffset()
 	{
-		
+		throw new IllegalStateException("Missing destination");
 	}
 	
 	@Override
-	public void close()
+	public VulkanBuffer getSrcBuffer()
 	{
-		
+		throw new IllegalStateException("Missing source");
+	}
+	
+	@Override
+	public VulkanBuffer getDstBuffer()
+	{
+		throw new IllegalStateException("Missing destination");
+	}
+	
+	@Override
+	public int getSize()
+	{
+		throw new IllegalStateException("Missing destination");
 	}
 }

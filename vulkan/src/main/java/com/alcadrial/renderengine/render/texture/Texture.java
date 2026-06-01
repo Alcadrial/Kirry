@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.file.Path;
 
+import org.jspecify.annotations.NonNull;
 import org.lwjgl.stb.STBImage;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
@@ -16,6 +17,7 @@ import com.alcadrial.renderengine.render.Debug;
 import com.alcadrial.renderengine.render.Device;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.buffer.Memory;
+import com.alcadrial.renderengine.render.buffer.Memory.Mapping;
 import com.alcadrial.renderengine.render.buffer.MemoryResource;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
@@ -42,8 +44,7 @@ public class Texture extends MemoryResource {
 				ByteBuffer data = MemoryUtil.memByteBuffer(dataAddress, widthHeightChannels.get(0) * widthHeightChannels.get(1) * STBImage.STBI_rgb_alpha);
 				
 				VulkanBuffer buffer = VulkanBuffer.forTransfer(device, data.limit());
-				buffer.getMemory().mapMemory().getBuffer().put(data).rewind();
-				buffer.getMemory().unmapMemory();
+				((@NonNull Mapping) buffer.getMemory().getMapping()).getBuffer().put(data).rewind();
 				STBImage.stbi_image_free(data.rewind());
 				
 				return TextureBuffer.create(buffer, widthHeightChannels.get(0), widthHeightChannels.get(1), path);
@@ -68,8 +69,7 @@ public class Texture extends MemoryResource {
 				ByteBuffer data = MemoryUtil.memByteBuffer(dataAddress, widthHeightChannels.get(0) * widthHeightChannels.get(1) * STBImage.STBI_rgb_alpha);
 				
 				VulkanBuffer buffer = VulkanBuffer.forTransfer(device, data.limit());
-				buffer.getMemory().mapMemory().getBuffer().put(data).rewind();
-				buffer.getMemory().unmapMemory();
+				((@NonNull Mapping) buffer.getMemory().getMapping()).getBuffer().put(data).rewind();
 				STBImage.stbi_image_free(data.rewind());
 				
 				Texture texture = Texture.create2dTexture(device, widthHeightChannels.get(0), widthHeightChannels.get(1), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | usage, VK10.VK_IMAGE_ASPECT_COLOR_BIT);

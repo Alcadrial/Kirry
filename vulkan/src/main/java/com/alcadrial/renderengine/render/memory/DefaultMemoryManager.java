@@ -12,7 +12,6 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
-import org.lwjgl.vulkan.VK14;
 import org.lwjgl.vulkan.VkMemoryRequirements;
 
 import com.alcadrial.renderengine.render.Device;
@@ -30,15 +29,14 @@ public class DefaultMemoryManager implements MemoryManager {
 	private final ImmutableMemoryType<HostSegment> hostMemory;
 	
 	private final Device device;
-	private @Nullable String name;
 	
 	public DefaultMemoryManager(Device device, int minStackSize, int minDynamicSize, int minCacheSize, int minHostSize)
 	{
 		this.device = device;
-		stackMemory = new MemoryType<>(device, minStackSize, VK14.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, StackSegment::new);
-		dynamicMemory = new MemoryType<>(device, minDynamicSize, VK14.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, DynamicSegment::new);
-		cacheMemory = new MemoryType<>(device, minCacheSize, VK14.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, CacheSegment::new);
-		hostMemory = new ImmutableMemoryType<>(device, minHostSize, VK14.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK14.VK_MEMORY_PROPERTY_HOST_CACHED_BIT, HostSegment::new);
+		stackMemory = new MemoryType<>(device, minStackSize, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, StackSegment::new);
+		dynamicMemory = new MemoryType<>(device, minDynamicSize, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, DynamicSegment::new);
+		cacheMemory = new MemoryType<>(device, minCacheSize, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, CacheSegment::new);
+		hostMemory = new ImmutableMemoryType<>(device, minHostSize, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_CACHED_BIT, HostSegment::new);
 	}
 	
 	@Override
@@ -113,7 +111,6 @@ public class DefaultMemoryManager implements MemoryManager {
 	@Override
 	public void setName(String name)
 	{
-		this.name = name;
 		stackMemory.setName(name + " Stack");
 		dynamicMemory.setName(name + "Dynamic");
 		cacheMemory.setName(name + " Cache");

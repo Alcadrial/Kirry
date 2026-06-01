@@ -70,23 +70,23 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		PipelineOutputTarget target,
 		MutableList<ShaderVariable> vertexStageUniforms,
 		MutableList<ShaderVariable> fragmentStageUniforms
-	) {}
+		) {}
 	
 	public record ReinitParams(
 		@Nullable ShaderProgram program,
 		@Nullable PreparedShader initComputeShader,
 		@Nullable PreparedShader transformComputeShader,
 		@Nullable PipelineOutputTarget target
-	) {}
+		) {}
 	
 	public record UpdateParams(
 		CommandBuffer commandBuffer,
 		int frameIndex
-	) {}
+		) {}
 	
 	public record Properties(
 		int bufferSize
-	) {}
+		) {}
 	
 	public static sealed interface PipelineOutputTarget permits SurfaceTarget, TextureTarget {}
 	
@@ -157,6 +157,7 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		reloadCounters = new int[entities.size()];
 	}
 	
+	@Override
 	public void init(InitParams params) throws VulkanException
 	{
 		ShaderProgram program = params.program;
@@ -198,17 +199,17 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 						.descriptorCount(2)
-					)
+						)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 						.descriptorCount(1)
-					)
+						)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
 						.descriptorCount(1)
-					)
+						)
 					.rewind()
-				));
+					));
 			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, VkDescriptorSetLayoutCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
 				.pNext(0)
@@ -220,23 +221,23 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 						.descriptorCount(1)
 						.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
 						.pImmutableSamplers(null)
-					)
+						)
 					.apply(b -> b
 						.binding(1)
 						.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 						.descriptorCount(1)
 						.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
 						.pImmutableSamplers(null)
-					)
+						)
 					.apply(b -> b
 						.binding(2)
 						.descriptorType(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 						.descriptorCount(1)
 						.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
 						.pImmutableSamplers(null)
-					)
+						)
 					.rewind()
-				));
+					));
 			DescriptorSet[] renderingDescriptorSets = descriptorPool.allocates(descriptorSetLayout, buffersCount);
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
 				.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
@@ -249,7 +250,7 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 					.addAttribute(2, 0, ShaderInputType.VECTOR_FLOAT_3, 12)
 					.addBinding(1, 8, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
 					.addAttribute(1, 1, ShaderInputType.VECTOR_FLOAT_2, 0)
-				)
+					)
 				.build();
 			GraphicsPipeline graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, program, outputSize, pipelineLayout, renderPass, 0);
 			
@@ -271,7 +272,7 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 						.stageFlags(VK10.VK_SHADER_STAGE_COMPUTE_BIT)
 						.pImmutableSamplers(null))
 					.rewind()
-				));
+					));
 			DescriptorSet[] computingDescriptorSets = descriptorPool.allocates(descriptorSetLayout, entities.size());
 			pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
 			PipelineLayout computeLayout = new PipelineLayout(device, pipelineLayoutInfo);
@@ -296,7 +297,6 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 			
 			int bufferSize = renderingUniformSize * buffersCount + minComputeSize * entities.size();
 			VulkanBuffer uniformBuffer = VulkanBuffer.ofUniforms(device, bufferSize);
-			uniformBuffer.getMemory().mapMemory();
 			
 			Atlas atlas = new Atlas(device, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 			
@@ -423,10 +423,10 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 						ShaderVariable.UV,
 						ShaderVariable.UV_EXTRA_1,
 						ShaderVariable.OFFSET
-					)),
+						)),
 					BindingInfo.ofStorage(VulkanBuffer.view(textureUvBuffer, textureUvOffsets[i], textureUvSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.UV
-					))
+						))
 				})
 				.build();
 			
@@ -441,10 +441,10 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 						ShaderVariable.UV_EXTRA_1,
 						ShaderVariable.UV_EXTRA_2,
 						ShaderVariable.OFFSET
-					)),
+						)),
 					BindingInfo.ofStorage(VulkanBuffer.view(textureUvBuffer, textureUvOffsets[i], textureUvSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.UV
-					))
+						))
 				})
 				.build();
 			
@@ -459,15 +459,15 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 			});
 			//@formatter:off
 			data = new Data(
-				memoryManager, vertexBuffer, textureUvBuffer, uniformBuffer, 
-				params.target, renderPass, outputSize, buffersCount, 
-				program, pipelineLayout, graphicsPipelineTemplate, graphicsPipeline, renderer, 
-				computeLayout, initComputePipeline, initComputer, 
-				computeLayout, transformComputePipeline, transformComputer, 
-				atlas, 
-				isFrameUniformsDirty, 
+				memoryManager, vertexBuffer, textureUvBuffer, uniformBuffer,
+				params.target, renderPass, outputSize, buffersCount,
+				program, pipelineLayout, graphicsPipelineTemplate, graphicsPipeline, renderer,
+				computeLayout, initComputePipeline, initComputer,
+				computeLayout, transformComputePipeline, transformComputer,
+				atlas,
+				isFrameUniformsDirty,
 				vertexCount
-			);
+				);
 			//@formatter:on
 		}
 	}

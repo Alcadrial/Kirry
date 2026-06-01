@@ -25,8 +25,8 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.buffer.writer.DeferredBufferWriter;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.memory.MemoryManager;
 import com.alcadrial.renderengine.render.memory.MemoryTransferState;
@@ -146,7 +146,6 @@ public class InstancingTest extends RenderTest {
 		instanceVertexBuffer = memoryManager.allocate(instanceCount * 3 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		indexBuffer = memoryManager.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 6, 16 * 2 * 4);
-		uniformBuffer.getMemory().mapMemory();
 		
 		vertexBuffer.setName("VertexBuffer");
 		instanceVertexBuffer.setName("InstanceVertexBuffer");
@@ -165,9 +164,9 @@ public class InstancingTest extends RenderTest {
 			
 			try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, instanceVertexBuffer, indexBuffer))
 			{
-				BufferWriter vertexBufferWriter = transfer.getWriter(vertexBuffer);
-				BufferWriter vertexBuffer0Writer = transfer.getWriter(instanceVertexBuffer);
-				BufferWriter indexBufferWriter = transfer.getWriter(indexBuffer);
+				DeferredBufferWriter vertexBufferWriter = transfer.getWriter(vertexBuffer);
+				DeferredBufferWriter vertexBuffer0Writer = transfer.getWriter(instanceVertexBuffer);
+				DeferredBufferWriter indexBufferWriter = transfer.getWriter(indexBuffer);
 				
 				for (int j = -size; j <= size; j += density) for (int k = -size; k <= size; k += density)
 				{
@@ -194,13 +193,13 @@ public class InstancingTest extends RenderTest {
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 						.descriptorCount(1)
-					)
+						)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 						.descriptorCount(1)
-					)
+						)
 					.rewind()
-				);
+					);
 			
 			VkDescriptorSetLayoutCreateInfo createInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
@@ -220,7 +219,7 @@ public class InstancingTest extends RenderTest {
 						.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
 						.pImmutableSamplers(null))
 					.rewind()
-				);
+					);
 			
 			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
 			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, createInfo);
@@ -237,7 +236,7 @@ public class InstancingTest extends RenderTest {
 					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_4, 12)
 					.addAttribute(2, 0, ShaderInputType.VECTOR_FLOAT_3, 28)
 					.addAttribute(3, 1, ShaderInputType.VECTOR_FLOAT_3, 0)
-				)
+					)
 				.build();
 			
 			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
@@ -250,12 +249,12 @@ public class InstancingTest extends RenderTest {
 					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i, 1, 16 * 2 * 4), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.PROJECTION,
 						ShaderVariable.MODEL
-					)),
+						)),
 					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i + 1, 1, (3 + 1 + 1) * 4), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
 						lightPos,
 						lightIntensity,
 						spaceFogIntensity
-					))
+						))
 				})
 				.build();
 			renderer.setBuffer(0, vertexBuffer);
@@ -313,14 +312,14 @@ public class InstancingTest extends RenderTest {
 							renderer.useBufferLayoutWriter(i, 0, writer -> {
 								writer.set(ShaderVariable.PROJECTION, projectionMatrix);
 								writer.set(ShaderVariable.MODEL, buildModelMatrix(f));
-								writer.flushAndInvalidate();
+								writer.flush();
 							});
 						}
 						else
 						{
 							renderer.useBufferLayoutWriter(i, 0, writer -> {
 								writer.set(ShaderVariable.PROJECTION, projectionMatrix);
-								writer.flushAndInvalidate();
+								writer.flush();
 							});
 						}
 					}
@@ -330,7 +329,7 @@ public class InstancingTest extends RenderTest {
 			{
 				renderer.useBufferLayoutWriter(window.getFrameIndex(), 0, writer -> {
 					writer.set(ShaderVariable.MODEL, buildModelMatrix(f));
-					writer.flushAndInvalidate();
+					writer.flush();
 				});
 			}
 			

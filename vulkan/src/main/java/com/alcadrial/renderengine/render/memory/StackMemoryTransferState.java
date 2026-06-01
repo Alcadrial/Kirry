@@ -5,17 +5,16 @@ import java.util.List;
 import org.eclipse.collections.impl.factory.Lists;
 import org.lwjgl.vulkan.VK10;
 
-import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.buffer.writer.DeferredBufferWriter;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
-
 
 public abstract class StackMemoryTransferState implements MemoryTransferState {
 	
 	protected VulkanBuffer src;
 	protected CommandBuffer commandBuffer;
-	private List<BufferWriter>  writers;
+	private List<DeferredBufferWriter> writers;
 	private int offset;
 	private boolean isClosed;
 	
@@ -29,11 +28,10 @@ public abstract class StackMemoryTransferState implements MemoryTransferState {
 	}
 	
 	@Override
-	public BufferWriter getWriter(VulkanBuffer dst) throws VulkanException
+	public DeferredBufferWriter getWriter(VulkanBuffer dst) throws VulkanException
 	{
 		if (isClosed) throw new IllegalStateException("Closed");
-		BufferWriter writer = new BufferWriter(src, offset, dst, 0, dst.getSize());
-		writer.setCommandBuffer(commandBuffer);
+		DeferredBufferWriter writer = new DeferredBufferWriter(src, offset, dst, 0, dst.getSize());
 		writers.add(writer);
 		offset += dst.getSize();
 		return writer;
@@ -64,7 +62,7 @@ public abstract class StackMemoryTransferState implements MemoryTransferState {
 	{
 		if (isClosed) return;
 		isClosed = true;
-		for (BufferWriter writer : writers) writer.close();
+		for (DeferredBufferWriter writer : writers) writer.transferAll(commandBuffer);
 		commandBuffer.addCompletionAction(this::free);
 	}
 }

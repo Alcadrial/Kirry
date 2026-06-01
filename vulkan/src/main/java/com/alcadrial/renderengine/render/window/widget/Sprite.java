@@ -8,8 +8,8 @@ import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3i;
 import com.alcadrial.renderengine.render.Renderer;
 import com.alcadrial.renderengine.render.RenderingDataUtils;
-import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.buffer.writer.DeferredBufferWriter;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.memory.MemoryManager;
 import com.alcadrial.renderengine.render.memory.MemoryTransferState;
@@ -49,8 +49,8 @@ public class Sprite extends AbstractWidget {
 		
 		try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, indexBuffer))
 		{
-			BufferWriter localVertexWriter = transfer.getWriter(vertexBuffer);
-			BufferWriter localIndexWriter = transfer.getWriter(indexBuffer);
+			DeferredBufferWriter localVertexWriter = transfer.getWriter(vertexBuffer);
+			DeferredBufferWriter localIndexWriter = transfer.getWriter(indexBuffer);
 			
 			Vector2f end = Vector2f.of(pos.xy().add(size));
 			Vector2f uvStart = texture.getUvStart();

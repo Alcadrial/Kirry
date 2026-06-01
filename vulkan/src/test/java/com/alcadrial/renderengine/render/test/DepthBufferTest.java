@@ -27,8 +27,8 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.buffer.writer.DeferredBufferWriter;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.memory.MemoryManager;
 import com.alcadrial.renderengine.render.memory.MemoryTransferState;
@@ -126,7 +126,6 @@ public class DepthBufferTest extends RenderTest {
 		vertexBuffer = memoryManager.allocate(24 * 10 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		indexBuffer = memoryManager.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 6, 16 * 2 * 4);
-		uniformBuffer.getMemory().mapMemory();
 		
 		Color[] colors = new Color[] {
 			Color.VERY_LIGHT_YELLOW,
@@ -141,8 +140,8 @@ public class DepthBufferTest extends RenderTest {
 			
 			try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, indexBuffer))
 			{
-				BufferWriter vertexBufferWriter = transfer.getWriter(vertexBuffer);
-				BufferWriter indexBufferWriter = transfer.getWriter(indexBuffer);
+				DeferredBufferWriter vertexBufferWriter = transfer.getWriter(vertexBuffer);
+				DeferredBufferWriter indexBufferWriter = transfer.getWriter(indexBuffer);
 				
 				RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3f.of(-1, -1, -1), Vector3f.of(1, 1, 1), (i, _) -> colors[i]);
 			}
@@ -164,13 +163,13 @@ public class DepthBufferTest extends RenderTest {
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 						.descriptorCount(1)
-					)
+						)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 						.descriptorCount(1)
-					)
+						)
 					.rewind()
-				);
+					);
 			VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
 				.pNext(0)
@@ -189,7 +188,7 @@ public class DepthBufferTest extends RenderTest {
 						.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
 						.pImmutableSamplers(null))
 					.rewind()
-				);
+					);
 			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
 			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
 			DescriptorSet[] descriptorSets = descriptorPool.allocates(descriptorSetLayout, 3);
@@ -202,7 +201,7 @@ public class DepthBufferTest extends RenderTest {
 					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
 					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_4, 12)
 					.addAttribute(2, 0, ShaderInputType.VECTOR_FLOAT_3, 28)
-				)
+					)
 				.build();
 			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
 			renderer = Renderer.builder()
@@ -213,12 +212,12 @@ public class DepthBufferTest extends RenderTest {
 					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i, 1, 16 * 2 * 4), 1, List.of(
 						ShaderVariable.PROJECTION,
 						ShaderVariable.MODEL
-					)),
+						)),
 					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i + 1, 1, (3 + 1 + 1) * 4), 1, List.of(
 						ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS"),
 						ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY"),
 						ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY")
-					))
+						))
 				})
 				.build();
 			renderer.setBuffer(0, vertexBuffer);
@@ -232,13 +231,13 @@ public class DepthBufferTest extends RenderTest {
 				renderer.useBufferLayoutWriter(i, 0, writer -> {
 					writer.set(ShaderVariable.MODEL, modelMatrix);
 					writer.set(ShaderVariable.PROJECTION, projectionMatrix);
-					writer.flushAndInvalidate();
+					writer.flush();
 				});
 				renderer.useBufferLayoutWriter(i, 1, writer -> {
 					writer.set(lightPos, Vector3f.of(0.3F, 1, 0));
 					writer.set(lightIntensity, 0.75F);
 					writer.set(spaceFogIntensity, 0.1F);
-					writer.flushAndInvalidate();
+					writer.flush();
 				});
 			}
 		}
@@ -277,7 +276,7 @@ public class DepthBufferTest extends RenderTest {
 					{
 						renderer.useBufferLayoutWriter(i, 0, writer -> {
 							writer.set(ShaderVariable.PROJECTION, projectionMatrix);
-							writer.flushAndInvalidate();
+							writer.flush();
 						});
 					}
 				}, TestProperties.PRINT_LOADING_TIMES);
@@ -305,7 +304,7 @@ public class DepthBufferTest extends RenderTest {
 			
 			renderer.useBufferLayoutWriter(window.getFrameIndex(), 0, writer -> {
 				writer.set(ShaderVariable.MODEL, buildModelMatrix(f));
-				writer.flushAndInvalidate();
+				writer.flush();
 			});
 			
 			commandBuffer.beginRecording();

@@ -8,7 +8,7 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.renderengine.core.util.color.Color;
-import com.alcadrial.renderengine.render.buffer.BufferWriter;
+import com.alcadrial.renderengine.render.buffer.writer.BufferWriter;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class RenderingDataUtils {

@@ -25,8 +25,8 @@ import com.alcadrial.renderengine.render.FrameBuffer;
 import com.alcadrial.renderengine.render.PhysicalDevice;
 import com.alcadrial.renderengine.render.RenderEngineVulkan;
 import com.alcadrial.renderengine.render.Renderer;
-import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.buffer.writer.DeferredBufferWriter;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipeline;
 import com.alcadrial.renderengine.render.pipeline.GraphicsPipelineTemplate;
@@ -90,7 +90,7 @@ public class TextureTest extends RenderTest {
 			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
 			.deviceFeatures(f -> f
 				.samplerAnisotropy(true)
-			)
+				)
 			.useDepthTexture(false)
 			.build(1080, 720, "Test");
 		window.setName("Window");
@@ -146,35 +146,28 @@ public class TextureTest extends RenderTest {
 		vertexBuffer = new VulkanBuffer(device, 28 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		indexBuffer = new VulkanBuffer(device, 6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 1, 16 * 4);
-		uniformBuffer.getMemory().mapMemory();
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			VulkanBuffer localVertexBuffer = VulkanBuffer.asLocal(vertexBuffer);
 			VulkanBuffer localIndexBuffer = VulkanBuffer.asLocal(indexBuffer);
 			
-			localVertexBuffer.getMemory().mapMemory();
-			localIndexBuffer.getMemory().mapMemory();
-			
 			CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
 			
-			BufferWriter vertexBufferWriter = new BufferWriter(localVertexBuffer, vertexBuffer);
-			vertexBufferWriter.setCommandBuffer(commandBuffer);
-			BufferWriter indexBufferWriter = new BufferWriter(localIndexBuffer, indexBuffer);
-			indexBufferWriter.setCommandBuffer(commandBuffer);
+			DeferredBufferWriter vertexBufferWriter = new DeferredBufferWriter(localVertexBuffer, vertexBuffer);
+			DeferredBufferWriter indexBufferWriter = new DeferredBufferWriter(localIndexBuffer, indexBuffer);
 			
 			RenderingDataUtils.loadRectangleUv(vertexBufferWriter, indexBufferWriter, 0, -1, -1, 1, 1, 1, 0, 0, 1, 1);
-			vertexBufferWriter.close();
-			indexBufferWriter.close();
+			vertexBufferWriter.transferAll(commandBuffer);
+			indexBufferWriter.transferAll(commandBuffer);
 			commandBuffer.endRecording();
+			commandBuffer.addCompletionAction(() -> {
+				localVertexBuffer.close();
+				localIndexBuffer.close();
+			});
 			
-			device.submitSingleUseCommandBuffer(stack, commandBuffer).join();
+			VulkanFuture<?> transferFuture = device.submitSingleUseCommandBuffer(stack, commandBuffer);
 			
-			localVertexBuffer.getMemory().unmapMemory();
-			localIndexBuffer.getMemory().unmapMemory();
-			localVertexBuffer.close();
-			localIndexBuffer.close();
-
 			texture = textureFuture.get();
 			texture0 = texture0Future.get();
 			
@@ -189,13 +182,13 @@ public class TextureTest extends RenderTest {
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 						.descriptorCount(1)
-					)
+						)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 						.descriptorCount(2)
-					)
+						)
 					.rewind()
-				);
+					);
 			
 			VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
@@ -215,7 +208,7 @@ public class TextureTest extends RenderTest {
 						.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
 						.pImmutableSamplers(null))
 					.rewind()
-				);
+					);
 			
 			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
 			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
@@ -229,7 +222,7 @@ public class TextureTest extends RenderTest {
 					.addBinding(0, 20, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
 					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
 					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_2, 12)
-				)
+					)
 				.build();
 			shaderProgram = shaderProgramFuture.get();
 			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
@@ -239,12 +232,12 @@ public class TextureTest extends RenderTest {
 				.bindings(
 					BindingInfo.ofUniform(uniformBuffer, VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.TRANSFORMATION
-					)),
+						)),
 					BindingInfo.ofTextures(VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
-						.add(texture, new TextureSampler(device), ShaderVariable.TEXTURE)
-						.add(texture0, new TextureSampler(device), ShaderVariable.ATLAS)
-						.build()
-				)
+					.add(texture, new TextureSampler(device), ShaderVariable.TEXTURE)
+					.add(texture0, new TextureSampler(device), ShaderVariable.ATLAS)
+					.build()
+					)
 				.build();
 			
 			renderer.setBuffer(0, vertexBuffer);
@@ -257,10 +250,12 @@ public class TextureTest extends RenderTest {
 			
 			renderer.useBufferLayoutWriter(0, 0, writer -> {
 				writer.set(ShaderVariable.TRANSFORMATION, transformation);
-				writer.flushAndInvalidate();
+				writer.flush();
 			});
 			
 			isModifiedMatrix = false;
+			
+			transferFuture.join();
 		}
 	}
 	
@@ -295,7 +290,7 @@ public class TextureTest extends RenderTest {
 				transformation.multiply(model);
 				renderer.useBufferLayoutWriter(0, 0, writer -> {
 					writer.set(ShaderVariable.TRANSFORMATION, transformation);
-					writer.flushAndInvalidate();
+					writer.flush();
 				});
 			}
 			

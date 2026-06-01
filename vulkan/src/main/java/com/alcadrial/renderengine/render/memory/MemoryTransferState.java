@@ -1,7 +1,7 @@
 package com.alcadrial.renderengine.render.memory;
 
-import com.alcadrial.renderengine.render.buffer.BufferWriter;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.buffer.writer.DeferredBufferWriter;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 /**
@@ -11,7 +11,7 @@ import com.alcadrial.renderengine.render.util.exception.VulkanException;
  */
 public interface MemoryTransferState extends AutoCloseable {
 	
-	BufferWriter getWriter(VulkanBuffer dst) throws VulkanException;
+	DeferredBufferWriter getWriter(VulkanBuffer dst) throws VulkanException;
 	VulkanBuffer getLocal(VulkanBuffer dst) throws VulkanException;
 	VulkanBuffer getView(VulkanBuffer dst) throws VulkanException;
 	
