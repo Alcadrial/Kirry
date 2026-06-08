@@ -55,6 +55,14 @@ public class EntityImpl implements Entity {
 	}
 	
 	@Override
+	public boolean listenComponents()
+	{
+		boolean result = false;
+		for (Component<?, ?, ?> component : components) if (component != null) result |= component.listenResource();
+		return result;
+	}
+	
+	@Override
 	public void close()
 	{
 		for (Component<?, ?, ?> component : components) if (component != null) component.close();

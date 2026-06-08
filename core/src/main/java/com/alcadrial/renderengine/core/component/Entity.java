@@ -32,7 +32,21 @@ public interface Entity {
 	<C extends Component<?, ?, ?>> @Nullable C getComponent(ComponentType<C> type);
 	<C extends Component<?, ?, ?>> boolean setComponent(ComponentType<C> type, C component);
 	
+	/**
+	 * Loads all components
+	 * @see Component#load()
+	 */
 	CompletableFuture<?> load();
+	/**
+	 * Reloads all components
+	 * @see Component#reload()
+	 */
 	CompletableFuture<?> reload();
+	/**
+	 * Listen to all components for updates
+	 * @return true if any component succeeded listenResource()
+	 * @see Component#listenResource()
+	 */
+	boolean listenComponents();
 	void close();
 }

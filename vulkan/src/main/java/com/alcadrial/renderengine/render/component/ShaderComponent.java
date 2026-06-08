@@ -1,6 +1,8 @@
 package com.alcadrial.renderengine.render.component;
 
+import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
@@ -24,7 +26,7 @@ import com.alcadrial.renderengine.render.util.future.CompletableFutureUtils;
 
 public abstract class ShaderComponent extends AbstractVulkanComponent<ShaderComponent.Params, ShaderComponent.Properties> {
 	
-	public static ComponentType<ShaderComponent> TYPE = ComponentType.of(ShaderComponent.class);
+	public static final ComponentType<ShaderComponent> TYPE = ComponentType.of(ShaderComponent.class);
 	
 	public record Params(
 		Device device
@@ -58,6 +60,11 @@ public abstract class ShaderComponent extends AbstractVulkanComponent<ShaderComp
 	@Override
 	public void close()
 	{
+		freeStages();
+	}
+	
+	protected void freeStages()
+	{
 		if (pStages != null)
 		{
 			pStages.forEach(i -> {
@@ -72,13 +79,13 @@ public abstract class ShaderComponent extends AbstractVulkanComponent<ShaderComp
 		private MutableList<ShaderResource> resources;
 		private @Nullable ShaderProgram program;
 		private RawBitSet invalidSet;
-		private boolean invalid;
+		private AtomicBoolean invalid;
 		
 		public Resource(ShaderResource... resources)
 		{
 			this.resources = Lists.mutable.of(resources);
 			invalidSet = RawBitSet.of(resources.length);
-			invalid = false;
+			invalid = new AtomicBoolean(false);
 		}
 		
 		@Override
@@ -96,6 +103,8 @@ public abstract class ShaderComponent extends AbstractVulkanComponent<ShaderComp
 		private void createProgram()
 		{
 			program = ShaderProgram.create().addAll(resources.asLazy().collect(ShaderResource::getShader)).build();
+			isLoaded = true;
+			reloadCounter++;
 		}
 		
 		@Override
@@ -105,7 +114,7 @@ public abstract class ShaderComponent extends AbstractVulkanComponent<ShaderComp
 			pStages = ShaderUtils.createPipelineShaderStageCreateInfoBuffer(params.device, VulkanErrorUtils.nonNull(program, "Component not initialized"));
 			resources.forEachWithIndex(0, resources.size() - 1, (r, i) -> r.addReloadListener(_ -> {
 				invalidSet.turnOn(i);
-				invalid = true;
+				invalid.set(true);
 			}));
 		}
 		
@@ -113,14 +122,14 @@ public abstract class ShaderComponent extends AbstractVulkanComponent<ShaderComp
 		public void reinit(Params params) throws VulkanException
 		{
 			if (device != null && !device.equals(params.device)) throw new UnsupportedOperationException("Cannot change device after init");
-			if (pStages != null) pStages.close();
+			if (pStages != null) freeStages();
 			pStages = ShaderUtils.createPipelineShaderStageCreateInfoBuffer(params.device, VulkanErrorUtils.nonNull(program, "Component not initialized"));
 		}
 		
 		@Override
-		public void validate(Params params) throws VulkanException
+		public boolean validate(Params params) throws VulkanException
 		{
-			if (!invalid || pStages == null) return;
+			if (!invalid.getAndSet(false) || pStages == null) return false;
 			if (device != null && !device.equals(params.device)) throw new UnsupportedOperationException("Cannot change device after init");
 			program = ShaderProgram.create().addAll(resources.asLazy().collect(ShaderResource::getShader)).build();
 			try (MemoryStack stack = MemoryStack.stackPush())
@@ -136,7 +145,9 @@ public abstract class ShaderComponent extends AbstractVulkanComponent<ShaderComp
 					createInfo.pCode(stack.bytes(shader.shader().getLastCompilation().orElseThrow().binary()));
 					VulkanErrorUtils.assertNoError(VK10.vkCreateShaderModule(params.device.getVk(), createInfo, null, p), "Failed to create shader module");
 					
-					((VkPipelineShaderStageCreateInfo.@NonNull Buffer) pStages).get(i)
+					VkPipelineShaderStageCreateInfo stage = ((VkPipelineShaderStageCreateInfo.@NonNull Buffer) pStages).get(i);
+					VK10.vkDestroyShaderModule(params.device.getVk(), stage.module(), null);
+					stage
 						.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
 						.pNext(0)
 						.flags(0)
@@ -146,6 +157,24 @@ public abstract class ShaderComponent extends AbstractVulkanComponent<ShaderComp
 						.pSpecializationInfo(/*shader constants*/null);
 				}
 			}
+			return true;
+		}
+		
+		@Override
+		public boolean listenResource()
+		{
+			boolean result = false;
+			for (ShaderResource resource : resources)
+			{
+				try
+				{
+					resource.registerForChanges(ShaderResource::reload);
+					result = true;
+				}
+				catch (IOException _)
+				{}
+			}
+			return result;
 		}
 		
 		@Override
@@ -175,6 +204,7 @@ public abstract class ShaderComponent extends AbstractVulkanComponent<ShaderComp
 		public Static(ShaderProgram program)
 		{
 			this.program = program;
+			isLoaded = true;
 		}
 		
 		@Override
@@ -198,9 +228,10 @@ public abstract class ShaderComponent extends AbstractVulkanComponent<ShaderComp
 		}
 		
 		@Override
-		public void validate(Params params) throws VulkanException
+		public boolean validate(Params params) throws VulkanException
 		{
 			if (device != null && !device.equals(params.device)) throw new UnsupportedOperationException("Cannot change device after init");
+			return false;
 		}
 		
 		@Override

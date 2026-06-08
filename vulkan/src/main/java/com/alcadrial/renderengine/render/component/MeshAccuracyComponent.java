@@ -52,7 +52,7 @@ public class MeshAccuracyComponent extends AbstractComponent<MeshAccuracyCompone
 	}
 	
 	@Override
-	public void validate(Params params) throws VulkanException
+	public boolean validate(Params params) throws VulkanException
 	{
 		throw new UnsupportedOperationException("WIP");
 	}

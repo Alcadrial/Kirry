@@ -17,7 +17,7 @@ import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshComponent.Properties, VulkanException> {
 	
-	public static ComponentType<MeshComponent> TYPE = ComponentType.of(MeshComponent.class);
+	public static final ComponentType<MeshComponent> TYPE = ComponentType.of(MeshComponent.class);
 	
 	public record VertexParams(
 		@Nullable VulkanBuffer vertexBuffer, int vertexStride, int vertexOffset,
@@ -102,10 +102,10 @@ public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshC
 	}
 	
 	@Override
-	public void validate(Params params) throws VulkanException
+	public boolean validate(Params params) throws VulkanException
 	{
-		if (!invalid) return;
-		
+		if (!invalid) return false;
+		return false;
 		//TODO
 	}
 	

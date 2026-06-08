@@ -11,7 +11,7 @@ import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
 public class SpatialComponent implements Component<SpatialComponent.Params, SpatialComponent.Properties, VulkanException> {
 
-	public static ComponentType<SpatialComponent> TYPE = ComponentType.of(SpatialComponent.class);
+	public static final ComponentType<SpatialComponent> TYPE = ComponentType.of(SpatialComponent.class);
 	
 	public record Params(
 		@Nullable Vector3fGetter position,
@@ -70,9 +70,10 @@ public class SpatialComponent implements Component<SpatialComponent.Params, Spat
 	}
 	
 	@Override
-	public void validate(Params params) throws VulkanException
+	public boolean validate(Params params) throws VulkanException
 	{
 		//TODO
+		return false;
 	}
 	
 	public void reset()
@@ -91,4 +92,10 @@ public class SpatialComponent implements Component<SpatialComponent.Params, Spat
 	@Override
 	public void close()
 	{}
+
+	@Override
+	public boolean listenResource()
+	{
+		return false;
+	}
 }

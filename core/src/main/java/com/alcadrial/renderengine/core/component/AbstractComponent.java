@@ -36,4 +36,10 @@ public abstract class AbstractComponent<I, P, E extends Exception> implements Co
 	{
 		reinit(params);
 	}
+	
+	@Override
+	public boolean listenResource()
+	{
+		return false;
+	}
 }
