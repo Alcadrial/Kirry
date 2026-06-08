@@ -127,10 +127,12 @@ public class Renderer implements VulkanDebug {
 	private Device device;
 	private GraphicsPipeline graphicsPipeline;
 	private VulkanBuffer[] bindingBuffers;
+	private long[] bindingBuffersOffsets;
 	private InfoHolder[][] info;
 	private VkWriteDescriptorSet.Buffer[] writeDescriptorSets;
 	private @Nullable BufferLayoutWriter[][] writers;
 	private @Nullable VulkanBuffer indexBuffer;
+	private long indexOffset;
 	private DescriptorSet[] descriptorSets;
 	
 	private Renderer(Builder builder) throws VulkanException
@@ -141,6 +143,7 @@ public class Renderer implements VulkanDebug {
 		
 		ImmutableSet<Integer> activeBindings = graphicsPipeline.getActiveBindings();
 		bindingBuffers = new VulkanBuffer[activeBindings.isEmpty() ? 0 : activeBindings.max() + 1];
+		bindingBuffersOffsets = new long[bindingBuffers.length];
 		
 		bindings = new BindingInfo[builder.buffersCount][];
 		VulkanFunction<Integer, BindingInfo[]> bindingsFactory = VulkanErrorUtils.nonNull(builder.bindings);
@@ -263,8 +266,8 @@ public class Renderer implements VulkanDebug {
 		int newBindingsCount = activeBindings.isEmpty() ? 0 : activeBindings.max() + 1;
 		if (bindingBuffers.length != newBindingsCount)
 		{
-			VulkanBuffer[] newBuffers = new VulkanBuffer[newBindingsCount];
-			for (int i = 0; i < Math.min(newBuffers.length, bindingBuffers.length); i++) newBuffers[i] = bindingBuffers[i];
+			bindingBuffers = Arrays.copyOf(bindingBuffers, newBindingsCount);
+			bindingBuffersOffsets = Arrays.copyOf(bindingBuffersOffsets, newBindingsCount);
 		}
 	}
 	
@@ -309,8 +312,7 @@ public class Renderer implements VulkanDebug {
 	public void freeBufferLayoutWriter(int frameIndex, int binding) throws VulkanException
 	{
 		BufferLayoutWriter writer = writers[frameIndex][binding];
-		if (writer != null)
-			writers[frameIndex][binding] = null;
+		if (writer != null) writers[frameIndex][binding] = null;
 	}
 	
 	public void updateDescriptorSet(int frameIndex, VulkanConsumer<VkWriteDescriptorSet.Buffer> action) throws VulkanException
@@ -345,11 +347,11 @@ public class Renderer implements VulkanDebug {
 		
 		long[] set = new long[] {descriptorSets[frameIndex].getVk()};
 		commandBuffer.bindPipeline(graphicsPipeline);
-		commandBuffer.bindVertexBuffers(0, bindingBuffers);
+		commandBuffer.bindVertexBuffers(0, bindingBuffers, bindingBuffersOffsets);
 		commandBuffer.bindDescriptorSets(graphicsPipeline, set, null);
 		if (indexBuffer != null)
 		{
-			commandBuffer.bindIndexBuffer(indexBuffer, 0, VK10.VK_INDEX_TYPE_UINT32);
+			commandBuffer.bindIndexBuffer(indexBuffer, indexOffset, VK10.VK_INDEX_TYPE_UINT32);
 			commandBuffer.drawIndexed(count, instanceCount, 0, 0, 0);
 		}
 		else
@@ -360,12 +362,27 @@ public class Renderer implements VulkanDebug {
 	
 	public void setBuffer(int binding, VulkanBuffer buffer)
 	{
-		if (graphicsPipeline.getActiveBindings().contains(binding)) bindingBuffers[binding] = buffer;
+		setBuffer(binding, buffer, 0);
+	}
+	
+	public void setBuffer(int binding, VulkanBuffer buffer, long offset)
+	{
+		if (graphicsPipeline.getActiveBindings().contains(binding))
+		{
+			bindingBuffers[binding] = buffer;
+			bindingBuffersOffsets[binding] = offset;
+		}
 	}
 	
 	public void setIndexBuffer(VulkanBuffer indexBuffer)
 	{
+		setIndexBuffer(indexBuffer, 0);
+	}
+	
+	public void setIndexBuffer(VulkanBuffer indexBuffer, long offset)
+	{
 		this.indexBuffer = indexBuffer;
+		indexOffset = offset;
 	}
 	
 	@Override
@@ -378,6 +395,7 @@ public class Renderer implements VulkanDebug {
 		for (Integer binding : graphicsPipeline.getActiveBindings())
 		{
 			Debug.print("Binding " + binding, bindingBuffers[binding]);
+			Debug.print("Offset " + binding, bindingBuffersOffsets[binding]);
 		}
 		Debug.deindent();
 		Debug.print("]");

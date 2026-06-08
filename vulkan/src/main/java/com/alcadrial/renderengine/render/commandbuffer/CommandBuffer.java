@@ -100,9 +100,24 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		VK10.vkCmdBindIndexBuffer(vk, buffer.getVk(), offset, indexType);
 	}
 	
+	public void bindVertexBuffers(int bindingOffset, VulkanBuffer buffer)
+	{
+		bindVertexBuffers(bindingOffset, buffer.getVk());
+	}
+	
+	public void bindVertexBuffers(int bindingOffset, VulkanBuffer buffer, long offset)
+	{
+		bindVertexBuffers(bindingOffset, new long[] {buffer.getVk()}, offset);
+	}
+	
 	public void bindVertexBuffers(int bindingOffset, VulkanBuffer... buffers)
 	{
 		bindVertexBuffers(bindingOffset, List.of(buffers));
+	}
+	
+	public void bindVertexBuffers(int bindingOffset, VulkanBuffer[] buffers, long...offsets)
+	{
+		bindVertexBuffers(bindingOffset, List.of(buffers), offsets);
 	}
 	
 	public void bindVertexBuffers(int bindingOffset, List<VulkanBuffer> buffers)
@@ -110,9 +125,19 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		bindVertexBuffers(bindingOffset, buffers.stream().mapToLong(VulkanBuffer::getVk).toArray());
 	}
 	
+	public void bindVertexBuffers(int bindingOffset, List<VulkanBuffer> buffers, long...offsets)
+	{
+		bindVertexBuffers(bindingOffset, buffers.stream().mapToLong(VulkanBuffer::getVk).toArray(), offsets);
+	}
+	
 	private void bindVertexBuffers(int bindingOffset, long... buffers)
 	{
 		VK10.vkCmdBindVertexBuffers(vk, bindingOffset, buffers, new long[buffers.length]);
+	}
+	
+	private void bindVertexBuffers(int bindingOffset, long[] buffers, long... offsets)
+	{
+		VK10.vkCmdBindVertexBuffers(vk, bindingOffset, buffers, offsets);
 	}
 	
 	/**

@@ -69,6 +69,12 @@ public class SpatialComponent implements Component<SpatialComponent.Params, Spat
 		isDirty = true;
 	}
 	
+	@Override
+	public void validate(Params params) throws VulkanException
+	{
+		//TODO
+	}
+	
 	public void reset()
 	{
 		position = null;

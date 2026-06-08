@@ -8,6 +8,8 @@ import org.jspecify.annotations.Nullable;
 import com.alcadrial.renderengine.core.component.AbstractComponent;
 import com.alcadrial.renderengine.core.component.ComponentType;
 import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
+import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
+import com.alcadrial.renderengine.render.memory.MemoryManager;
 import com.alcadrial.renderengine.render.resources.Mesh;
 import com.alcadrial.renderengine.render.resources.Mesh.Material;
 import com.alcadrial.renderengine.render.texture.Atlas;
@@ -17,11 +19,22 @@ public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshC
 	
 	public static ComponentType<MeshComponent> TYPE = ComponentType.of(MeshComponent.class);
 	
-	public record Params(
+	public record VertexParams(
 		@Nullable VulkanBuffer vertexBuffer, int vertexStride, int vertexOffset,
 		@Nullable VulkanBuffer textureUvBuffer, int textureUvStride, int textureUvOffset,
 		@Nullable VulkanBuffer normalBuffer, int normalStride, int normalOffset,
 		@Nullable VulkanBuffer indexBuffer
+	) {}
+	
+	public record MaterialParams(
+		MemoryManager memoryManeger,
+		CommandBuffer commandBuffer,
+		Atlas atlas
+	) {}
+	
+	public record Params(
+		@Nullable VertexParams vertexParams,
+		@Nullable MaterialParams materialParams
 	) {}
 	
 	public record Properties(
@@ -40,6 +53,8 @@ public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshC
 	}
 	
 	private Mesh mesh;
+	private boolean invalid;
+	private boolean init;
 	
 	public MeshComponent(Mesh mesh)
 	{
@@ -59,14 +74,39 @@ public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshC
 	}
 	
 	@Override
+	public void init(Params params) throws VulkanException
+	{
+		reinit(params);
+		if (!init)
+		{
+			mesh.addReloadListener(_ -> invalid = true);
+			init = true;
+		}
+	}
+	
+	@Override
 	public void reinit(Params params) throws VulkanException
+	{
+		if (params.vertexParams != null) initVertex(params.vertexParams);
+		if (params.materialParams != null) initMaterial(params.materialParams);
+	}
+	
+	public void initVertex(VertexParams params) throws VulkanException
 	{
 		mesh.flush(params.vertexBuffer, params.vertexStride, params.vertexOffset, params.textureUvBuffer, params.textureUvStride, params.textureUvOffset, params.normalBuffer, params.normalStride, params.normalOffset, params.indexBuffer);
 	}
 	
-	public void initMaterials(Atlas atlas) throws VulkanException
+	public void initMaterial(MaterialParams params) throws VulkanException
 	{
-		mesh.flushMaterials(atlas);
+		mesh.flushMaterials(params.memoryManeger, params.commandBuffer, params.atlas);
+	}
+	
+	@Override
+	public void validate(Params params) throws VulkanException
+	{
+		if (!invalid) return;
+		
+		//TODO
 	}
 	
 	@Override
@@ -89,12 +129,7 @@ public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshC
 	@Override
 	public void close()
 	{
-		clear();
-	}
-	
-	private void clear()
-	{
-		
+		mesh.close();
 	}
 	
 	@Override

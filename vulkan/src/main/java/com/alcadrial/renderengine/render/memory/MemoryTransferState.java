@@ -12,8 +12,11 @@ import com.alcadrial.renderengine.render.util.exception.VulkanException;
 public interface MemoryTransferState extends AutoCloseable {
 	
 	DeferredBufferWriter getWriter(VulkanBuffer dst) throws VulkanException;
+	VulkanBuffer getLocal(int size) throws VulkanException;
 	VulkanBuffer getLocal(VulkanBuffer dst) throws VulkanException;
+	VulkanBuffer getView(int size) throws VulkanException;
 	VulkanBuffer getView(VulkanBuffer dst) throws VulkanException;
 	
+	@Override
 	void close() throws VulkanException;
 }

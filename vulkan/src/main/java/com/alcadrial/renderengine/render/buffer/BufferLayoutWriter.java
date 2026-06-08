@@ -196,5 +196,6 @@ public class BufferLayoutWriter {
 	public void flush() throws VulkanException
 	{
 		for (Region region : regions) writer.flush(region.offset * 4, region.size * 4);
+		regions.clear();
 	}
 }

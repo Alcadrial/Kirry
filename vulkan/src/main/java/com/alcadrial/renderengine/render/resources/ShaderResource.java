@@ -13,7 +13,7 @@ import com.alcadrial.renderengine.render.shader.Shader;
 import com.alcadrial.renderengine.render.shader.ShaderType;
 import com.alcadrial.renderengine.render.util.VulkanErrorUtils;
 
-public class ShaderResource extends AbstractVulkanResource {
+public class ShaderResource extends AbstractVulkanResource<ShaderResource> {
 	
 	public static final ResourceType<ShaderResource> TYPE = ResourceType.of(ShaderResource.class);
 	
@@ -32,7 +32,7 @@ public class ShaderResource extends AbstractVulkanResource {
 	}
 	
 	@Override
-	protected void loadData(InputStreamSupplier stream) throws Exception
+	protected void loadData(InputStreamSupplier stream) throws IOException
 	{
 		Shader shader = new Shader(path);
 		ShaderType type = ShaderType.fromPath(path);
@@ -55,5 +55,11 @@ public class ShaderResource extends AbstractVulkanResource {
 	public void setForceRecompile(boolean forceRecompile)
 	{
 		this.forceRecompile = forceRecompile;
+	}
+	
+	@Override
+	public void close()
+	{
+		super.close();
 	}
 }

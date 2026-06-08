@@ -105,12 +105,12 @@ public class FileManager implements ResourceManager {
 	
 	public static FileManager ofDirectory(File file) throws IOException
 	{
-		return ofDirectory(file.toPath());
+		return new FileManager(List.of(file));
 	}
 	
 	public static FileManager ofDirectory(Path path) throws IOException
 	{
-		return new FileManager(List.of(path.toUri()));
+		return new FileManager(List.of(path));
 	}
 	
 	public static FileManager ofURIs(URI... uris) throws IOException
@@ -118,16 +118,31 @@ public class FileManager implements ResourceManager {
 		return new FileManager(List.of(uris));
 	}
 	
+	/**
+	 * Create a new {@link FileManager} that will resolve paths against the given roots,
+	 * a root may be instances of the following classes:
+	 * <ul>
+	 * <li> {@link String}: will be converted {@link Path} using {@link Path#of(String, String...)} </li>
+	 * <li> {@link File}: will be converted to Path using {@link File#toPath()} </li>
+	 * <li> {@link URI}: will be converted to Path using {@link Path#of(URI)} </li>
+	 * <li> {@link Path} </li>
+	 * </ul>
+	 * 
+	 * @param roots the starting directories to search for files
+	 * @return a new FileManager
+	 * @throws IOException
+	 */
 	public static FileManager of(Object... roots) throws IOException
 	{
 		return new FileManager(List.of(roots));
 	}
 	
 	private record ResourceAction<R extends Resource>(R resource, Consumer<R> action) {}
+	private record PathRegistration(BiConsumer<Path, Kind<?>> action, WatchKey[] keyReference) {}
 	
 	private FileSystem fileSystem;
 	private Path root;
-	private TreeMap<Path, BiConsumer<Path, Kind<?>>> registeredPaths;
+	private TreeMap<Path, PathRegistration> registeredPaths;
 	private TreeMap<Path, ResourceAction<?>> registeredResourcePaths;
 	private FastList<BiFunction<Path, ResourceManager, ? extends Resource>> registeredResourceTypes;
 	private @Nullable WatchService watchService;
@@ -176,14 +191,13 @@ public class FileManager implements ResourceManager {
 	public void startWatchingResources() throws IOException
 	{
 		WatchService watchService = fileSystem.newWatchService();
-		MutableList<WatchKey> watchKeys = Lists.mutable.ofInitialCapacity(registeredPaths.size());
 		for (Path directory : registeredPaths.keySet())
 		{
-			watchKeys.add(directory.register(watchService,
+			directory.register(watchService,
 				StandardWatchEventKinds.ENTRY_CREATE,
 				StandardWatchEventKinds.ENTRY_MODIFY,
 				StandardWatchEventKinds.ENTRY_DELETE,
-				StandardWatchEventKinds.OVERFLOW));
+				StandardWatchEventKinds.OVERFLOW);
 		}
 		this.watchService = watchService;
 		Thread.startVirtualThread(this::watch);
@@ -202,32 +216,43 @@ public class FileManager implements ResourceManager {
 	@Override
 	public void registerForChanges(String pathname, BiConsumer<Path, Kind<?>> action) throws IOException
 	{
-		registeredPaths.put(getPath(pathname), action);
+		registerForChanges(getPath(pathname), action);
 	}
 	
 	@Override
 	public void registerForChanges(Path path, BiConsumer<Path, Kind<?>> action) throws IOException
 	{
-		registeredPaths.put(path, action);
+		WatchKey watchKey = null;
+		if (watchService != null)
+		{
+			watchKey = path.register(watchService,
+				StandardWatchEventKinds.ENTRY_CREATE,
+				StandardWatchEventKinds.ENTRY_MODIFY,
+				StandardWatchEventKinds.ENTRY_DELETE,
+				StandardWatchEventKinds.OVERFLOW);
+		}
+		registeredPaths.put(path, new PathRegistration(action, new WatchKey[] { watchKey }));
+	}
+	
+	@Override
+	public <R extends Resource> void registerForChanges(R resource, Consumer<R> action) throws IOException
+	{
+		Path parent = resource.getPath().getParent();
+		registeredResourcePaths.put(parent, new ResourceAction<>(resource, action));
+		registerForChanges(parent, (_, _) -> {});
 	}
 	
 	@Override
 	public void unregisterForChanges(String pathname) throws IOException
 	{
-		registeredPaths.remove(getPath(pathname));
+		unregisterForChanges(getPath(pathname));
 	}
 	
 	@Override
 	public void unregisterForChanges(Path path) throws IOException
 	{
-		registeredPaths.remove(path);
-	}
-	
-	public <R extends Resource> void registerForChanges(R resource, Consumer<R> action)
-	{
-		Path parent = resource.getPath().getParent();
-		registeredResourcePaths.put(parent, new ResourceAction<>(resource, action));
-		registeredPaths.putIfAbsent(parent, (_, _) -> {});
+		PathRegistration registration = registeredPaths.remove(path);
+		if (registration != null && registration.keyReference[0] != null) registration.keyReference[0].cancel();
 	}
 	
 	private <R extends Resource> void watch()
@@ -247,12 +272,12 @@ public class FileManager implements ResourceManager {
 					if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE || kind == StandardWatchEventKinds.ENTRY_MODIFY || event.kind() == StandardWatchEventKinds.ENTRY_DELETE || event.kind() == StandardWatchEventKinds.OVERFLOW)
 					{
 						Path path = keyPath.resolve((@NonNull Path) event.context());
-						BiConsumer<Path, Kind<?>> action = registeredPaths.get(keyPath);
-						if (action != null)
+						PathRegistration registration = registeredPaths.get(keyPath);
+						if (registration != null)
 						{
 							try
 							{
-								action.accept(path, kind);
+								registration.action.accept(path, kind);
 							}
 							catch (Throwable e)
 							{

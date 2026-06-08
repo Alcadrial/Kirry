@@ -1,5 +1,6 @@
 package com.alcadrial.renderengine.render.resources;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 
@@ -8,7 +9,7 @@ import com.alcadrial.renderengine.core.resources.ResourceManager;
 import com.alcadrial.renderengine.render.util.future.VulkanFuture;
 
 
-public abstract class AbstractVulkanResource extends AbstractResource {
+public abstract class AbstractVulkanResource<R extends AbstractVulkanResource<R>> extends AbstractResource<R> {
 	
 	public AbstractVulkanResource(Path path, ResourceManager resourceManager)
 	{
@@ -32,5 +33,5 @@ public abstract class AbstractVulkanResource extends AbstractResource {
 		});
 	}
 	
-	protected abstract void loadData(InputStreamSupplier stream) throws Exception;
+	protected abstract void loadData(InputStreamSupplier stream) throws IOException;
 }

@@ -84,6 +84,7 @@ public class Queue extends AbstractDeviceResource<VkQueue> {
 		VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(vk, submitInfo, fence), "Failed to submit queue");
 		return device.waitForFencesAsync(fence);
 	}
+	
 	public synchronized void submit(VkSubmitInfo submitInfo, long fence) throws VulkanException
 	{
 		VulkanErrorUtils.assertNoError(VK10.vkQueueSubmit(vk, submitInfo, fence), "Failed to submit queue");

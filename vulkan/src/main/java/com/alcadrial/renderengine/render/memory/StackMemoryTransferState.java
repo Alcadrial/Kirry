@@ -40,18 +40,30 @@ public abstract class StackMemoryTransferState implements MemoryTransferState {
 	@Override
 	public VulkanBuffer getLocal(VulkanBuffer dst) throws VulkanException
 	{
+		return getLocal(dst.getSize());
+	}
+	
+	@Override
+	public VulkanBuffer getLocal(int size) throws VulkanException
+	{
 		if (isClosed) throw new IllegalStateException("Closed");
-		VulkanBuffer buffer = new VulkanBuffer(src, offset, dst.getSize(), src.getUsage() | VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-		offset += dst.getSize();
+		VulkanBuffer buffer = new VulkanBuffer(src, offset, size, src.getUsage() | VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+		offset += size;
 		return buffer;
 	}
 	
 	@Override
 	public VulkanBuffer getView(VulkanBuffer dst) throws VulkanException
 	{
+		return getView(dst.getSize());
+	}
+	
+	@Override
+	public VulkanBuffer getView(int size) throws VulkanException
+	{
 		if (isClosed) throw new IllegalStateException("Closed");
-		VulkanBuffer buffer = VulkanBuffer.view(src, offset, dst.getSize());
-		offset += dst.getSize();
+		VulkanBuffer buffer = VulkanBuffer.view(src, offset, size);
+		offset += size;
 		return buffer;
 	}
 	

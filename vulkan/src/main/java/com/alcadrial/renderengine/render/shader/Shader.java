@@ -6,9 +6,11 @@ import java.lang.ProcessBuilder.Redirect;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import com.alcadrial.renderengine.render.Debug;
@@ -19,7 +21,7 @@ import com.alcadrial.renderengine.render.RenderEngineVulkan;
  * 
  * @author Alcadrial
  *
- *@see 
+ *@see
  *	<a href="https://wikis.khronos.org/opengl/Core_Language_(GLSL)">GLSL specs</a>
  *	<a href="https://github.com/KhronosGroup/GLSL/blob/main/extensions/khr/GL_KHR_vulkan_glsl.txt">Vulkan extension</a>
  */
@@ -71,7 +73,7 @@ public class Shader {
 	{
 		return compiled = CompiledShader.ofSuccess(code, Files.readAllBytes(compiledPath));
 	}
-
+	
 	public CompiledShader compile(ShaderType type)
 	{
 		Process process;
@@ -120,5 +122,18 @@ public class Shader {
 	public String[] getCode()
 	{
 		return code;
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		if (path != null) return path.hashCode();
+		return Arrays.hashCode(code);
+	}
+	
+	@Override
+	public boolean equals(@Nullable Object obj)
+	{
+		return obj instanceof Shader s && ((path != null && ((@NonNull Path) path).equals(s.path) || Arrays.equals(code, s.code)));
 	}
 }

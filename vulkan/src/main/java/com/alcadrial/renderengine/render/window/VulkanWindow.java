@@ -197,7 +197,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		 * before creating the window and is never restored to the previous value if different.
 		 * <p>
 		 * Must be called from the main thread if single threaded otherwise it will block waiting for the main thread.
-		 * @throws VulkanException 
+		 * @throws VulkanException
 		 */
 		public VulkanWindow build(int width, int height, String title) throws VulkanException
 		{
@@ -391,12 +391,12 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	{
 		VulkanErrorUtils.assertStatement(device.getPresentQueue() != null, "The device must be able to present to this window's surface");
 		
-		this.id = windowId;
+		id = windowId;
 		int[] p0 = new int[1];
 		int[] p1 = new int[1];
 		GLFW.glfwGetWindowSize(id, p0, p1);
-		this.width = p0[0];
-		this.height = p1[0];
+		width = p0[0];
+		height = p1[0];
 		screenMatrix = null;
 		
 		this.title = title;
@@ -671,7 +671,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				SurfaceData surfaceData = surface.getData();
 				if (surfaceData.size().x() == 0 || surfaceData.size().y() == 0) return PresentationResult.EMPTY_SURFACE;
 			}
-			
 			while (true)
 			{
 				Swapchain swapchain = this.swapchain;
