@@ -25,10 +25,9 @@ public enum OperativeSystem {
 		else OS = UNKNOWN;
 	}
 
-	@Nullable
-	private String executableExtension;
+	private @Nullable String executableExtension;
 	
-	OperativeSystem(String executableExtension)
+	OperativeSystem(@Nullable String executableExtension)
 	{
 		this.executableExtension = executableExtension;
 	}

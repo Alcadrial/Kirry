@@ -17,6 +17,7 @@ public interface Component<I, P, E extends Exception> {
 	
 	void init(@NonNull I params) throws E;
 	void reinit(@NonNull I params) throws E;
+	void validate(@NonNull I params) throws E;
 	
 	P getProperties();
 	void close();

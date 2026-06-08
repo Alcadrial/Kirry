@@ -20,13 +20,7 @@ final class ComponentTypeFactory {
 	{
 		return (ComponentType<C>) CACHE.getIfAbsentPut(clazz, () -> {
 			int id = nextId++;
-			return new ComponentType<>() {
-				
-				public int getId()
-				{
-					return id;
-				};
-			};
+			return () -> id;
 		});
 	}
 	
