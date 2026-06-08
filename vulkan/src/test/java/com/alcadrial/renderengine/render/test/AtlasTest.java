@@ -54,7 +54,7 @@ public class AtlasTest {
 			
 			List<TextureRegion> regions = atlas.addAllBuffers(textures);
 			
-			atlas.draw();
+			window.getDevice().configureAndSubmitSingleUseCommandBuffer(window.getDevice().getGraphicsQueue(), atlas::draw).join();
 			
 			System.out.println("Size: " + atlas.getWidth() + "x" + atlas.getHeight());
 			for (TextureRegion region : regions)

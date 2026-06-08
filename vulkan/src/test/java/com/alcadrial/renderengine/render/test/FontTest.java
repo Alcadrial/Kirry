@@ -58,7 +58,7 @@ public class FontTest extends RenderTest {
 				font.getAtlas().tryFit();
 			}, TestProperties.PRINT_LOADING_TIMES);
 			println("Draw", () -> {
-				font.getAtlas().draw();
+				window.getDevice().configureAndSubmitSingleUseCommandBuffer(window.getDevice().getGraphicsQueue(), font.getAtlas()::draw);
 			}, TestProperties.PRINT_LOADING_TIMES);
 			System.out.println(font.getAtlas());
 			Texture texture = font.getAtlas().getTexture();

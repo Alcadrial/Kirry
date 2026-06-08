@@ -157,7 +157,7 @@ public class BasicScreen implements Screen {
 				{
 					widget.initAtlas(atlas);
 				}
-				atlas.draw();
+				atlas.draw(commandBuffer);
 			}
 			for (Widget widget : widgets)
 			{
