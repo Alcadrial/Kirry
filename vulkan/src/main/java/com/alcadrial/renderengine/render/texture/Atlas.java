@@ -29,7 +29,7 @@ import com.alcadrial.renderengine.render.buffer.VulkanBuffer;
 import com.alcadrial.renderengine.render.commandbuffer.CommandBuffer;
 import com.alcadrial.renderengine.render.util.exception.VulkanException;
 
-public class Atlas {
+public class Atlas implements AutoCloseable {
 	
 	static
 	{
@@ -102,6 +102,7 @@ public class Atlas {
 	private class TextureResource extends Resource {
 		
 		Texture texture;
+		private boolean closed;
 		
 		public TextureResource(Texture texture, Object id)
 		{
@@ -118,13 +119,18 @@ public class Atlas {
 		@Override
 		void close()
 		{
-			texture.close();
+			if (!closed)
+			{
+				texture.close();
+				closed = true;
+			}
 		}
 	}
 	
 	private class VulkanBufferResource extends Resource {
 		
 		VulkanBuffer buffer;
+		private boolean closed;
 		
 		public VulkanBufferResource(VulkanBuffer buffer, int width, int height, Object id)
 		{
@@ -141,7 +147,11 @@ public class Atlas {
 		@Override
 		void close()
 		{
-			buffer.close();
+			if (!closed)
+			{
+				buffer.close();
+				closed = true;
+			}
 		}
 	}
 	
@@ -213,11 +223,26 @@ public class Atlas {
 		emptySlots();
 	}
 	
+	/**
+	 * @param texture the texture to add
+	 * @param id the id to use
+	 * @return the list of {@link TextureRegion}, one for each texture
+	 * @see #addAllBuffers(Map)
+	 */
 	public TextureRegion add(Texture texture, Object id)
 	{
 		return add(new TextureResource(texture, id));
 	}
 	
+	/**
+	 * 
+	 * @param <T>
+	 * @param getTexture a function that returns a {@link Texture} from a texture
+	 * @param getId a function that returns an id from a texture
+	 * @param textures the textures to add
+	 * @return the list of {@link TextureRegion}, one for each texture
+	 * @see #addAllBuffers(Map)
+	 */
 	public <T> List<TextureRegion> addAllTextures(Function<T, Texture> getTexture, Function<T, Object> getId, @SuppressWarnings("unchecked") T... textures)
 	{
 		List<Resource> resources = new ArrayList<>(textures.length);
@@ -225,6 +250,12 @@ public class Atlas {
 		return addAll(resources);
 	}
 	
+	/**
+	 * 
+	 * @param textures the textures to add
+	 * @return the list of {@link TextureRegion}, one for each texture
+	 * @see #addAllBuffers(Map)
+	 */
 	public <T> List<TextureRegion> addAllTextures(Map<T, Texture> textures)
 	{
 		List<Resource> resources = new ArrayList<>(textures.size());
@@ -232,16 +263,35 @@ public class Atlas {
 		return addAll(resources);
 	}
 	
+	/**
+	 * {@link TextureBuffer#getId()} will be used as id
+	 * 
+	 * @param buffer the texture to add
+	 * @return the list of {@link TextureRegion}, one for each texture
+	 * @see #addAllBuffers(Map)
+	 */
 	public TextureRegion add(TextureBuffer buffer)
 	{
 		return add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), buffer.getId()));
 	}
 	
+	/**
+	 * @param buffer the texture to add
+	 * @param id the id to use instead of {@link TextureBuffer#getId()}
+	 * @return the list of {@link TextureRegion}, one for each texture
+	 * @see #addAllBuffers(Map)
+	 */
 	public TextureRegion add(TextureBuffer buffer, Object id)
 	{
 		return add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), id));
 	}
 	
+	/**
+	 * 
+	 * @param buffers the textures to add
+	 * @return the list of {@link TextureRegion}, one for each texture
+	 * @see #addAllBuffers(Map)
+	 */
 	public List<TextureRegion> addAllBuffers(Iterable<TextureBuffer> buffers)
 	{
 		List<Resource> resources = new ArrayList<>();
@@ -249,6 +299,12 @@ public class Atlas {
 		return addAll(resources);
 	}
 	
+	/**
+	 * 
+	 * @param buffers the textures to add
+	 * @return the list of {@link TextureRegion}, one for each texture
+	 * @see #addAllBuffers(Map)
+	 */
 	public List<TextureRegion> addAllBuffers(Collection<TextureBuffer> buffers)
 	{
 		List<Resource> resources = new ArrayList<>(buffers.size());
@@ -256,6 +312,12 @@ public class Atlas {
 		return addAll(resources);
 	}
 	
+	/**
+	 * 
+	 * @param buffers the textures to add
+	 * @return the list of {@link TextureRegion}, one for each texture
+	 * @see #addAllBuffers(Map)
+	 */
 	public List<TextureRegion> addAllBuffers(TextureBuffer... buffers)
 	{
 		List<Resource> resources = new ArrayList<>(buffers.length);
@@ -266,6 +328,15 @@ public class Atlas {
 		return addAll(resources);
 	}
 	
+	/**
+	 * 
+	 * @param <T>
+	 * @param getBuffer a function that returns a buffer from a texture
+	 * @param getId a function that returns an id from a texture
+	 * @param buffers the textures to add
+	 * @return the list of {@link TextureRegion}, one for each texture
+	 * @see #addAllBuffers(Map)
+	 */
 	public <T> List<TextureRegion> addAllBuffers(Function<T, TextureBuffer> getBuffer, Function<T, Object> getId, @SuppressWarnings("unchecked") T... buffers)
 	{
 		List<Resource> resources = new ArrayList<>(buffers.length);
@@ -277,6 +348,29 @@ public class Atlas {
 		return addAll(resources);
 	}
 	
+	/**
+	 * Logically add all textures into this atlas making it invalid and returns a list of {@link TextureRegion} tracking the
+	 * region of this atlas (in pixels) where the texture is placed
+	 * <p>
+	 * The key of each entry of the given map is used as id for the resource, two resources with the
+	 * same id will share the same region
+	 * <p>
+	 * A call to {@link #draw(CommandBuffer)} is required to physically add the texture to the atlas.
+	 * <p>
+	 * All resources must not be freed before calling {@link #draw(CommandBuffer)} when they are automatically freed,
+	 * if this is undesirable use a view ({@link VulkanBuffer#view(VulkanBuffer)})
+	 * <p>
+	 * To free a region simply call {@link #freeRegion(TextureRegion)}
+	 * 
+	 * 
+	 * @param <T>
+	 * @param buffers
+	 * @return the list of {@link TextureRegion}, one for each texture
+	 * 
+	 * @see #draw(CommandBuffer)
+	 * @see #freeRegion(TextureRegion)
+	 * @see TextureRegion
+	 */
 	public <T> List<TextureRegion> addAllBuffers(Map<T, TextureBuffer> buffers)
 	{
 		List<Resource> resources = new ArrayList<>(buffers.size());
@@ -397,7 +491,7 @@ public class Atlas {
 					}
 				}
 				newRegions[h.i] = region.texture;
-				this.regions.add(region);
+				regions.add(region);
 				this.resources.put(h.r, region);
 			}
 		}
@@ -507,16 +601,23 @@ public class Atlas {
 		availableArea *= 2;
 	}
 	
-	public void draw() throws VulkanException
+	/**
+	 * Physically draws all textures added with any of the add methods and records to the given
+	 * {@link CommandBuffer}, all resources (including textures) are automatically free after
+	 * termination of the CommandBuffer
+	 * <p>
+	 * This operation may require to allocate a copy of the entire atlas
+	 * 
+	 * @param commandBuffer
+	 * @return true if a new has been created and the old one closed
+	 * @throws VulkanException
+	 */
+	public boolean draw(CommandBuffer commandBuffer) throws VulkanException
 	{
-		device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), this::draw).join();
-	}
-	
-	public void draw(CommandBuffer commandBuffer) throws VulkanException
-	{
-		if (!isDirty) return;
+		if (!isDirty) return false;
 		
 		int newRegionsStartingIndex = oldRegions.size();
+		boolean invalid = false;
 		
 		if (newRegionsStartingIndex != 0)
 		{
@@ -579,6 +680,7 @@ public class Atlas {
 			commandBuffer.addCompletionAction(oldTexture::close);
 			
 			texture = newTexture;
+			invalid = true;
 		}
 		else if (texture.getWidth() < width || texture.getHeight() < height)
 		{
@@ -602,6 +704,7 @@ public class Atlas {
 			}
 			newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			texture = newTexture;
+			invalid = true;
 		}
 		else
 		{
@@ -622,19 +725,33 @@ public class Atlas {
 		});
 		
 		isDirty = false;
+		return invalid;
 	}
 	
+	/**
+	 * Logically clears the atlas and free all regions, after this call the atlas is logically empty
+	 * 
+	 * @see #clear(int, int)
+	 */
 	public void clear()
 	{
 		clear(width, height);
 	}
 	
+	/**
+	 * Logically clears the atlas and free all regions, after this call the atlas is logically empty
+	 * 
+	 * @param width the new width of the atlas
+	 * @param height the new height of the atlas
+	 * @see #clear()
+	 */
 	public void clear(int width, int height)
 	{
 		isDirty |= !regions.isEmpty();
 		this.width = width;
 		this.height = height;
 		emptySlots();
+		for (Region region : regions) region.resource.close();
 		regions.clear();
 		resources.clear();
 	}
@@ -671,6 +788,7 @@ public class Atlas {
 		return height;
 	}
 	
+	@Override
 	public void close()
 	{
 		texture.close();
