@@ -20,6 +20,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkBufferCopy;
 import org.lwjgl.vulkan.VkDescriptorImageInfo;
 import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
 import org.lwjgl.vulkan.VkDescriptorPoolSize;
@@ -383,10 +384,10 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 					int vertexSize = (meshProperties.vertexesSize() + meshProperties.normalsSize()) / meshProperties.indicesSize();
 					int textureUvSize = 2;
 					
-					mesh.initVertex(new MeshComponent.VertexParams(localVertexBuffer, vertexSize, vertexBufferOffset, localTextureUvBuffer, textureUvSize, textureUvBufferOffset, localVertexBuffer, vertexSize, vertexBufferOffset + meshProperties.vertexesSize() / meshProperties.vertexCount() / 4, null));
+					mesh.initVertex(new MeshComponent.VertexParams(localVertexBuffer, vertexSize, vertexBufferOffset, localTextureUvBuffer, textureUvSize, textureUvBufferOffset, localVertexBuffer, vertexSize, vertexBufferOffset + meshProperties.vertexesSize() / meshProperties.indicesSize(), null));
 					
-					vertexBufferOffset += vertexSize * meshProperties.vertexCount();
-					textureUvBufferOffset += textureUvSize * meshProperties.vertexCount();
+					vertexBufferOffset += (meshProperties.vertexesSize() + meshProperties.normalsSize()) / 4;
+					textureUvBufferOffset += meshProperties.textureUvSize() / 4;
 					
 					if (meshProperties.useTextureUv()) useTextureUv = true;
 					
@@ -470,10 +471,7 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 				})
 				.build();
 			
-			if (useTextureUv)
-			{
-				computeInitData(entities, initComputer, uniformBuffer, commandBuffer);
-			}
+			if (useTextureUv) computeInitData(entities, initComputer, commandBuffer);
 			atlas.draw(commandBuffer);
 			
 			GraphicsPipelineTemplate graphicsPipelineTemplate = GraphicsPipelineTemplate.create3dRenderingPipeline()
@@ -615,7 +613,6 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		});
 	}
 	
-	//TODO: support dynamic entities (add/remove)
 	@Override
 	public void reinit(ReinitParams params) throws VulkanException
 	{
@@ -700,11 +697,11 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		
 		if (removedEntities != null)
 		{
-			
+			//TODO: support remove entities
 		}
 		if (addedEntities != null)
 		{
-			
+			//TODO: support add entities
 		}
 	}
 	
@@ -732,16 +729,10 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 				MeshComponent mesh = e.getComponent(MeshComponent.TYPE);
 				if (mesh == null || !mesh.isLoaded()) continue;
 				
-				MeshComponent.Properties meshProperties = mesh.getProperties();
-				if (meshProperties.vertexCount() != 0)
+				if (mesh.validate(null))
 				{
-					int reloadCount = mesh.reloadCount();
-					if (reloadCount != data.reloadCounters[j * (Data.MAX_RELOAD_INDEX + 1) + Data.MESH_RELOAD_INDEX])
-					{
-						data.reloadCounters[j * (Data.MAX_RELOAD_INDEX + 1) + Data.MESH_RELOAD_INDEX] = reloadCount;
-						reloads[j] |= 0x1;
-						componentTypeReloads[0]++;
-					}
+					reloads[j] |= 0x1;
+					componentTypeReloads[0]++;
 				}
 				
 				ShaderComponent shader = e.getComponent(ShaderComponent.TYPE);
@@ -761,18 +752,20 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		{
 			if (componentTypeReloads[0] > 0)
 			{
-				try (MemoryTransferState transfer = data.memoryManager.allocateForTransfer(params.commandBuffer, data.vertexBuffer, data.textureUvBuffer))
+				boolean useTextureUv = false;
+				MutableList<Entity> reinitUvEntities = Lists.mutable.of();
+				try (MemoryStack stack = MemoryStack.stackPush(); MemoryTransferState transfer = data.memoryManager.allocateForTransfer(params.commandBuffer, data.vertexBuffer, data.textureUvBuffer))
 				{
 					VulkanBuffer localVertexBuffer = transfer.getLocal(data.vertexBuffer);
 					VulkanBuffer localTextureUvBuffer = transfer.getLocal(data.textureUvBuffer);
 					int vertexBufferOffset = 0;
 					int textureUvBufferOffset = 0;
-					
+					VkBufferCopy.Buffer copyVertexRegion = VkBufferCopy.calloc(componentTypeReloads[0], stack);
+					VkBufferCopy.Buffer copyTextureUvRegion = VkBufferCopy.calloc(componentTypeReloads[0], stack);
 					int j = 0;
-					for (Iterator<Entity> i = entities.iterator(); i.hasNext();)
+					for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
 					{
 						Entity e = i.next();
-						if (reloads[j] == 0) continue;
 						MeshComponent mesh = (@NonNull MeshComponent) e.getComponent(MeshComponent.TYPE);
 						
 						MeshComponent.Properties meshProperties = mesh.getProperties();
@@ -780,20 +773,37 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 						int vertexSize = (meshProperties.vertexesSize() + meshProperties.normalsSize()) / meshProperties.indicesSize();
 						int textureUvSize = 2;
 						
-						mesh.reinit(new MeshComponent.Params(new MeshComponent.VertexParams(localVertexBuffer, vertexSize, vertexBufferOffset, localTextureUvBuffer, textureUvSize, textureUvBufferOffset, localVertexBuffer, vertexSize, vertexBufferOffset + meshProperties.vertexesSize() / meshProperties.vertexCount(), null), null));
+						if (reloads[j] != 0)
+						{
+							mesh.validate(new MeshComponent.Params(new MeshComponent.VertexParams(localVertexBuffer, vertexSize, vertexBufferOffset, localTextureUvBuffer, textureUvSize, textureUvBufferOffset, localVertexBuffer, vertexSize, vertexBufferOffset + meshProperties.vertexesSize() / meshProperties.indicesSize(), null), null));
+							copyVertexRegion.get()
+								.srcOffset(vertexBufferOffset * 4)
+								.dstOffset(vertexBufferOffset * 4)
+								.size(meshProperties.vertexCount() * vertexSize * 4);
+							copyTextureUvRegion.get()
+								.srcOffset(textureUvBufferOffset * 4)
+								.dstOffset(textureUvBufferOffset * 4)
+								.size(meshProperties.vertexCount() * textureUvSize * 4);
+							if (meshProperties.useTextureUv())
+							{
+								reinitUvEntities.add(e);
+								useTextureUv = true;
+							}
+						}
 						
-						vertexBufferOffset += vertexSize;
-						textureUvBufferOffset += textureUvSize;
+						vertexBufferOffset += meshProperties.vertexCount() * vertexSize;
+						textureUvBufferOffset += meshProperties.vertexCount() * textureUvSize;
 					}
-					params.commandBuffer.copyBuffer(localVertexBuffer, 0, data.vertexBuffer, 0, data.vertexBuffer.getSize());
-					params.commandBuffer.copyBuffer(localTextureUvBuffer, 0, data.textureUvBuffer, 0, data.textureUvBuffer.getSize());
+					params.commandBuffer.copyBuffer(localVertexBuffer, data.vertexBuffer, copyVertexRegion.rewind());
+					params.commandBuffer.copyBuffer(localTextureUvBuffer, data.textureUvBuffer, copyTextureUvRegion.rewind());
 				}
+				if (useTextureUv) computeInitData(reinitUvEntities, data.initComputer, params.commandBuffer);
 			}
 			if (componentTypeReloads[1] > 0)
 			{
 				MutableSet<ShaderProgram> programs = Sets.mutable.of();
 				int j = 0;
-				for (Iterator<Entity> i = entities.iterator(); i.hasNext();)
+				for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
 				{
 					Entity e = i.next();
 					if (reloads[j] == 0) continue;
@@ -808,8 +818,6 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 					p.graphicsPipeline.close();
 					p.graphicsPipeline = graphicsPipeline;
 				}
-				
-				//TODO: reload shaders
 			}
 		}
 		
@@ -915,7 +923,7 @@ public class EntityRenderer implements EntityEngine<EntityRenderer.InitParams, E
 		return VulkanErrorUtils.nonNull(data, "Renderer was not initialized");
 	}
 	
-	private void computeInitData(Collection<Entity> entities, Computer initComputer, VulkanBuffer uniform, CommandBuffer commandBuffer) throws VulkanException
+	private void computeInitData(Collection<Entity> entities, Computer initComputer, CommandBuffer commandBuffer) throws VulkanException
 	{
 		int k = 0;
 		for (Iterator<Entity> i = entities.iterator(); i.hasNext();)

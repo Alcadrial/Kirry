@@ -15,11 +15,11 @@ layout (location = 0) out vec4 tex;
 
 void main()
 {
-	vec4 color = vec4(1,2,1,1)*vec4(textureUv, 0, 1) * 50 * texture(TEXTURE, textureUv);
+	vec4 color = vec4(1,12,1,1)*vec4(textureUv, 0, 1) * 50 * texture(TEXTURE, textureUv);
 	float lightDistance = distance(LIGHT_POS, vertexPosition);
 	float d = dot(LIGHT_POS - vertexPosition, normalPosition);
 	
-	if (lightDistance > d * d)
+	if (lightDistance > d * d / 2)
 	{
 		float lightLevel = LIGHT_INTENSITY * (1 - SPACE_FOG_INTENSITY) / lightDistance;
 		
@@ -31,6 +31,6 @@ void main()
 	}
 	else 
 	{
-		tex = vec4(1, 1, 1, 1);
+		tex = vec4(1, 1, 1, 1); 
 	}
 }

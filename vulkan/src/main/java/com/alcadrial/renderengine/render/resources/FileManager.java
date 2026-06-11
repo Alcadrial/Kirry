@@ -18,6 +18,9 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -138,14 +141,16 @@ public class FileManager implements ResourceManager {
 	}
 	
 	private record ResourceAction<R extends Resource>(R resource, Consumer<R> action) {}
+	
 	private record PathRegistration(BiConsumer<Path, Kind<?>> action, WatchKey[] keyReference) {}
 	
 	private FileSystem fileSystem;
 	private Path root;
 	private TreeMap<Path, PathRegistration> registeredPaths;
-	private TreeMap<Path, ResourceAction<?>> registeredResourcePaths;
+	private TreeMap<Path, TreeMap<String, ResourceAction<?>>> registeredResourcePaths;
 	private FastList<BiFunction<Path, ResourceManager, ? extends Resource>> registeredResourceTypes;
 	private @Nullable WatchService watchService;
+	private ScheduledExecutorService watcherService;
 	
 	private FileManager(List<? extends Object> rootsUris) throws IOException
 	{
@@ -154,6 +159,7 @@ public class FileManager implements ResourceManager {
 		registeredPaths = new TreeMap<>();
 		registeredResourcePaths = new TreeMap<>();
 		registeredResourceTypes = new ResizeFastList<>();
+		watcherService = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().factory());
 	}
 	
 	@Override
@@ -190,6 +196,7 @@ public class FileManager implements ResourceManager {
 	@Override
 	public void startWatchingResources() throws IOException
 	{
+		if (watchService != null) return;
 		WatchService watchService = fileSystem.newWatchService();
 		for (Path directory : registeredPaths.keySet())
 		{
@@ -200,7 +207,7 @@ public class FileManager implements ResourceManager {
 				StandardWatchEventKinds.OVERFLOW);
 		}
 		this.watchService = watchService;
-		Thread.startVirtualThread(this::watch);
+		watcherService.scheduleWithFixedDelay(this::watch, 0, 1, TimeUnit.NANOSECONDS);
 	}
 	
 	@Override
@@ -231,14 +238,15 @@ public class FileManager implements ResourceManager {
 				StandardWatchEventKinds.ENTRY_DELETE,
 				StandardWatchEventKinds.OVERFLOW);
 		}
-		registeredPaths.put(path, new PathRegistration(action, new WatchKey[] { watchKey }));
+		registeredPaths.put(path, new PathRegistration(action, new WatchKey[] {watchKey}));
 	}
 	
 	@Override
 	public <R extends Resource> void registerForChanges(R resource, Consumer<R> action) throws IOException
 	{
-		Path parent = resource.getPath().getParent();
-		registeredResourcePaths.put(parent, new ResourceAction<>(resource, action));
+		Path path = resource.getPath();
+		Path parent = path.getParent();
+		registeredResourcePaths.computeIfAbsent(parent, _ -> new TreeMap<>()).put(path.getFileName().toString(), new ResourceAction<>(resource, action));
 		registerForChanges(parent, (_, _) -> {});
 	}
 	
@@ -281,10 +289,13 @@ public class FileManager implements ResourceManager {
 							}
 							catch (Throwable e)
 							{
+								//TODO: handle exception
 								e.printStackTrace();
 							}
 						}
-						ResourceAction<?> resourceAction = registeredResourcePaths.get(keyPath);
+						TreeMap<String, ResourceAction<?>> tree = registeredResourcePaths.get(keyPath);
+						if (tree == null) continue;
+						ResourceAction<?> resourceAction = tree.get(path.getFileName().toString());
 						if (resourceAction != null) handleResourceUpdate(resourceAction);
 					}
 				}

@@ -13,7 +13,7 @@ import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.set.MutableSet;
 import org.jspecify.annotations.Nullable;
 
-public abstract class AbstractResource implements Resource {
+public abstract class AbstractResource<R extends AbstractResource<R>> implements Resource {
 	
 	private final MutableSet<Consumer<Resource>> listeners;
 	protected final Path path;
@@ -117,6 +117,12 @@ public abstract class AbstractResource implements Resource {
 		listeners.remove(action);
 	}
 	
+	@SuppressWarnings("unchecked")
+	public void registerForChanges(Consumer<R> action) throws IOException
+	{
+		resourceManager.registerForChanges((R) this, action);
+	}
+	
 	@Override
 	public boolean isFound()
 	{
@@ -128,7 +134,7 @@ public abstract class AbstractResource implements Resource {
 	{
 		return isValid;
 	}
-
+	
 	@Override
 	public Path getPath()
 	{
@@ -140,5 +146,17 @@ public abstract class AbstractResource implements Resource {
 	{
 		listeners.clear();
 		isValid = false;
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return path.hashCode();
+	}
+	
+	@Override
+	public boolean equals(@Nullable Object obj)
+	{
+		return path.equals(obj);
 	}
 }

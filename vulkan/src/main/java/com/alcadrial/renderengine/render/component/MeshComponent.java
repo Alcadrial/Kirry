@@ -1,6 +1,8 @@
 package com.alcadrial.renderengine.render.component;
 
+import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.collections.api.list.MutableList;
 import org.jspecify.annotations.Nullable;
@@ -53,12 +55,13 @@ public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshC
 	}
 	
 	private Mesh mesh;
-	private boolean invalid;
+	private AtomicBoolean invalid;
 	private boolean init;
 	
 	public MeshComponent(Mesh mesh)
 	{
 		this.mesh = mesh;
+		invalid = new AtomicBoolean(false);
 	}
 	
 	@Override
@@ -79,7 +82,7 @@ public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshC
 		reinit(params);
 		if (!init)
 		{
-			mesh.addReloadListener(_ -> invalid = true);
+			mesh.addReloadListener(_ -> invalid.set(true));
 			init = true;
 		}
 	}
@@ -102,11 +105,25 @@ public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshC
 	}
 	
 	@Override
-	public boolean validate(Params params) throws VulkanException
+	public boolean validate(@Nullable Params params) throws VulkanException
 	{
-		if (!invalid) return false;
+		if (params == null) return invalid.get();
+		if (!invalid.compareAndExchange(true, false)) return false;
+		reinit(params);
+		return true;
+	}
+	
+	@Override
+	public boolean listenResource()
+	{
+		try
+		{
+			mesh.registerForChanges(Mesh::reload);
+			return true;
+		}
+		catch (IOException _)
+		{}
 		return false;
-		//TODO
 	}
 	
 	@Override

@@ -249,7 +249,7 @@ public class Mesh extends AbstractVulkanResource<Mesh> {
 			}
 		}
 		
-		loader.clear();
+		//loader.clear();
 	}
 	
 	public Properties getProperties()

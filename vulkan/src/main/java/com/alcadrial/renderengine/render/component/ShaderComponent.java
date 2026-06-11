@@ -127,10 +127,12 @@ public abstract class ShaderComponent extends AbstractVulkanComponent<ShaderComp
 		}
 		
 		@Override
-		public boolean validate(Params params) throws VulkanException
+		public boolean validate(@Nullable Params params) throws VulkanException
 		{
-			if (!invalid.getAndSet(false) || pStages == null) return false;
+			if (params == null) return invalid.get();
+			if (!invalid.compareAndExchange(true, false) || pStages == null) return false;
 			if (device != null && !device.equals(params.device)) throw new UnsupportedOperationException("Cannot change device after init");
+			
 			program = ShaderProgram.create().addAll(resources.asLazy().collect(ShaderResource::getShader)).build();
 			try (MemoryStack stack = MemoryStack.stackPush())
 			{
@@ -228,8 +230,9 @@ public abstract class ShaderComponent extends AbstractVulkanComponent<ShaderComp
 		}
 		
 		@Override
-		public boolean validate(Params params) throws VulkanException
+		public boolean validate(@Nullable Params params) throws VulkanException
 		{
+			if (params == null) return false;
 			if (device != null && !device.equals(params.device)) throw new UnsupportedOperationException("Cannot change device after init");
 			return false;
 		}

@@ -3,6 +3,7 @@ package com.alcadrial.renderengine.core.component;
 import java.util.concurrent.CompletableFuture;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 public interface Component<I, P, E extends Exception> {
 
@@ -22,13 +23,14 @@ public interface Component<I, P, E extends Exception> {
 	void init(@NonNull I params) throws E;
 	void reinit(@NonNull I params) throws E;
 	/**
-	 * Checks if a resource has been reloaded and revalidates this component.
+	 * Checks if a resource has been reloaded and revalidates this component if
+	 * a non null argument is given.
 	 * <p>
 	 * If this component has never been initialized then this will do nothing.
 	 * 
 	 * @return true if validation occurred
 	 */
-	boolean validate(@NonNull I params) throws E;
+	boolean validate(@Nullable I params) throws E;
 	
 	P getProperties();
 	void close();

@@ -142,15 +142,26 @@ public class MergedWatchService implements WatchService {
 			Key oldKey = registeredKeys.putIfAbsent(path, key);
 			if (oldKey == null)
 			{
+				IOException exception = null;
+				boolean hasSuccess = false;
 				for (Entry<Source, ServiceData> e : services.entrySet())
 				{
 					ServiceData service = e.getValue();
 					Path sourceRoot = e.getKey().path();
 					Path keyPath = sourceRoot.resolve(path.toString());
-					WatchKey serviceKey = keyPath.register(service.watchService, events, modifiers);
-					service.registeredKeys.add(serviceKey);
-					fileSystem.buildFiles(path);
+					try
+					{
+						WatchKey serviceKey = keyPath.register(service.watchService, events, modifiers);
+						service.registeredKeys.add(serviceKey);
+						fileSystem.buildFiles(path);
+						hasSuccess = true;
+					}
+					catch (IOException e1)
+					{
+						exception = e1;
+					}
 				}
+				if (!hasSuccess && exception != null) throw exception;
 				return key;
 			}
 			return oldKey;
@@ -335,7 +346,7 @@ public class MergedWatchService implements WatchService {
 			this.path = path;
 			events = Lists.mutable.of();
 			isSignalled = false;
-			this.isValid = true;
+			isValid = true;
 			this.eventKinds = eventKinds;
 			this.modifiers = modifiers;
 		}
@@ -413,9 +424,9 @@ public class MergedWatchService implements WatchService {
 		
 		Event(WatchEvent.Kind<T> type, T context)
 		{
-			this.kind = type;
+			kind = type;
 			this.context = context;
-			this.count = 1;
+			count = 1;
 		}
 		
 		@Override

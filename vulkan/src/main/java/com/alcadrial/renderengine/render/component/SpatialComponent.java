@@ -70,7 +70,7 @@ public class SpatialComponent implements Component<SpatialComponent.Params, Spat
 	}
 	
 	@Override
-	public boolean validate(Params params) throws VulkanException
+	public boolean validate(@Nullable Params params) throws VulkanException
 	{
 		//TODO
 		return false;
