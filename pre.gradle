@@ -1,0 +1,89 @@
+
+group = "com.alcadrial.kirry"
+base {
+	archivesName = "${rootProject.name}-$id"
+}
+
+eclipse.project.name = "${rootProject.name} ${ext.name}"
+
+java {
+	toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+	modularity.inferModulePath = true
+	withSourcesJar()
+	withJavadocJar()
+}
+
+javadoc {
+	options.tags("apiNote:a:API Note:", "implSpec:a:Implementation Requirements:", "implNote:a:Implementation Note:")
+	options.addBooleanOption("html5", true)
+    options.addStringOption("Xdoclint:none", "-quiet")
+}
+
+compileJava.options.encoding = "UTF-8"
+
+boolean printExcludedFiles = false
+boolean printExportedFiles = false
+boolean excludeTestFiles = true
+boolean printOnlyOnce = true
+
+sourceSets {
+	main {
+		resources {
+			
+		}
+		java {
+			
+			File start = null
+			
+			exclude(e -> {
+				if (printOnlyOnce)
+				{
+					if (start == null) start = e.getFile()
+					else if (start.equals(e.getFile()))
+					{
+						printExportedFiles = false
+						printExcludedFiles = false
+					}
+				}
+				if (!excludeTestFiles || e.getFile().isDirectory()) {
+					File packageFile = new File(e.getFile().getPath() + "/package-info.java")
+					if (packageFile.isFile())
+					{
+						String text = packageFile.text
+						boolean b0 = text.contains("@Test")
+						boolean b1 = text.contains("import com.alcadrial.kirry.core.util.Test")
+						boolean b2 = text.contains("package com.alcadrial.kirry.core.util;")
+						boolean b3 = text.contains("@com.alcadrial.kirry.core.util.Test")
+						boolean r = b3 || (b0 && b2) || (b0 && b1)
+						if (!r && printExportedFiles) println("P " + e.getFile())
+						if (r && printExcludedFiles) println("excluded P " + e.getFile())
+						return r
+					}
+					if (printExportedFiles) println("D " + e.getFile())
+					return false
+				}
+				boolean b = e.getFile().name.endsWith(".java")
+				String text = e.getFile().text
+				boolean b0 = text.contains("@Test")
+				boolean b1 = text.contains("import com.alcadrial.kirry.core.util.Test")
+				boolean b2 = text.contains("package com.alcadrial.kirry.core.util;")
+				boolean b3 = text.contains("@com.alcadrial.kirry.core.util.Test")
+				boolean result = b && ((b0 && (b1 || b2)) || b3)
+				if (printExportedFiles && !result) println("F " + e.getFile())
+				if (printExcludedFiles && result) println("excluded F " + e.getFile())
+				return result
+			})
+		}
+	}
+}
+
+repositories {
+	flatDir {
+		dirs(rootProject.file("libs"))
+	}
+	maven {
+		name = "Local Maven"
+		url "D:/maven"
+	}
+	mavenCentral()
+}

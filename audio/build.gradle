@@ -1,0 +1,34 @@
+plugins {
+	id("java")
+	id("java-library")
+	id("maven-publish")
+	id("eclipse")
+}
+
+apply from: rootProject.file("pre.gradle")
+
+dependencies {
+	implementation(project(":core"))
+	
+	implementation(libs.kector)
+	implementation(libs.kroperties)
+	implementation(libs.jspecify)
+	
+    implementation(libs.lwjgl)
+    implementation(libs.lwjgl.glfw)
+    implementation(libs.lwjgl.fmod)
+	runtimeOnly("org.lwjgl:lwjgl::${lwjglNatives}")
+	runtimeOnly("org.lwjgl:lwjgl-glfw::${lwjglNatives}")
+}
+
+apply from: rootProject.file("post.gradle")
+
+publishing {
+	publications {
+		release(MavenPublication) {
+			artifactId = "$project.name"
+			artifact(jar)
+			artifact(sourcesJar)
+		}
+	}
+}

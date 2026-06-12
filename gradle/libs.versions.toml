@@ -1,0 +1,36 @@
+[versions]
+kector = "1.2.0"
+kector-new = "2.0.0.alpha.3"
+kroperties = "1.2.2"
+threads = "1.0.2"
+gson = "2.10.1"
+jackson = "3.0.3"
+eclipse-collections = "13.0.0"
+lwjgl = "3.4.1"
+jspecify = "1.0.0"
+
+[libraries]
+kector      = {module = "com.alcadrial.kector:Kector", version.ref = "kector"}
+kector-new  = {module = "com.alcadrial.kector:Kector", version.ref = "kector-new"}
+kroperties  = {module = "com.alcadrial.kroperties:Kroperties", version.ref = "kroperties"}
+threads     = {module = "com.alcadrial.threads:Threads", version.ref = "threads"}
+
+gson = {module = "com.google.code.gson:gson", version.ref = "gson"}
+jackson                     = {module = "tools.jackson.core:jackson-databind", version.ref = "jackson"}
+eclipse-collections         = {module = "org.eclipse.collections:eclipse-collections", version.ref = "eclipse-collections"}
+jackson-eclipse-collections = {module = "tools.jackson.datatype:jackson-datatype-eclipse-collections", version.ref = "jackson"}
+jspecify                    = {module = "org.jspecify:jspecify", version.ref = "jspecify"}
+
+lwjgl          = {module = "org.lwjgl:lwjgl", version.ref = "lwjgl"}
+lwjgl-freetype = {module = "org.lwjgl:lwjgl-freetype", version.ref = "lwjgl"}
+lwjgl-glfw     = {module = "org.lwjgl:lwjgl-glfw", version.ref = "lwjgl"}
+lwjgl-opengl   = {module = "org.lwjgl:lwjgl-opengl", version.ref = "lwjgl"}
+lwjgl-openal   = {module = "org.lwjgl:lwjgl-openal", version.ref = "lwjgl"}
+lwjgl-renderdoc = {module = "org.lwjgl:lwjgl-renderdoc", version.ref = "lwjgl"}
+lwjgl-fmod     = {module = "org.lwjgl:lwjgl-fmod", version.ref = "lwjgl"}
+lwjgl-stb      = {module = "org.lwjgl:lwjgl-stb", version.ref = "lwjgl"}
+lwjgl-vulkan   = {module = "org.lwjgl:lwjgl-vulkan", version.ref = "lwjgl"}
+
+[bundles]
+
+jackson-and-eclipse-collections = ["jackson", "jackson-eclipse-collections", "eclipse-collections"]

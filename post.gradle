@@ -1,0 +1,31 @@
+
+jar.manifest.attributes([
+	"Specification-Title"     : "${rootProject.name} $name",
+	"Specification-Version"   : version,
+	"Specification-Vendor"    : "Alcadrial",
+	"Implementation-Title"    : "${rootProject.name} $name",
+	"Implementation-Version"  : version,
+	"Implementation-Vendor"   : "Alcadrial",
+	"Implementation-Timestamp": new Date().format("dd/MM/yyyy HH:mm:ss")
+])
+
+publishing {
+	repositories {
+		if (localMaven != null) {
+			maven {
+				name = "LocalMaven"
+				url = localMaven
+			}
+		}
+		if (project.hasProperty("remoteMaven")) {
+			maven {
+				name = "RemoveMaven"
+				url = remoteMaven
+				credentials {
+					username = remoteMavenUsername
+					password = remoteMavenPassword
+				}
+			}
+		}
+	}
+}

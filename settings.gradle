@@ -1,9 +1,5 @@
 pluginManagement {
-	ext.localMaven = System.getProperty("LOCAL_MAVEN");
-	ext.remoteMaven = System.getProperty("REMOTE_MAVEN");
-	ext.remoteMavenUsername = System.getProperty("REMOTE_MAVEN_USERNAME");
-	ext.remoteMavenPassword = System.getProperty("REMOTE_MAVEN_PASSWORD");
-	
+
 	repositories {
 		if (localMaven != null) {
 			maven {
@@ -11,7 +7,7 @@ pluginManagement {
 				url = localMaven
 			}
 		}
-		if (remoteMaven != null) {
+		if (settings.hasProperty("remoteMaven")) {
 			maven {
 				name = "RemoveMaven"
 				url = remoteMaven
@@ -21,8 +17,30 @@ pluginManagement {
 				}
 			}
 		}
+		maven {
+			url "https://plugins.gradle.org/m2/"
+		}
 	}
 }
 
-rootProject.name="RenderEngine"
-include("core", "opengl", "vulkan", "openal")
+rootProject.name="Kirry"
+include("core", "opengl", "vulkan", "audio")
+
+import org.gradle.internal.os.OperatingSystem
+switch (OperatingSystem.current()) {
+	case OperatingSystem.LINUX:
+		def osArch = System.getProperty("os.arch")
+		ext.lwjglNatives = osArch.startsWith("arm") || osArch.startsWith("aarch64")
+			? "natives-linux-${osArch.contains("64") || osArch.startsWith("armv8") ? "arm64" : "arm32"}"
+			: "natives-linux"
+		break
+	case OperatingSystem.MAC_OS:
+		ext.lwjglNatives = System.getProperty("os.arch").startsWith("aarch64") ? "natives-macos-arm64" : "natives-macos"
+		break
+	case OperatingSystem.WINDOWS:
+		def osArch = System.getProperty("os.arch")
+		ext.lwjglNatives = osArch.contains("64")
+			? "natives-windows${osArch.startsWith("aarch64") ? "-arm64" : ""}"
+			: "natives-windows-x86"
+		break
+}
