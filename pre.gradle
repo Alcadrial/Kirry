@@ -1,5 +1,5 @@
 
-group = "com.alcadrial.renderengine"
+group = "com.alcadrial.kirry"
 base {
 	archivesName = "${rootProject.name}-$id"
 }
@@ -16,6 +16,7 @@ java {
 javadoc {
 	options.tags("apiNote:a:API Note:", "implSpec:a:Implementation Requirements:", "implNote:a:Implementation Note:")
 	options.addBooleanOption("html5", true)
+    options.addStringOption("Xdoclint:none", "-quiet")
 }
 
 compileJava.options.encoding = "UTF-8"
@@ -50,9 +51,9 @@ sourceSets {
 					{
 						String text = packageFile.text
 						boolean b0 = text.contains("@Test")
-						boolean b1 = text.contains("import com.alcadrial.renderengine.core.util.Test")
-						boolean b2 = text.contains("package com.alcadrial.renderengine.core.util;")
-						boolean b3 = text.contains("@com.alcadrial.renderengine.core.util.Test")
+						boolean b1 = text.contains("import com.alcadrial.kirry.core.util.Test")
+						boolean b2 = text.contains("package com.alcadrial.kirry.core.util;")
+						boolean b3 = text.contains("@com.alcadrial.kirry.core.util.Test")
 						boolean r = b3 || (b0 && b2) || (b0 && b1)
 						if (!r && printExportedFiles) println("P " + e.getFile())
 						if (r && printExcludedFiles) println("excluded P " + e.getFile())
@@ -64,9 +65,9 @@ sourceSets {
 				boolean b = e.getFile().name.endsWith(".java")
 				String text = e.getFile().text
 				boolean b0 = text.contains("@Test")
-				boolean b1 = text.contains("import com.alcadrial.renderengine.core.util.Test")
-				boolean b2 = text.contains("package com.alcadrial.renderengine.core.util;")
-				boolean b3 = text.contains("@com.alcadrial.renderengine.core.util.Test")
+				boolean b1 = text.contains("import com.alcadrial.kirry.core.util.Test")
+				boolean b2 = text.contains("package com.alcadrial.kirry.core.util;")
+				boolean b3 = text.contains("@com.alcadrial.kirry.core.util.Test")
 				boolean result = b && ((b0 && (b1 || b2)) || b3)
 				if (printExportedFiles && !result) println("F " + e.getFile())
 				if (printExcludedFiles && result) println("excluded F " + e.getFile())

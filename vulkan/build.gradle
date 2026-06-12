@@ -37,7 +37,7 @@ dependencies {
 sourceSets {
 	debug {
 		java {
-		//	if (!debugOn) exclude("**")
+		//	if (debugOn) exclude("**")
 		}
 	}
 	release {
@@ -62,14 +62,14 @@ configurations {
 
 apply from: rootProject.file("post.gradle")
 
-javadoc.options.tags("renderengine.vulkan:a:Vulkan API:", "renderengine.Requires:a:Requires:", "renderengine.Optional:a:Optional:")
+javadoc.options.tags("kirry.vulkan:a:Vulkan API:", "kirry.Requires:a:Requires:", "kirry.Optional:a:Optional:")
 
 task debugJavadoc(type: Javadoc) {
     source(sourceSets.main.allJava)
     source(sourceSets.debug.allJava)
     classpath = sourceSets.debug.compileClasspath
     destinationDir = reporting.file("debugJavadoc")
-    options.tags("renderengine.vulkan:a:Vulkan API:", "renderengine.Requires:a:Requires:", "renderengine.Optional:a:Optional:")
+    options.tags("kirry.vulkan:a:Vulkan API:", "kirry.Requires:a:Requires:", "kirry.Optional:a:Optional:")
 }
 
 task javadocDebugJar(type: Jar, dependsOn: debugJavadoc) {
@@ -99,7 +99,7 @@ task releaseJavadoc(type: Javadoc) {
     source(sourceSets.release.allJava)
     classpath = sourceSets.release.compileClasspath
     destinationDir = reporting.file("releaseJavadoc")
-    options.tags("renderengine.vulkan:a:Vulkan API:", "renderengine.Requires:a:Requires:", "renderengine.Optional:a:Optional:")
+    options.tags("kirry.vulkan:a:Vulkan API:", "kirry.Requires:a:Requires:", "kirry.Optional:a:Optional:")
 }
 
 task javadocReleaseJar(type: Jar, dependsOn: releaseJavadoc) {

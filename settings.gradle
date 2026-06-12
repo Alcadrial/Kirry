@@ -23,7 +23,7 @@ pluginManagement {
 	}
 }
 
-rootProject.name="RenderEngine"
+rootProject.name="Kirry"
 include("core", "opengl", "vulkan", "audio")
 
 import org.gradle.internal.os.OperatingSystem
