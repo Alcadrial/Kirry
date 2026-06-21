@@ -33,8 +33,8 @@ import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kirry.core.util.Test;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.FrameBuffer;
-import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.KirryVulkan;
+import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.buffer.writer.DeferredBufferWriter;
@@ -302,7 +302,7 @@ public class Test2dPanel extends RenderTest {
 				isModifiedMatrix = false;
 				float scale = (float) Math.min(window.getWidth(), window.getHeight()) / SIZE;
 				Matrix4f transformation = new Matrix4f().scale(Vector3f.of(scale / window.getWidth(), -scale / window.getHeight(), 0.02F));
-				Matrix4f model = new Matrix4f().translateTo(panelPos);
+				Matrix4f model = new Matrix4f().translateXTo(panelPos.x()).translateYTo(panelPos.y());
 				transformation.multiply(model);
 				renderer.useBufferLayoutWriter(0, 0, writer -> {
 					writer.set(ShaderVariable.TRANSFORMATION, transformation);

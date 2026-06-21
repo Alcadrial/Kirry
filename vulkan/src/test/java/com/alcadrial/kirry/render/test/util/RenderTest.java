@@ -34,12 +34,12 @@ import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
-import com.alcadrial.kector.angle.AngleUnit;
+import com.alcadrial.kector.AngleUnit;
 import com.alcadrial.kector.annotation.Angle;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3fr;
 import com.alcadrial.kirry.render.Debug;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.FrameBuffer;
@@ -482,7 +482,7 @@ public class RenderTest {
 		});
 	}
 	
-	public static void registerRotating(BiConsumer<@Angle(AngleUnit.RADIANS) Float, @Angle(AngleUnit.RADIANS) Float> callback)
+	public static void registerRotating(BiConsumer<@Angle Float, @Angle Float> callback)
 	{
 		VulkanWindow window = KirryVulkan.getVulkan().getWindow();
 		Vector2f oldMousePos = Vector2f.of(0, 0);
@@ -673,7 +673,7 @@ public class RenderTest {
 		return (double) resolution.convert(endTime - startTime, localUnit) / resolution.convert(1, unit);
 	}
 	
-	public static Matrix4f buildFullSceneMatrix(VulkanWindow window, @Angle(AngleUnit.RADIANS) float fieldOfView)
+	public static Matrix4f buildFullSceneMatrix(VulkanWindow window, @Angle float fieldOfView)
 	{
 		float sceneRay = 1;//ray of the sphere containing the entire scene after applying the model matrix
 		float aspectRatio = (float) window.getWidth() / window.getHeight();
@@ -815,7 +815,7 @@ public class RenderTest {
 			
 			float textureAspectRatio = (float) texture.getHeight() / texture.getWidth();
 			float scale = Math.min(window.getWidth(), window.getHeight());
-			Matrix4f transformation = new Matrix4f().scale(Vector3f.of(scale / window.getWidth() / textureAspectRatio, scale / window.getHeight(), 0.02F));
+			Matrix4f transformation = new Matrix4f().scale(Vector3fr.of(scale / window.getWidth() / textureAspectRatio, scale / window.getHeight(), 0.02F));
 			Matrix4f model = new Matrix4f();
 			
 			renderer.useBufferLayoutWriter(0, 0, writer -> {

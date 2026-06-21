@@ -1,7 +1,7 @@
 package com.alcadrial.kirry.render.texture;
 
 import com.alcadrial.kector.vector.Vector2f;
-import com.alcadrial.kector.vector.getter.Vector2iGetter;
+import com.alcadrial.kector.vector.Vector2ir;
 import com.alcadrial.kirry.render.KirryVulkan;
 
 public class TextureRegion {
@@ -26,13 +26,13 @@ public class TextureRegion {
 		this.yEnd = yEnd;
 	}
 	
-	public TextureRegion(Texture texture, Vector2iGetter uvStart, Vector2iGetter uvEnd)
+	public TextureRegion(Texture texture, Vector2ir uvStart, Vector2ir uvEnd)
 	{
 		this.texture = texture;
-		this.xStart = uvStart.x();
-		this.yStart = uvStart.y();
-		this.xEnd = uvEnd.x();
-		this.yEnd = uvEnd.y();
+		xStart = uvStart.x();
+		yStart = uvStart.y();
+		xEnd = uvEnd.x();
+		yEnd = uvEnd.y();
 	}
 	
 	public void update(Texture texture, int xStart, int yStart, int xEnd, int yEnd)

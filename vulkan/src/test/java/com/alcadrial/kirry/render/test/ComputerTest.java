@@ -23,20 +23,21 @@ import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
+import com.alcadrial.kector.AngleUnit;
 import com.alcadrial.kector.Math;
-import com.alcadrial.kector.angle.AngleUnit;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3fr;
 import com.alcadrial.kector.vector.Vector3i;
-import com.alcadrial.kector.vector.axis.Axis;
+import com.alcadrial.kector.vector.axis.Axisf;
 import com.alcadrial.kirry.core.cursor.CursorInputMode;
 import com.alcadrial.kirry.core.util.color.Color;
 import com.alcadrial.kirry.render.Computer;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.FrameBuffer;
-import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.KirryVulkan;
+import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.buffer.writer.DeferredBufferWriter;
@@ -75,15 +76,15 @@ public class ComputerTest extends RenderTest {
 	
 	private static final int DIM = 8;
 	private static final int PARTICLE_COUNT = 8 * DIM * DIM * DIM;
-	private static final Vector3f MIN_BOUND_VALUE = Vector3f.of(-2, -2, -2);
-	private static final Vector3f MAX_BOUND_VALUE = Vector3f.of(2, 2, 2);
+	private static final Vector3fr MIN_BOUND_VALUE = Vector3fr.of(-2, -2, -2);
+	private static final Vector3fr MAX_BOUND_VALUE = Vector3fr.of(2, 2, 2);
 	
-	private static final Vector3f SOUTH = Axis.Z;
-	private static final Vector3f NORTH = Axis.NEGATIVE_Z;
-	private static final Vector3f EAST = Axis.X;
-	private static final Vector3f WEST = Axis.NEGATIVE_X;
-	private static final Vector3f UP = Axis.Y;
-	private static final Vector3f DOWN = Axis.NEGATIVE_Y;
+	private static final Vector3fr SOUTH = Axisf.Z;
+	private static final Vector3fr NORTH = Axisf.NEGATIVE_Z;
+	private static final Vector3fr EAST = Axisf.X;
+	private static final Vector3fr WEST = Axisf.NEGATIVE_X;
+	private static final Vector3fr UP = Axisf.Y;
+	private static final Vector3fr DOWN = Axisf.NEGATIVE_Y;
 	
 	private static final float XRotationSensivity = 0.005F;
 	private static final float YRotationSensivity = 0.01F;
@@ -179,7 +180,7 @@ public class ComputerTest extends RenderTest {
 			
 			if (isCameraUnlocked)
 			{
-				Vector3f v = switch (k)
+				Vector3fr v = switch (k)
 					{
 						case GLFW.GLFW_KEY_W -> NORTH;
 						case GLFW.GLFW_KEY_A -> WEST;
@@ -187,7 +188,7 @@ public class ComputerTest extends RenderTest {
 						case GLFW.GLFW_KEY_D -> EAST;
 						case GLFW.GLFW_KEY_SPACE -> UP;
 						case GLFW.GLFW_KEY_LEFT_SHIFT, GLFW.GLFW_KEY_LEFT_CONTROL -> DOWN;
-						default -> Vector3f.origin();
+						default -> Vector3fr.of();
 					};
 					
 					switch (a)
@@ -260,7 +261,7 @@ public class ComputerTest extends RenderTest {
 				
 				Random random = new Random();
 				
-				SphereDataCollector.collect(vertexBufferWriter, indexBufferWriter, Vector3f.origin(), 0.06F, 8);
+				SphereDataCollector.collect(vertexBufferWriter, indexBufferWriter, Vector3fr.of(), 0.06F, 8);
 				
 				for (float i = -DIM; i < DIM; i++)
 				{
@@ -452,7 +453,7 @@ public class ComputerTest extends RenderTest {
 					throw new VulkanException("Presentaton error");
 			}
 			
-			if (!cameraMovement.equals(Vector3f.origin()))
+			if (!cameraMovement.equals(Vector3fr.of()))
 			{
 				float sin = Math.sin(cameraYRotation);
 				float cos = Math.cos(cameraYRotation);

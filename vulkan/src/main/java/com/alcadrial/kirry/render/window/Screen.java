@@ -1,7 +1,7 @@
 package com.alcadrial.kirry.render.window;
 
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector2ir;
 import com.alcadrial.kirry.render.FrameBuffer;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
@@ -14,7 +14,7 @@ public interface Screen extends AutoCloseable {
 	
 	/**
 	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, Renderer)} method.
-	 * @throws VulkanException 
+	 * @throws VulkanException
 	 */
 	void init(MemoryManager memoryManager, CommandBuffer commandBuffer) throws VulkanException;
 	/**
@@ -37,7 +37,7 @@ public interface Screen extends AutoCloseable {
 	 * @param matrix the transformation matrix
 	 * @param commandBuffer
 	 * @param enlapsedTime
-	 * @throws VulkanException 
+	 * @throws VulkanException
 	 */
 	void draw(Matrix4f matrix, CommandBuffer commandBuffer, float enlapsedTime) throws VulkanException;
 	/**
@@ -54,7 +54,7 @@ public interface Screen extends AutoCloseable {
 	 */
 	boolean isOnSurface();
 	/**
-	 * Returns true if this widget has collected all the vertices after a 
+	 * Returns true if this widget has collected all the vertices after a
 	 * {@link #render(Matrix4f, Renderer)} and is ready to {@link #draw(Matrix4f, CommandBuffer, float)}.
 	 * 
 	 * @return true if this widget has been rendered
@@ -84,15 +84,15 @@ public interface Screen extends AutoCloseable {
 	
 	void setWindow(VulkanWindow window);
 	
-	ActionResult onClick(int button, int count, Vector2i mousePos);
-	ActionResult onPress(int button, Vector2i mousePos);
-	ActionResult onRelease(int button, Vector2i mousePos);
+	ActionResult onClick(int button, int count, Vector2ir mousePos);
+	ActionResult onPress(int button, Vector2ir mousePos);
+	ActionResult onRelease(int button, Vector2ir mousePos);
 	
-	void onMouseMove(Vector2i oldPos, Vector2i newPos);
+	void onMouseMove(Vector2ir oldPos, Vector2ir newPos);
 	
-	ActionResult onDragStart(Vector2i mousePos);
-	ActionResult onDragEnd(Vector2i startPos, Vector2i endPos);
-	ActionResult onScroll(double xScroll, double yScroll, Vector2i mousePos);
+	ActionResult onDragStart(Vector2ir mousePos);
+	ActionResult onDragEnd(Vector2ir startPos, Vector2ir endPos);
+	ActionResult onScroll(double xScroll, double yScroll, Vector2ir mousePos);
 	RenderPass getRenderPass();
 	
 	@Override

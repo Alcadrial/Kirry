@@ -16,14 +16,16 @@ import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
-import com.alcadrial.kector.angle.AngleUnit;
+import com.alcadrial.kector.AngleUnit;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3fr;
+import com.alcadrial.kector.vector.Vector4fr;
 import com.alcadrial.kirry.core.util.color.Color;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.FrameBuffer;
-import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.KirryVulkan;
+import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.buffer.writer.DeferredBufferWriter;
@@ -173,7 +175,7 @@ public class InstancingTest extends RenderTest {
 					vertexBuffer0Writer.put(Vector3f.of(j, k, 0));
 				}
 				
-				RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3f.origin(), Vector3f.of(1, 1, 1), (i, _) -> colors[i]);
+				RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3fr.of(), Vector3f.of(1, 1, 1), (i, _) -> colors[i]);
 			}
 		});
 		
@@ -263,7 +265,7 @@ public class InstancingTest extends RenderTest {
 			
 			Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
 			Matrix4f modelMatrix = buildModelMatrix(f);
-			Vector3f relativeLightPos = buildScaleMatrix().multiply(Vector3f.of(5, 20, 0).xyz1()).xyz();
+			Vector3f relativeLightPos = buildScaleMatrix().multiply(Vector4fr.of(5, 20, 0, 1));
 			
 			for (int i = 0; i < window.getFramesCount(); i++)
 			{

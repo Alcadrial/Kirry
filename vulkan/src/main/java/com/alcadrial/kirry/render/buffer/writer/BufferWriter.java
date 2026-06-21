@@ -5,12 +5,18 @@ import java.nio.ByteBuffer;
 import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kector.vector.Vector2f;
-import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.kector.vector.Vector3f;
-import com.alcadrial.kector.vector.Vector3i;
-import com.alcadrial.kector.vector.Vector4f;
-import com.alcadrial.kector.vector.Vector4i;
+import com.alcadrial.kector.vector.Vector2dr;
+import com.alcadrial.kector.vector.Vector2fr;
+import com.alcadrial.kector.vector.Vector2ir;
+import com.alcadrial.kector.vector.Vector2lr;
+import com.alcadrial.kector.vector.Vector3dr;
+import com.alcadrial.kector.vector.Vector3fr;
+import com.alcadrial.kector.vector.Vector3ir;
+import com.alcadrial.kector.vector.Vector3lr;
+import com.alcadrial.kector.vector.Vector4dr;
+import com.alcadrial.kector.vector.Vector4fr;
+import com.alcadrial.kector.vector.Vector4ir;
+import com.alcadrial.kector.vector.Vector4lr;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
@@ -62,63 +68,31 @@ public interface BufferWriter {
 	
 	BufferWriter setCursor(int index) throws VulkanException;
 	
-	default BufferWriter put(ByteBuffer values)
-	{
-		return put(values, 0, values.limit());
-	}
-	
+	BufferWriter put(ByteBuffer values);
 	BufferWriter put(ByteBuffer values, int offset, int size);
-	
-	default BufferWriter put(byte... values)
-	{
-		return put(values, 0, values.length);
-	}
-	
+	BufferWriter put(byte... values);
 	BufferWriter put(byte[] values, int offset, int size);
-	
-	default BufferWriter put(int... values)
-	{
-		return put(values, 0, values.length);
-	}
-	
+	BufferWriter put(int... values);
 	BufferWriter put(int[] values, int offset, int size);
-	
-	default BufferWriter put(float... values)
-	{
-		return put(values, 0, values.length);
-	}
-	
+	BufferWriter put(float... values);
 	BufferWriter put(float[] values, int offset, int size);
-	
-	default BufferWriter put(Vector2f value)
-	{
-		return put(value.getValuesArray());
-	}
-	
-	default BufferWriter put(Vector3f value)
-	{
-		return put(value.getValuesArray());
-	}
-	
-	default BufferWriter put(Vector4f value)
-	{
-		return put(value.getValuesArray());
-	}
-	
-	default BufferWriter put(Vector2i value)
-	{
-		return put(value.getValuesArray());
-	}
-	
-	default BufferWriter put(Vector3i value)
-	{
-		return put(value.getValuesArray());
-	}
-	
-	default BufferWriter put(Vector4i value)
-	{
-		return put(value.getValuesArray());
-	}
+	BufferWriter put(long... values);
+	BufferWriter put(long[] values, int offset, int size);
+	BufferWriter put(double... values);
+	BufferWriter put(double[] values, int offset, int size);
+
+	BufferWriter put(Vector2ir v);
+	BufferWriter put(Vector2lr v);
+	BufferWriter put(Vector2fr v);
+	BufferWriter put(Vector2dr v);
+	BufferWriter put(Vector3ir v);
+	BufferWriter put(Vector3lr v);
+	BufferWriter put(Vector3fr v);
+	BufferWriter put(Vector3dr v);
+	BufferWriter put(Vector4ir v);
+	BufferWriter put(Vector4lr v);
+	BufferWriter put(Vector4fr v);
+	BufferWriter put(Vector4dr v);
 	
 	default BufferWriter put(Matrix4f value)
 	{

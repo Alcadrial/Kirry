@@ -7,10 +7,11 @@ import java.util.List;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 
-import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector2ir;
+import com.alcadrial.kector.vector.Vector3ir;
 import com.alcadrial.kirry.render.Device;
-import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.KirryVulkan;
+import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.shader.ShaderProgram;
 import com.alcadrial.kirry.render.test.util.RenderTest;
 import com.alcadrial.kirry.render.test.util.TestProperties;
@@ -91,10 +92,10 @@ public class ScreenTest extends RenderTest {
 		
 		SCREENS.add(BlackScreen.BLACK_SCREEN);
 		BasicScreen s = new BasicScreen();
-		s.add(new Sprite(window, Vector2i.of(20, 20), Vector2i.of(256, 256), textureIcon0));
-		s.add(new Sprite(window, Vector2i.of(296, 20), Vector2i.of(256, 256), textureIcon));
-		s.add(new Sprite(window, Vector2i.of(20, 296), Vector2i.of(256, 256), textureIcon));
-		s.add(new Sprite(window, Vector2i.of(296, 296), Vector2i.of(256, 256), textureIcon0));
+		s.add(new Sprite(window, Vector3ir.of(20, 20, 0), Vector2ir.of(256, 256), textureIcon0));
+		s.add(new Sprite(window, Vector3ir.of(296, 20, 0), Vector2ir.of(256, 256), textureIcon));
+		s.add(new Sprite(window, Vector3ir.of(20, 296, 0), Vector2ir.of(256, 256), textureIcon));
+		s.add(new Sprite(window, Vector3ir.of(296, 296, 0), Vector2ir.of(256, 256), textureIcon0));
 		s.setShaderProgram(shaderProgram);
 		SCREENS.add(s);
 		

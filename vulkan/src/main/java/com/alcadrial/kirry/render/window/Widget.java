@@ -1,10 +1,10 @@
 package com.alcadrial.kirry.render.window;
 
 import com.alcadrial.kector.matrix.Matrix4f;
+import com.alcadrial.kector.vector.Vector2fr;
+import com.alcadrial.kector.vector.Vector2ir;
+import com.alcadrial.kector.vector.Vector3ir;
 import com.alcadrial.kector.vector.Vector4i;
-import com.alcadrial.kector.vector.getter.Vector2fGetter;
-import com.alcadrial.kector.vector.getter.Vector2iGetter;
-import com.alcadrial.kector.vector.getter.Vector3iGetter;
 import com.alcadrial.kirry.render.FrameBuffer;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
@@ -24,7 +24,7 @@ public interface Widget {
 	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, Renderer) render} method.
 	 * @param memoryManager
 	 * @param commandBuffer
-	 * @throws VulkanException 
+	 * @throws VulkanException
 	 */
 	void initBuffers(MemoryManager memoryManager, CommandBuffer commandBuffer) throws VulkanException;
 	/**
@@ -42,11 +42,11 @@ public interface Widget {
 	 * <p>
 	 * This method is called after {@link #render(Matrix4f, Renderer) render}.
 	 * 
-	 * @param matrix the tranformation matrix
-	 * @param commandBuffer 
+	 * @param matrix the transformation matrix
+	 * @param commandBuffer
 	 * @param manager
 	 * @param partialFrame
-	 * @throws VulkanException 
+	 * @throws VulkanException
 	 */
 	void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer manager, float partialFrame) throws VulkanException;
 	/**
@@ -61,13 +61,13 @@ public interface Widget {
 	 * <p>
 	 * The x and y components of the returned {@link Vector4i} are the position of the rectangle, the z and w components are the width and height of the rectangle.
 	 * 
-	 * @param matrix the tranformation matrix
+	 * @param matrix the transformation matrix
 	 * @param partialFrame
 	 * @return the area affected by {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw} or null if not known
 	 */
 	Vector4i drawingArea(Matrix4f matrix, float partialFrame);
 	/**
-	 * Returns true if this widget has collected all the vertices after a 
+	 * Returns true if this widget has collected all the vertices after a
 	 * {@link #render(Matrix4f, Renderer) render} and is ready to {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw}.
 	 * 
 	 * @return true if this widget has been rendered
@@ -85,20 +85,20 @@ public interface Widget {
 	void requestRender();
 	
 	boolean isMouseHover();
-	boolean isHovered(Vector2iGetter v);
-	boolean isHovered(Vector2fGetter v);
+	boolean isHovered(Vector2ir v);
+	boolean isHovered(Vector2fr v);
 	
 	boolean isDragging();
 	
-	ActionResult onClick(int button, int count, Vector2iGetter mousePos);
-	ActionResult onPress(int button, Vector2iGetter mousePos);
-	ActionResult onRelease(int button, Vector2iGetter mousePos);
+	ActionResult onClick(int button, int count, Vector2ir mousePos);
+	ActionResult onPress(int button, Vector2ir mousePos);
+	ActionResult onRelease(int button, Vector2ir mousePos);
 	
-	void onMouseMove(Vector2iGetter oldPos, Vector2iGetter newPos);
+	void onMouseMove(Vector2ir oldPos, Vector2ir newPos);
 	
-	ActionResult onDragStart(Vector2iGetter mousePos);
-	ActionResult onDragEnd(Vector2iGetter startPos, Vector2iGetter endPos);
-	ActionResult onScroll(double xScroll, double yScroll, Vector2iGetter mousePos);
+	ActionResult onDragStart(Vector2ir mousePos);
+	ActionResult onDragEnd(Vector2ir startPos, Vector2ir endPos);
+	ActionResult onScroll(double xScroll, double yScroll, Vector2ir mousePos);
 	
 	int getX();
 	int getY();
@@ -106,9 +106,9 @@ public interface Widget {
 	int getWidth();
 	int getHeight();
 	
-	Vector3iGetter getPos();
-	Vector2iGetter getSize();
-	void setPos(Vector3iGetter pos);
-	void setSize(Vector2iGetter size);
+	Vector3ir getPos();
+	Vector2ir getSize();
+	void setPos(Vector3ir pos);
+	void setSize(Vector2ir size);
 	void registerEvents(EventRegistry registry);
 }

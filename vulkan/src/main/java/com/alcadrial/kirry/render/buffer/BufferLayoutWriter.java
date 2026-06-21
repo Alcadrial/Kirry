@@ -5,12 +5,18 @@ import java.util.List;
 import org.eclipse.collections.api.factory.Lists;
 
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kector.vector.Vector2f;
-import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.kector.vector.Vector3f;
-import com.alcadrial.kector.vector.Vector3i;
-import com.alcadrial.kector.vector.Vector4f;
-import com.alcadrial.kector.vector.Vector4i;
+import com.alcadrial.kector.vector.Vector2dr;
+import com.alcadrial.kector.vector.Vector2fr;
+import com.alcadrial.kector.vector.Vector2ir;
+import com.alcadrial.kector.vector.Vector2lr;
+import com.alcadrial.kector.vector.Vector3dr;
+import com.alcadrial.kector.vector.Vector3fr;
+import com.alcadrial.kector.vector.Vector3ir;
+import com.alcadrial.kector.vector.Vector3lr;
+import com.alcadrial.kector.vector.Vector4dr;
+import com.alcadrial.kector.vector.Vector4fr;
+import com.alcadrial.kector.vector.Vector4ir;
+import com.alcadrial.kector.vector.Vector4lr;
 import com.alcadrial.kirry.render.buffer.writer.DirectBufferWriter;
 import com.alcadrial.kirry.render.shader.ShaderInputType;
 import com.alcadrial.kirry.render.shader.ShaderVariable;
@@ -57,99 +63,195 @@ public class BufferLayoutWriter {
 		}
 	}
 	
-	public void set(ShaderVariable variable, Vector2f value) throws VulkanException
+	public void set(ShaderVariable variable, Vector2fr value) throws VulkanException
 	{
 		set(variable, 0, value);
 	}
 	
-	public void set(ShaderVariable variable, int index, Vector2f value) throws VulkanException
+	public void set(ShaderVariable variable, int index, Vector2fr value) throws VulkanException
 	{
 		Integer offset = layout.getOffset(variable);
 		if (offset != null)
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_2, variable.getType());
-			writer.setCursor(2 * index + offset).put(value.getValuesArray());
+			writer.setCursor(2 * index + offset).put(value);
 			regions.add(new Region(index + offset, 2));
 		}
 	}
 	
-	public void set(ShaderVariable variable, Vector3f value) throws VulkanException
+	public void set(ShaderVariable variable, Vector3fr value) throws VulkanException
 	{
 		set(variable, 0, value);
 	}
 	
-	public void set(ShaderVariable variable, int index, Vector3f value) throws VulkanException
+	public void set(ShaderVariable variable, int index, Vector3fr value) throws VulkanException
 	{
 		Integer offset = layout.getOffset(variable);
 		if (offset != null)
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_3, variable.getType());
-			writer.setCursor(4 * index + offset).put(value.getValuesArray());
+			writer.setCursor(4 * index + offset).put(value);
 			regions.add(new Region(index + offset, 3));
 		}
 	}
 	
-	public void set(ShaderVariable variable, Vector4f value) throws VulkanException
+	public void set(ShaderVariable variable, Vector4fr value) throws VulkanException
 	{
 		set(variable, 0, value);
 	}
 	
-	public void set(ShaderVariable variable, int index, Vector4f value) throws VulkanException
+	public void set(ShaderVariable variable, int index, Vector4fr value) throws VulkanException
 	{
 		Integer offset = layout.getOffset(variable);
 		if (offset != null)
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_4, variable.getType());
-			writer.setCursor(4 * index + offset).put(value.getValuesArray());
+			writer.setCursor(4 * index + offset).put(value);
 			regions.add(new Region(index + offset, 4));
 		}
 	}
 	
-	public void set(ShaderVariable variable, Vector2i value) throws VulkanException
+	public void set(ShaderVariable variable, Vector2ir value) throws VulkanException
 	{
 		set(variable, 0, value);
 	}
 	
-	public void set(ShaderVariable variable, int index, Vector2i value) throws VulkanException
+	public void set(ShaderVariable variable, int index, Vector2ir value) throws VulkanException
 	{
 		Integer offset = layout.getOffset(variable);
 		if (offset != null)
 		{
 			checkValue(ShaderInputType.VECTOR_INT_2, variable.getType());
-			writer.setCursor(2 * index + offset).put(value.getValuesArray());
+			writer.setCursor(2 * index + offset).put(value);
 			regions.add(new Region(index + offset, 2));
 		}
 	}
 	
-	public void set(ShaderVariable variable, Vector3i value) throws VulkanException
+	public void set(ShaderVariable variable, Vector3ir value) throws VulkanException
 	{
 		set(variable, 0, value);
 	}
 	
-	public void set(ShaderVariable variable, int index, Vector3i value) throws VulkanException
+	public void set(ShaderVariable variable, int index, Vector3ir value) throws VulkanException
 	{
 		Integer offset = layout.getOffset(variable);
 		if (offset != null)
 		{
 			checkValue(ShaderInputType.VECTOR_INT_3, variable.getType());
-			writer.setCursor(4 * index + offset).put(value.getValuesArray());
+			writer.setCursor(4 * index + offset).put(value);
 			regions.add(new Region(index + offset, 3));
 		}
 	}
 	
-	public void set(ShaderVariable variable, Vector4i value) throws VulkanException
+	public void set(ShaderVariable variable, Vector4ir value) throws VulkanException
 	{
 		set(variable, 0, value);
 	}
 	
-	public void set(ShaderVariable variable, int index, Vector4i value) throws VulkanException
+	public void set(ShaderVariable variable, int index, Vector4ir value) throws VulkanException
 	{
 		Integer offset = layout.getOffset(variable);
 		if (offset != null)
 		{
 			checkValue(ShaderInputType.VECTOR_INT_4, variable.getType());
-			writer.setCursor(4 * index + offset).put(value.getValuesArray());
+			writer.setCursor(4 * index + offset).put(value);
 			regions.add(new Region(index + offset, 4));
+		}
+	}
+	
+	public void set(ShaderVariable variable, Vector2dr value) throws VulkanException
+	{
+		set(variable, 0, value);
+	}
+	
+	public void set(ShaderVariable variable, int index, Vector2dr value) throws VulkanException
+	{
+		Integer offset = layout.getOffset(variable);
+		if (offset != null)
+		{
+			checkValue(ShaderInputType.VECTOR_DOUBLE_2, variable.getType());
+			writer.setCursor(4 * index + offset).put(value);
+			regions.add(new Region(index + offset, 4));
+		}
+	}
+	
+	public void set(ShaderVariable variable, Vector3dr value) throws VulkanException
+	{
+		set(variable, 0, value);
+	}
+	
+	public void set(ShaderVariable variable, int index, Vector3dr value) throws VulkanException
+	{
+		Integer offset = layout.getOffset(variable);
+		if (offset != null)
+		{
+			checkValue(ShaderInputType.VECTOR_DOUBLE_3, variable.getType());
+			writer.setCursor(6 * index + offset).put(value);
+			regions.add(new Region(index + offset, 6));
+		}
+	}
+	
+	public void set(ShaderVariable variable, Vector4dr value) throws VulkanException
+	{
+		set(variable, 0, value);
+	}
+	
+	public void set(ShaderVariable variable, int index, Vector4dr value) throws VulkanException
+	{
+		Integer offset = layout.getOffset(variable);
+		if (offset != null)
+		{
+			checkValue(ShaderInputType.VECTOR_DOUBLE_4, variable.getType());
+			writer.setCursor(8 * index + offset).put(value);
+			regions.add(new Region(index + offset, 8));
+		}
+	}
+	
+	public void set(ShaderVariable variable, Vector2lr value) throws VulkanException
+	{
+		set(variable, 0, value);
+	}
+	
+	public void set(ShaderVariable variable, int index, Vector2lr value) throws VulkanException
+	{
+		Integer offset = layout.getOffset(variable);
+		if (offset != null)
+		{
+			checkValue(ShaderInputType.VECTOR_LONG_2, variable.getType());
+			writer.setCursor(4 * index + offset).put(value);
+			regions.add(new Region(index + offset, 4));
+		}
+	}
+	
+	public void set(ShaderVariable variable, Vector3lr value) throws VulkanException
+	{
+		set(variable, 0, value);
+	}
+	
+	public void set(ShaderVariable variable, int index, Vector3lr value) throws VulkanException
+	{
+		Integer offset = layout.getOffset(variable);
+		if (offset != null)
+		{
+			checkValue(ShaderInputType.VECTOR_LONG_3, variable.getType());
+			writer.setCursor(6 * index + offset).put(value);
+			regions.add(new Region(index + offset, 6));
+		}
+	}
+	
+	public void set(ShaderVariable variable, Vector4lr value) throws VulkanException
+	{
+		set(variable, 0, value);
+	}
+	
+	public void set(ShaderVariable variable, int index, Vector4lr value) throws VulkanException
+	{
+		Integer offset = layout.getOffset(variable);
+		if (offset != null)
+		{
+			checkValue(ShaderInputType.VECTOR_LONG_4, variable.getType());
+			writer.setCursor(8 * index + offset).put(value);
+			regions.add(new Region(index + offset, 8));
 		}
 	}
 	

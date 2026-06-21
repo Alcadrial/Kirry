@@ -21,7 +21,7 @@ import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 import org.lwjgl.vulkan.VkViewport;
 
-import com.alcadrial.kector.vector.Vector3i;
+import com.alcadrial.kector.vector.Vector3ir;
 import com.alcadrial.kirry.core.util.NotYetImplementedException;
 import com.alcadrial.kirry.core.util.color.Color;
 import com.alcadrial.kirry.render.Debug;
@@ -225,7 +225,7 @@ public class SynchronizedCommandBuffer extends CommandBuffer {
 	}
 	
 	@Override
-	public void copyBufferToImage(VulkanBuffer srcBuffer, long srcOffset, Texture dstTexture, Vector3i imageOffset, Vector3i imageExtent)
+	public void copyBufferToImage(VulkanBuffer srcBuffer, long srcOffset, Texture dstTexture, Vector3ir imageOffset, Vector3ir imageExtent)
 	{
 		copyBufferToImage(srcBuffer, srcOffset, dstTexture, imageOffset.x(), imageOffset.y(), imageOffset.z(), imageExtent.x(), imageExtent.y(), imageExtent.z());
 	}

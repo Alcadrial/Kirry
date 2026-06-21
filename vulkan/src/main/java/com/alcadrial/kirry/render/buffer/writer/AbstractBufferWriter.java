@@ -1,20 +1,28 @@
 package com.alcadrial.kirry.render.buffer.writer;
 
 import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.nio.LongBuffer;
 
 import org.jspecify.annotations.Nullable;
 
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kector.vector.Vector2f;
-import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.kector.vector.Vector3f;
-import com.alcadrial.kector.vector.Vector3i;
-import com.alcadrial.kector.vector.Vector4f;
-import com.alcadrial.kector.vector.Vector4i;
-import com.alcadrial.kirry.render.buffer.VulkanBuffer;
+import com.alcadrial.kector.vector.Vector2dr;
+import com.alcadrial.kector.vector.Vector2fr;
+import com.alcadrial.kector.vector.Vector2ir;
+import com.alcadrial.kector.vector.Vector2lr;
+import com.alcadrial.kector.vector.Vector3dr;
+import com.alcadrial.kector.vector.Vector3fr;
+import com.alcadrial.kector.vector.Vector3ir;
+import com.alcadrial.kector.vector.Vector3lr;
+import com.alcadrial.kector.vector.Vector4dr;
+import com.alcadrial.kector.vector.Vector4fr;
+import com.alcadrial.kector.vector.Vector4ir;
+import com.alcadrial.kector.vector.Vector4lr;
 import com.alcadrial.kirry.render.buffer.Memory.Mapping;
+import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 
 public abstract class AbstractBufferWriter<W extends AbstractBufferWriter<W>> implements BufferWriter {
@@ -28,6 +36,8 @@ public abstract class AbstractBufferWriter<W extends AbstractBufferWriter<W>> im
 	protected final ByteBuffer buffer;
 	private @Nullable IntBuffer intBuffer;
 	private @Nullable FloatBuffer floatBuffer;
+	private @Nullable LongBuffer longBuffer;
+	private @Nullable DoubleBuffer doubleBuffer;
 	protected int cursor;
 	
 	public AbstractBufferWriter(VulkanBuffer srcDstBuffer) throws VulkanException
@@ -78,6 +88,18 @@ public abstract class AbstractBufferWriter<W extends AbstractBufferWriter<W>> im
 		return floatBuffer = buffer.asFloatBuffer();
 	}
 	
+	protected LongBuffer asLong()
+	{
+		if (longBuffer != null) return longBuffer;
+		return longBuffer = buffer.asLongBuffer();
+	}
+	
+	protected DoubleBuffer asDouble()
+	{
+		if (doubleBuffer != null) return doubleBuffer;
+		return doubleBuffer = buffer.asDoubleBuffer();
+	}
+	
 	@Override
 	public W resetCursor() throws VulkanException
 	{
@@ -94,31 +116,39 @@ public abstract class AbstractBufferWriter<W extends AbstractBufferWriter<W>> im
 	}
 	
 	@Override
-	public W put(int... values)
+	public W put(byte... values)
 	{
-		BufferWriter.super.put(values);
-		return self();
+		return put(values, 0, values.length);
 	}
 	
 	@Override
-	public W put(byte... values)
+	public W put(int... values)
 	{
-		BufferWriter.super.put(values);
-		return self();
+		return put(values, 0, values.length);
 	}
 	
 	@Override
 	public W put(float... values)
 	{
-		BufferWriter.super.put(values);
-		return self();
+		return put(values, 0, values.length);
+	}
+	
+	@Override
+	public W put(long... values)
+	{
+		return put(values, 0, values.length);
+	}
+	
+	@Override
+	public W put(double... values)
+	{
+		return put(values, 0, values.length);
 	}
 	
 	@Override
 	public W put(ByteBuffer values)
 	{
-		BufferWriter.super.put(values);
-		return self();
+		return put(values, 0, values.limit());
 	}
 	
 	@Override
@@ -154,39 +184,82 @@ public abstract class AbstractBufferWriter<W extends AbstractBufferWriter<W>> im
 	}
 	
 	@Override
-	public W put(Vector2f value)
+	public W put(long[] value, int offset, int size)
 	{
-		return put(value.getValuesArray());
+		asLong().put(cursor, value, offset, size);
+		cursor += size;
+		return self();
 	}
 	
 	@Override
-	public W put(Vector3f value)
+	public W put(double[] values, int offset, int size)
 	{
-		return put(value.getValuesArray());
+		asDouble().put(cursor, values, offset, size);
+		cursor += size;
+		return self();
+	}
+
+	@Override
+	public W put(Vector2ir v)
+	{
+		return put(v.x(), v.y());
+	}
+	@Override
+	public W put(Vector2lr v)
+	{
+		return put(v.x(), v.y());
+	}
+	@Override
+	public W put(Vector2fr v)
+	{
+		return put(v.x(), v.y());
+	}
+	@Override
+	public W put(Vector2dr v)
+	{
+		return put(v.x(), v.y());
 	}
 	
 	@Override
-	public W put(Vector4f value)
+	public W put(Vector3ir v)
 	{
-		return put(value.getValuesArray());
+		return put(v.x(), v.y(), v.z());
+	}
+	@Override
+	public W put(Vector3lr v)
+	{
+		return put(v.x(), v.y(), v.z());
+	}
+	@Override
+	public W put(Vector3fr v)
+	{
+		return put(v.x(), v.y(), v.z());
+	}
+	@Override
+	public W put(Vector3dr v)
+	{
+		return put(v.x(), v.y(), v.z());
 	}
 	
 	@Override
-	public W put(Vector2i value)
+	public W put(Vector4ir v)
 	{
-		return put(value.getValuesArray());
+		return put(v.x(), v.y(), v.z(), v.w());
 	}
-	
 	@Override
-	public W put(Vector3i value)
+	public W put(Vector4lr v)
 	{
-		return put(value.getValuesArray());
+		return put(v.x(), v.y(), v.z(), v.w());
 	}
-	
 	@Override
-	public W put(Vector4i value)
+	public W put(Vector4fr v)
 	{
-		return put(value.getValuesArray());
+		return put(v.x(), v.y(), v.z(), v.w());
+	}
+	@Override
+	public W put(Vector4dr v)
+	{
+		return put(v.x(), v.y(), v.z(), v.w());
 	}
 	
 	@Override

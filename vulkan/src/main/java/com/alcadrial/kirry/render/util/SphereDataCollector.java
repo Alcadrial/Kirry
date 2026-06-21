@@ -3,7 +3,7 @@ package com.alcadrial.kirry.render.util;
 import java.math.RoundingMode;
 
 import com.alcadrial.kector.Math;
-import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3fr;
 import com.alcadrial.kirry.render.KirryVulkan;
 import com.alcadrial.kirry.render.buffer.writer.BufferWriter;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
@@ -15,7 +15,7 @@ public class SphereDataCollector {
 		KirryVulkan.assertLoaded();
 	}
 	
-	public static void collect(BufferWriter vertexBuffer, BufferWriter indexBuffer, Vector3f origin, float radius, int scan) throws VulkanException
+	public static void collect(BufferWriter vertexBuffer, BufferWriter indexBuffer, Vector3fr origin, float radius, int scan) throws VulkanException
 	{
 		if (radius < 0) throw new IllegalArgumentException("Negative radius");
 		if (scan <= 0) throw new IllegalArgumentException("Non positive scan");
@@ -39,9 +39,9 @@ public class SphereDataCollector {
 		if (vertexBuffer.getSize() < vertexCount * 3 * 4) throw new OverflowException("VertexBuffer capacity required: " + vertexCount * 3 + ", available: " + vertexBuffer.getSize() / 4);
 		if (indexBuffer.getSize() < indexCount * 4) throw new OverflowException("IndexBuffer capacity required: " + indexCount + ", available: " + indexBuffer.getSize() / 4);
 		
-		Vector3f[][] vertexMatrix = new Vector3f[parallelCount + 2][];
+		Vector3fr[][] vertexMatrix = new Vector3fr[parallelCount + 2][];
 		
-		vertexMatrix[0] = new Vector3f[] {Vector3f.ofImmutable(origin.x(), origin.y() - radius, origin.z())};
+		vertexMatrix[0] = new Vector3fr[] {Vector3fr.of(origin.x(), origin.y() - radius, origin.z())};
 		for (int i = 1; i < parallelCount + 1; i++)
 		{
 			float angle = yPass * i - hp;
@@ -49,9 +49,9 @@ public class SphereDataCollector {
 			float r = radius * Math.cos(angle);
 			vertexMatrix[i] = getRingVertices(origin, 0, r, meridianCount, y);
 		}
-		vertexMatrix[parallelCount + 1] = new Vector3f[] {Vector3f.ofImmutable(origin.x(), origin.y() + radius, origin.z())};
+		vertexMatrix[parallelCount + 1] = new Vector3fr[] {Vector3fr.of(origin.x(), origin.y() + radius, origin.z())};
 		
-		for (Vector3f[] ring : vertexMatrix) for (Vector3f vertex : ring) vertexBuffer.put(vertex);
+		for (Vector3fr[] ring : vertexMatrix) for (Vector3fr vertex : ring) vertexBuffer.put(vertex);
 		
 		for (int i = 1; i < meridianCount; i++) indexBuffer.put(0, i, i + 1);
 		indexBuffer.put(0, meridianCount, 1);
@@ -76,16 +76,16 @@ public class SphereDataCollector {
 		indexBuffer.put(offset, offsetExtra, offsetExtra - 1);
 	}
 	
-	private static Vector3f[] getRingVertices(Vector3f origin, float offset, float radius, int vertexCount, float y)
+	private static Vector3fr[] getRingVertices(Vector3fr origin, float offset, float radius, int vertexCount, float y)
 	{
 		y += origin.y();
-		Vector3f[] vertexArray = new Vector3f[vertexCount];
+		Vector3fr[] vertexArray = new Vector3fr[vertexCount];
 		float pass = (float) (2 * Math.PI / vertexCount);
 		offset %= pass;
 		for (int i = 0; i < vertexCount; i++)
 		{
 			float angle = offset + pass * i;
-			vertexArray[i] = Vector3f.ofImmutable(origin.x() + radius * Math.cos(angle), y, origin.z() + radius * Math.sin(angle));
+			vertexArray[i] = Vector3fr.of(origin.x() + radius * Math.cos(angle), y, origin.z() + radius * Math.sin(angle));
 		}
 		return vertexArray;
 	}

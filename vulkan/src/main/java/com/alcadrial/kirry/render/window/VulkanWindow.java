@@ -57,7 +57,9 @@ import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
+import com.alcadrial.kector.vector.Vector2fr;
 import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector2ir;
 import com.alcadrial.kirry.core.Window;
 import com.alcadrial.kirry.core.util.Pair;
 import com.alcadrial.kirry.render.Debug;
@@ -997,7 +999,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		return new Pair<>(p[0][0], p[1][0]);
 	}
 	
-	public final void setMousePos(Vector2f pos)
+	public final void setMousePos(Vector2fr pos)
 	{
 		KirryVulkan.requestMainThread(() -> GLFW.glfwSetCursorPos(id, pos.x(), pos.y()));
 	}
@@ -1021,7 +1023,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		return Vector2i.of(p[0][0], p[1][0]);
 	}
 	
-	public final void setPos(Vector2i pos)
+	public final void setPos(Vector2ir pos)
 	{
 		KirryVulkan.requestMainThread(() -> GLFW.glfwSetWindowPos(id, pos.x(), pos.y()));
 	}

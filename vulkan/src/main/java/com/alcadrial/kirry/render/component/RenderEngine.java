@@ -30,9 +30,9 @@ import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
-import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.kector.vector.Vector3f;
-import com.alcadrial.kector.vector.Vector3i;
+import com.alcadrial.kector.vector.Vector2ir;
+import com.alcadrial.kector.vector.Vector3fr;
+import com.alcadrial.kector.vector.Vector3ir;
 import com.alcadrial.kirry.core.component.Entity;
 import com.alcadrial.kirry.core.component.EntityEngine;
 import com.alcadrial.kirry.render.Computer;
@@ -145,7 +145,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 		VulkanBuffer uniformBuffer;
 		
 		RenderPass renderPass;
-		Vector2i outputSize;
+		Vector2ir outputSize;
 		int buffersCount;
 		
 		DescriptorPool descriptorPool;
@@ -171,7 +171,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 		boolean[] isFrameUniformsDirty;
 		int vertexCount;
 		
-		public Data(MemoryManager memoryManager, VulkanBuffer vertexBuffer, VulkanBuffer textureUvBuffer, VulkanBuffer uniformBuffer, PipelineOutputTarget target, RenderPass renderPass, Vector2i outputSize, int buffersCount, int[] reloadCounters, MutableListMultimap<ShaderProgram, Entity> groupedEntities2, @Nullable ProgramRenderer defaultRendering, MutableList<ProgramRenderer> renderings, DescriptorPool descriptorPool, GraphicsPipelineTemplate graphicsPipelineTemplate, PipelineLayout initComputePipelineLayout, ComputePipeline initComputePipeline, Computer initComputer, PipelineLayout transformComputePipelineLayout, ComputePipeline transformComputePipeline, Computer transformComputer, Atlas atlas, boolean[] isFrameUniformsDirty, int vertexCount)
+		public Data(MemoryManager memoryManager, VulkanBuffer vertexBuffer, VulkanBuffer textureUvBuffer, VulkanBuffer uniformBuffer, PipelineOutputTarget target, RenderPass renderPass, Vector2ir outputSize, int buffersCount, int[] reloadCounters, MutableListMultimap<ShaderProgram, Entity> groupedEntities2, @Nullable ProgramRenderer defaultRendering, MutableList<ProgramRenderer> renderings, DescriptorPool descriptorPool, GraphicsPipelineTemplate graphicsPipelineTemplate, PipelineLayout initComputePipelineLayout, ComputePipeline initComputePipeline, Computer initComputer, PipelineLayout transformComputePipelineLayout, ComputePipeline transformComputePipeline, Computer transformComputer, Atlas atlas, boolean[] isFrameUniformsDirty, int vertexCount)
 		{
 			this.memoryManager = memoryManager;
 			this.vertexBuffer = vertexBuffer;
@@ -219,7 +219,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 		CommandBuffer commandBuffer = params.commandBuffer;
 		Collection<Entity> entities = params.entities;
 		RenderPass renderPass;
-		Vector2i outputSize;
+		Vector2ir outputSize;
 		int buffersCount;
 		switch (params.target)
 		{
@@ -235,7 +235,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 				{
 					renderPass = template.createRenderPass(device);
 				}
-				outputSize = Vector2i.of(texture.getWidth(), texture.getHeight());
+				outputSize = Vector2ir.of(texture.getWidth(), texture.getHeight());
 				buffersCount = 1;
 			}
 		}
@@ -440,7 +440,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 				.computePipeline(initComputePipeline)
 				.descriptorSets(computingDescriptorSets)
 				.buffersCount(computerBuffersCount)
-				.groupCount(Vector3i.of(256, 1, 1))
+				.groupCount(Vector3ir.of(256, 1, 1))
 				.bindings(i -> new BindingInfo[] {
 					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, computerUniformOffset + minComputeSize * i, initComputeBindingSize), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.UV,
@@ -457,7 +457,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 				.computePipeline(transformComputePipeline)
 				.descriptorSets(computingDescriptorSets)
 				.buffersCount(computerBuffersCount)
-				.groupCount(Vector3i.of(256, 1, 1))
+				.groupCount(Vector3ir.of(256, 1, 1))
 				.bindings(i -> new BindingInfo[] {
 					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, computerUniformOffset + minComputeSize * i, transformComputeBindingSize), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.UV,
@@ -531,7 +531,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 		}
 	}
 	
-	private Data.ProgramRenderer createRenderer(MemoryStack stack, ShaderProgram program, MutableList<ShaderVariable> vertexStageUniforms, MutableList<ShaderVariable> fragmentStageUniforms, DescriptorPool descriptorPool, VkPipelineLayoutCreateInfo pipelineLayoutInfo, RenderPass renderPass, Vector2i outputSize, GraphicsPipelineTemplate graphicsPipelineTemplate, int buffersCount, VulkanBuffer vertexBuffer, VulkanBuffer textureUvBuffer, Atlas atlas, VulkanFunction<Integer, BindingInfo[]> bindingFactory) throws VulkanException
+	private Data.ProgramRenderer createRenderer(MemoryStack stack, ShaderProgram program, MutableList<ShaderVariable> vertexStageUniforms, MutableList<ShaderVariable> fragmentStageUniforms, DescriptorPool descriptorPool, VkPipelineLayoutCreateInfo pipelineLayoutInfo, RenderPass renderPass, Vector2ir outputSize, GraphicsPipelineTemplate graphicsPipelineTemplate, int buffersCount, VulkanBuffer vertexBuffer, VulkanBuffer textureUvBuffer, Atlas atlas, VulkanFunction<Integer, BindingInfo[]> bindingFactory) throws VulkanException
 	{
 		Data.ProgramRenderer defaultRendering;
 		DescriptorSetLayout graphicsDescriptorSetLayout = new DescriptorSetLayout(device, VkDescriptorSetLayoutCreateInfo.malloc(stack)
@@ -623,7 +623,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 		Collection<Entity> addedEntities = params.addedEntities;
 		Collection<Entity> removedEntities = params.removedEntities;
 		RenderPass renderPass;
-		Vector2i outputSize;
+		Vector2ir outputSize;
 		//TODO: handle buffersCount change
 		//int buffersCount;
 		switch (params.target)
@@ -645,7 +645,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 				{
 					renderPass = template.createRenderPass(device);
 				}
-				outputSize = Vector2i.of(texture.getWidth(), texture.getHeight());
+				outputSize = Vector2ir.of(texture.getWidth(), texture.getHeight());
 				//buffersCount = 1;
 			}
 		}
@@ -829,7 +829,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 				if (spatial != null)
 				{
 					//TODO compute vertex data difference from gpu
-					Vector3f position = Vector3f.of(0, 0, 0);
+					Vector3fr position = Vector3fr.of(0, 0, 0);
 					
 					spatial.reinit(new SpatialComponent.Params(position, null));
 				}

@@ -20,7 +20,6 @@ import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
-import com.alcadrial.kector.angle.AngleUnit;
 import com.alcadrial.kector.annotation.Angle;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector3f;
@@ -28,11 +27,11 @@ import com.alcadrial.kirry.core.component.Entity;
 import com.alcadrial.kirry.render.Debug;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.FrameBuffer;
-import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.KirryVulkan;
+import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
-import com.alcadrial.kirry.render.component.RenderEngine;
 import com.alcadrial.kirry.render.component.MeshComponent;
+import com.alcadrial.kirry.render.component.RenderEngine;
 import com.alcadrial.kirry.render.component.ShaderComponent;
 import com.alcadrial.kirry.render.component.SpatialEngine;
 import com.alcadrial.kirry.render.memory.MemoryManager;
@@ -75,14 +74,14 @@ public class ComponentTest extends RenderTest {
 	private static ShaderVariable lightIntensity = ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY");
 	private static ShaderVariable spaceFogIntensity = ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY");
 	
-	private static @Angle(AngleUnit.RADIANS) float xRotation;
-	private static @Angle(AngleUnit.RADIANS) float yRotation;
-	private static @Angle(AngleUnit.RADIANS) float zRotation;
+	private static @Angle float xRotation;
+	private static @Angle float yRotation;
+	private static @Angle float zRotation;
 	private static boolean isModifiedModel;
 	private static boolean isModified;
 	private static boolean reloadShaders;
 	
-	private static Matrix4f buildModelMatrix(@Angle(AngleUnit.RADIANS) float xRotation, @Angle(AngleUnit.RADIANS) float yRotation, @Angle(AngleUnit.RADIANS) float zRotation)
+	private static Matrix4f buildModelMatrix(@Angle float xRotation, @Angle float yRotation, @Angle float zRotation)
 	{
 		Matrix4f matrix = new Matrix4f();
 		matrix.multiply(new Matrix4f().rotateX(xRotation));

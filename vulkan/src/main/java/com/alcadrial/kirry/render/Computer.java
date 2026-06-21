@@ -10,7 +10,7 @@ import org.lwjgl.vulkan.VkDescriptorBufferInfo;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
 import com.alcadrial.kector.Math;
-import com.alcadrial.kector.vector.Vector3i;
+import com.alcadrial.kector.vector.Vector3ir;
 import com.alcadrial.kirry.render.buffer.BufferLayout;
 import com.alcadrial.kirry.render.buffer.BufferLayoutWriter;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
@@ -38,7 +38,7 @@ public class Computer implements VulkanDebug {
 	public static final class Builder {
 		
 		private @Nullable ComputePipeline computePipeline;
-		private @Nullable Vector3i groupCount;
+		private @Nullable Vector3ir groupCount;
 		private DescriptorSet @Nullable [] descriptorSets;
 		private int buffersCount;
 		private @Nullable VulkanFunction<Integer, BindingInfo[]> bindings;
@@ -75,7 +75,7 @@ public class Computer implements VulkanDebug {
 			return this;
 		}
 		
-		public Builder groupCount(Vector3i groupCount)
+		public Builder groupCount(Vector3ir groupCount)
 		{
 			this.groupCount = groupCount;
 			return this;
@@ -122,7 +122,7 @@ public class Computer implements VulkanDebug {
 	
 	private Device device;
 	private ComputePipeline computePipeline;
-	private Vector3i groupCount;
+	private Vector3ir groupCount;
 	private InfoHolder[][] info;
 	private VkWriteDescriptorSet.Buffer[] writeDescriptorSets;
 	private @Nullable BufferLayoutWriter[][] writers;
@@ -311,7 +311,7 @@ public class Computer implements VulkanDebug {
 		VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets[frameIndex], null);
 	}
 	
-	public void setGroupCount(Vector3i groupCount)
+	public void setGroupCount(Vector3ir groupCount)
 	{
 		this.groupCount = groupCount;
 	}

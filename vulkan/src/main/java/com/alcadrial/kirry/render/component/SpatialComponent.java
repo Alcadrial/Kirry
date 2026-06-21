@@ -4,31 +4,35 @@ import java.util.concurrent.CompletableFuture;
 
 import org.jspecify.annotations.Nullable;
 
-import com.alcadrial.kector.vector.getter.Vector3fGetter;
-import com.alcadrial.kirry.core.component.Component;
+import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3fr;
 import com.alcadrial.kirry.core.component.ComponentType;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 
-public class SpatialComponent implements Component<SpatialComponent.Params, SpatialComponent.Properties, VulkanException> {
+public class SpatialComponent extends AbstractVulkanComponent<SpatialComponent.Params, SpatialComponent.Properties> {
 
 	public static final ComponentType<SpatialComponent> TYPE = ComponentType.of(SpatialComponent.class);
 	
 	public record Params(
-		@Nullable Vector3fGetter position,
-		@Nullable Vector3fGetter movement
+		@Nullable Vector3fr position,
+		@Nullable Vector3fr movement
 	) {}
 	
 	public record Properties(
 		boolean isDirty
 	) {}
 	
-	private @Nullable Vector3fGetter position;
-	private @Nullable Vector3fGetter movement;
+	public record State(
+		Vector3f position,
+		Vector3f movement
+	) {}
+	
+	private State state;
 	private boolean isDirty;
 	
 	public SpatialComponent()
 	{
-		
+		state = new State(Vector3f.of(0, 0, 0), Vector3f.of(0, 0, 0));
 	}
 	
 	@Override
@@ -44,18 +48,6 @@ public class SpatialComponent implements Component<SpatialComponent.Params, Spat
 	}
 	
 	@Override
-	public boolean isLoaded()
-	{
-		return true;
-	}
-	
-	@Override
-	public int reloadCount()
-	{
-		return 0;
-	}
-	
-	@Override
 	public void init(Params params)
 	{
 		reinit(params);
@@ -64,8 +56,8 @@ public class SpatialComponent implements Component<SpatialComponent.Params, Spat
 	@Override
 	public void reinit(Params params)
 	{
-		if (params.position != null) position = params.position;
-		if (params.movement != null) movement = params.movement;
+		if (params.position != null) state.position.setAll(params.position);
+		if (params.movement != null) state.movement.setAll(params.movement);
 		isDirty = true;
 	}
 	
@@ -78,8 +70,6 @@ public class SpatialComponent implements Component<SpatialComponent.Params, Spat
 	
 	public void reset()
 	{
-		position = null;
-		movement = null;
 		isDirty = false;
 	}
 	

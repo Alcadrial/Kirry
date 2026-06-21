@@ -32,10 +32,10 @@ import org.lwjgl.vulkan.VkVertexInputBindingDescription;
 import org.lwjgl.vulkan.VkViewport;
 
 import com.alcadrial.kector.shape.OrthoShape;
-import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.kector.vector.Vector3f;
-import com.alcadrial.kector.vector.Vector4f;
-import com.alcadrial.kector.vector.Vector4i;
+import com.alcadrial.kector.vector.Vector2ir;
+import com.alcadrial.kector.vector.Vector3fr;
+import com.alcadrial.kector.vector.Vector4fr;
+import com.alcadrial.kector.vector.Vector4ir;
 import com.alcadrial.kirry.core.util.Pair;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.KirryVulkan;
@@ -153,7 +153,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 	}
 	
 	//TODO change ShaderProgram to ShaderVertexInputs
-	public GraphicsPipeline createPipeline(Device device, ShaderProgram program, Vector2i surfaceSize, PipelineLayout layout, RenderPass renderPass, int subpass) throws VulkanException
+	public GraphicsPipeline createPipeline(Device device, ShaderProgram program, Vector2ir surfaceSize, PipelineLayout layout, RenderPass renderPass, int subpass) throws VulkanException
 	{
 		VkPipelineShaderStageCreateInfo.Buffer pStages = ShaderUtils.createPipelineShaderStageCreateInfoBuffer(device, program);
 		try
@@ -228,7 +228,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		public class VertexInputStateConfigurator {
 			
 			private Map<Integer, Pair<Integer, Integer>> bindings;
-			private Map<Vector2i, Pair<Integer, ShaderInputType>> attributes;
+			private Map<Vector2ir, Pair<Integer, ShaderInputType>> attributes;
 			
 			public VertexInputStateConfigurator()
 			{
@@ -244,7 +244,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			
 			public VertexInputStateConfigurator addAttribute(int location, int binding, ShaderInputType type, int offset)
 			{
-				attributes.put(Vector2i.of(location, binding), new Pair<>(offset, type));
+				attributes.put(Vector2ir.of(location, binding), new Pair<>(offset, type));
 				return this;
 			}
 			
@@ -266,7 +266,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				{
 					pVertexAttributeDescriptions = VkVertexInputAttributeDescription.malloc(attributes.size());
 					
-					for (Entry<Vector2i, Pair<Integer, ShaderInputType>> e : attributes.entrySet()) pVertexAttributeDescriptions.get()
+					for (Entry<Vector2ir, Pair<Integer, ShaderInputType>> e : attributes.entrySet()) pVertexAttributeDescriptions.get()
 						.location(e.getKey().x())
 						.binding(e.getKey().y())
 						.format(e.getValue().right.getVulkanType())
@@ -362,12 +362,12 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			@FunctionalInterface
 			public static interface ExtraConfiguration {
 				
-				VkPipelineViewportStateCreateInfo apply(VkPipelineViewportStateCreateInfo createInfo, Vector2i surfaceSize);
+				VkPipelineViewportStateCreateInfo apply(VkPipelineViewportStateCreateInfo createInfo, Vector2ir surfaceSize);
 			}
 			
 			private List<OrthoShape> viewports;
-			//TODO replace with a List<Rectangle> 
-			private List<@Nullable Vector4i> scissors;
+			//TODO replace with a List<Rectangle>
+			private List<@Nullable Vector4ir> scissors;
 			
 			public ViewportStateConfigurator()
 			{
@@ -395,9 +395,9 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				return this;
 			}
 			
-			public ViewportStateConfigurator addScissor(Vector2i offset, Vector2i extent)
+			public ViewportStateConfigurator addScissor(Vector2ir offset, Vector2ir extent)
 			{
-				scissors.add(Vector4i.of(offset, extent));
+				scissors.add(Vector4ir.of(offset.x(), offset.y(), extent.x(), extent.y()));
 				return this;
 			}
 			
@@ -425,11 +425,11 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 					pViewports.rewind();
 				}
 				VkRect2D.Buffer pScissors = null;
-				List<@Nullable Vector4i> scissors = this.scissors;
+				List<@Nullable Vector4ir> scissors = this.scissors;
 				if (!scissors.isEmpty())
 				{
 					pScissors = VkRect2D.malloc(scissors.size());
-					for (Vector4i scissor : scissors)
+					for (Vector4ir scissor : scissors)
 					{
 						VkRect2D vkScissor = pScissors.get();
 						if (scissor != null)
@@ -455,12 +455,12 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			
 			public ExtraConfiguration extraConfiguration()
 			{
-				List<@Nullable Vector4i> scissors = Lists.fixedSize.ofAll(this.scissors);
+				List<@Nullable Vector4ir> scissors = Lists.fixedSize.ofAll(this.scissors);
 				return (createInfo, surfaceSize) -> {
 					VkRect2D.Buffer pScissors = createInfo.pScissors();
 					if (pScissors != null)
 					{
-						for (Vector4i scissor : scissors)
+						for (Vector4ir scissor : scissors)
 						{
 							VkRect2D vkScissor = pScissors.get();
 							if (scissor == null)
@@ -849,10 +849,10 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			
 			public ColorBlendStateConfigurator blendConstants(float r, float g, float b, float a)
 			{
-				this.blendConstants[0] = r;
-				this.blendConstants[1] = g;
-				this.blendConstants[2] = b;
-				this.blendConstants[3] = a;
+				blendConstants[0] = r;
+				blendConstants[1] = g;
+				blendConstants[2] = b;
+				blendConstants[3] = a;
 				return this;
 			}
 			
@@ -861,12 +861,12 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				return blendConstants(r, g, b, 1);
 			}
 			
-			public ColorBlendStateConfigurator blendConstants(Vector3f color)
+			public ColorBlendStateConfigurator blendConstants(Vector3fr color)
 			{
 				return blendConstants(color.x(), color.y(), color.z(), 1);
 			}
 			
-			public ColorBlendStateConfigurator blendConstants(Vector4f color)
+			public ColorBlendStateConfigurator blendConstants(Vector4fr color)
 			{
 				return blendConstants(color.x(), color.y(), color.z(), color.w());
 			}

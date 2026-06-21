@@ -4,8 +4,8 @@ import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
-import com.alcadrial.kector.vector.Vector2i;
-import com.alcadrial.kector.vector.Vector3i;
+import com.alcadrial.kector.vector.Vector2ir;
+import com.alcadrial.kector.vector.Vector3ir;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.RenderingDataUtils;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
@@ -28,10 +28,10 @@ public class Sprite extends AbstractWidget {
 	private TextureBuffer textureBuffer;
 	private TextureRegion texture;
 	
-	public Sprite(VulkanWindow window, Vector3i pos, Vector2i size, TextureBuffer texture)
+	public Sprite(VulkanWindow window, Vector3ir pos, Vector2ir size, TextureBuffer texture)
 	{
 		super(window, pos, size);
-		this.textureBuffer = texture;
+		textureBuffer = texture;
 	}
 	
 	@Override
@@ -52,11 +52,10 @@ public class Sprite extends AbstractWidget {
 			DeferredBufferWriter localVertexWriter = transfer.getWriter(vertexBuffer);
 			DeferredBufferWriter localIndexWriter = transfer.getWriter(indexBuffer);
 			
-			Vector2f end = Vector2f.of(pos.xy().add(size));
 			Vector2f uvStart = texture.getUvStart();
 			Vector2f uvEnd = texture.getUvEnd();
 			
-			RenderingDataUtils.loadRectangleUv(localVertexWriter, localIndexWriter, 0, pos.x(), pos.y(), end.x(), end.y(), 1, uvStart.x(), uvStart.y(), uvEnd.x(), uvEnd.y());
+			RenderingDataUtils.loadRectangleUv(localVertexWriter, localIndexWriter, 0, pos.x(), pos.y(), pos.x() + size.x(), pos.y() + size.y(), 1, uvStart.x(), uvStart.y(), uvEnd.x(), uvEnd.y());
 		}
 	}
 	

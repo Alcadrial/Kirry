@@ -6,7 +6,7 @@ import java.util.List;
 import org.jspecify.annotations.NonNull;
 
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector2ir;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.memory.MemoryManager;
@@ -86,41 +86,41 @@ public class WidgetScreen implements Screen {
 	}
 	
 	@Override
-	public ActionResult onClick(int button, int count, Vector2i mousePos)
+	public ActionResult onClick(int button, int count, Vector2ir mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
 	
 	@Override
-	public ActionResult onPress(int button, Vector2i mousePos)
+	public ActionResult onPress(int button, Vector2ir mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
 	
 	@Override
-	public ActionResult onRelease(int button, Vector2i mousePos)
+	public ActionResult onRelease(int button, Vector2ir mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
 	
 	@Override
-	public void onMouseMove(Vector2i oldPos, Vector2i newPos)
+	public void onMouseMove(Vector2ir oldPos, Vector2ir newPos)
 	{}
 	
 	@Override
-	public ActionResult onDragStart(Vector2i mousePos)
+	public ActionResult onDragStart(Vector2ir mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
 	
 	@Override
-	public ActionResult onDragEnd(Vector2i startPos, Vector2i endPos)
+	public ActionResult onDragEnd(Vector2ir startPos, Vector2ir endPos)
 	{
 		return ActionResult.CONSUME;
 	}
 	
 	@Override
-	public ActionResult onScroll(double xScroll, double yScroll, Vector2i mousePos)
+	public ActionResult onScroll(double xScroll, double yScroll, Vector2ir mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
