@@ -10,7 +10,7 @@ apply from: rootProject.file("pre.gradle")
 javadoc.options.tags("apiNote::API Note:", "implSpec::Implementation Requirements:", "implNote::Implementation Note:")
 
 dependencies {
-	implementation(libs.kector)
+	implementation(libs.kector.new)
 	
 	implementation(libs.bundles.jackson.and.eclipse.collections)
 	implementation(libs.jspecify)
