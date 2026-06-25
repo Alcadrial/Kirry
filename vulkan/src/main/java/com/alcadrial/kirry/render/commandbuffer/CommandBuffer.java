@@ -8,18 +8,23 @@ import org.jspecify.annotations.Nullable;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkBufferCopy;
 import org.lwjgl.vulkan.VkBufferImageCopy;
 import org.lwjgl.vulkan.VkBufferMemoryBarrier;
+import org.lwjgl.vulkan.VkBufferMemoryBarrier2;
 import org.lwjgl.vulkan.VkClearAttachment;
 import org.lwjgl.vulkan.VkClearColorValue;
 import org.lwjgl.vulkan.VkClearRect;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
+import org.lwjgl.vulkan.VkDependencyInfo;
 import org.lwjgl.vulkan.VkImageCopy;
 import org.lwjgl.vulkan.VkImageMemoryBarrier;
+import org.lwjgl.vulkan.VkImageMemoryBarrier2;
 import org.lwjgl.vulkan.VkImageSubresourceRange;
 import org.lwjgl.vulkan.VkMemoryBarrier;
+import org.lwjgl.vulkan.VkMemoryBarrier2;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 import org.lwjgl.vulkan.VkViewport;
@@ -115,7 +120,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		bindVertexBuffers(bindingOffset, List.of(buffers));
 	}
 	
-	public void bindVertexBuffers(int bindingOffset, VulkanBuffer[] buffers, long...offsets)
+	public void bindVertexBuffers(int bindingOffset, VulkanBuffer[] buffers, long... offsets)
 	{
 		bindVertexBuffers(bindingOffset, List.of(buffers), offsets);
 	}
@@ -125,7 +130,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		bindVertexBuffers(bindingOffset, buffers.stream().mapToLong(VulkanBuffer::getVk).toArray());
 	}
 	
-	public void bindVertexBuffers(int bindingOffset, List<VulkanBuffer> buffers, long...offsets)
+	public void bindVertexBuffers(int bindingOffset, List<VulkanBuffer> buffers, long... offsets)
 	{
 		bindVertexBuffers(bindingOffset, buffers.stream().mapToLong(VulkanBuffer::getVk).toArray(), offsets);
 	}
@@ -353,6 +358,21 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 	public void pipelineBarrier(int srcStageMask, int dstStageMask, int dependencyFlags, VkMemoryBarrier.@Nullable Buffer memoryBarriers, VkBufferMemoryBarrier.@Nullable Buffer bufferMemoryBarriers, VkImageMemoryBarrier.@Nullable Buffer imageMemoryBarriers)
 	{
 		VK10.vkCmdPipelineBarrier(vk, srcStageMask, dstStageMask, dependencyFlags, memoryBarriers, bufferMemoryBarriers, imageMemoryBarriers);
+	}
+	
+	public void pipelineBarrier(int dependencyFlags, VkMemoryBarrier2.@Nullable Buffer memoryBarriers, VkImageMemoryBarrier2.@Nullable Buffer imageBarriers, VkBufferMemoryBarrier2.@Nullable Buffer bufferBarriers)
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VK13.vkCmdPipelineBarrier2(vk, VkDependencyInfo.malloc(stack)
+				.sType(VK13.VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
+				.pNext(0)
+				.dependencyFlags(dependencyFlags)
+				.pMemoryBarriers(memoryBarriers)
+				.pImageMemoryBarriers(imageBarriers)
+				.pBufferMemoryBarriers(bufferBarriers)
+			);
+		}
 	}
 	
 	// pushConstants

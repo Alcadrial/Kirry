@@ -10,7 +10,7 @@ import com.alcadrial.kirry.core.component.ComponentType;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 
 public class SpatialComponent extends AbstractVulkanComponent<SpatialComponent.Params, SpatialComponent.Properties> {
-
+	
 	public static final ComponentType<SpatialComponent> TYPE = ComponentType.of(SpatialComponent.class);
 	
 	public record Params(
@@ -27,12 +27,22 @@ public class SpatialComponent extends AbstractVulkanComponent<SpatialComponent.P
 		Vector3f movement
 	) {}
 	
+	public static SpatialComponent of(State state)
+	{
+		return new SpatialComponent(state);
+	}
+	
 	private State state;
 	private boolean isDirty;
 	
 	public SpatialComponent()
 	{
 		state = new State(Vector3f.of(0, 0, 0), Vector3f.of(0, 0, 0));
+	}
+	
+	public SpatialComponent(State state)
+	{
+		this.state = state;
 	}
 	
 	@Override
@@ -79,10 +89,15 @@ public class SpatialComponent extends AbstractVulkanComponent<SpatialComponent.P
 		return new Properties(isDirty);
 	}
 	
+	public State getState()
+	{
+		return state;
+	}
+	
 	@Override
 	public void close()
 	{}
-
+	
 	@Override
 	public boolean listenResource()
 	{

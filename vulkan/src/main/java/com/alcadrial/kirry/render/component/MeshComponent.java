@@ -142,6 +142,11 @@ public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshC
 	{
 		return mesh.getTextureUvLength();
 	}
+
+	public Mesh getMesh()
+	{
+		return mesh;
+	}
 	
 	@Override
 	public void close()

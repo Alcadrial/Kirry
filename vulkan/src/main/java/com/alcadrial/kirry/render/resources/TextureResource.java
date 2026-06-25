@@ -57,7 +57,9 @@ public class TextureResource extends AbstractVulkanResource<TextureResource> {
 
 	public void copy(VulkanBuffer buffer) throws VulkanException
 	{
-		buffer.asBuffer().put(VulkanErrorUtils.nonNull(data));
+		ByteBuffer d = VulkanErrorUtils.nonNull(data);
+		buffer.asBuffer().put(d);
+		d.position(0);
 	}
 
 	public void copy(VulkanBuffer buffer, int offset) throws VulkanException

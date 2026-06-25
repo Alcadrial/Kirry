@@ -147,8 +147,11 @@ public class KirryVulkan extends KirryCore {
 		catch (VulkanException e)
 		{
 			GLFW.glfwTerminate();
-			FreeType.FT_Done_Library(ftLibrary);
-			ftLibrary = 0;
+			if (ftLibrary != 0)
+			{
+				FreeType.FT_Done_Library(ftLibrary);
+				ftLibrary = 0;
+			}
 			throw e;
 		}
 	}

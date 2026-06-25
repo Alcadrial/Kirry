@@ -91,7 +91,7 @@ public class BufferLayoutWriter {
 		{
 			checkValue(ShaderInputType.VECTOR_FLOAT_3, variable.getType());
 			writer.setCursor(4 * index + offset).put(value);
-			regions.add(new Region(index + offset, 3));
+			regions.add(new Region(4 * index + offset, 3));
 		}
 	}
 	

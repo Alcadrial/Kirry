@@ -262,10 +262,15 @@ public class VulkanBuffer extends MemoryResource {
 				Debug.debugAllocation(() -> "Deallocated " + Debug.address(vk));
 				if (memory.getVk() != 0) memory.close();
 			}
-			Debug.debugClose(() -> "Closing VulkanBuffer " + Debug.address(vk));
-			VK10.vkDestroyBuffer(device.getVk(), vk, null);
-			super.close();
+			deallocateVk();
 		}
+	}
+	
+	protected void deallocateVk()
+	{
+		Debug.debugClose(() -> "Closing VulkanBuffer " + Debug.address(vk));
+		VK10.vkDestroyBuffer(device.getVk(), vk, null);
+		super.close();
 	}
 	
 	@Override
