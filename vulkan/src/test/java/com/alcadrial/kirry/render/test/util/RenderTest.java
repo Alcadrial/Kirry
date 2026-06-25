@@ -18,6 +18,7 @@ import java.util.function.Consumer;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
+import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.system.MemoryStack;
@@ -35,11 +36,15 @@ import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.AngleUnit;
+import com.alcadrial.kector.Math;
 import com.alcadrial.kector.annotation.Angle;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3fr;
+import com.alcadrial.kector.vector.axis.Axisf;
+import com.alcadrial.kirry.core.cursor.CursorInputMode;
 import com.alcadrial.kirry.render.Debug;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.FrameBuffer;
@@ -94,6 +99,16 @@ public class RenderTest {
 	private static final AtomicBoolean hasValidationError = new AtomicBoolean(false);
 	
 	protected static FileManager fileManager;
+	
+	public static final Vector3fr SOUTH = Axisf.Z;
+	public static final Vector3fr NORTH = Axisf.NEGATIVE_Z;
+	public static final Vector3fr EAST = Axisf.X;
+	public static final Vector3fr WEST = Axisf.NEGATIVE_X;
+	public static final Vector3fr UP = Axisf.Y;
+	public static final Vector3fr DOWN = Axisf.NEGATIVE_Y;
+	
+	protected static boolean rebuildProjectionMatrix;
+	protected static boolean rebuildViewMatrix;
 	
 	public interface TestRunnable {
 		
@@ -513,6 +528,93 @@ public class RenderTest {
 		});
 	}
 	
+	public static SpatialMovementData registerSpatialMovement(VulkanWindow window, float yRotationSensivity, float xRotationSensivity)
+	{
+		SpatialMovementData data = new SpatialMovementData(Vector3f.of(0, 0, 1), Vector3f.of(0, 0, 0), 0, 0, false);
+		
+		Vector2f oldMousePos = Vector2f.of(0, 0);
+		boolean[] pressing = new boolean[2];
+		window.setCallback((GLFWMouseButtonCallbackI) (_, button, action, _) -> {
+			if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT)
+			{
+				if (pressing[0] = action == GLFW.GLFW_PRESS)
+				{
+					window.getMousePos(oldMousePos);
+				}
+			}
+		});
+		window.setCallback((GLFWCursorPosCallbackI) (_, x, y) -> {
+			if (data.isCameraUnlocked)
+			{
+				data.xRotation += (y - oldMousePos.y()) * yRotationSensivity;
+				if (data.xRotation > AngleUnit.RADIANS.fromDegrees(90)) data.xRotation = AngleUnit.RADIANS.fromDegrees(90);
+				else if (data.xRotation < AngleUnit.RADIANS.fromDegrees(-90)) data.xRotation = -AngleUnit.RADIANS.fromDegrees(90);
+				data.yRotation += (x - oldMousePos.x()) * xRotationSensivity;
+				RenderTest.rebuildViewMatrix = true;
+			}
+			window.getMousePos(oldMousePos);
+		});
+		
+		window.setCallback((GLFWKeyCallbackI) (_, k, _, a, _) -> {
+			
+			if (data.isCameraUnlocked)
+			{
+				Vector3fr v = switch (k)
+				{
+					case GLFW.GLFW_KEY_W -> NORTH;
+					case GLFW.GLFW_KEY_A -> WEST;
+					case GLFW.GLFW_KEY_S -> SOUTH;
+					case GLFW.GLFW_KEY_D -> EAST;
+					case GLFW.GLFW_KEY_SPACE -> UP;
+					case GLFW.GLFW_KEY_LEFT_SHIFT, GLFW.GLFW_KEY_LEFT_CONTROL -> DOWN;
+					default -> Vector3fr.of();
+				};
+				
+				switch (a)
+				{
+					case GLFW.GLFW_PRESS -> data.movement.add(v);
+					case GLFW.GLFW_RELEASE -> data.movement.subtract(v);
+				}
+			}
+			
+			if (a == GLFW.GLFW_RELEASE)
+			{
+				switch (k)
+				{
+					case GLFW.GLFW_KEY_U -> {
+						data.isCameraUnlocked = !data.isCameraUnlocked;
+						window.setCursorInputMode(data.isCameraUnlocked ? CursorInputMode.DISABLED : CursorInputMode.NORMAL);
+					}
+					case GLFW.GLFW_KEY_P -> {
+						data.position.setAll(0, 0, 0);
+						RenderTest.rebuildViewMatrix = true;
+					}
+				}
+			}
+		});
+		return data;
+	}
+	
+	public static boolean calculatePosition(SpatialMovementData data, float enlapsed)
+	{
+		if (!data.movement.equals(Vector3fr.of()))
+		{
+			float sin = Math.sin(data.yRotation);
+			float cos = Math.cos(data.yRotation);
+			Vector3f movement = Vector3f.of(0, 0, 0);
+			if (data.movement.z() == 1) movement.add(-sin, 0, cos);
+			if (data.movement.x() == -1) movement.add(-cos, 0, -sin);
+			if (data.movement.z() == -1) movement.add(sin, 0, -cos);
+			if (data.movement.x() == 1) movement.add(cos, 0, sin);
+			movement.add(0, data.movement.y(), 0);
+			
+			data.position.add(movement.normalize().multiplyAll(enlapsed / 1000000000F));
+			RenderTest.rebuildViewMatrix = true;
+			return true;
+		}
+		return false;
+	}
+	
 	public static Builder initKirry() throws VulkanException
 	{
 		return KirryVulkan.create("Test", new Version(0, 0, 1, 0))
@@ -528,34 +630,34 @@ public class RenderTest {
 		VkDebugUtilsMessengerCallbackDataEXT callbackData = VkDebugUtilsMessengerCallbackDataEXT.create(callbackDataId);
 		
 		int i = switch (messageSeverity)
-			{
-				case 0x0001 -> 1;
-				case 0x0010 -> 2;
-				case 0x0100 -> 3;
-				case 0x1000 -> 4;
-				default -> 0;
-			};
-			int j = switch (messageType)
-				{
-					case 0b001 -> 1;
-					case 0b010 -> 2;
-					case 0b100 -> 3;
-					default -> 0;
-				};
-				if (messageSeverity == EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-				{
-					hasValidationError.set(true);
-				}
-				
-				Debug.debug("[" + SEVERITIES[i] + " " + TYPES[j] + "] " + callbackData.pMessageString());
-				
-				return VK10.VK_FALSE;
+		{
+			case 0x0001 -> 1;
+			case 0x0010 -> 2;
+			case 0x0100 -> 3;
+			case 0x1000 -> 4;
+			default -> 0;
+		};
+		int j = switch (messageType)
+		{
+			case 0b001 -> 1;
+			case 0b010 -> 2;
+			case 0b100 -> 3;
+			default -> 0;
+		};
+		if (messageSeverity == EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+		{
+			hasValidationError.set(true);
+		}
+		
+		Debug.debug("[" + SEVERITIES[i] + " " + TYPES[j] + "] " + callbackData.pMessageString());
+		
+		return VK10.VK_FALSE;
 	}
 	
-	public static Texture createDepthTexture(int width, int height) throws VulkanException
+	public static Texture createDepthTexture(CommandBuffer commandBuffer, int width, int height) throws VulkanException
 	{
 		Texture depthTexture = Texture.create2dTexture(KirryVulkan.getVulkan().getDevice(), width, height, VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
-		depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL).join();
+		depthTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 		return depthTexture;
 	}
 	
@@ -697,6 +799,24 @@ public class RenderTest {
 		public abstract void end() throws VulkanException;
 	}
 	
+	public static class SpatialMovementData {
+		
+		public Vector3f position;
+		public Vector3f movement;
+		public @Angle float xRotation;
+		public @Angle float yRotation;
+		public boolean isCameraUnlocked;
+		
+		public SpatialMovementData(Vector3f position, Vector3f movement, @Angle float xRotation, @Angle float yRotation, boolean isCameraUnlocked)
+		{
+			this.position = position;
+			this.movement = movement;
+			this.xRotation = xRotation;
+			this.yRotation = yRotation;
+			this.isCameraUnlocked = isCameraUnlocked;
+		}
+	}
+	
 	public static void renderTexture(VulkanWindow window, Texture texture) throws VulkanException, InterruptedException
 	{
 		renderTexture(window, texture, 1);
@@ -715,8 +835,11 @@ public class RenderTest {
 		Device device = window.getDevice();
 		
 		VulkanBuffer vertexBuffer = new VulkanBuffer(device, 28 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		vertexBuffer.setName("Vertex buffer");
 		VulkanBuffer indexBuffer = new VulkanBuffer(device, 6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		vertexBuffer.setName("Index buffer");
 		VulkanBuffer uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 1, 16 * 2 * 4);
+		vertexBuffer.setName("Uniform buffer");
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -751,13 +874,13 @@ public class RenderTest {
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 						.descriptorCount(1)
-						)
+					)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 						.descriptorCount(1)
-						)
+					)
 					.rewind()
-					);
+				);
 			
 			VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
@@ -777,7 +900,7 @@ public class RenderTest {
 						.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
 						.pImmutableSamplers(null))
 					.rewind()
-					);
+				);
 			
 			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
 			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
@@ -791,10 +914,10 @@ public class RenderTest {
 					.addBinding(0, 20, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
 					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
 					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_2, 12)
-					)
+				)
 				.configureMultisampleState(s -> s
 					.rasterizationSamples(samples)
-					)
+				)
 				.build();
 			ShaderProgram shaderProgram = shaderProgramFuture.get();
 			GraphicsPipeline graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
@@ -805,9 +928,9 @@ public class RenderTest {
 					BindingInfo.ofUniform(uniformBuffer, VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.TRANSFORMATION,
 						ShaderVariable.MODEL
-						)),
+					)),
 					BindingInfo.ofTexture(texture, new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
-					)
+				)
 				.build();
 			
 			renderer.setBuffer(0, vertexBuffer);
@@ -825,6 +948,7 @@ public class RenderTest {
 			});
 			
 			transferFuture.join();
+			
 			
 			switch (window.startPresentation())
 			{
@@ -852,17 +976,22 @@ public class RenderTest {
 			clearValues.get().depthStencil().depth(1).stencil(0);
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
 			
-			commandBuffer.beginRecording();
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 			renderer.draw(commandBuffer, 0);
 			commandBuffer.endRenderPass();
-			commandBuffer.endRecording();
-			
+
+			window.show();
 			window.endPresentation(commandBuffer, () -> {
 				graphicsPipeline.close();
 				graphicsPipelineTemplate.close();
 				pipelineLayout.close();
+				vertexBuffer.close();
+				indexBuffer.close();
+				uniformBuffer.close();
 			});
 		}
 	}
+
+	public static final float XRotationSensivity = 0.005F;
+	public static final float YRotationSensivity = 0.01F;
 }

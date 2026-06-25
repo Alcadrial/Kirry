@@ -2,8 +2,8 @@ package com.alcadrial.kirry.render.test;
 
 import org.lwjgl.glfw.GLFW;
 
-import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.KirryVulkan;
+import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.font.Font;
 import com.alcadrial.kirry.render.test.util.RenderTest;
 import com.alcadrial.kirry.render.test.util.TestProperties;
@@ -22,6 +22,7 @@ public class FontTest extends RenderTest {
 			RenderTest.initKirry().multiThreading(false).useFont(true).initialize();
 			
 			KirryVulkan.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
+			KirryVulkan.setWindowHint(GLFW.GLFW_VISIBLE, false);
 			VulkanWindow window = VulkanWindow.defaultBuilder()
 				.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
 				.deviceFeatures(f -> f
@@ -70,7 +71,7 @@ public class FontTest extends RenderTest {
 			window.setSize((int) (w * scale), (int) (h * scale));
 			window.pollEvents();
 			window.getSurface().reinit();
-			
+
 			RenderTest.renderTexture(window, texture, 1);
 			
 			while (!window.shouldClose())

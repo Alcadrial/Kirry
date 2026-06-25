@@ -52,6 +52,7 @@ import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.VulkanUtils;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.util.functional.VulkanConsumer;
+import com.alcadrial.kirry.render.util.functional.VulkanRunnable;
 import com.alcadrial.kirry.render.util.future.VulkanFuture;
 
 public class Device extends AbstractVulkanResource<VkDevice> {
@@ -249,6 +250,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			});
 			return VulkanFuture.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 				destroyFences(fences);
+				for (VulkanRunnable action : commandBuffer.getCompletionActions()) action.run();
 				synchronized (singleUseCommandPool)
 				{
 					commandBuffer.close();
@@ -299,6 +301,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
 		return VulkanFuture.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 			destroyFences(fences);
+			for (VulkanRunnable action : commandBuffer.getCompletionActions()) action.run();
 			synchronized (commandBuffer.getPool())
 			{
 				commandBuffer.close();
@@ -316,6 +319,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
 		return VulkanFuture.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 			destroyFences(fences);
+			for (VulkanRunnable action : commandBuffer.getCompletionActions()) action.run();
 		});
 	}
 	
@@ -329,6 +333,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
 		return VulkanFuture.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 			destroyFences(fences);
+			for (VulkanRunnable action : commandBuffer.getCompletionActions()) action.run();
 			commandBuffer.reset();
 		});
 	}
@@ -484,7 +489,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 				for (int i = 0; i < limit; i++)
 				{
 					AbstractDeviceResource<?> resource = iterator.next();
-					Debug.print(i + " " + resource.getClass(), resource);
+					Debug.print(i + " " + resource, resource);
 				}
 			}
 			while (destructionList.peek() != null) destructionList.pop().close();

@@ -6,8 +6,8 @@ import java.util.List;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.vulkan.VK10;
 
-import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.KirryVulkan;
+import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.test.util.RenderTest;
 import com.alcadrial.kirry.render.test.util.TestProperties;
 import com.alcadrial.kirry.render.texture.Atlas;
@@ -28,6 +28,7 @@ public class AtlasTest {
 			RenderTest.initKirry().multiThreading(false).initialize();
 			
 			KirryVulkan.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
+			KirryVulkan.setWindowHint(GLFW.GLFW_VISIBLE, false);
 			VulkanWindow window = VulkanWindow.defaultBuilder()
 				.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
 				.deviceFeatures(f -> f
@@ -36,7 +37,7 @@ public class AtlasTest {
 				.useDepthTexture(false)
 				.build(64, 64, "Test");
 			
-			Atlas atlas = new Atlas(window.getDevice(), 1024, 512, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, true);
+			Atlas atlas = new Atlas(window.getDevice(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, 0.75F, true);
 			
 			List<TextureBuffer> textures = new ArrayList<>();
 			
@@ -59,7 +60,7 @@ public class AtlasTest {
 			System.out.println("Size: " + atlas.getWidth() + "x" + atlas.getHeight());
 			for (TextureRegion region : regions)
 			{
-				System.out.println("Region: " + region.getUvStart() + " -> " + region.getUvEnd());
+				System.out.println(region);
 			}
 			
 			int w = atlas.getWidth();

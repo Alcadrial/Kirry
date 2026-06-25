@@ -17,9 +17,9 @@ import com.alcadrial.kirry.render.Debug;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.KirryVulkan;
 import com.alcadrial.kirry.render.buffer.Memory;
+import com.alcadrial.kirry.render.buffer.Memory.Mapping;
 import com.alcadrial.kirry.render.buffer.MemoryResource;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
-import com.alcadrial.kirry.render.buffer.Memory.Mapping;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
@@ -184,13 +184,7 @@ public class Texture extends MemoryResource {
 	{
 		if (this.layout != layout)
 		{
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				CommandBuffer commandBuffer = device.createSingleUseCommandBuffer();
-				changeLayout(commandBuffer, layout);
-				commandBuffer.endRecording();
-				return device.submitSingleUseCommandBuffer(stack, commandBuffer);
-			}
+			return device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> changeLayout(commandBuffer, layout));
 		}
 		return VulkanFuture.completedTask();
 	}

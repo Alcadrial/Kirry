@@ -20,9 +20,9 @@ import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
-import com.alcadrial.kector.annotation.Angle;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3fr;
 import com.alcadrial.kirry.core.component.Entity;
 import com.alcadrial.kirry.render.Debug;
 import com.alcadrial.kirry.render.Device;
@@ -33,7 +33,7 @@ import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.component.MeshComponent;
 import com.alcadrial.kirry.render.component.RenderEngine;
 import com.alcadrial.kirry.render.component.ShaderComponent;
-import com.alcadrial.kirry.render.component.SpatialEngine;
+import com.alcadrial.kirry.render.component.SpatialComponent;
 import com.alcadrial.kirry.render.memory.MemoryManager;
 import com.alcadrial.kirry.render.resources.FileManager;
 import com.alcadrial.kirry.render.resources.Mesh;
@@ -60,11 +60,11 @@ public class ComponentTest extends RenderTest {
 	private static MutableList<Mesh> models;
 	private static MutableList<Entity> entities;
 	private static RenderEngine renderEngine;
-	private static SpatialEngine spatialEngine;
 	
 	private static ShaderResource vertexShaderResource;
 	private static ShaderResource fragmentShaderResource;
 	private static ShaderResource fragment1ShaderResource;
+	private static ShaderResource spatialMoveComputeShaderResource;
 	private static ShaderResource initComputeShaderResource;
 	private static ShaderResource transformComputeShaderResource;
 	private static int currentShaderIndex;
@@ -74,23 +74,8 @@ public class ComponentTest extends RenderTest {
 	private static ShaderVariable lightIntensity = ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY");
 	private static ShaderVariable spaceFogIntensity = ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY");
 	
-	private static @Angle float xRotation;
-	private static @Angle float yRotation;
-	private static @Angle float zRotation;
-	private static boolean isModifiedModel;
-	private static boolean isModified;
 	private static boolean reloadShaders;
-	
-	private static Matrix4f buildModelMatrix(@Angle float xRotation, @Angle float yRotation, @Angle float zRotation)
-	{
-		Matrix4f matrix = new Matrix4f();
-		matrix.multiply(new Matrix4f().rotateX(xRotation));
-		matrix.multiply(new Matrix4f().rotateY(yRotation));
-		matrix.multiply(new Matrix4f().rotateZ(zRotation));
-		matrix.multiply(new Matrix4f().scale(Vector3f.of(1, 1, 1).divideAll((float) Math.sqrt(3))));
-		matrix.multiply(new Matrix4f().translate(Vector3f.of(-0.5F, -0.5F, -0.5F)));
-		return matrix;
-	}
+	private static SpatialMovementData spatialMovementData;
 	
 	public static void start() throws VulkanException
 	{
@@ -109,6 +94,7 @@ public class ComponentTest extends RenderTest {
 			vertexShaderResource = fileManager.getResource(SHADER + ".vert", ShaderResource.TYPE);
 			fragmentShaderResource = fileManager.getResource(SHADER + ".frag", ShaderResource.TYPE);
 			fragment1ShaderResource = fileManager.getResource(SHADER + ".1.frag", ShaderResource.TYPE);
+			spatialMoveComputeShaderResource = fileManager.getResource(RenderEngine.SPATIAL_MOVE_COMPUTE_SHADER_PATHNAME, ShaderResource.TYPE);
 			initComputeShaderResource = fileManager.getResource(RenderEngine.INIT_COMPUTE_SHADER_PATHNAME, ShaderResource.TYPE);
 			transformComputeShaderResource = fileManager.getResource(RenderEngine.TRANSFORM_COMPUTE_SHADER_PATHNAME, ShaderResource.TYPE);
 			
@@ -161,18 +147,22 @@ public class ComponentTest extends RenderTest {
 			
 			int maxId = Lists.mutable.of(
 				MeshComponent.TYPE.getId(),
-				ShaderComponent.TYPE.getId()
+				ShaderComponent.TYPE.getId(),
+				SpatialComponent.TYPE.getId()
 			).max();
+			int j = 0;
 			for (Mesh mesh : models)
 			{
-				for (int i = 0; i < 2; i++)
+				for (int i = 0; i < 5; i++)
 				{
 					Entity e = Entity.of(maxId);
 					e.setComponent(MeshComponent.TYPE, MeshComponent.ofMesh(mesh));
 					e.setComponent(ShaderComponent.TYPE, ShaderComponent.ofResource(vertexShaderResource, i == 0 ? fragmentShaderResource : fragment1ShaderResource));
+					e.setComponent(SpatialComponent.TYPE, SpatialComponent.of(new SpatialComponent.State(Vector3f.of(i * 1.1F, j * 1.1F, 0), Vector3f.of(0, 0, 0))));
 					e.listenComponents();
 					entities.add(e);
 				}
+				j++;
 			}
 			
 			FastList<CompletableFuture<?>> futures = new FastList<>();
@@ -189,8 +179,9 @@ public class ComponentTest extends RenderTest {
 		});
 		
 		window.setCallback((GLFWWindowSizeCallbackI) (_, _, _) -> {
-			isModified = true;
+			rebuildProjectionMatrix = true;
 		});
+		
 		window.setCallback((GLFWKeyCallbackI) (_, k, _, a, _) -> {
 			if (a == GLFW.GLFW_PRESS)
 			{
@@ -208,17 +199,9 @@ public class ComponentTest extends RenderTest {
 			}
 		});
 		
-		registerRotating((x, y) -> {
-			xRotation = x;
-			yRotation = y;
-			isModifiedModel = true;
-		});
+		spatialMovementData = registerSpatialMovement(window, YRotationSensivity, XRotationSensivity);
 		
 		renderEngine = new RenderEngine(device);
-		spatialEngine = new SpatialEngine(entities);
-		
-		Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
-		Matrix4f modelMatrix = buildModelMatrix(xRotation, yRotation, zRotation);
 		
 		memoryManager = MemoryManager.getDefault(device);
 		
@@ -228,15 +211,20 @@ public class ComponentTest extends RenderTest {
 		
 		VulkanFuture<?> entityRendererInitFuture = VulkanFuture.composeAfter(modelsLoading, () -> {
 			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
-				renderEngine.init(new RenderEngine.InitParams(null, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.SurfaceTarget(window), Lists.mutable.of(ShaderVariable.PROJECTION, ShaderVariable.MODEL), Lists.mutable.of(lightPos, lightIntensity, spaceFogIntensity), entities));
+				renderEngine.init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.SurfaceTarget(window), Lists.mutable.of(ShaderVariable.PROJECTION, ShaderVariable.MODEL), Lists.mutable.of(lightPos, lightIntensity, spaceFogIntensity), entities);
 			}).join();
 		});
+
+		Matrix4f projectionMatrix = new Matrix4f().projectPositiveZ((float) (Math.PI * 2 / 3), 100, 0.1F, (float) window.getWidth() / window.getHeight());
+		projectionMatrix.multiply(new Matrix4f().scale(Vector3fr.of(1, -1, 1)));
+		Matrix4f modelMatrix = new Matrix4f().view(spatialMovementData.position, spatialMovementData.xRotation, spatialMovementData.yRotation);
+		
 		renderEngine.setUniforms((i, writer) -> {
 			switch (i)
 			{
 				case 0 -> {
-					writer.set(ShaderVariable.MODEL, modelMatrix);
 					writer.set(ShaderVariable.PROJECTION, projectionMatrix);
+					writer.set(ShaderVariable.MODEL, modelMatrix);
 					writer.flush();
 				}
 				case 1 -> {
@@ -247,6 +235,8 @@ public class ComponentTest extends RenderTest {
 				}
 			}
 		});
+		rebuildProjectionMatrix = false;
+		rebuildViewMatrix = false;
 		entityRendererInitFuture.join();
 	}
 	
@@ -264,6 +254,8 @@ public class ComponentTest extends RenderTest {
 			}
 			CommandBuffer commandBuffer = window.getCurrentCommandBuffer();
 			
+			calculatePosition(spatialMovementData, enlapsed);
+			
 			if (reloadShaders)
 			{
 				Entity entity = entities.getFirst();
@@ -277,21 +269,20 @@ public class ComponentTest extends RenderTest {
 						case 1 -> fragment1ShaderResource;
 						default -> throw new IllegalArgumentException("Unexpected value: " + currentShaderIndex);
 					}));
-					System.out.println("SHA");
 					entity.load().join();
 				}
 				reloadShaders = false;
 			}
-			if (isModified)
+			if (rebuildProjectionMatrix)
 			{
-				renderEngine.reinit(new RenderEngine.ReinitParams(commandBuffer, null, null, null, new RenderEngine.SurfaceTarget(window), null, null));
+				renderEngine.reinit(commandBuffer, null, null, null, new RenderEngine.SurfaceTarget(window), null, null);
 			}
-			if (isModified || isModifiedModel)
+			if (rebuildProjectionMatrix || rebuildViewMatrix)
 			{
-				Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
-				Matrix4f modelMatrix = buildModelMatrix(xRotation, yRotation, zRotation);
-				boolean b0 = isModified;
-				boolean b1 = isModifiedModel;
+				Matrix4f projectionMatrix = new Matrix4f().projectPositiveZ((float) (Math.PI * 2 / 3), 100, 0.1F, (float) window.getWidth() / window.getHeight());
+				Matrix4f modelMatrix = new Matrix4f().view(spatialMovementData.position, spatialMovementData.xRotation, spatialMovementData.yRotation);
+				boolean b0 = rebuildProjectionMatrix;
+				boolean b1 = rebuildViewMatrix;
 				renderEngine.setUniforms((i, writer) -> {
 					switch (i)
 					{
@@ -302,8 +293,8 @@ public class ComponentTest extends RenderTest {
 						}
 					}
 				});
-				isModified = false;
-				isModifiedModel = false;
+				rebuildProjectionMatrix = false;
+				rebuildViewMatrix = false;
 			}
 			
 			VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
@@ -323,9 +314,7 @@ public class ComponentTest extends RenderTest {
 			clearValues.get().depthStencil().depth(1).stencil(0);
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
 			
-			commandBuffer.beginRecording();
-			renderEngine.update(new RenderEngine.UpdateParams(commandBuffer, renderPassBeginInfo, window.getFrameIndex()));
-			commandBuffer.endRecording();
+			renderEngine.update(commandBuffer, renderPassBeginInfo, window.getFrameIndex());
 			window.endPresentation(commandBuffer);
 		}
 	}

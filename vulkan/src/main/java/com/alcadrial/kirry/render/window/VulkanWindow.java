@@ -85,7 +85,6 @@ import com.alcadrial.kirry.render.util.VulkanUtils;
 import com.alcadrial.kirry.render.util.exception.PhysicalDeviceNotFoundException;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.util.functional.VulkanConsumer;
-import com.alcadrial.kirry.render.util.functional.VulkanRunnable;
 import com.alcadrial.kirry.render.util.future.VulkanFuture;
 import com.alcadrial.kirry.render.window.event.EventType;
 
@@ -375,7 +374,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private final RenderPass renderPass;
 	private Swapchain swapchain;
 	private FrameData[] frames;
-	private List<Queue<VulkanRunnable>> presentationTasks;
+	private List<Queue<VulkanConsumer<Boolean>>> presentationTasks;
 	private List<VulkanConsumer<SurfaceData>> onSwapchainRecreationCallbacks;
 	
 	private final List<CommandBuffer> commandBuffers;
@@ -411,6 +410,8 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		
 		SurfaceData surfaceData = surface.getData();
 		resetCallbacks();
+		presentationTasks = new ArrayList<>();
+		for (int i = 0; i < BUFFERED_FRAMES_COUNT; i++) presentationTasks.add(new LinkedList<>());
 		//	drawCount = 0;
 		
 		int format = surfaceData.format().format();
@@ -426,8 +427,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		swapchain = createSwapchain(surfaceData, null);
 		depthTexture = builder.useDepthTexture ? createDepthTexture(surfaceData) : null;
 		frames = prepareFrameBuffers(surfaceData, swapchain, depthTexture, null);
-		presentationTasks = new ArrayList<>();
-		for (int i = 0; i < frames.length; i++) presentationTasks.add(new LinkedList<>());
 		
 		screen = BlackScreen.BLACK_SCREEN;
 		eventRegistry = new EventRegistry();
@@ -437,7 +436,11 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	{
 		VkExtent2D extent = surfaceData.extent();
 		Texture depthTexture = Texture.create2dTexture(device, extent.width(), extent.height(), VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
-		depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL).join();
+		
+		presentationTasks.get(frameIndex).add(isPresenting -> {
+			if (isPresenting) depthTexture.changeLayout(getCurrentCommandBuffer(), VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		});
+		
 		if (name != null) depthTexture.setName("DepthTexture (" + name + ")");
 		return depthTexture;
 	}
@@ -569,18 +572,12 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			
 			for (int i = 0; i < BUFFERED_FRAMES_COUNT; i++)
 			{
-				CommandBuffer commandBuffer = commandBuffers.get(i);
 				FrameBuffer frameBuffer = frames[i].frameBuffer;
 				renderPassBeginInfo.framebuffer(frameBuffer.getVk());
 				
 				VkRect2D renderArea = VkRect2D.calloc(stack);
 				renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
 				renderPassBeginInfo.renderArea(renderArea);
-				
-				commandBuffer.reset();
-				commandBuffer.beginRecording();
-				commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
-				commandBuffer.endRenderPass();
 			}
 			frameIndex = 0;
 			return frames;
@@ -590,7 +587,10 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private boolean recreateSwapchain() throws VulkanException
 	{
 		SurfaceData surfaceData = surface.reinit();
-		for (Queue<@NonNull VulkanRunnable> queue : presentationTasks) while (!queue.isEmpty()) ((@NonNull VulkanRunnable) queue.poll()).run();
+		CommandBuffer commandBuffer = getCurrentCommandBuffer();
+		commandBuffer.reset();
+		commandBuffer.beginRecording();
+		for (Queue<VulkanConsumer<Boolean>> queue : presentationTasks) while (!queue.isEmpty()) ((@NonNull VulkanConsumer<Boolean>) queue.poll()).accept(false);
 		try
 		{
 			while (true)
@@ -617,13 +617,13 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				for (int i = 0; i < frames.length; i++)
 				{
 					int i0 = i;
-					presentationTasks.get(i0).add(() -> {
+					presentationTasks.get(i0).add(_ -> {
 						FrameData frame = oldFrames[i0];
 						frame.frameBuffer.close();
 						VK10.vkDestroyImageView(device.getVk(), frame.imageView, null);
 					});
 				}
-				presentationTasks.get(frameIndex).add(() -> {
+				presentationTasks.get(frameIndex).add(_ -> {
 					oldSwapchain.close();
 					if (oldDepthTexture != null) oldDepthTexture.close();
 				});
@@ -678,8 +678,8 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				Swapchain swapchain = this.swapchain;
 				FrameData frame = frames[frameIndex];
 				device.waitForFences(frame.getFence());
-				
-				for (Queue<@NonNull VulkanRunnable> queue : presentationTasks) while (!queue.isEmpty()) ((@NonNull VulkanRunnable) queue.poll()).run();
+
+				for (Queue<VulkanConsumer<Boolean>> queue : presentationTasks) while (!queue.isEmpty()) ((@NonNull VulkanConsumer<Boolean>) queue.poll()).accept(true);
 				
 				switch (KHRSwapchain.vkAcquireNextImageKHR(device.getVk(), swapchain.getVk(), Integer.MAX_VALUE, frame.getImageAvailable(), 0, frame.getImageIndex()))
 				{
@@ -731,6 +731,8 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			
 			LongBuffer p1 = stack.longs(frame.getRenderFinished());
 			
+			commandBuffer.endRecording();
+			
 			VkSubmitInfo submitInfo = VkSubmitInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO)
 				.pNext(0)
@@ -742,6 +744,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			
 			device.resetFences(frame.getFence());
 			VulkanFuture.composeAfter(device.getGraphicsQueue().submitAsync(submitInfo, frame.getFence()), _ -> {
+				commandBuffer.beginRecording();
 				onCommandBufferEndAction.run();
 			});
 			
@@ -1117,11 +1120,11 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	{
 		if (id != 0)
 		{
-			for (Queue<VulkanRunnable> queue : presentationTasks) while (!queue.isEmpty())
+			for (Queue<VulkanConsumer<Boolean>> queue : presentationTasks) while (!queue.isEmpty())
 			{
 				try
 				{
-					((@NonNull VulkanRunnable) queue.poll()).run();
+					((@NonNull VulkanConsumer<Boolean>) queue.poll()).accept(false);
 				}
 				catch (VulkanException e)
 				{}
