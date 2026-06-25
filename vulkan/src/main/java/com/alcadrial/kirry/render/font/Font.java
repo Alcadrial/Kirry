@@ -32,9 +32,11 @@ public class Font implements AutoCloseable {
 	private FT_Face face;
 	private Device device;
 	private Atlas atlas;
+	//private MemoryManager memoryManager;
 	private HashMap<Integer, TextureRegion> regions;
+	//private MutableList<VulkanBuffer> glyphDataBuffers;
 	
-	public Font(Device device, Path path, long faceIndex) throws VulkanException, FreeTypeException, IOException
+	public Font(Device device, Path path, long faceIndex/*, MemoryManager memoryManager*/) throws VulkanException, FreeTypeException, IOException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -44,9 +46,11 @@ public class Font implements AutoCloseable {
 			PointerBuffer p = stack.mallocPointer(1);
 			if (FreeType.FT_New_Face(KirryVulkan.getFTLibrary(), path.toRealPath().toString(), faceIndex, p) != 0) throw new IOException("Failed to load font file");
 			face = FT_Face.create(p.get(0));
-			atlas = new Atlas(device, 16, 16, VK10.VK_FORMAT_B8G8R8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, true);
+			atlas = new Atlas(device, VK10.VK_FORMAT_B8G8R8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 			setSize(16);
 			regions = new HashMap<>();
+		//	this.memoryManager = memoryManager;
+		//	glyphDataBuffers = Lists.mutable.of();
 		}
 	}
 	
@@ -69,7 +73,12 @@ public class Font implements AutoCloseable {
 	
 	private TextureRegion drawCharBitmap(int glyphIndex) throws FreeTypeException, VulkanException
 	{
-		if (glyphIndex == 0) return new TextureRegion(atlas.getTexture(), 0, 0, 0, 0);
+		if (glyphIndex == 0) return new TextureRegion(null, 0, 0, 0, 0);
+		{
+			TextureRegion region = atlas.getRegion(glyphIndex);
+			if (region != null) return region;
+		}
+		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			PointerBuffer p = stack.mallocPointer(1);
@@ -83,11 +92,13 @@ public class Font implements AutoCloseable {
 			
 			if (bitmap.rows() == 0)
 			{
-				return new TextureRegion(atlas.getTexture(), 0, 0, 0, 0);
+				return new TextureRegion(null, 0, 0, 0, 0);
 			}
 			
 			ByteBuffer data = FreeTypeErrorUtils.nonNull(bitmap.buffer(bitmap.rows() * bitmap.pitch()));
+			//memoryManager.allocateHost(bitmap.width() * bitmap.rows() * 4, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 			VulkanBuffer buffer = new VulkanBuffer(device, bitmap.width() * bitmap.rows() * 4, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 0);
+			buffer.setName("Font buffer " + glyphIndex);
 			DirectBufferWriter writer = new DirectBufferWriter(buffer);
 			switch (bitmap.pixel_mode())
 			{
@@ -124,7 +135,7 @@ public class Font implements AutoCloseable {
 			PointerBuffer p = stack.mallocPointer(1);
 			if (FreeType.FT_New_Face(KirryVulkan.getFTLibrary(), path.toRealPath().toString(), faceIndex, p) != 0) throw new IOException("Failed to load font file");
 			face = FT_Face.create(p.get(0));
-			atlas = new Atlas(device, 16, 16, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+			atlas = new Atlas(device, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 			setSize(16);
 			regions.clear();
 		}
