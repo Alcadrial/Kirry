@@ -17,6 +17,7 @@ import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.api.multimap.list.MutableListMultimap;
 import org.eclipse.collections.api.set.MutableSet;
 import org.eclipse.collections.impl.factory.Multimaps;
+import org.eclipse.collections.impl.utility.LazyIterate;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
@@ -34,6 +35,7 @@ import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.Math;
 import com.alcadrial.kector.vector.Vector2ir;
+import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3fr;
 import com.alcadrial.kector.vector.Vector3ir;
 import com.alcadrial.kirry.core.component.Entity;
@@ -44,6 +46,7 @@ import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.BufferLayoutWriter;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
+import com.alcadrial.kirry.render.component.SpatialComponent.State;
 import com.alcadrial.kirry.render.memory.MemoryCacheBulkState;
 import com.alcadrial.kirry.render.memory.MemoryCacheState;
 import com.alcadrial.kirry.render.memory.MemoryManager;
@@ -146,6 +149,10 @@ public class RenderEngine implements AutoCloseable {
 		ProgramRenderer defaultRendering;
 		MutableList<ProgramRenderer> renderings;
 		
+		PipelineLayout spatialMoveComputePipelineLayout;
+		ComputePipeline spatialMoveComputePipeline;
+		Computer spatialMoveComputer;
+		
 		PipelineLayout initComputePipelineLayout;
 		ComputePipeline initComputePipeline;
 		Computer initComputer;
@@ -158,8 +165,17 @@ public class RenderEngine implements AutoCloseable {
 		boolean[] isFrameUniformsDirty;
 		int vertexCount;
 		
-		public Data(MemoryManager memoryManager, VulkanBuffer vertexBuffer, VulkanBuffer textureUvBuffer, VulkanBuffer uniformBuffer, Cache cache, PipelineOutputTarget target, RenderPass renderPass, Vector2ir outputSize, int buffersCount, int[] reloadCounters, MutableListMultimap<ShaderProgram, Entity> groupedEntities2, @Nullable ProgramRenderer defaultRendering, MutableList<ProgramRenderer> renderings, DescriptorPool descriptorPool, GraphicsPipelineTemplate graphicsPipelineTemplate, PipelineLayout initComputePipelineLayout, ComputePipeline initComputePipeline, Computer initComputer, PipelineLayout transformComputePipelineLayout, ComputePipeline transformComputePipeline, Computer transformComputer, Atlas atlas, boolean[] isFrameUniformsDirty, int vertexCount)
+		//@formatter:off
+		public Data(MemoryManager memoryManager, VulkanBuffer vertexBuffer, VulkanBuffer textureUvBuffer, VulkanBuffer uniformBuffer, Cache cache,
+			PipelineOutputTarget target, RenderPass renderPass, Vector2ir outputSize, int buffersCount, int[] reloadCounters,
+			MutableListMultimap<ShaderProgram, Entity> groupedEntities2, @Nullable ProgramRenderer defaultRendering, MutableList<ProgramRenderer> renderings,
+			DescriptorPool descriptorPool, GraphicsPipelineTemplate graphicsPipelineTemplate,
+			PipelineLayout spatialMoveComputePipelineLayout, ComputePipeline spatialMoveComputePipeline, Computer spatialMoveComputer,
+			PipelineLayout initComputePipelineLayout, ComputePipeline initComputePipeline, Computer initComputer,
+			PipelineLayout transformComputePipelineLayout, ComputePipeline transformComputePipeline, Computer transformComputer,
+			Atlas atlas, boolean[] isFrameUniformsDirty, int vertexCount)
 		{
+			//@formatter:on
 			this.memoryManager = memoryManager;
 			this.vertexBuffer = vertexBuffer;
 			this.textureUvBuffer = textureUvBuffer;
@@ -174,6 +190,9 @@ public class RenderEngine implements AutoCloseable {
 			this.defaultRendering = defaultRendering;
 			this.renderings = renderings;
 			this.graphicsPipelineTemplate = graphicsPipelineTemplate;
+			this.spatialMoveComputePipelineLayout = spatialMoveComputePipelineLayout;
+			this.spatialMoveComputePipeline = spatialMoveComputePipeline;
+			this.spatialMoveComputer = spatialMoveComputer;
 			this.initComputePipelineLayout = initComputePipelineLayout;
 			this.initComputePipeline = initComputePipeline;
 			this.initComputer = initComputer;
@@ -414,7 +433,7 @@ public class RenderEngine implements AutoCloseable {
 					}
 				}
 			}
-
+			
 			int[] vertexOffsets = new int[entities.size()];
 			int[] vertexSizes = new int[entities.size()];
 			boolean useTextureUv = false;
@@ -575,7 +594,37 @@ public class RenderEngine implements AutoCloseable {
 				})
 				.build();
 			
-			if (useSpatial) computeSpatialInitData(entities, spatialMoveComputer, commandBuffer);
+			if (useSpatial) computeSpatialMoveData(spatialMoveComputer, entities, () -> new Iterator<>() {
+				
+				@Override
+				public boolean hasNext()
+				{
+					return true;
+				}
+				
+				@Override
+				public Vector3fr next()
+				{
+					return Vector3fr.of();
+				}
+				
+			}, () -> new Iterator<>() {
+				
+				int k = 0;
+				
+				@Override
+				public boolean hasNext()
+				{
+					return true;
+				}
+				
+				@Override
+				public Integer next()
+				{
+					return k++;
+				}
+				
+			}, commandBuffer);
 			atlas.draw(commandBuffer);
 			if (useTextureUv) computeInitData(entities, initComputer, commandBuffer);
 			
@@ -625,6 +674,7 @@ public class RenderEngine implements AutoCloseable {
 				new int[entities.size() * (Data.MAX_RELOAD_INDEX + 1)], groupedEntities,
 				defaultRendering, renderings,
 				descriptorPool,	graphicsPipelineTemplate,
+				computeLayout, spatialMoveComputePipeline, spatialMoveComputer,
 				computeLayout, initComputePipeline, initComputer,
 				computeLayout, transformComputePipeline, transformComputer,
 				atlas,
@@ -811,7 +861,7 @@ public class RenderEngine implements AutoCloseable {
 		for (Data.ProgramRenderer p : data.renderings) action.accept(p, i++);
 	}
 	
-	public void update(CommandBuffer commandBuffer, VkRenderPassBeginInfo renderPassBeginInfo, int frameIndex) throws VulkanException
+	public void update(CommandBuffer commandBuffer, VkRenderPassBeginInfo renderPassBeginInfo, int frameIndex, float enlapsed) throws VulkanException
 	{
 		Data data = getData();
 		RichIterable<Entity> entities = data.groupedEntities.valuesView();
@@ -870,7 +920,7 @@ public class RenderEngine implements AutoCloseable {
 						int vertexSize = (meshProperties.vertexesSize() + meshProperties.normalsSize()) / meshProperties.indicesSize();
 						int textureUvSize = 2;
 						
-						if (reloads[j] != 0)
+						if ((reloads[j] & 0x1) != 0)
 						{
 							mesh.validate(new MeshComponent.Params(new MeshComponent.VertexParams(localVertexBuffer, vertexSize, vertexBufferOffset, localTextureUvBuffer, textureUvSize, textureUvBufferOffset, localVertexBuffer, vertexSize, vertexBufferOffset + meshProperties.vertexesSize() / meshProperties.indicesSize(), null), null));
 							copyVertexRegion.get()
@@ -899,7 +949,7 @@ public class RenderEngine implements AutoCloseable {
 				for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
 				{
 					Entity e = i.next();
-					if (reloads[j] == 0) continue;
+					if ((reloads[j] & 0x2) == 0) continue;
 					ShaderComponent shader = (@NonNull ShaderComponent) e.getComponent(ShaderComponent.TYPE);
 					
 					ShaderProgram program = shader.getProgram();
@@ -916,21 +966,46 @@ public class RenderEngine implements AutoCloseable {
 		
 		boolean reloadAtlas = false;
 		{
-			int j = 0;
-			for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
+			record ActiveEntity(Entity e, Vector3fr p, Integer k) {}
+			MutableList<ActiveEntity> activeEntities = Lists.mutable.of();
+			int k = 0;
+			for (Iterator<Entity> i = entities.iterator(); i.hasNext(); k++)
 			{
 				Entity e = i.next();
-				if (reloads[j] == 0) continue;
-				MeshComponent mesh = (@NonNull MeshComponent) e.getComponent(MeshComponent.TYPE);
-				//TODO notify other components
 				SpatialComponent spatial = e.getComponent(SpatialComponent.TYPE);
 				if (spatial != null)
 				{
-					//TODO compute vertex data difference from gpu
-					Vector3fr position = Vector3fr.of(0, 0, 0);
-					
-					spatial.reinit(new SpatialComponent.Params(position, null));
+					State state = spatial.getState();
+					if ((reloads[k] & 0x1) != 0)
+					{
+						activeEntities.add(new ActiveEntity(e, Vector3fr.of(), k));
+						if (!state.movement().equals(Vector3fr.of()))
+						{
+							state.position().add(Vector3f.of(state.movement()).multiplyAll(enlapsed));
+						}
+					}
+					else
+					{
+						if (!state.movement().equals(Vector3fr.of()))
+						{
+							activeEntities.add(new ActiveEntity(e, state.position(), k));
+							state.position().add(Vector3f.of(state.movement()).multiplyAll(enlapsed));
+						}
+						else if (state.isManuallyUpdated()[0])
+						{
+							Vector3fr oldPosition = spatial.getOldPosition();
+							if (oldPosition != null)
+							{
+								activeEntities.add(new ActiveEntity(e, oldPosition, k));
+								state.isManuallyUpdated()[0] = false;
+							}
+						}
+					}
 				}
+			}
+			if (!activeEntities.isEmpty())
+			{
+				computeSpatialMoveData(data.spatialMoveComputer, LazyIterate.collect(activeEntities, ActiveEntity::e), LazyIterate.collect(activeEntities, ActiveEntity::p), LazyIterate.collect(activeEntities, ActiveEntity::k), commandBuffer);
 			}
 		}
 		
@@ -952,7 +1027,7 @@ public class RenderEngine implements AutoCloseable {
 			for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
 			{
 				Entity e = i.next();
-				if (reloads[j] == 0) continue;
+				if ((reloads[j] & 0x1) == 0) continue;
 				MeshComponent mesh = (@NonNull MeshComponent) e.getComponent(MeshComponent.TYPE);
 				MeshComponent.Properties meshProperties = mesh.getProperties();
 				
@@ -979,6 +1054,19 @@ public class RenderEngine implements AutoCloseable {
 					renderer.useBufferLayoutWriter(frameIndex, binding, writer -> action.accept(binding, writer));
 				}
 			}
+			if (onUniformUpdateFinish != null)
+			{
+				boolean r = false;
+				for (boolean b : data.isFrameUniformsDirty) if (b)
+				{
+					r = true;
+					break;
+				}
+				if (!r)
+				{
+					((@NonNull Runnable) onUniformUpdateFinish).run();
+				}
+			}
 		}
 		
 		renderer.draw(commandBuffer, frameIndex, 1, vertexCount);
@@ -992,13 +1080,25 @@ public class RenderEngine implements AutoCloseable {
 		data.atlas.close();
 	}
 	
+	private @Nullable Runnable onUniformUpdateFinish;
+	
 	/**
 	 * Called during {@link #update}
 	 * @param action
 	 */
 	public void setUniforms(VulkanBiConsumer<Integer, BufferLayoutWriter> action)
 	{
+		setUniforms(action, null);
+	}
+	
+	/**
+	 * Called during {@link #update}
+	 * @param action
+	 */
+	public void setUniforms(VulkanBiConsumer<Integer, BufferLayoutWriter> action, @Nullable Runnable onUpdateFinish)
+	{
 		uniformUpdates = action;
+		onUniformUpdateFinish = onUpdateFinish;
 		Data data = this.data;
 		if (data == null) return;
 		Arrays.fill(data.isFrameUniformsDirty, true);
@@ -1009,12 +1109,15 @@ public class RenderEngine implements AutoCloseable {
 		return VulkanErrorUtils.nonNull(data, "Renderer was not initialized");
 	}
 	
-	private void computeSpatialInitData(Collection<Entity> entities, Computer spatialMoveComputer, CommandBuffer commandBuffer) throws VulkanException
+	private void computeSpatialMoveData(Computer spatialMoveComputer, Iterable<Entity> entities, Iterable<Vector3fr> oldPositions, Iterable<Integer> indices, CommandBuffer commandBuffer) throws VulkanException
 	{
-		int k = 0;
-		for (Iterator<Entity> i = entities.iterator(); i.hasNext();)
+		Iterator<Vector3fr> pi = oldPositions.iterator();
+		Iterator<Integer> ki = indices.iterator();
+		for (Iterator<Entity> i = entities.iterator(); i.hasNext() && pi.hasNext();)
 		{
 			Entity e = i.next();
+			Vector3fr p = pi.next();
+			int k = ki.next();
 			MeshComponent mesh = e.getComponent(MeshComponent.TYPE);
 			if (mesh == null) continue;
 			SpatialComponent spatial = e.getComponent(SpatialComponent.TYPE);
@@ -1024,12 +1127,11 @@ public class RenderEngine implements AutoCloseable {
 			SpatialComponent.State state = spatial.getState();
 			
 			spatialMoveComputer.useBufferLayoutWriter(k, 0, writer -> {
-				writer.set(ShaderVariable.POSITION, Vector3fr.of());
+				writer.set(ShaderVariable.POSITION, p);
 				writer.set(ShaderVariable.POSITION_EXTRA_1, state.position());
 			});
 			
 			spatialMoveComputer.dispatch(commandBuffer, k, vertexCount, 1, 1);
-			k++;
 		}
 	}
 	

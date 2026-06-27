@@ -24,8 +24,21 @@ public class SpatialComponent extends AbstractVulkanComponent<SpatialComponent.P
 	
 	public record State(
 		Vector3f position,
-		Vector3f movement
+		Vector3f movement,
+		boolean[] isManuallyUpdated
 	) {}
+	
+	public static SpatialComponent of(Vector3f position, Vector3f oldPosition)
+	{
+		SpatialComponent spatial = new SpatialComponent(new State(position, Vector3f.of(0, 0, 0), new boolean[] {false}));
+		spatial.setOldPosition(oldPosition);
+		return spatial;
+	}
+	
+	public static SpatialComponent of(Vector3f position)
+	{
+		return new SpatialComponent(new State(position, Vector3f.of(0, 0, 0), new boolean[] {false}));
+	}
 	
 	public static SpatialComponent of(State state)
 	{
@@ -33,11 +46,12 @@ public class SpatialComponent extends AbstractVulkanComponent<SpatialComponent.P
 	}
 	
 	private State state;
+	private @Nullable Vector3fr oldPosition;
 	private boolean isDirty;
 	
 	public SpatialComponent()
 	{
-		state = new State(Vector3f.of(0, 0, 0), Vector3f.of(0, 0, 0));
+		state = new State(Vector3f.of(0, 0, 0), Vector3f.of(0, 0, 0), new boolean[] {false});
 	}
 	
 	public SpatialComponent(State state)
@@ -81,6 +95,16 @@ public class SpatialComponent extends AbstractVulkanComponent<SpatialComponent.P
 	public void reset()
 	{
 		isDirty = false;
+	}
+	
+	public void setOldPosition(Vector3fr oldPosition)
+	{
+		this.oldPosition = oldPosition;
+	}
+	
+	public @Nullable Vector3fr getOldPosition()
+	{
+		return oldPosition;
 	}
 	
 	@Override
