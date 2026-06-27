@@ -374,6 +374,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private final RenderPass renderPass;
 	private Swapchain swapchain;
 	private FrameData[] frames;
+	private Queue<VulkanConsumer<CommandBuffer>> queuedCommands;
 	private List<Queue<VulkanConsumer<Boolean>>> presentationTasks;
 	private List<VulkanConsumer<SurfaceData>> onSwapchainRecreationCallbacks;
 	
@@ -412,6 +413,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		resetCallbacks();
 		presentationTasks = new ArrayList<>();
 		for (int i = 0; i < BUFFERED_FRAMES_COUNT; i++) presentationTasks.add(new LinkedList<>());
+		queuedCommands = new LinkedList<>();
 		//	drawCount = 0;
 		
 		int format = surfaceData.format().format();
@@ -419,9 +421,9 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		{
 			renderPass = renderPassTemplate.createRenderPass(device);
 		}
+		frameIndex = 0;
 		
 		commandBuffers = device.createMultiUseCommandBuffer(BUFFERED_FRAMES_COUNT);
-		for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.beginRecording();
 		
 		onSwapchainRecreationCallbacks = new LinkedList<>();
 		swapchain = createSwapchain(surfaceData, null);
@@ -436,10 +438,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	{
 		VkExtent2D extent = surfaceData.extent();
 		Texture depthTexture = Texture.create2dTexture(device, extent.width(), extent.height(), VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
-		
-		presentationTasks.get(frameIndex).add(isPresenting -> {
-			if (isPresenting) depthTexture.changeLayout(getCurrentCommandBuffer(), VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-		});
+		queuedCommands.add(commandBuffer -> depthTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL));
 		
 		if (name != null) depthTexture.setName("DepthTexture (" + name + ")");
 		return depthTexture;
@@ -579,7 +578,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
 				renderPassBeginInfo.renderArea(renderArea);
 			}
-			frameIndex = 0;
 			return frames;
 		}
 	}
@@ -587,48 +585,43 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private boolean recreateSwapchain() throws VulkanException
 	{
 		SurfaceData surfaceData = surface.reinit();
-		CommandBuffer commandBuffer = getCurrentCommandBuffer();
-		commandBuffer.reset();
-		commandBuffer.beginRecording();
+		queuedCommands.clear();
 		for (Queue<VulkanConsumer<Boolean>> queue : presentationTasks) while (!queue.isEmpty()) ((@NonNull VulkanConsumer<Boolean>) queue.poll()).accept(false);
 		try
 		{
-			while (true)
+			VkExtent2D extent = surfaceData.extent();
+			if (extent.width() == 0 || extent.height() == 0) return false;
+			
+			Swapchain oldSwapchain = swapchain;
+			FrameData[] oldFrames = frames;
+			@Nullable
+			Texture oldDepthTexture = depthTexture;
+			
+			Swapchain newSwapchain = createSwapchain(surfaceData, oldSwapchain);
+			@Nullable
+			Texture newDepthTexture = oldDepthTexture != null ? createDepthTexture(surfaceData) : null;
+			FrameData[] newFrames = prepareFrameBuffers(surfaceData, newSwapchain, newDepthTexture, oldFrames);
+			
+			for (VulkanConsumer<SurfaceData> callback : onSwapchainRecreationCallbacks) callback.accept(surfaceData);
+			frames = newFrames;
+			if (name != null) newSwapchain.setName("Swapchain (" + name + ")");
+			depthTexture = newDepthTexture;
+			swapchain = newSwapchain;
+			
+			for (int i = 0; i < frames.length; i++)
 			{
-				VkExtent2D extent = surfaceData.extent();
-				if (extent.width() == 0 || extent.height() == 0) return false;
-				
-				Swapchain oldSwapchain = swapchain;
-				FrameData[] oldFrames = frames;
-				@Nullable
-				Texture oldDepthTexture = depthTexture;
-				
-				Swapchain newSwapchain = createSwapchain(surfaceData, oldSwapchain);
-				@Nullable
-				Texture newDepthTexture = oldDepthTexture != null ? createDepthTexture(surfaceData) : null;
-				FrameData[] newFrames = prepareFrameBuffers(surfaceData, newSwapchain, newDepthTexture, oldFrames);
-				
-				for (VulkanConsumer<SurfaceData> callback : onSwapchainRecreationCallbacks) callback.accept(surfaceData);
-				frames = newFrames;
-				if (name != null) newSwapchain.setName("Swapchain (" + name + ")");
-				depthTexture = newDepthTexture;
-				swapchain = newSwapchain;
-				
-				for (int i = 0; i < frames.length; i++)
-				{
-					int i0 = i;
-					presentationTasks.get(i0).add(_ -> {
-						FrameData frame = oldFrames[i0];
-						frame.frameBuffer.close();
-						VK10.vkDestroyImageView(device.getVk(), frame.imageView, null);
-					});
-				}
-				presentationTasks.get(frameIndex).add(_ -> {
-					oldSwapchain.close();
-					if (oldDepthTexture != null) oldDepthTexture.close();
+				int i0 = i;
+				presentationTasks.get(i0).add(_ -> {
+					FrameData frame = oldFrames[i0];
+					frame.frameBuffer.close();
+					VK10.vkDestroyImageView(device.getVk(), frame.imageView, null);
 				});
-				return true;
 			}
+			presentationTasks.get(frameIndex).add(_ -> {
+				oldSwapchain.close();
+				if (oldDepthTexture != null) oldDepthTexture.close();
+			});
+			return true;
 		}
 		finally
 		{
@@ -678,13 +671,18 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				Swapchain swapchain = this.swapchain;
 				FrameData frame = frames[frameIndex];
 				device.waitForFences(frame.getFence());
-
+				
 				for (Queue<VulkanConsumer<Boolean>> queue : presentationTasks) while (!queue.isEmpty()) ((@NonNull VulkanConsumer<Boolean>) queue.poll()).accept(true);
 				
 				switch (KHRSwapchain.vkAcquireNextImageKHR(device.getVk(), swapchain.getVk(), Integer.MAX_VALUE, frame.getImageAvailable(), 0, frame.getImageIndex()))
 				{
 					case VK10.VK_SUCCESS, VK10.VK_NOT_READY, VK10.VK_TIMEOUT, KHRSwapchain.VK_SUBOPTIMAL_KHR -> {
 						frame.setSwapchain(swapchain);
+						CommandBuffer commandBuffer = getCurrentCommandBuffer();
+						commandBuffer.reset();
+						commandBuffer.beginRecording();
+						while (!queuedCommands.isEmpty()) ((@NonNull VulkanConsumer<CommandBuffer>) queuedCommands.poll()).accept(commandBuffer);
+						
 						return PresentationResult.SUCCESS;
 					}
 					case KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR -> {
@@ -744,7 +742,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			
 			device.resetFences(frame.getFence());
 			VulkanFuture.composeAfter(device.getGraphicsQueue().submitAsync(submitInfo, frame.getFence()), _ -> {
-				commandBuffer.beginRecording();
 				onCommandBufferEndAction.run();
 			});
 			
