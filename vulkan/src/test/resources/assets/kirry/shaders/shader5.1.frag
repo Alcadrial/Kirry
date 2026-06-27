@@ -15,13 +15,20 @@ layout (location = 0) out vec4 tex;
 
 void main()
 {
-	vec4 color = vec4(1,1,1,1)*vec4(textureUv, 0, 1) * 50 * texture(TEXTURE, textureUv);
+	vec4 color = texture(TEXTURE, textureUv);
 	float lightDistance = distance(LIGHT_POS, vertexPosition);
 	float d = dot(LIGHT_POS - vertexPosition, normalPosition);
 	
-	if (lightDistance > d * d / 2)
-	{
-		float lightLevel = LIGHT_INTENSITY * (1 - SPACE_FOG_INTENSITY) / lightDistance;
+	float factor = LIGHT_INTENSITY * (1 - SPACE_FOG_INTENSITY) / length(LIGHT_POS - vertexPosition);
+	
+	if (lightDistance < 0.1F * factor) {
+		tex = vec4(1, 1, 1, 1);
+	}
+	else if (d <= 0) {
+		tex = vec4(0, 0, 0, 1);
+	}
+	else if (lightDistance > 0.1F) {
+		float lightLevel = d * factor / lightDistance;
 		
 		vec3 c = color.rgb * lightLevel;
 		if (c.x > 1) c.yz *= (c.x - 1) / 4 + 1;
@@ -29,8 +36,7 @@ void main()
 		else if (c.z > 1) c.xy *= (c.z - 1) / 4 + 1;
 		tex = vec4(c, color.a);
 	}
-	else 
-	{
-		tex = vec4(1, 1, 1, 1); 
+	else  {
+		tex = vec4(1, 1, 1, 1);
 	}
 }

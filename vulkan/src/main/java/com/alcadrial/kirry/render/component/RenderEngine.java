@@ -143,6 +143,7 @@ public class RenderEngine implements AutoCloseable {
 		
 		/** null key entities use defaultRendering */
 		MutableListMultimap<ShaderProgram, Entity> groupedEntities;
+		Collection<Entity> entities;
 		int[] reloadCounters;
 		
 		@Nullable
@@ -168,7 +169,8 @@ public class RenderEngine implements AutoCloseable {
 		//@formatter:off
 		public Data(MemoryManager memoryManager, VulkanBuffer vertexBuffer, VulkanBuffer textureUvBuffer, VulkanBuffer uniformBuffer, Cache cache,
 			PipelineOutputTarget target, RenderPass renderPass, Vector2ir outputSize, int buffersCount, int[] reloadCounters,
-			MutableListMultimap<ShaderProgram, Entity> groupedEntities2, @Nullable ProgramRenderer defaultRendering, MutableList<ProgramRenderer> renderings,
+			MutableListMultimap<ShaderProgram, Entity> groupedEntities, Collection<Entity> entities,
+			@Nullable ProgramRenderer defaultRendering, MutableList<ProgramRenderer> renderings,
 			DescriptorPool descriptorPool, GraphicsPipelineTemplate graphicsPipelineTemplate,
 			PipelineLayout spatialMoveComputePipelineLayout, ComputePipeline spatialMoveComputePipeline, Computer spatialMoveComputer,
 			PipelineLayout initComputePipelineLayout, ComputePipeline initComputePipeline, Computer initComputer,
@@ -186,7 +188,8 @@ public class RenderEngine implements AutoCloseable {
 			this.buffersCount = buffersCount;
 			this.descriptorPool = descriptorPool;
 			this.reloadCounters = reloadCounters;
-			groupedEntities = groupedEntities2;
+			this.entities = entities;
+			this.groupedEntities = groupedEntities;
 			this.defaultRendering = defaultRendering;
 			this.renderings = renderings;
 			this.graphicsPipelineTemplate = graphicsPipelineTemplate;
@@ -671,7 +674,7 @@ public class RenderEngine implements AutoCloseable {
 			data = new Data(
 				memoryManager, vertexBuffer, textureUvBuffer, uniformBuffer, cache,
 				target, renderPass, outputSize, buffersCount,
-				new int[entities.size() * (Data.MAX_RELOAD_INDEX + 1)], groupedEntities,
+				new int[entities.size() * (Data.MAX_RELOAD_INDEX + 1)], groupedEntities, Lists.mutable.ofAll(entities),
 				defaultRendering, renderings,
 				descriptorPool,	graphicsPipelineTemplate,
 				computeLayout, spatialMoveComputePipeline, spatialMoveComputer,
@@ -864,14 +867,15 @@ public class RenderEngine implements AutoCloseable {
 	public void update(CommandBuffer commandBuffer, VkRenderPassBeginInfo renderPassBeginInfo, int frameIndex, float enlapsed) throws VulkanException
 	{
 		Data data = getData();
-		RichIterable<Entity> entities = data.groupedEntities.valuesView();
+		RichIterable<Entity> groupedEntities = data.groupedEntities.valuesView();
+		Collection<Entity> entities = data.entities;
 		
 		int reloadsCount = 0;
 		int[] reloads = new int[data.reloadCounters.length];
 		int[] componentTypeReloads = new int[2];
 		{
 			int j = 0;
-			for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
+			for (Iterator<Entity> i = groupedEntities.iterator(); i.hasNext(); j++)
 			{
 				Entity e = i.next();
 				MeshComponent mesh = e.getComponent(MeshComponent.TYPE);
@@ -910,7 +914,7 @@ public class RenderEngine implements AutoCloseable {
 					VkBufferCopy.Buffer copyVertexRegion = VkBufferCopy.calloc(componentTypeReloads[0], stack);
 					VkBufferCopy.Buffer copyTextureUvRegion = VkBufferCopy.calloc(componentTypeReloads[0], stack);
 					int j = 0;
-					for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
+					for (Iterator<Entity> i = groupedEntities.iterator(); i.hasNext(); j++)
 					{
 						Entity e = i.next();
 						MeshComponent mesh = (@NonNull MeshComponent) e.getComponent(MeshComponent.TYPE);
@@ -946,7 +950,7 @@ public class RenderEngine implements AutoCloseable {
 			{
 				MutableSet<ShaderProgram> programs = Sets.mutable.of();
 				int j = 0;
-				for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
+				for (Iterator<Entity> i = groupedEntities.iterator(); i.hasNext(); j++)
 				{
 					Entity e = i.next();
 					if ((reloads[j] & 0x2) == 0) continue;
@@ -964,7 +968,31 @@ public class RenderEngine implements AutoCloseable {
 			}
 		}
 		
+		//TODO find a better way to handle different orders
 		boolean reloadAtlas = false;
+		{
+			int j = 0;
+			for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
+			{
+				Entity e = i.next();
+				MeshComponent mesh = e.getComponent(MeshComponent.TYPE);
+				if (mesh == null || !mesh.isLoaded()) continue;
+				
+				if (mesh.validate(null))
+				{
+					reloads[j] |= 0x1;
+				}
+				
+				ShaderComponent shader = e.getComponent(ShaderComponent.TYPE);
+				if (shader != null && shader.isLoaded())
+				{
+					if (shader.validate(new ShaderComponent.Params(device)))
+					{
+						reloads[j] |= 0x2;
+					}
+				}
+			}
+		}
 		{
 			record ActiveEntity(Entity e, Vector3fr p, Integer k) {}
 			MutableList<ActiveEntity> activeEntities = Lists.mutable.of();
@@ -1024,7 +1052,7 @@ public class RenderEngine implements AutoCloseable {
 				}
 			});
 			int j = 0;
-			for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
+			for (Iterator<Entity> i = groupedEntities.iterator(); i.hasNext(); j++)
 			{
 				Entity e = i.next();
 				if ((reloads[j] & 0x1) == 0) continue;
@@ -1132,6 +1160,8 @@ public class RenderEngine implements AutoCloseable {
 			});
 			
 			spatialMoveComputer.dispatch(commandBuffer, k, vertexCount, 1, 1);
+			if (k == 5)
+				System.out.println("Moving " + k);
 		}
 	}
 	

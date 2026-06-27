@@ -10,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.list.mutable.FastList;
+import org.jspecify.annotations.NonNull;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
@@ -57,6 +58,9 @@ public class ComponentTest extends RenderTest {
 		mainTest(args, ComponentTest::start, () -> defaultAnimationLoop(ComponentTest::loop), ComponentTest::end);
 	}
 	
+	private static Mesh lightModel;
+	private static Entity lightEntity;
+	private static Vector3f oldLightPos;
 	private static MutableList<Mesh> models;
 	private static MutableList<Entity> entities;
 	private static RenderEngine renderEngine;
@@ -75,7 +79,12 @@ public class ComponentTest extends RenderTest {
 	private static ShaderVariable spaceFogIntensity = ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY");
 	
 	private static boolean reloadShaders;
-	private static SpatialMovementData spatialMovementData;
+	private static SpatialMovementData cameraSpatialMovementData;
+	private static SpatialMovementData lightSpatialMovementData;
+	private static SpatialMovementData activeSpatialMovementData;
+	private static float lightIntensityValue;
+	private static float spaceFogIntensityValue;
+	private static boolean rebuildLightValues;
 	
 	public static void start() throws VulkanException
 	{
@@ -117,6 +126,7 @@ public class ComponentTest extends RenderTest {
 				.samplerAnisotropy(true)
 			)
 			.build(1080, 720, "Test");
+		window.setName("Window");
 		Device device = window.getDevice();
 		
 		models = Lists.mutable.empty();
@@ -124,7 +134,8 @@ public class ComponentTest extends RenderTest {
 		{
 			for (Path path : stream)
 			{
-				models.add(fileManager.getResource(path, Mesh.TYPE));
+				if (path.endsWith("light.obj")) lightModel = fileManager.getResource(path, Mesh.TYPE);
+				else models.add(fileManager.getResource(path, Mesh.TYPE));
 			}
 		}
 		catch (Exception e)
@@ -140,6 +151,16 @@ public class ComponentTest extends RenderTest {
 			end();
 			return;
 		}
+		if (lightModel == null)
+		{
+			System.out.println("Missing light model (" + fileManager.getPath(ASSETS + "models/light.obj") + ")");
+			end();
+			return;
+		}
+		
+		cameraSpatialMovementData = new SpatialMovementData(Vector3f.of(0, 2, 4));
+		lightSpatialMovementData = new SpatialMovementData(Vector3f.of(0, 0, 0));
+		activeSpatialMovementData = cameraSpatialMovementData;
 		
 		entities = Lists.mutable.of();
 		
@@ -150,39 +171,58 @@ public class ComponentTest extends RenderTest {
 				ShaderComponent.TYPE.getId(),
 				SpatialComponent.TYPE.getId()
 			).max();
-			int j = 0;
-			for (Mesh mesh : models)
 			{
-				for (int i = 0; i < 5; i++)
+				int j = 0;
+				for (Mesh mesh : models)
 				{
-					Entity e = Entity.of(maxId);
-					e.setComponent(MeshComponent.TYPE, MeshComponent.ofMesh(mesh));
-					e.setComponent(ShaderComponent.TYPE, ShaderComponent.ofResource(vertexShaderResource, i == 0 ? fragmentShaderResource : fragment1ShaderResource));
-					e.setComponent(SpatialComponent.TYPE, SpatialComponent.of(new SpatialComponent.State(Vector3f.of(i * 1.1F, j * 1.1F, 0), Vector3f.of(0, 0, 0))));
-					e.listenComponents();
-					entities.add(e);
+					for (int i = 0; i < 5; i++)
+					{
+						Entity e = Entity.of(maxId);
+						e.setComponent(MeshComponent.TYPE, MeshComponent.ofMesh(mesh));
+						e.setComponent(ShaderComponent.TYPE, ShaderComponent.ofResource(vertexShaderResource, j == 0 ? fragmentShaderResource : fragment1ShaderResource));
+						e.setComponent(SpatialComponent.TYPE, SpatialComponent.of(Vector3f.of(i * 1.1F, j * 1.1F, 0)));
+						e.listenComponents();
+						entities.add(e);
+					}
+					j++;
 				}
-				j++;
+			}
+			//light entity
+			{
+				oldLightPos = Vector3f.of();
+				Entity e = Entity.of(maxId);
+				e.setComponent(MeshComponent.TYPE, MeshComponent.ofMesh(lightModel));
+				e.setComponent(ShaderComponent.TYPE, ShaderComponent.ofResource(vertexShaderResource, fragmentShaderResource));
+				e.setComponent(SpatialComponent.TYPE, SpatialComponent.of(lightSpatialMovementData.position, oldLightPos));
+				e.listenComponents();
+				entities.add(lightEntity = e);
 			}
 			
-			FastList<CompletableFuture<?>> futures = new FastList<>();
+			FastList<CompletableFuture<Throwable>> futures = new FastList<>();
 			
 			for (Entity e : entities)
 			{
-				futures.add(e.load().exceptionally(ex -> {
-					System.out.println("Failed to load entity: " + ex.getLocalizedMessage());
-					return null;
-				}));
+				futures.add(e.load().handle((_, ex) -> ex));
 			}
 			
 			CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+			
+			for (int i = 0, j = 0; j < futures.size(); j++)
+			{
+				Throwable ex = futures.get(j).join();
+				if (ex != null)
+				{
+					System.out.println("Failed to load entity (" + entities.remove(i).getComponent(MeshComponent.TYPE) + "): " + ex.getLocalizedMessage());
+				}
+				else i++;
+			}
 		});
 		
 		window.setCallback((GLFWWindowSizeCallbackI) (_, _, _) -> {
 			rebuildProjectionMatrix = true;
 		});
 		
-		window.setCallback((GLFWKeyCallbackI) (_, k, _, a, _) -> {
+		registerSpatialMovement(window, YRotationSensivity, XRotationSensivity, (GLFWKeyCallbackI) (_, k, _, a, _) -> {
 			if (a == GLFW.GLFW_PRESS)
 			{
 				switch (k)
@@ -195,11 +235,95 @@ public class ComponentTest extends RenderTest {
 						currentShaderIndex = (currentShaderIndex == 2 - 1 ? 0 : currentShaderIndex + 1);
 						reloadShaders = true;
 					}
+					case GLFW.GLFW_KEY_I -> {
+						for (int i = 0; i < entities.size(); i++)
+						{
+							SpatialComponent spatial = entities.get(i).getComponent(SpatialComponent.TYPE);
+							if (spatial != null) spatial.getState().movement().setY(i);
+						}
+					}
+					case GLFW.GLFW_KEY_K -> {
+						for (int i = 0; i < entities.size(); i++)
+						{
+							SpatialComponent spatial = entities.get(i).getComponent(SpatialComponent.TYPE);
+							if (spatial != null) spatial.getState().movement().setY(-i);
+						}
+					}
+					case GLFW.GLFW_KEY_L -> {
+						if (activeSpatialMovementData == cameraSpatialMovementData)
+						{
+							lightSpatialMovementData.isCameraUnlocked = activeSpatialMovementData.isCameraUnlocked;
+							lightSpatialMovementData.movement.setAll(0, 0, 0);
+							activeSpatialMovementData = lightSpatialMovementData;
+						}
+						else
+						{
+							cameraSpatialMovementData.isCameraUnlocked = activeSpatialMovementData.isCameraUnlocked;
+							cameraSpatialMovementData.movement.setAll(0, 0, 0);
+							activeSpatialMovementData = cameraSpatialMovementData;
+						}
+					}
+					case GLFW.GLFW_KEY_LEFT_BRACKET -> {
+						lightIntensityValue *= 1.1F;
+						rebuildLightValues = true;
+					}
+					case GLFW.GLFW_KEY_APOSTROPHE -> {
+						lightIntensityValue /= 1.1F;
+						rebuildLightValues = true;
+					}
+					case GLFW.GLFW_KEY_RIGHT_BRACKET -> {
+						spaceFogIntensityValue *= 1.1F;
+						rebuildLightValues = true;
+					}
+					case GLFW.GLFW_KEY_BACKSLASH -> {
+						spaceFogIntensityValue /= 1.1F;
+						rebuildLightValues = true;
+					}
 				}
 			}
-		});
-		
-		spatialMovementData = registerSpatialMovement(window, YRotationSensivity, XRotationSensivity);
+			if (a == GLFW.GLFW_REPEAT)
+			{
+				switch (k)
+				{
+					case GLFW.GLFW_KEY_LEFT_BRACKET -> {
+						lightIntensityValue *= 1.1F;
+						rebuildLightValues = true;
+					}
+					case GLFW.GLFW_KEY_APOSTROPHE -> {
+						lightIntensityValue /= 1.1F;
+						rebuildLightValues = true;
+					}
+					case GLFW.GLFW_KEY_RIGHT_BRACKET -> {
+						spaceFogIntensityValue *= 1.1F;
+						rebuildLightValues = true;
+					}
+					case GLFW.GLFW_KEY_BACKSLASH -> {
+						spaceFogIntensityValue /= 1.1F;
+						rebuildLightValues = true;
+					}
+				}
+			}
+			if (a == GLFW.GLFW_RELEASE)
+			{
+				switch (k)
+				{
+					case GLFW.GLFW_KEY_I -> {
+						for (int i = 0; i < entities.size(); i++)
+						{
+							SpatialComponent spatial = entities.get(i).getComponent(SpatialComponent.TYPE);
+							if (spatial != null && spatial.getState().movement().y() > 0) spatial.getState().movement().setY(0);
+						}
+					}
+					case GLFW.GLFW_KEY_K -> {
+						for (int i = 0; i < entities.size(); i++)
+						{
+							SpatialComponent spatial = entities.get(i).getComponent(SpatialComponent.TYPE);
+							if (spatial != null && spatial.getState().movement().y() < 0) spatial.getState().movement().setY(0);
+						}
+					}
+				}
+			}
+		}, () -> activeSpatialMovementData);
 		
 		renderEngine = new RenderEngine(device);
 		
@@ -210,14 +334,21 @@ public class ComponentTest extends RenderTest {
 		});
 		
 		VulkanFuture<?> entityRendererInitFuture = VulkanFuture.composeAfter(modelsLoading, () -> {
+			
+			if (entities.isEmpty()) return;
+			
 			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
 				renderEngine.init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.SurfaceTarget(window), Lists.mutable.of(ShaderVariable.PROJECTION, ShaderVariable.MODEL), Lists.mutable.of(lightPos, lightIntensity, spaceFogIntensity), entities);
 			}).join();
 		});
-
+		
 		Matrix4f projectionMatrix = new Matrix4f().projectPositiveZ((float) (Math.PI * 2 / 3), 100, 0.1F, (float) window.getWidth() / window.getHeight());
 		projectionMatrix.multiply(new Matrix4f().scale(Vector3fr.of(1, -1, 1)));
-		Matrix4f modelMatrix = new Matrix4f().view(spatialMovementData.position, spatialMovementData.xRotation, spatialMovementData.yRotation);
+		projectionMatrix.multiply(new Matrix4f().view(cameraSpatialMovementData.position, cameraSpatialMovementData.xRotation, cameraSpatialMovementData.yRotation));
+		Matrix4f modelMatrix = new Matrix4f();
+		
+		lightIntensityValue = 0.75F;
+		spaceFogIntensityValue = 0.1F;
 		
 		renderEngine.setUniforms((i, writer) -> {
 			switch (i)
@@ -228,9 +359,9 @@ public class ComponentTest extends RenderTest {
 					writer.flush();
 				}
 				case 1 -> {
-					writer.set(lightPos, Vector3f.of(0.3F, 1, 0));
-					writer.set(lightIntensity, 0.75F);
-					writer.set(spaceFogIntensity, 0.1F);
+					writer.set(lightPos, lightSpatialMovementData.position);
+					writer.set(lightIntensity, lightIntensityValue);
+					writer.set(spaceFogIntensity, spaceFogIntensityValue);
 					writer.flush();
 				}
 			}
@@ -238,6 +369,13 @@ public class ComponentTest extends RenderTest {
 		rebuildProjectionMatrix = false;
 		rebuildViewMatrix = false;
 		entityRendererInitFuture.join();
+		
+		if (entities.isEmpty())
+		{
+			System.out.println("0 valid models found");
+			end();
+			return;
+		}
 	}
 	
 	public static void loop(long time, long enlapsed) throws VulkanException
@@ -254,7 +392,18 @@ public class ComponentTest extends RenderTest {
 			}
 			CommandBuffer commandBuffer = window.getCurrentCommandBuffer();
 			
-			calculatePosition(spatialMovementData, enlapsed);
+			if (activeSpatialMovementData == lightSpatialMovementData)
+			{
+				oldLightPos.setAll(lightSpatialMovementData.position);
+			}
+			if (calculatePosition(activeSpatialMovementData, enlapsed))
+			{
+				if (activeSpatialMovementData == lightSpatialMovementData)
+				{
+					rebuildLightValues = true;
+					((@NonNull SpatialComponent) lightEntity.getComponent(SpatialComponent.TYPE)).getState().isManuallyUpdated()[0] = true;
+				}
+			}
 			
 			if (reloadShaders)
 			{
@@ -273,28 +422,48 @@ public class ComponentTest extends RenderTest {
 				}
 				reloadShaders = false;
 			}
+			
 			if (rebuildProjectionMatrix)
 			{
 				renderEngine.reinit(commandBuffer, null, null, null, new RenderEngine.SurfaceTarget(window), null, null);
 			}
-			if (rebuildProjectionMatrix || rebuildViewMatrix)
+			if (rebuildProjectionMatrix || rebuildViewMatrix || rebuildLightValues)
 			{
 				Matrix4f projectionMatrix = new Matrix4f().projectPositiveZ((float) (Math.PI * 2 / 3), 100, 0.1F, (float) window.getWidth() / window.getHeight());
-				Matrix4f modelMatrix = new Matrix4f().view(spatialMovementData.position, spatialMovementData.xRotation, spatialMovementData.yRotation);
-				boolean b0 = rebuildProjectionMatrix;
-				boolean b1 = rebuildViewMatrix;
+				projectionMatrix.multiply(new Matrix4f().scale(Vector3fr.of(1, -1, 1)));
+				projectionMatrix.multiply(new Matrix4f().view(cameraSpatialMovementData.position, cameraSpatialMovementData.xRotation, cameraSpatialMovementData.yRotation));
+				//Matrix4f modelMatrix = new Matrix4f();
+				
+				Vector3fr position = Vector3fr.of(lightSpatialMovementData.position);
+				float lightIntensityV = lightIntensityValue;
+				float spaceFogIntensityV = spaceFogIntensityValue;
+				
 				renderEngine.setUniforms((i, writer) -> {
 					switch (i)
 					{
 						case 0 -> {
-							if (b0) writer.set(ShaderVariable.PROJECTION, projectionMatrix);
-							if (b1) writer.set(ShaderVariable.MODEL, modelMatrix);
-							writer.flush();
+							if (rebuildProjectionMatrix || rebuildViewMatrix)
+							{
+								if (rebuildProjectionMatrix || rebuildViewMatrix) writer.set(ShaderVariable.PROJECTION, projectionMatrix);
+								//writer.set(ShaderVariable.MODEL, modelMatrix);
+								writer.flush();
+							}
+						}
+						case 1 -> {
+							if (rebuildLightValues)
+							{
+								writer.set(lightPos, position);
+								writer.set(lightIntensity, lightIntensityV);
+								writer.set(spaceFogIntensity, spaceFogIntensityV);
+								writer.flush();
+							}
 						}
 					}
+				}, () -> {
+					rebuildProjectionMatrix = false;
+					rebuildViewMatrix = false;
+					rebuildLightValues = false;
 				});
-				rebuildProjectionMatrix = false;
-				rebuildViewMatrix = false;
 			}
 			
 			VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
@@ -314,7 +483,7 @@ public class ComponentTest extends RenderTest {
 			clearValues.get().depthStencil().depth(1).stencil(0);
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
 			
-			renderEngine.update(commandBuffer, renderPassBeginInfo, window.getFrameIndex());
+			renderEngine.update(commandBuffer, renderPassBeginInfo, window.getFrameIndex(), enlapsed / 1000000000F);
 			window.endPresentation(commandBuffer);
 		}
 	}

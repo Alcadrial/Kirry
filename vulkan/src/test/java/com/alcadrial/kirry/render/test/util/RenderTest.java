@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
@@ -530,8 +531,41 @@ public class RenderTest {
 	
 	public static SpatialMovementData registerSpatialMovement(VulkanWindow window, float yRotationSensivity, float xRotationSensivity)
 	{
+		return registerSpatialMovement(window, yRotationSensivity, xRotationSensivity, null);
+	}
+	
+	public static SpatialMovementData registerSpatialMovement(VulkanWindow window, float yRotationSensivity, float xRotationSensivity, @Nullable GLFWKeyCallbackI callback)
+	{
 		SpatialMovementData data = new SpatialMovementData(Vector3f.of(0, 0, 1), Vector3f.of(0, 0, 0), 0, 0, false);
-		
+		registerSpatialMovement(window, yRotationSensivity, xRotationSensivity, callback, () -> data);
+		return data;
+	}
+	
+	/**
+	 * <pre><code>
+	 * x-axis mouse movement -> yRotation
+	 * y-axis mouse movement -> xRotation
+	 * 
+	 * Key W -> movement += -Z
+	 * Key A -> movement += -X
+	 * Key S -> movement += Z
+	 * Key D -> movement += X
+	 * Key LEFT_SHIFT/LEFT_CONTROL -> movement += -Y
+	 * Key SPACE -> movement += Y
+	 * Key Q -> speed *= 1.1
+	 * Key Z -> speed /= 1.1
+	 * 
+	 * Final movement = normalized((cos(yRotation) * movement.x() - sin(yRotation) * movement.z(), movement.y(), sin(yRotation) * movement.x() + cos(yRotation) * movement.z())) * speed
+	 * </code></pre>
+	 * 
+	 * @param window
+	 * @param yRotationSensivity
+	 * @param xRotationSensivity
+	 * @param callback
+	 * @param data
+	 */
+	public static void registerSpatialMovement(VulkanWindow window, float yRotationSensivity, float xRotationSensivity, @Nullable GLFWKeyCallbackI callback, Supplier<SpatialMovementData> data)
+	{
 		Vector2f oldMousePos = Vector2f.of(0, 0);
 		boolean[] pressing = new boolean[2];
 		window.setCallback((GLFWMouseButtonCallbackI) (_, button, action, _) -> {
@@ -544,20 +578,21 @@ public class RenderTest {
 			}
 		});
 		window.setCallback((GLFWCursorPosCallbackI) (_, x, y) -> {
-			if (data.isCameraUnlocked)
+			SpatialMovementData d = data.get();
+			if (d.isCameraUnlocked)
 			{
-				data.xRotation += (y - oldMousePos.y()) * yRotationSensivity;
-				if (data.xRotation > AngleUnit.RADIANS.fromDegrees(90)) data.xRotation = AngleUnit.RADIANS.fromDegrees(90);
-				else if (data.xRotation < AngleUnit.RADIANS.fromDegrees(-90)) data.xRotation = -AngleUnit.RADIANS.fromDegrees(90);
-				data.yRotation += (x - oldMousePos.x()) * xRotationSensivity;
+				d.xRotation += (y - oldMousePos.y()) * yRotationSensivity;
+				if (d.xRotation > AngleUnit.RADIANS.fromDegrees(90)) d.xRotation = AngleUnit.RADIANS.fromDegrees(90);
+				else if (d.xRotation < AngleUnit.RADIANS.fromDegrees(-90)) d.xRotation = -AngleUnit.RADIANS.fromDegrees(90);
+				d.yRotation += (x - oldMousePos.x()) * xRotationSensivity;
 				RenderTest.rebuildViewMatrix = true;
 			}
 			window.getMousePos(oldMousePos);
 		});
 		
-		window.setCallback((GLFWKeyCallbackI) (_, k, _, a, _) -> {
-			
-			if (data.isCameraUnlocked)
+		window.setCallback((GLFWKeyCallbackI) (w, k, s, a, m) -> {
+			SpatialMovementData d = data.get();
+			if (d.isCameraUnlocked)
 			{
 				Vector3fr v = switch (k)
 				{
@@ -572,8 +607,8 @@ public class RenderTest {
 				
 				switch (a)
 				{
-					case GLFW.GLFW_PRESS -> data.movement.add(v);
-					case GLFW.GLFW_RELEASE -> data.movement.subtract(v);
+					case GLFW.GLFW_PRESS -> d.movement.add(v);
+					case GLFW.GLFW_RELEASE -> d.movement.subtract(v);
 				}
 			}
 			
@@ -582,17 +617,29 @@ public class RenderTest {
 				switch (k)
 				{
 					case GLFW.GLFW_KEY_U -> {
-						data.isCameraUnlocked = !data.isCameraUnlocked;
-						window.setCursorInputMode(data.isCameraUnlocked ? CursorInputMode.DISABLED : CursorInputMode.NORMAL);
+						d.isCameraUnlocked = !d.isCameraUnlocked;
+						window.setCursorInputMode(d.isCameraUnlocked ? CursorInputMode.DISABLED : CursorInputMode.NORMAL);
 					}
 					case GLFW.GLFW_KEY_P -> {
-						data.position.setAll(0, 0, 0);
+						d.position.setAll(0, 0, 0);
 						RenderTest.rebuildViewMatrix = true;
 					}
 				}
 			}
+			if (a == GLFW.GLFW_REPEAT)
+			{
+				switch (k)
+				{
+					case GLFW.GLFW_KEY_Q -> {
+						d.speed *= 1.1F;
+					}
+					case GLFW.GLFW_KEY_Z -> {
+						d.speed /= 1.1F;
+					}
+				}
+			}
+			if (callback != null) callback.invoke(w, k, s, a, m);
 		});
-		return data;
 	}
 	
 	public static boolean calculatePosition(SpatialMovementData data, float enlapsed)
@@ -602,13 +649,11 @@ public class RenderTest {
 			float sin = Math.sin(data.yRotation);
 			float cos = Math.cos(data.yRotation);
 			Vector3f movement = Vector3f.of(0, 0, 0);
-			if (data.movement.z() == 1) movement.add(-sin, 0, cos);
-			if (data.movement.x() == -1) movement.add(-cos, 0, -sin);
-			if (data.movement.z() == -1) movement.add(sin, 0, -cos);
-			if (data.movement.x() == 1) movement.add(cos, 0, sin);
+			movement.add(cos * data.movement.x(), 0, sin * data.movement.x());
+			movement.add(-sin * data.movement.z(), 0, cos * data.movement.z());
 			movement.add(0, data.movement.y(), 0);
 			
-			data.position.add(movement.normalize().multiplyAll(enlapsed / 1000000000F));
+			data.position.add(movement.normalize().multiplyAll(enlapsed / 1000000000F * data.speed));
 			RenderTest.rebuildViewMatrix = true;
 			return true;
 		}
@@ -803,6 +848,7 @@ public class RenderTest {
 		
 		public Vector3f position;
 		public Vector3f movement;
+		public float speed;
 		public @Angle float xRotation;
 		public @Angle float yRotation;
 		public boolean isCameraUnlocked;
@@ -814,6 +860,17 @@ public class RenderTest {
 			this.xRotation = xRotation;
 			this.yRotation = yRotation;
 			this.isCameraUnlocked = isCameraUnlocked;
+			speed = 1;
+		}
+		
+		public SpatialMovementData(Vector3f position)
+		{
+			this.position = position;
+			movement = Vector3f.of();
+			xRotation = 0;
+			yRotation = 0;
+			isCameraUnlocked = false;
+			speed = 1;
 		}
 	}
 	

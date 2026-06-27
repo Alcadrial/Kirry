@@ -15,11 +15,11 @@ layout (location = 2) out vec3 normal0;
 
 void main()
 {
-	vec4 v = PROJECTION * MODEL * vec4(vertex, 1);
+	vec4 v = MODEL * vec4(vertex, 1);
 
-	gl_Position = v;
+	gl_Position = PROJECTION * v;
 	
-	vertex0 = v.xyz / v.w;
+	vertex0 = v.xyz;
 	textureUv0 = textureUv;
 	normal0 = (MODEL * vec4(normal, 0)).xyz;
 }
