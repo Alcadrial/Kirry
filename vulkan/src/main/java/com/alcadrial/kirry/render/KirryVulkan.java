@@ -1,5 +1,6 @@
 package com.alcadrial.kirry.render;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
@@ -38,6 +39,7 @@ import org.lwjgl.vulkan.VkDebugUtilsMessengerCreateInfoEXT;
 import org.lwjgl.vulkan.VkInstanceCreateInfo;
 
 import com.alcadrial.kirry.core.KirryCore;
+import com.alcadrial.kirry.core.resources.ResourceManager;
 import com.alcadrial.kirry.render.util.DebugMessengerSeverity;
 import com.alcadrial.kirry.render.util.DebugMessengerType;
 import com.alcadrial.kirry.render.util.FreeTypeErrorUtils;
@@ -58,6 +60,7 @@ public class KirryVulkan extends KirryCore {
 	private static volatile @Nullable Exception initException = null;
 	private static volatile @Nullable Vulkan vulkan = null;
 	private static volatile long ftLibrary = 0;
+	private static volatile @Nullable ResourceManager resourceManager = null;
 	private static volatile @Nullable ExecutorService executor = null;
 	private static volatile boolean multiThreading = false;
 	private static volatile @Nullable Thread mainThread = null;
@@ -143,6 +146,8 @@ public class KirryVulkan extends KirryCore {
 		try
 		{
 			initVulkan(builder);
+			executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("VirtualTask-", 0).factory());
+			resourceManager = builder.resourceManager;
 		}
 		catch (VulkanException e)
 		{
@@ -227,7 +232,6 @@ public class KirryVulkan extends KirryCore {
 			}
 			initializated = true;
 			vulkan = new Vulkan(createInfo, debugUtilsExtensionEnabled);
-			executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("VirtualTask-", 0).factory());
 		}
 		catch (Exception e)
 		{
@@ -273,11 +277,21 @@ public class KirryVulkan extends KirryCore {
 					{
 						executor.awaitTermination(1, TimeUnit.MILLISECONDS);
 					}
-					catch (InterruptedException e)
+					catch (InterruptedException _)
 					{}
 					((@NonNull ExecutorService) executor).shutdownNow();
 					Debug.debug("Terminated Kirry");
 					executor = null;
+				}
+				if (resourceManager != null)
+				{
+					try
+					{
+						resourceManager.close();
+					}
+					catch (IOException _)
+					{}
+					resourceManager = null;
 				}
 				getMainThreadActions().add(() -> Thread.currentThread().interrupt());
 				mainThreadActions = null;
@@ -290,7 +304,7 @@ public class KirryVulkan extends KirryCore {
 					f.get();
 					break;
 				}
-				catch (InterruptedException e)
+				catch (InterruptedException _)
 				{}
 				catch (VulkanException e)
 				{
@@ -404,7 +418,7 @@ public class KirryVulkan extends KirryCore {
 				{
 					f.get();
 				}
-				catch (InterruptedException e)
+				catch (InterruptedException _)
 				{
 					interrupted = true;
 				}
@@ -473,7 +487,7 @@ public class KirryVulkan extends KirryCore {
 				{
 					return f.get();
 				}
-				catch (InterruptedException e)
+				catch (InterruptedException _)
 				{
 					interrupted = true;
 				}
@@ -486,7 +500,7 @@ public class KirryVulkan extends KirryCore {
 			{
 				return f.get();
 			}
-			catch (Exception e)
+			catch (Exception _)
 			{
 				throw new IllegalStateException();
 			}
@@ -522,7 +536,7 @@ public class KirryVulkan extends KirryCore {
 				{
 					for (LinkedBlockingQueue<Runnable> mainThreadActions = getMainThreadActions();;) mainThreadActions.take().run();
 				}
-				catch (InterruptedException e)
+				catch (InterruptedException _)
 				{}
 			}
 			mainThread = null;
@@ -552,6 +566,7 @@ public class KirryVulkan extends KirryCore {
 		private boolean multiThreading;
 		private boolean useWindowSystem;
 		private boolean useFont;
+		private @Nullable ResourceManager resourceManager;
 		private @Nullable VkDebugUtilsMessengerCallbackEXTI messengerCallback;
 		private EnumSet<DebugMessengerSeverity> messengerSeverities;
 		private EnumSet<DebugMessengerType> messengerTypes;
@@ -567,6 +582,7 @@ public class KirryVulkan extends KirryCore {
 			multiThreading = true;
 			useWindowSystem = false;
 			useFont = false;
+			resourceManager = null;
 			instanceLayers = new LinkedList<>();
 			debugLayersCount = 0;
 			instanceExtensions = new LinkedList<>();
@@ -602,6 +618,12 @@ public class KirryVulkan extends KirryCore {
 		public Builder useFont(boolean useFont)
 		{
 			this.useFont = useFont;
+			return this;
+		}
+		
+		public Builder resourceManager(ResourceManager resourceManager)
+		{
+			this.resourceManager = resourceManager;
 			return this;
 		}
 		

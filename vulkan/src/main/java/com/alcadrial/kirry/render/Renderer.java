@@ -189,7 +189,6 @@ public class Renderer implements VulkanDebug {
 					Debug.debug("WARNING: Unsupported descriptor type " + descriptorType);
 					continue;
 				}
-				if (variables.isEmpty()) continue;
 				
 				VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSets.get();
 				writeDescriptorSet.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
@@ -202,23 +201,33 @@ public class Renderer implements VulkanDebug {
 				BufferBindingInfo bufferBindingInfo = writer.bufferBindingInfo;
 				if (bufferBindingInfo != null)
 				{
-					VulkanBuffer buffer = bufferBindingInfo.getBuffer();
-					BufferLayout layout = descriptorType.isUniform() ? new BufferLayout() : null;
-					int range = 0;
-					int offset = 0;
-					for (ShaderVariable variable : variables)
-					{
-						int size = variable.getType().getLength();
-						if (offset > 0 && offset + size > 16) range += 16 - offset;
-						if (layout != null) layout.mark(variable, range / 4);
-						range += size;
-						offset = range % 16;
-					}
-					writer.layout = layout;
 					VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-					descriptorBufferInfo.buffer(buffer.getVk());
-					descriptorBufferInfo.offset(buffer.getOffset());
-					descriptorBufferInfo.range(Math.min(range, buffer.getSize()));
+					if (variables.isEmpty())
+					{
+						VulkanBuffer buffer = bufferBindingInfo.getBuffer();
+						descriptorBufferInfo.buffer(buffer.getVk());
+						descriptorBufferInfo.offset(buffer.getOffset());
+						descriptorBufferInfo.range(Math.max(device.getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment(), buffer.getSize()));
+					}
+					else
+					{
+						VulkanBuffer buffer = bufferBindingInfo.getBuffer();
+						BufferLayout layout = descriptorType.isUniform() ? new BufferLayout() : null;
+						int range = 0;
+						int offset = 0;
+						for (ShaderVariable variable : variables)
+						{
+							int size = variable.getType().getLength();
+							if (offset > 0 && offset + size > 16) range += 16 - offset;
+							if (layout != null) layout.mark(variable, range / 4);
+							range += size;
+							offset = range % 16;
+						}
+						writer.layout = layout;
+						descriptorBufferInfo.buffer(buffer.getVk());
+						descriptorBufferInfo.offset(buffer.getOffset());
+						descriptorBufferInfo.range(Math.min(range, buffer.getSize()));
+					}
 					writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
 					writeDescriptorSet.pImageInfo(null);
 					writeDescriptorSet.pTexelBufferView(null);
@@ -284,6 +293,11 @@ public class Renderer implements VulkanDebug {
 		}
 	}
 	
+	public int getBindingIndex(int binding)
+	{
+		return binding;
+	}
+	
 	public BufferLayout getBufferLayout(int frameIndex, int binding)
 	{
 		return VulkanErrorUtils.nonNull(info[frameIndex][binding].layout);
@@ -291,8 +305,11 @@ public class Renderer implements VulkanDebug {
 	
 	public void useBufferLayoutWriter(int frameIndex, int binding, VulkanConsumer<BufferLayoutWriter> action) throws VulkanException
 	{
-		action.accept(getBufferLayoutWriter(frameIndex, binding));
-		freeBufferLayoutWriter(frameIndex, binding);
+		if (info[frameIndex][binding].layout != null)
+		{
+			action.accept(getBufferLayoutWriter(frameIndex, binding));
+			freeBufferLayoutWriter(frameIndex, binding);
+		}
 	}
 	
 	public BufferLayoutWriter getBufferLayoutWriter(int frameIndex, int binding) throws VulkanException

@@ -317,4 +317,13 @@ public class FileManager implements ResourceManager {
 			e.printStackTrace();
 		}
 	}
+	
+	@Override
+	public void close() throws IOException
+	{
+		fileSystem.close();
+		registeredPaths.clear();
+		registeredResourcePaths.clear();
+		registeredResourceTypes.clear();
+	}
 }

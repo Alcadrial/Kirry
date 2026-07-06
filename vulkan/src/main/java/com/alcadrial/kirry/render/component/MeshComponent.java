@@ -17,6 +17,7 @@ import com.alcadrial.kirry.render.resources.Mesh.Material;
 import com.alcadrial.kirry.render.texture.Atlas;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 
+//TODO split interface and implementation
 public class MeshComponent extends AbstractComponent<MeshComponent.Params, MeshComponent.Properties, VulkanException> {
 	
 	public static final ComponentType<MeshComponent> TYPE = ComponentType.of(MeshComponent.class);

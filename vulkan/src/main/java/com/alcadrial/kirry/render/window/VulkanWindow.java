@@ -61,6 +61,7 @@ import com.alcadrial.kector.vector.Vector2fr;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector2ir;
 import com.alcadrial.kirry.core.Window;
+import com.alcadrial.kirry.core.resources.ResourceManager;
 import com.alcadrial.kirry.core.util.Pair;
 import com.alcadrial.kirry.render.Debug;
 import com.alcadrial.kirry.render.Device;
@@ -110,6 +111,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		private long vk;
 		private @Nullable VulkanWindow window;
 		private @Nullable MemoryManager memoryManager;
+		private @Nullable ResourceManager resourceManager;
 		
 		public Builder()
 		{
@@ -189,6 +191,12 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		public Builder memoryManager(MemoryManager memoryManager)
 		{
 			this.memoryManager = memoryManager;
+			return this;
+		}
+		
+		public Builder resourceManager(ResourceManager resourceManager)
+		{
+			this.resourceManager = resourceManager;
 			return this;
 		}
 		
@@ -388,6 +396,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	
 	private @Nullable String name;
 	private boolean isLost;
+	private @Nullable ResourceManager resourceManager;
 	
 	private VulkanWindow(Builder builder, long windowId, String title, Device device, Surface.Builder surfaceBuilder) throws VulkanException
 	{
@@ -432,6 +441,8 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		
 		screen = BlackScreen.BLACK_SCREEN;
 		eventRegistry = new EventRegistry();
+		
+		resourceManager = builder.resourceManager;
 	}
 	
 	private @Nullable Texture createDepthTexture(SurfaceData surfaceData) throws VulkanException

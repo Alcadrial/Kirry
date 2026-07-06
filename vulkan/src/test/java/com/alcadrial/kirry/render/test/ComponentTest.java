@@ -263,25 +263,9 @@ public class ComponentTest extends RenderTest {
 							activeSpatialMovementData = cameraSpatialMovementData;
 						}
 					}
-					case GLFW.GLFW_KEY_LEFT_BRACKET -> {
-						lightIntensityValue *= 1.1F;
-						rebuildLightValues = true;
-					}
-					case GLFW.GLFW_KEY_APOSTROPHE -> {
-						lightIntensityValue /= 1.1F;
-						rebuildLightValues = true;
-					}
-					case GLFW.GLFW_KEY_RIGHT_BRACKET -> {
-						spaceFogIntensityValue *= 1.1F;
-						rebuildLightValues = true;
-					}
-					case GLFW.GLFW_KEY_BACKSLASH -> {
-						spaceFogIntensityValue /= 1.1F;
-						rebuildLightValues = true;
-					}
 				}
 			}
-			if (a == GLFW.GLFW_REPEAT)
+			if (a == GLFW.GLFW_REPEAT || a == GLFW.GLFW_PRESS)
 			{
 				switch (k)
 				{
@@ -390,7 +374,6 @@ public class ComponentTest extends RenderTest {
 				case SURFACE_LOST, OUT_OF_MEMORY, FATAL_ERROR:
 					throw new VulkanException("Presentaton error");
 			}
-			CommandBuffer commandBuffer = window.getCurrentCommandBuffer();
 			
 			if (activeSpatialMovementData == lightSpatialMovementData)
 			{
@@ -422,7 +405,8 @@ public class ComponentTest extends RenderTest {
 				}
 				reloadShaders = false;
 			}
-			
+
+			CommandBuffer commandBuffer = window.getCurrentCommandBuffer();
 			if (rebuildProjectionMatrix)
 			{
 				renderEngine.reinit(commandBuffer, null, null, null, new RenderEngine.SurfaceTarget(window), null, null);
@@ -482,8 +466,11 @@ public class ComponentTest extends RenderTest {
 			clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
 			clearValues.get().depthStencil().depth(1).stencil(0);
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
-			
-			renderEngine.update(commandBuffer, renderPassBeginInfo, window.getFrameIndex(), enlapsed / 1000000000F);
+
+			renderEngine.update(commandBuffer, window.getFrameIndex(), enlapsed / 1000000000F);
+			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
+			renderEngine.draw(commandBuffer, window.getFrameIndex());
+			commandBuffer.endRenderPass();
 			window.endPresentation(commandBuffer);
 		}
 	}

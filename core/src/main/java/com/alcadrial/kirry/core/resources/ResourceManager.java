@@ -9,7 +9,7 @@ import java.util.function.Consumer;
 
 import org.jspecify.annotations.NonNull;
 
-public interface ResourceManager {
+public interface ResourceManager extends AutoCloseable {
 	
 	<R extends Resource> void registerResourceType(ResourceType<R> type, BiFunction<Path, ResourceManager, R> loader);
 	
@@ -32,4 +32,7 @@ public interface ResourceManager {
 	
 	void unregisterForChanges(String pathname) throws IOException;
 	void unregisterForChanges(Path path) throws IOException;
+	
+	@Override
+	void close() throws IOException;
 }

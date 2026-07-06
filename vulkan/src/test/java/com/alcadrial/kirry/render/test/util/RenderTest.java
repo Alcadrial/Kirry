@@ -567,16 +567,6 @@ public class RenderTest {
 	public static void registerSpatialMovement(VulkanWindow window, float yRotationSensivity, float xRotationSensivity, @Nullable GLFWKeyCallbackI callback, Supplier<SpatialMovementData> data)
 	{
 		Vector2f oldMousePos = Vector2f.of(0, 0);
-		boolean[] pressing = new boolean[2];
-		window.setCallback((GLFWMouseButtonCallbackI) (_, button, action, _) -> {
-			if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT)
-			{
-				if (pressing[0] = action == GLFW.GLFW_PRESS)
-				{
-					window.getMousePos(oldMousePos);
-				}
-			}
-		});
 		window.setCallback((GLFWCursorPosCallbackI) (_, x, y) -> {
 			SpatialMovementData d = data.get();
 			if (d.isCameraUnlocked)
@@ -623,6 +613,60 @@ public class RenderTest {
 					case GLFW.GLFW_KEY_P -> {
 						d.position.setAll(0, 0, 0);
 						RenderTest.rebuildViewMatrix = true;
+					}
+				}
+			}
+			if (a == GLFW.GLFW_REPEAT || a == GLFW.GLFW_PRESS)
+			{
+				switch (k)
+				{
+					case GLFW.GLFW_KEY_Y -> {
+						SpatialMovementData dd = data.get();
+						if (dd.isCameraUnlocked)
+						{
+							dd.xRotation += (0 - oldMousePos.y()) * yRotationSensivity;
+							if (dd.xRotation > AngleUnit.RADIANS.fromDegrees(90)) dd.xRotation = AngleUnit.RADIANS.fromDegrees(90);
+							else if (dd.xRotation < AngleUnit.RADIANS.fromDegrees(-90)) dd.xRotation = -AngleUnit.RADIANS.fromDegrees(90);
+							dd.yRotation += (0.1F - oldMousePos.x()) * xRotationSensivity;
+							RenderTest.rebuildViewMatrix = true;
+						}
+						window.getMousePos(oldMousePos);
+					}
+					case GLFW.GLFW_KEY_H -> {
+						SpatialMovementData dd = data.get();
+						if (dd.isCameraUnlocked)
+						{
+							dd.xRotation += (0.1F - oldMousePos.y()) * yRotationSensivity;
+							if (dd.xRotation > AngleUnit.RADIANS.fromDegrees(90)) dd.xRotation = AngleUnit.RADIANS.fromDegrees(90);
+							else if (dd.xRotation < AngleUnit.RADIANS.fromDegrees(-90)) dd.xRotation = -AngleUnit.RADIANS.fromDegrees(90);
+							dd.yRotation += (0 - oldMousePos.x()) * xRotationSensivity;
+							RenderTest.rebuildViewMatrix = true;
+						}
+						window.getMousePos(oldMousePos);
+					}
+					case GLFW.GLFW_KEY_T -> {
+						SpatialMovementData dd = data.get();
+						if (dd.isCameraUnlocked)
+						{
+							dd.xRotation += (0 - oldMousePos.y()) * yRotationSensivity;
+							if (dd.xRotation > AngleUnit.RADIANS.fromDegrees(90)) dd.xRotation = AngleUnit.RADIANS.fromDegrees(90);
+							else if (dd.xRotation < AngleUnit.RADIANS.fromDegrees(-90)) dd.xRotation = -AngleUnit.RADIANS.fromDegrees(90);
+							dd.yRotation += (-0.1F - oldMousePos.x()) * xRotationSensivity;
+							RenderTest.rebuildViewMatrix = true;
+						}
+						window.getMousePos(oldMousePos);
+					}
+					case GLFW.GLFW_KEY_G -> {
+						SpatialMovementData dd = data.get();
+						if (dd.isCameraUnlocked)
+						{
+							dd.xRotation += (-0.1F - oldMousePos.y()) * yRotationSensivity;
+							if (dd.xRotation > AngleUnit.RADIANS.fromDegrees(90)) dd.xRotation = AngleUnit.RADIANS.fromDegrees(90);
+							else if (dd.xRotation < AngleUnit.RADIANS.fromDegrees(-90)) dd.xRotation = -AngleUnit.RADIANS.fromDegrees(90);
+							dd.yRotation += (0 - oldMousePos.x()) * xRotationSensivity;
+							RenderTest.rebuildViewMatrix = true;
+						}
+						window.getMousePos(oldMousePos);
 					}
 				}
 			}

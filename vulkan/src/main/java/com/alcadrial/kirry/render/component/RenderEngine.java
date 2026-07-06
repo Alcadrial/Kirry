@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 
 import org.eclipse.collections.api.RichIterable;
 import org.eclipse.collections.api.factory.Lists;
@@ -31,7 +32,6 @@ import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
-import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.Math;
 import com.alcadrial.kector.vector.Vector2ir;
@@ -95,7 +95,7 @@ public class RenderEngine implements AutoCloseable {
 	
 	public record TextureTarget(Texture texture) implements PipelineOutputTarget {}
 	
-	private class Data {
+	private class Data implements AutoCloseable {
 		
 		private static class ProgramRenderer {
 			
@@ -123,10 +123,6 @@ public class RenderEngine implements AutoCloseable {
 				meshes = Maps.mutable.of();
 			}
 		}
-		
-		private static final int MESH_RELOAD_INDEX = 0;
-		private static final int SHADER_RELOAD_INDEX = 1;
-		private static final int MAX_RELOAD_INDEX = 1;
 		
 		MemoryManager memoryManager;
 		VulkanBuffer vertexBuffer;
@@ -205,6 +201,29 @@ public class RenderEngine implements AutoCloseable {
 			this.atlas = atlas;
 			this.isFrameUniformsDirty = isFrameUniformsDirty;
 			this.vertexCount = vertexCount;
+		}
+		
+		@Override
+		public void close()
+		{
+			vertexBuffer.close();
+			textureUvBuffer.close();
+			uniformBuffer.close();
+			cache.meshes.forEach((_, c) -> c.release());
+			descriptorPool.close();
+			forEachRendererSafe(this, (r, _) -> {
+				r.graphicsPipeline.close();
+				r.pipelineLayout.close();
+			});
+			graphicsPipelineTemplate.close();
+			spatialMoveComputePipeline.close();
+			spatialMoveComputePipelineLayout.close();
+			initComputePipeline.close();
+			//initComputePipelineLayout.close();
+			transformComputePipeline.close();
+			//transformComputePipelineLayout.close();
+			
+			atlas.close();
 		}
 	}
 	
@@ -674,7 +693,7 @@ public class RenderEngine implements AutoCloseable {
 			data = new Data(
 				memoryManager, vertexBuffer, textureUvBuffer, uniformBuffer, cache,
 				target, renderPass, outputSize, buffersCount,
-				new int[entities.size() * (Data.MAX_RELOAD_INDEX + 1)], groupedEntities, Lists.mutable.ofAll(entities),
+				new int[entities.size()], groupedEntities, Lists.mutable.ofAll(entities),
 				defaultRendering, renderings,
 				descriptorPool,	graphicsPipelineTemplate,
 				computeLayout, spatialMoveComputePipeline, spatialMoveComputer,
@@ -737,8 +756,9 @@ public class RenderEngine implements AutoCloseable {
 		
 		long atlasViewVk = atlas.getTexture().getView().getVk();
 		
+		int bindingIndex = renderer.getBindingIndex(2);
 		for (int i = 0; i < buffersCount; i++) renderer.updateDescriptorSet(i, b -> {
-			((VkDescriptorImageInfo.@NonNull Buffer) b.get(2).pImageInfo()).imageView(atlasViewVk);
+			((VkDescriptorImageInfo.@NonNull Buffer) b.get(bindingIndex).pImageInfo()).imageView(atlasViewVk);
 		});
 		defaultRendering = new Data.ProgramRenderer(program, pipelineLayout, graphicsPipeline, renderer);
 		return defaultRendering;
@@ -864,14 +884,24 @@ public class RenderEngine implements AutoCloseable {
 		for (Data.ProgramRenderer p : data.renderings) action.accept(p, i++);
 	}
 	
-	public void update(CommandBuffer commandBuffer, VkRenderPassBeginInfo renderPassBeginInfo, int frameIndex, float enlapsed) throws VulkanException
+	private void forEachRendererSafe(Data data, BiConsumer<Data.ProgramRenderer, Integer> action)
+	{
+		if (data.defaultRendering != null) action.accept((Data.@NonNull ProgramRenderer) data.defaultRendering, 0);
+		int i = 0;
+		for (Data.ProgramRenderer p : data.renderings) action.accept(p, i++);
+	}
+	
+	private static final int MESH_RELOAD_BIT = 0x1;
+	private static final int SHADER_RELOAD_BIT = 0x2;
+	
+	public void update(CommandBuffer commandBuffer, int frameIndex, float enlapsed) throws VulkanException
 	{
 		Data data = getData();
 		RichIterable<Entity> groupedEntities = data.groupedEntities.valuesView();
 		Collection<Entity> entities = data.entities;
 		
 		int reloadsCount = 0;
-		int[] reloads = new int[data.reloadCounters.length];
+		int[] reloads = new int[entities.size()];
 		int[] componentTypeReloads = new int[2];
 		{
 			int j = 0;
@@ -883,7 +913,7 @@ public class RenderEngine implements AutoCloseable {
 				
 				if (mesh.validate(null))
 				{
-					reloads[j] |= 0x1;
+					reloads[j] |= MESH_RELOAD_BIT;
 					componentTypeReloads[0]++;
 				}
 				
@@ -892,7 +922,7 @@ public class RenderEngine implements AutoCloseable {
 				{
 					if (shader.validate(new ShaderComponent.Params(device)))
 					{
-						reloads[j] |= 0x2;
+						reloads[j] |= SHADER_RELOAD_BIT;
 						componentTypeReloads[1]++;
 					}
 				}
@@ -924,7 +954,7 @@ public class RenderEngine implements AutoCloseable {
 						int vertexSize = (meshProperties.vertexesSize() + meshProperties.normalsSize()) / meshProperties.indicesSize();
 						int textureUvSize = 2;
 						
-						if ((reloads[j] & 0x1) != 0)
+						if ((reloads[j] & MESH_RELOAD_BIT) != 0)
 						{
 							mesh.validate(new MeshComponent.Params(new MeshComponent.VertexParams(localVertexBuffer, vertexSize, vertexBufferOffset, localTextureUvBuffer, textureUvSize, textureUvBufferOffset, localVertexBuffer, vertexSize, vertexBufferOffset + meshProperties.vertexesSize() / meshProperties.indicesSize(), null), null));
 							copyVertexRegion.get()
@@ -953,7 +983,7 @@ public class RenderEngine implements AutoCloseable {
 				for (Iterator<Entity> i = groupedEntities.iterator(); i.hasNext(); j++)
 				{
 					Entity e = i.next();
-					if ((reloads[j] & 0x2) == 0) continue;
+					if ((reloads[j] & SHADER_RELOAD_BIT) == 0) continue;
 					ShaderComponent shader = (@NonNull ShaderComponent) e.getComponent(ShaderComponent.TYPE);
 					
 					ShaderProgram program = shader.getProgram();
@@ -980,7 +1010,7 @@ public class RenderEngine implements AutoCloseable {
 				
 				if (mesh.validate(null))
 				{
-					reloads[j] |= 0x1;
+					reloads[j] |= MESH_RELOAD_BIT;
 				}
 				
 				ShaderComponent shader = e.getComponent(ShaderComponent.TYPE);
@@ -988,7 +1018,7 @@ public class RenderEngine implements AutoCloseable {
 				{
 					if (shader.validate(new ShaderComponent.Params(device)))
 					{
-						reloads[j] |= 0x2;
+						reloads[j] |= SHADER_RELOAD_BIT;
 					}
 				}
 			}
@@ -1004,7 +1034,7 @@ public class RenderEngine implements AutoCloseable {
 				if (spatial != null)
 				{
 					State state = spatial.getState();
-					if ((reloads[k] & 0x1) != 0)
+					if ((reloads[k] & MESH_RELOAD_BIT) != 0)
 					{
 						activeEntities.add(new ActiveEntity(e, Vector3fr.of(), k));
 						if (!state.movement().equals(Vector3fr.of()))
@@ -1055,17 +1085,19 @@ public class RenderEngine implements AutoCloseable {
 			for (Iterator<Entity> i = groupedEntities.iterator(); i.hasNext(); j++)
 			{
 				Entity e = i.next();
-				if ((reloads[j] & 0x1) == 0) continue;
+				if ((reloads[j] & MESH_RELOAD_BIT) == 0) continue;
 				MeshComponent mesh = (@NonNull MeshComponent) e.getComponent(MeshComponent.TYPE);
 				MeshComponent.Properties meshProperties = mesh.getProperties();
 				
 				data.transformComputer.dispatch(commandBuffer, j, meshProperties.vertexCount(), 1, 1);
 			}
 		}
-		
-		commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
+	}
+	
+	public void draw(CommandBuffer commandBuffer, int frameIndex) throws VulkanException
+	{
+		Data data = getData();
 		forEachRenderer(data, (p, i) -> render(i, p.renderer, p.vertexCount, data, commandBuffer, frameIndex));
-		commandBuffer.endRenderPass();
 	}
 	
 	private void render(int index, Renderer renderer, int vertexCount, Data data, CommandBuffer commandBuffer, int frameIndex) throws VulkanException
@@ -1099,13 +1131,18 @@ public class RenderEngine implements AutoCloseable {
 		
 		renderer.draw(commandBuffer, frameIndex, 1, vertexCount);
 	}
+
+	public boolean isInit()
+	{
+		return data != null;
+	}
 	
 	@Override
 	public void close()
 	{
 		Data data = this.data;
 		if (data == null) return;
-		data.atlas.close();
+		data.close();
 	}
 	
 	private @Nullable Runnable onUniformUpdateFinish;
@@ -1160,8 +1197,6 @@ public class RenderEngine implements AutoCloseable {
 			});
 			
 			spatialMoveComputer.dispatch(commandBuffer, k, vertexCount, 1, 1);
-			if (k == 5)
-				System.out.println("Moving " + k);
 		}
 	}
 	
