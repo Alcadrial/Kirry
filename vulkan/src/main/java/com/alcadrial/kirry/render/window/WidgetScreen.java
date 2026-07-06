@@ -33,11 +33,15 @@ public class WidgetScreen implements Screen {
 	}
 	
 	@Override
-	public void render(Matrix4f matrix, Renderer renderer)
+	public void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float elapsed)
 	{}
 	
 	@Override
-	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, float enlapsedTime) throws VulkanException
+	public void update(CommandBuffer commandBuffer, float elapsed) throws VulkanException
+	{}
+	
+	@Override
+	public void draw(Matrix4f matrix, CommandBuffer commandBuffer) throws VulkanException
 	{}
 	
 	@Override

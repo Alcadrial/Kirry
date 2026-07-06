@@ -1,11 +1,16 @@
 package com.alcadrial.kirry.render.window.widget;
 
+import java.io.IOException;
+import java.nio.file.Path;
+
+import org.jspecify.annotations.NonNull;
 import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2ir;
 import com.alcadrial.kector.vector.Vector3ir;
+import com.alcadrial.kirry.core.resources.ResourceManager;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.RenderingDataUtils;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
@@ -13,9 +18,12 @@ import com.alcadrial.kirry.render.buffer.writer.DeferredBufferWriter;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.memory.MemoryManager;
 import com.alcadrial.kirry.render.memory.MemoryTransferState;
+import com.alcadrial.kirry.render.resources.TextureResource;
 import com.alcadrial.kirry.render.texture.Atlas;
 import com.alcadrial.kirry.render.texture.TextureBuffer;
 import com.alcadrial.kirry.render.texture.TextureRegion;
+import com.alcadrial.kirry.render.util.VulkanErrorUtils;
+import com.alcadrial.kirry.render.util.exception.ExternalException;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.window.AbstractWidget;
 import com.alcadrial.kirry.render.window.EventRegistry;
@@ -23,21 +31,79 @@ import com.alcadrial.kirry.render.window.VulkanWindow;
 
 public class Sprite extends AbstractWidget {
 	
+	public static Sprite ofFull(VulkanWindow window, String pathname) throws VulkanException
+	{
+		return ofWindowed(window, Vector3ir.of(), window.getSurface().getData().size(), pathname);
+	}
+	
+	public static Sprite ofFull(VulkanWindow window, Path path) throws VulkanException
+	{
+		return ofWindowed(window, Vector3ir.of(), window.getSurface().getData().size(), path);
+	}
+	
+	public static Sprite ofFull(VulkanWindow window, TextureResource texture) throws VulkanException
+	{
+		return ofWindowed(window, Vector3ir.of(), window.getSurface().getData().size(), texture);
+	}
+	
+	public static Sprite ofWindowed(VulkanWindow window, Vector3ir pos, Vector2ir size, String pathname) throws VulkanException
+	{
+		ResourceManager resourceManager = VulkanErrorUtils.nonNull(window.getResourceManager(), "Missing resource manager");
+		
+		try
+		{
+			return ofWindowed(window, pos, size, resourceManager.getResource(pathname, TextureResource.TYPE));
+		}
+		catch (IOException e)
+		{
+			throw new ExternalException(e);
+		}
+	}
+	
+	public static Sprite ofWindowed(VulkanWindow window, Vector3ir pos, Vector2ir size, Path path) throws VulkanException
+	{
+		ResourceManager resourceManager = VulkanErrorUtils.nonNull(window.getResourceManager(), "Missing resource manager");
+		
+		try
+		{
+			return ofWindowed(window, pos, size, resourceManager.getResource(path, TextureResource.TYPE));
+		}
+		catch (IOException e)
+		{
+			throw new ExternalException(e);
+		}
+	}
+	
+	public static Sprite ofWindowed(VulkanWindow window, Vector3ir pos, Vector2ir size, TextureResource texture) throws VulkanException
+	{
+		return new Sprite(window, pos, size, texture);
+	}
+	
 	private VulkanBuffer vertexBuffer;
 	private VulkanBuffer indexBuffer;
-	private TextureBuffer textureBuffer;
+	private TextureResource textureResource;
 	private TextureRegion texture;
 	
-	public Sprite(VulkanWindow window, Vector3ir pos, Vector2ir size, TextureBuffer texture)
+	public Sprite(VulkanWindow window, Vector3ir pos, Vector2ir size, TextureResource texture)
 	{
 		super(window, pos, size);
-		textureBuffer = texture;
+		textureResource = texture;
+		vertexBuffer = (@NonNull VulkanBuffer) null;
+		indexBuffer = (@NonNull VulkanBuffer) null;
+		this.texture = (@NonNull TextureRegion) null;
 	}
 	
 	@Override
-	public void initAtlas(Atlas atlas)
+	public void initAtlas(MemoryManager memoryManager, CommandBuffer commandBuffer, Atlas atlas) throws VulkanException
 	{
-		texture = atlas.add(textureBuffer);
+		textureResource.load().join();
+		TextureResource.Properties properties = textureResource.getProperties();
+		try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, properties.size()))
+		{
+			VulkanBuffer buffer = transfer.getLocal(properties.size());
+			textureResource.copy(buffer);
+			texture = atlas.add(TextureBuffer.create(buffer, properties.width(), properties.height(), textureResource));
+		}
 	}
 	
 	@Override
@@ -60,16 +126,17 @@ public class Sprite extends AbstractWidget {
 	}
 	
 	@Override
-	public void render(Matrix4f matrix, Renderer renderer)
+	public void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame)
 	{
-		super.render(matrix, renderer);
+		super.render(matrix, commandBuffer, renderer, partialFrame);
 	}
 	
 	@Override
-	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame) throws VulkanException
+	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer) throws VulkanException
 	{
 		renderer.setBuffer(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
+		renderer.draw(commandBuffer, 0);
 	}
 	
 	@Override

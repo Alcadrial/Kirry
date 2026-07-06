@@ -56,6 +56,7 @@ import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 
 import com.alcadrial.kector.matrix.Matrix4f;
+import com.alcadrial.kector.vector.Vector2d;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2fr;
 import com.alcadrial.kector.vector.Vector2i;
@@ -398,6 +399,8 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	private boolean isLost;
 	private @Nullable ResourceManager resourceManager;
 	
+	private Vector2d mousePos;
+	
 	private VulkanWindow(Builder builder, long windowId, String title, Device device, Surface.Builder surfaceBuilder) throws VulkanException
 	{
 		VulkanErrorUtils.assertStatement(device.getPresentQueue() != null, "The device must be able to present to this window's surface");
@@ -443,6 +446,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		eventRegistry = new EventRegistry();
 		
 		resourceManager = builder.resourceManager;
+		mousePos = Vector2d.of(Double.NaN, Double.NaN);
 	}
 	
 	private @Nullable Texture createDepthTexture(SurfaceData surfaceData) throws VulkanException
@@ -797,31 +801,31 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		}
 	}
 	
-	public PresentationResult renderScreenOnce() throws VulkanException
+	public PresentationResult renderScreenOnce(float elapsed) throws VulkanException
 	{
 		if (oldScreen != null)
 		{
 			//oldScreen.clearRenderingData();
 			oldScreen = null;
 		}
-		CommandBuffer commandBuffer = commandBuffers.get(getFrameIndex());
-		
-		Screen screen = this.screen;
-		if (!screen.isInitialized())
-		{
-			screen.init(memoryManager, commandBuffer);
-		}
 		if (!screen.isOnSurface() || isSurfaceSizeChanged)
 		{
 			PresentationResult r = startPresentation();
 			if (r != PresentationResult.SUCCESS) return r;
 			
+			CommandBuffer commandBuffer = getCurrentCommandBuffer();
+			
+			Screen screen = this.screen;
+			if (!screen.isInitialized())
+			{
+				screen.init(memoryManager, commandBuffer);
+			}
+			screen.update(commandBuffer, elapsed);
+			
 			Matrix4f matrix = screenMatrix;
 			if (matrix == null) matrix = screenMatrix = new Matrix4f().orthographicPositive(width, height);
 			
-			commandBuffer.beginRecording();
-			screen.draw(matrix, commandBuffer, BUFFERED_FRAMES_COUNT);
-			commandBuffer.endRecording();
+			screen.draw(matrix, commandBuffer);
 			return endPresentation(commandBuffer);
 		}
 		return PresentationResult.SUCCESS;
@@ -859,47 +863,20 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			GLFW.glfwSetCharCallback(id, null);
 			GLFW.glfwSetCharModsCallback(id, null);
 			GLFW.glfwSetCursorEnterCallback(id, null);
-			GLFW.glfwSetCursorPosCallback(id, null);
+			GLFW.glfwSetCursorPosCallback(id, this::cursorPosCallback);
 			GLFW.glfwSetDropCallback(id, null);
-			GLFW.glfwSetKeyCallback(id, null);
-			GLFW.glfwSetMouseButtonCallback(id, null);
+			GLFW.glfwSetKeyCallback(id, this::keyCallback);
+			GLFW.glfwSetMouseButtonCallback(id, this::mouseButtonCallback);
 			GLFW.glfwSetScrollCallback(id, null);
-			GLFW.glfwSetWindowCloseCallback(id, _ -> onHide());
+			GLFW.glfwSetWindowCloseCallback(id, this::windowCloseCallback);
 			GLFW.glfwSetWindowContentScaleCallback(id, null);
-			GLFW.glfwSetWindowFocusCallback(id, (_, _) -> onFocus());
-			GLFW.glfwSetWindowIconifyCallback(id, (_, c) -> {
-				isIconified = c;
-				if (c) onIconify();
-				else onRestore();
-			});
-			GLFW.glfwSetWindowMaximizeCallback(id, (_, m) -> {
-				if (m) onMaximize();
-				else onRestore();
-			});
+			GLFW.glfwSetWindowFocusCallback(id, this::windowFocusCallback);
+			GLFW.glfwSetWindowIconifyCallback(id, this::windowIconifyCallback);
+			GLFW.glfwSetWindowMaximizeCallback(id, this::windowMaximizeCallback);
 			GLFW.glfwSetWindowPosCallback(id, null);
 			GLFW.glfwSetWindowRefreshCallback(id, null);
-			GLFW.glfwSetWindowSizeCallback(id, (_, w, h) -> {
-				width = w;
-				height = h;
-				screenMatrix = null;
-			});
-			GLFW.glfwSetFramebufferSizeCallback(id, (_, _, _) -> {
-				if (!KirryVulkan.isMultiThreading())
-				{
-					isSurfaceSizeChanged = true;
-					return;
-				}
-				surfaceSizeChangedLock.lock();
-				try
-				{
-					isSurfaceSizeChanged = true;
-					swapchainRecreatedCondition.awaitUninterruptibly();
-				}
-				finally
-				{
-					surfaceSizeChangedLock.unlock();
-				}
-			});
+			GLFW.glfwSetWindowSizeCallback(id, this::windowSizeCallback);
+			GLFW.glfwSetFramebufferSizeCallback(id, this::framebufferSizeCallback);
 		});
 	}
 	
@@ -909,69 +886,121 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			if (callback instanceof GLFWCharCallbackI i) GLFW.glfwSetCharCallback(id, i);
 			if (callback instanceof GLFWCharModsCallbackI i) GLFW.glfwSetCharModsCallback(id, i);
 			if (callback instanceof GLFWCursorEnterCallbackI i) GLFW.glfwSetCursorEnterCallback(id, i);
-			if (callback instanceof GLFWCursorPosCallbackI i) GLFW.glfwSetCursorPosCallback(id, i);
+			if (callback instanceof GLFWCursorPosCallbackI i) GLFW.glfwSetCursorPosCallback(id, (w, x, y) -> {
+				cursorPosCallback(w, x, y);
+				i.invoke(w, x, y);
+			});
 			if (callback instanceof GLFWDropCallbackI i) GLFW.glfwSetDropCallback(id, i);
-			if (callback instanceof GLFWKeyCallbackI i) GLFW.glfwSetKeyCallback(id, i);
+			if (callback instanceof GLFWKeyCallbackI i) GLFW.glfwSetKeyCallback(id, (w, k, s, a, m) -> {
+				keyCallback(w, k, s, a, m);
+				i.invoke(w, k, s, a, m);
+			});
 			if (callback instanceof GLFWMouseButtonCallbackI i) GLFW.glfwSetMouseButtonCallback(id, (w, b, a, m) -> {
+				mouseButtonCallback(w, b, a, m);
 				i.invoke(w, b, a, m);
-				eventRegistry.runEvent(EventType.CLICK_EVENT);
 			});
 			if (callback instanceof GLFWScrollCallbackI i) GLFW.glfwSetScrollCallback(id, i);
 			if (callback instanceof GLFWWindowCloseCallbackI i) GLFW.glfwSetWindowCloseCallback(id, w -> {
-				onHide();
+				windowCloseCallback(w);
 				i.invoke(w);
 			});
 			if (callback instanceof GLFWWindowContentScaleCallbackI i) GLFW.glfwSetWindowContentScaleCallback(id, i);
 			if (callback instanceof GLFWWindowFocusCallbackI i) GLFW.glfwSetWindowFocusCallback(id, (w, f) -> {
-				onFocus();
+				windowFocusCallback(w, f);
 				i.invoke(w, f);
 			});
 			if (callback instanceof GLFWWindowIconifyCallbackI i) GLFW.glfwSetWindowIconifyCallback(id, (w, c) -> {
-				isIconified = c;
-				if (c) onIconify();
-				else onRestore();
+				windowIconifyCallback(w, c);
 				i.invoke(w, c);
 			});
 			if (callback instanceof GLFWWindowMaximizeCallbackI i) GLFW.glfwSetWindowMaximizeCallback(id, (w, m) -> {
-				if (m) onMaximize();
-				else onRestore();
+				windowMaximizeCallback(w, m);
 				i.invoke(w, m);
 			});
 			if (callback instanceof GLFWWindowPosCallbackI i) GLFW.glfwSetWindowPosCallback(id, i);
 			if (callback instanceof GLFWWindowRefreshCallbackI i) GLFW.glfwSetWindowRefreshCallback(id, i);
 			if (callback instanceof GLFWWindowSizeCallbackI i) GLFW.glfwSetWindowSizeCallback(id, (p, w, h) -> {
-				width = w;
-				height = h;
-				screenMatrix = null;
+				windowSizeCallback(p, w, h);
 				i.invoke(p, w, h);
 			});
 			if (callback instanceof GLFWFramebufferSizeCallbackI i) GLFW.glfwSetFramebufferSizeCallback(id, (p, w, h) -> {
-				
-				if (!KirryVulkan.isMultiThreading())
-				{
-					isSurfaceSizeChanged = true;
-					i.invoke(p, w, h);
-					return;
-				}
-				surfaceSizeChangedLock.lock();
-				try
-				{
-					isSurfaceSizeChanged = true;
-					swapchainRecreatedCondition.awaitUninterruptibly();
-				}
-				finally
-				{
-					surfaceSizeChangedLock.unlock();
-				}
+				framebufferSizeCallback(p, w, h);
 				i.invoke(p, w, h);
 			});
 		});
+	}
+	
+	private void cursorPosCallback(long p, double x, double y)
+	{
+		if (!Double.isNaN(mousePos.x()) && !Double.isNaN(mousePos.y())) eventRegistry.runEvent(EventType.MOUSE_MOVE, mousePos.x(), mousePos.y(), x, y, (x - mousePos.x()), (y - mousePos.y()));
+		mousePos.setAll(x, y);
+	}
+	
+	private void keyCallback(long p, int k, int s, int a, int m)
+	{
+		eventRegistry.runEvent(EventType.KEYBOARD, k, s, a, m);
+	}
+	
+	private void mouseButtonCallback(long p, int b, int a, int m)
+	{
+		eventRegistry.runEvent(EventType.CLICK, b, 1, mousePos);
+	}
+	
+	private void windowCloseCallback(long p)
+	{
+		onHide();
+	}
+	
+	private void windowFocusCallback(long p, boolean f)
+	{
+		onFocus();
+	}
+	
+	private void windowIconifyCallback(long p, boolean c)
+	{
+		isIconified = c;
+		if (c) onIconify();
+		else onRestore();
+	}
+	
+	private void windowMaximizeCallback(long p, boolean m)
+	{
+		if (m) onMaximize();
+		else onRestore();
+	}
+	
+	private void windowSizeCallback(long p, int w, int h)
+	{
+		width = w;
+		height = h;
+		eventRegistry.runEvent(EventType.WINDOW_RESIZE, w, h);
+		screenMatrix = null;
+	}
+	
+	private void framebufferSizeCallback(long p, int w, int h)
+	{
+		if (!KirryVulkan.isMultiThreading())
+		{
+			isSurfaceSizeChanged = true;
+			return;
+		}
+		surfaceSizeChangedLock.lock();
+		try
+		{
+			isSurfaceSizeChanged = true;
+			swapchainRecreatedCondition.awaitUninterruptibly();
+		}
+		finally
+		{
+			surfaceSizeChangedLock.unlock();
+		}
 	}
 	
 	public void setScreen(Screen screen)
 	{
 		if (screen.isInitialized()) oldScreen = this.screen;
 		this.screen = Objects.requireNonNull(screen);
+		screen.registerEvents(eventRegistry);
 		screen.setWindow(this);
 	}
 	
@@ -1053,6 +1082,16 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 	public Device getDevice()
 	{
 		return device;
+	}
+	
+	public @Nullable ResourceManager getResourceManager()
+	{
+		return resourceManager;
+	}
+	
+	public EventRegistry getEventRegistry()
+	{
+		return eventRegistry;
 	}
 	
 	public boolean isIconified()

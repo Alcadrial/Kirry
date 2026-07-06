@@ -2,5 +2,8 @@ package com.alcadrial.kirry.render.window.event;
 
 
 public enum EventType {
-	CLICK_EVENT;
+	CLICK,
+	MOUSE_MOVE,
+	KEYBOARD,
+	WINDOW_RESIZE;
 }

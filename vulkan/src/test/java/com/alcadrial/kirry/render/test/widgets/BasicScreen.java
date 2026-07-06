@@ -142,6 +142,7 @@ public class BasicScreen implements Screen {
 	public void init(MemoryManager memoryManager, CommandBuffer commandBuffer) throws VulkanException
 	{
 		if (!checkState(DIRTY_MASK)) return;
+		if (widgets.isEmpty()) return;
 		
 		Device device = window.getDevice();
 		SurfaceData data = window.getSurface().getData();
@@ -155,7 +156,7 @@ public class BasicScreen implements Screen {
 				atlas = new Atlas(device, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 				for (Widget widget : widgets)
 				{
-					widget.initAtlas(atlas);
+					widget.initAtlas(memoryManager, commandBuffer, atlas);
 				}
 				atlas.draw(commandBuffer);
 			}
@@ -181,7 +182,7 @@ public class BasicScreen implements Screen {
 					.addBinding(0, 20, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
 					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
 					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_2, 12)
-					)
+				)
 				.build();
 			if (graphicsPipeline != null) graphicsPipeline.close();
 			if (pipelineLayout != null) pipelineLayout.close();
@@ -197,14 +198,14 @@ public class BasicScreen implements Screen {
 						.apply(b -> b
 							.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 							.descriptorCount(1)
-							)
+						)
 						.apply(b -> b
 							.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 							.descriptorCount(1)
-							)
-						.rewind()
 						)
-					);
+						.rewind()
+					)
+				);
 				descriptorSetLayout = new DescriptorSetLayout(device, VkDescriptorSetLayoutCreateInfo.malloc(stack)
 					.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
 					.pNext(0)
@@ -223,11 +224,11 @@ public class BasicScreen implements Screen {
 							.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
 							.pImmutableSamplers(null))
 						.rewind()
-						)
-					);
+					)
+				);
 				pipelineLayout = new PipelineLayout(device, VkPipelineLayoutCreateInfo.calloc(stack)
 					.pSetLayouts(stack.longs(descriptorSetLayout.getVk()))
-					);
+				);
 				graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, data.size(), pipelineLayout, renderPass, 0);
 				
 				descriptorSets = descriptorPool.allocates(descriptorSetLayout, 1);
@@ -242,9 +243,9 @@ public class BasicScreen implements Screen {
 					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 0, 1, 16 * 2), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.PROJECTION,
 						ShaderVariable.MODEL
-						)),
+					)),
 					BindingInfo.ofTexture(atlas.getTexture(), new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.ATLAS)
-					)
+				)
 				.build();
 		}
 		removeState(DIRTY_MASK);
@@ -252,20 +253,27 @@ public class BasicScreen implements Screen {
 	}
 	
 	@Override
-	public void render(Matrix4f matrix, Renderer renderer)
+	public void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float elapsed)
 	{
 		for (Widget widget : widgets)
 		{
 			if (!widget.isRendered())
 			{
-				widget.render(matrix, renderer);
+				widget.render(matrix, commandBuffer, renderer, elapsed);
 			}
 		}
 	}
 	
 	@Override
-	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, float partialFrame) throws VulkanException
+	public void update(CommandBuffer commandBuffer, float elapsed) throws VulkanException
 	{
+		for (Widget widget : widgets) widget.update(commandBuffer, elapsed);
+	}
+	
+	@Override
+	public void draw(Matrix4f matrix, CommandBuffer commandBuffer) throws VulkanException
+	{
+		if (widgets.isEmpty()) return;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			renderer.useBufferLayoutWriter(0, 0, writer -> {
@@ -292,8 +300,7 @@ public class BasicScreen implements Screen {
 			
 			for (Widget widget : widgets)
 			{
-				widget.draw(matrix, commandBuffer, renderer, partialFrame);
-				renderer.draw(commandBuffer, 0);
+				widget.draw(matrix, commandBuffer, renderer);
 			}
 			commandBuffer.endRenderPass();
 		}
@@ -385,7 +392,9 @@ public class BasicScreen implements Screen {
 	
 	@Override
 	public void registerEvents(EventRegistry events)
-	{}
+	{
+		for (Widget widget : widgets) widget.registerEvents(events);
+	}
 	
 	@Override
 	public void close() throws VulkanException

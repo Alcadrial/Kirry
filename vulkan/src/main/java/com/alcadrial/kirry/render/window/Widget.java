@@ -17,38 +17,49 @@ public interface Widget {
 
 	/**
 	 * Use to load textures into an atlas, called only once before {@link #initBuffers(MemoryManager, CommandBuffer)}.
+	 * 
 	 * @param atlas
 	 */
-	void initAtlas(Atlas atlas);
+	void initAtlas(MemoryManager memoryManager, CommandBuffer commandBuffer, Atlas atlas) throws VulkanException;
 	/**
-	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, Renderer) render} method.
+	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, CommandBuffer, Renderer, float) render} method.
+	 * 
 	 * @param memoryManager
 	 * @param commandBuffer
 	 * @throws VulkanException
 	 */
 	void initBuffers(MemoryManager memoryManager, CommandBuffer commandBuffer) throws VulkanException;
 	/**
-	 * Draws textures and collects vertices to use in the {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw} method.
+	 * Draws textures and collects vertices to use in the {@link #draw(Matrix4f, CommandBuffer, Renderer) draw} method.
 	 * <p>
 	 * This method is called after {@link #initBuffers(MemoryManager, CommandBuffer) initializeRendering}.
 	 * 
 	 * @param matrix a custom matrix
+	 * @param commandBuffer
 	 * @param renderer
+	 * @param partialFrame
 	 */
-	void render(Matrix4f matrix, Renderer renderer);
+	void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame);
+	/**
+	 * 
+	 * 
+	 * @param commandBuffer
+	 * @param elapsed
+	 * @throws VulkanException
+	 */
+	void update(CommandBuffer commandBuffer, float elapsed) throws VulkanException;
 	/**
 	 * Draws the widget on the screen. If the widget is already drawn on the screen, the implementation may not draw anything or may draw only
 	 * the missing portion of the widget if any.
 	 * <p>
-	 * This method is called after {@link #render(Matrix4f, Renderer) render}.
+	 * This method is called after {@link #render(Matrix4f, CommandBuffer, Renderer, float) render}.
 	 * 
 	 * @param matrix the transformation matrix
 	 * @param commandBuffer
 	 * @param manager
-	 * @param partialFrame
 	 * @throws VulkanException
 	 */
-	void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer manager, float partialFrame) throws VulkanException;
+	void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer) throws VulkanException;
 	/**
 	 * Closes any resource previously allocated in {@link #initBuffers(MemoryManager, CommandBuffer) initializeRendering}.
 	 * <p>
@@ -57,33 +68,36 @@ public interface Widget {
 	void clearRenderingData();
 	
 	/**
-	 * Computes the rectangle of the screen that will be affected by a call to {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw} using the given matrix.
+	 * Computes the rectangle of the screen that will be affected by a call to {@link #draw(Matrix4f, CommandBuffer, Renderer) draw} using the given matrix.
 	 * <p>
 	 * The x and y components of the returned {@link Vector4i} are the position of the rectangle, the z and w components are the width and height of the rectangle.
 	 * 
 	 * @param matrix the transformation matrix
 	 * @param partialFrame
-	 * @return the area affected by {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw} or null if not known
+	 * @return the area affected by {@link #draw(Matrix4f, CommandBuffer, Renderer) draw} or null if not known
 	 */
 	Vector4i drawingArea(Matrix4f matrix, float partialFrame);
 	/**
 	 * Returns true if this widget has collected all the vertices after a
-	 * {@link #render(Matrix4f, Renderer) render} and is ready to {@link #draw(Matrix4f, CommandBuffer, Renderer, float) draw}.
+	 * {@link #render(Matrix4f, CommandBuffer, Renderer, float) render} and is ready to {@link #draw(Matrix4f, CommandBuffer, Renderer) draw}.
 	 * 
 	 * @return true if this widget has been rendered
 	 */
 	boolean isRendered();
 	/**
-	 * Returns true if this widget had created all the rendering objects necessary for {@link #render(Matrix4f, Renderer) render}.
+	 * Returns true if this widget had created all the rendering objects necessary for {@link #render(Matrix4f, CommandBuffer, Renderer, float) render}.
 	 * 
 	 * @return true if this widget has been initialized for rendering
 	 */
 	boolean isInitialized();
 	/**
-	 * Marks this widget to not skip the next {@link #render(Matrix4f, Renderer) render}.
+	 * Marks this widget to not skip the next {@link #render(Matrix4f, CommandBuffer, Renderer, float) render}.
 	 */
 	void requestRender();
 	
+	boolean isFocused();
+	void setFocus(boolean focus);
+
 	boolean isMouseHover();
 	boolean isHovered(Vector2ir v);
 	boolean isHovered(Vector2fr v);

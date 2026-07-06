@@ -25,6 +25,7 @@ public abstract class AbstractWidget implements Widget {
 	private static final byte RENDERED_BIT = 0x02;
 	private static final byte HOVERED_BIT = 0x04;
 	private static final byte DRAGGING_BIT = 0x08;
+	private static final byte FOCUSED_BIT = 0x10;
 	
 	protected final VulkanWindow window;
 	protected Vector3i pos;
@@ -61,18 +62,23 @@ public abstract class AbstractWidget implements Widget {
 	
 	@EmptyImplementation
 	@Override
-	public void initAtlas(Atlas atlas)
+	public void initAtlas(MemoryManager memoryManager, CommandBuffer commandBuffer, Atlas atlas) throws VulkanException
 	{}
 	
 	@Override
-	public void render(Matrix4f matrix, Renderer renderer)
+	public void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame)
 	{
 		setInternalStateBit(RENDERED_BIT, true);
 	}
 	
 	@EmptyImplementation
 	@Override
-	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer manager, float partialFrame) throws VulkanException
+	public void update(CommandBuffer commandBuffer, float elapsed) throws VulkanException
+	{}
+	
+	@EmptyImplementation
+	@Override
+	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer) throws VulkanException
 	{}
 	
 	@Override
@@ -108,6 +114,12 @@ public abstract class AbstractWidget implements Widget {
 	}
 	
 	@Override
+	public boolean isFocused()
+	{
+		return getInternalStateBit(FOCUSED_BIT);
+	}
+	
+	@Override
 	public void requestRender()
 	{
 		setInternalStateBit(RENDERED_BIT, false);
@@ -139,6 +151,12 @@ public abstract class AbstractWidget implements Widget {
 	protected void onMouseExit(Vector2ir exitPos)
 	{
 		setInternalStateBit(HOVERED_BIT, false);
+	}
+	
+	@Override
+	public void setFocus(boolean focus)
+	{
+		setInternalStateBit(FOCUSED_BIT, focus);
 	}
 	
 	@Override
