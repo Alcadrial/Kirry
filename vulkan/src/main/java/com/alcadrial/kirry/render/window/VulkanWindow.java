@@ -1182,9 +1182,9 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			}
 			catch (VulkanException e)
 			{}
+			device.waitIdle();
 			for (FrameData frame : frames) frame.close();
 			swapchain.close();
-			device.waitIdle();
 			for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.close();
 			if (depthTexture != null) depthTexture.close();
 			memoryManager.close();
