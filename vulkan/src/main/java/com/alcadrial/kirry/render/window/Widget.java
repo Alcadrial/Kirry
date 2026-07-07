@@ -13,7 +13,7 @@ import com.alcadrial.kirry.render.memory.MemoryManager;
 import com.alcadrial.kirry.render.texture.Atlas;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 
-public interface Widget {
+public interface Widget extends AutoCloseable {
 
 	/**
 	 * Use to load textures into an atlas, called only once before {@link #initBuffers(MemoryManager, CommandBuffer)}.
@@ -66,6 +66,9 @@ public interface Widget {
 	 * The invokation this method will allow another invokation of initializeRendering.
 	 */
 	void clearRenderingData();
+	
+	@Override
+	void close() throws VulkanException;
 	
 	/**
 	 * Computes the rectangle of the screen that will be affected by a call to {@link #draw(Matrix4f, CommandBuffer, Renderer) draw} using the given matrix.

@@ -399,6 +399,7 @@ public class BasicScreen implements Screen {
 	@Override
 	public void close() throws VulkanException
 	{
+		for (Widget widget : widgets) widget.close();
 		if (uniformBuffer != null) uniformBuffer.close();
 		if (atlas != null) atlas.close();
 		

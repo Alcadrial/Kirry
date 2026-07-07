@@ -203,8 +203,8 @@ public class Debug {
 	public static void error(Object x)
 	{
 		Vulkan vulkan = KirryVulkan.getUnsafeVulkan();
-		if (vulkan != null) debugOutput.println(time() + "[DEBUG|" + Thread.currentThread().getName() + "/" + vulkan.getData().threadId + "] " + x);
-		else debugOutput.println(time() + "[DEBUG] " + x);
+		if (vulkan != null) debugOutput.println(time() + "[ERROR|" + Thread.currentThread().getName() + "/" + vulkan.getData().threadId + "] " + x);
+		else debugOutput.println(time() + "[ERROR] " + x);
 	}
 	
 	private static String time()

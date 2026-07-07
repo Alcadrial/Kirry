@@ -1187,6 +1187,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			device.waitIdle();
 			for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.close();
 			if (depthTexture != null) depthTexture.close();
+			memoryManager.close();
 			
 			surface.close();
 			KirryVulkan.awaitRequestMainThread(() -> GLFW.glfwDestroyWindow(id));

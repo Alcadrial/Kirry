@@ -417,24 +417,31 @@ public class ComponentTest extends RenderTest {
 				projectionMatrix.multiply(new Matrix4f().scale(Vector3fr.of(1, -1, 1)));
 				projectionMatrix.multiply(new Matrix4f().view(cameraSpatialMovementData.position, cameraSpatialMovementData.xRotation, cameraSpatialMovementData.yRotation));
 				//Matrix4f modelMatrix = new Matrix4f();
-				
+
 				Vector3fr position = Vector3fr.of(lightSpatialMovementData.position);
 				float lightIntensityV = lightIntensityValue;
 				float spaceFogIntensityV = spaceFogIntensityValue;
+				
+				boolean rebuildProjectionMatrix0 = rebuildProjectionMatrix;
+				boolean rebuildViewMatrix0 = rebuildViewMatrix;
+				boolean rebuildLightValues0 = rebuildLightValues;
+				rebuildProjectionMatrix = false;
+				rebuildViewMatrix = false;
+				rebuildLightValues = false;
 				
 				renderEngine.setUniforms((i, writer) -> {
 					switch (i)
 					{
 						case 0 -> {
-							if (rebuildProjectionMatrix || rebuildViewMatrix)
+							if (rebuildProjectionMatrix0 || rebuildViewMatrix0)
 							{
-								if (rebuildProjectionMatrix || rebuildViewMatrix) writer.set(ShaderVariable.PROJECTION, projectionMatrix);
+								if (rebuildProjectionMatrix0 || rebuildViewMatrix0) writer.set(ShaderVariable.PROJECTION, projectionMatrix);
 								//writer.set(ShaderVariable.MODEL, modelMatrix);
 								writer.flush();
 							}
 						}
 						case 1 -> {
-							if (rebuildLightValues)
+							if (rebuildLightValues0)
 							{
 								writer.set(lightPos, position);
 								writer.set(lightIntensity, lightIntensityV);
@@ -443,10 +450,6 @@ public class ComponentTest extends RenderTest {
 							}
 						}
 					}
-				}, () -> {
-					rebuildProjectionMatrix = false;
-					rebuildViewMatrix = false;
-					rebuildLightValues = false;
 				});
 			}
 			

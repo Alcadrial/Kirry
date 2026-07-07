@@ -25,7 +25,7 @@ public class CameraController extends Controller {
 	{
 		if (direction.maxSize() > 0.00001)
 		{
-			camera.setPosition(Vector3f.of(direction).unitary().multiplyAll(elapsed / 1000).add(camera.getPosition()));
+			camera.setPosition(camera.getFlatViewQuaternion().rotate(Vector3f.of(direction).unitary()).multiplyAll(elapsed / 1000).add(camera.getPosition()));
 		}
 	}
 	
@@ -35,8 +35,8 @@ public class CameraController extends Controller {
 		registry.register((MouseMoveEvent) (_, _, _, _, dx, dy) -> {
 			if (isActive)
 			{
-				camera.setXRotation((@Angle float) (camera.getXRotation() + dy * yRotationSensivity / 50));
-				camera.setYRotation((@Angle float) (camera.getYRotation() + dx * xRotationSensivity / 50));
+				camera.setXRotation((@Angle float) (camera.getXRotation() + dy * yRotationSensivity / 200));
+				camera.setYRotation((@Angle float) (camera.getYRotation() + dx * xRotationSensivity / 200));
 			}
 		});
 		registry.register((KeyboardEvent) (key, _, action, _) -> {

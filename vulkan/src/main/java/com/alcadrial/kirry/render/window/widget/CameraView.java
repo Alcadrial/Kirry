@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.impl.list.mutable.FastList;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -15,6 +16,7 @@ import com.alcadrial.kector.vector.Vector3ir;
 import com.alcadrial.kirry.core.component.Entity;
 import com.alcadrial.kirry.core.resources.ResourceManager;
 import com.alcadrial.kirry.render.Renderer;
+import com.alcadrial.kirry.render.buffer.BufferLayoutWriter;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.component.RenderEngine;
 import com.alcadrial.kirry.render.memory.MemoryManager;
@@ -29,15 +31,26 @@ import com.alcadrial.kirry.render.window.AbstractWidget;
 import com.alcadrial.kirry.render.window.EventRegistry;
 import com.alcadrial.kirry.render.window.VulkanWindow;
 import com.alcadrial.kirry.render.window.event.WindowResizeEvent;
+import com.alcadrial.kirry.render.window.widget.CameraView.UniformState.Reserved;
 
 public class CameraView extends AbstractWidget {
 	
 	public static CameraView ofFull(VulkanWindow window, Camera camera) throws VulkanException
 	{
-		return ofWindowed(window, camera, Vector3ir.of(), window.getSurface().getData().size());
+		return ofWindowed(window, camera, Vector3ir.of(), window.getSurface().getData().size(), UniformState.EMPTY);
+	}
+	
+	public static CameraView ofFull(VulkanWindow window, Camera camera, UniformState uniformState) throws VulkanException
+	{
+		return ofWindowed(window, camera, Vector3ir.of(), window.getSurface().getData().size(), uniformState);
 	}
 	
 	public static CameraView ofWindowed(VulkanWindow window, Camera camera, Vector3ir pos, Vector2ir size) throws VulkanException
+	{
+		return ofWindowed(window, camera, pos, size, UniformState.EMPTY);
+	}
+	
+	public static CameraView ofWindowed(VulkanWindow window, Camera camera, Vector3ir pos, Vector2ir size, UniformState uniformState) throws VulkanException
 	{
 		ResourceManager resourceManager = VulkanErrorUtils.nonNull(window.getResourceManager(), "Missing resource manager");
 		
@@ -46,11 +59,147 @@ public class CameraView extends AbstractWidget {
 			ShaderResource spatialMove = resourceManager.getResource(RenderEngine.SPATIAL_MOVE_COMPUTE_SHADER_PATHNAME, ShaderResource.TYPE);
 			ShaderResource initCompute = resourceManager.getResource(RenderEngine.INIT_COMPUTE_SHADER_PATHNAME, ShaderResource.TYPE);
 			ShaderResource transformCompute = resourceManager.getResource(RenderEngine.TRANSFORM_COMPUTE_SHADER_PATHNAME, ShaderResource.TYPE);
-			return new CameraView(window, pos, size, camera, spatialMove, initCompute, transformCompute);
+			return new CameraView(window, pos, size, camera, spatialMove, initCompute, transformCompute, uniformState);
 		}
 		catch (IOException e)
 		{
 			throw new ExternalException(e);
+		}
+	}
+	
+	public static abstract class UniformState {
+		
+		private static final UniformState EMPTY = new UniformState() {};
+		
+		protected class Reserved {
+			
+			private FastList<List<Var<?>>> vars;
+			private boolean isDirty;
+			
+			public Reserved()
+			{
+				vars = new FastList<>(UniformState.this.vars.size());
+				for (List<Var<?>> list : UniformState.this.vars)
+				{
+					MutableList<Var<?>> l = Lists.mutable.withInitialCapacity(list.size());
+					for (Var<?> var : list) if (var.isDirty)
+					{
+						 l.add(var.clone());
+						 var.isDirty = false;
+						 isDirty = true;
+					}
+					vars.add(l);
+				}
+			}
+			
+			public boolean update(int i, BufferLayoutWriter writer) throws VulkanException
+			{
+				if (vars.size() <= i) return false;
+				boolean updated = false;
+				for (Var<?> v : vars.get(i)) updated |= update(v, writer);
+				return updated;
+			}
+			
+			private <T> boolean update(Var<T> v, BufferLayoutWriter writer) throws VulkanException
+			{
+				if (v.isDirty)
+				{
+					v.update.update(writer, v.v, v.t);
+					return true;
+				}
+				return false;
+			}
+		}
+		
+		protected class Var<T> {
+			
+			@FunctionalInterface
+			public static interface Update<T> {
+				
+				void update(BufferLayoutWriter w, ShaderVariable v, T t) throws VulkanException;
+			}
+			
+			private ShaderVariable v;
+			private T t;
+			private boolean isDirty;
+			private Update<T> update;
+			
+			public Var(ShaderVariable v, T t, Update<T> update)
+			{
+				this.v = v;
+				this.t = t;
+				this.update = update;
+				isDirty = t != null;
+			}
+			
+			public void set(T t)
+			{
+				if (isDirty = this.t != t) this.t = t;
+			}
+			
+			public T get()
+			{
+				return t;
+			}
+			
+			public boolean isDirty()
+			{
+				return isDirty;
+			}
+			
+			public void markDirty()
+			{
+				isDirty = true;
+			}
+			
+			@Override
+			protected Var<T> clone()
+			{
+				return new Var<>(v, t, update);
+			}
+		}
+		
+		private FastList<List<Var<?>>> vars;
+		
+		public UniformState()
+		{
+			vars = FastList.newList();
+		}
+		
+		protected void add(Var<?> v, int binding)
+		{
+			ensureCapacity(binding);
+			vars.get(binding).add(v);
+		}
+		
+		public MutableList<ShaderVariable> getVertexUniformVariables()
+		{
+			return Lists.mutable.of(ShaderVariable.PROJECTION, ShaderVariable.MODEL);
+		}
+		
+		public MutableList<ShaderVariable> getFragmentUniformVariables()
+		{
+			return Lists.fixedSize.of();
+		}
+		
+		private void ensureCapacity(int i)
+		{
+			if (vars.size() <= i)
+			{
+				vars.ensureCapacity(i + 1);
+				while (vars.size() <= i) vars.add(Lists.mutable.of());
+			}
+		}
+		
+		protected boolean isDirty()
+		{
+			for (List<Var<?>> v : vars) for (Var<?> w : v) if (w.isDirty) return true;
+			return false;
+		}
+		
+		public Reserved reserveUpdate()
+		{
+			return new Reserved();
 		}
 	}
 	
@@ -59,23 +208,22 @@ public class CameraView extends AbstractWidget {
 	private ShaderResource spatialMoveComputeShaderResource;
 	private ShaderResource initComputeShaderResource;
 	private ShaderResource transformComputeShaderResource;
-	private MutableList<ShaderVariable> vertexUniformVariables;
-	private MutableList<ShaderVariable> fragmentUniformVariables;
 	
 	private boolean windowResizeFlag;
+	private boolean newCameraFlag;
 	private boolean pausedFlag;
+	private UniformState uniformState;
 	
 	private Collection<Entity> entities;
 	
 	private Camera camera;
 	private @Nullable Controller controller;
 	
-	private CameraView(VulkanWindow window, Vector3ir pos, Vector2ir size, Camera camera, ShaderResource spatialMoveComputeShaderResource, ShaderResource initComputeShaderResource, ShaderResource transformComputeShaderResource)
+	private CameraView(VulkanWindow window, Vector3ir pos, Vector2ir size, Camera camera, ShaderResource spatialMoveComputeShaderResource, ShaderResource initComputeShaderResource, ShaderResource transformComputeShaderResource, UniformState uniformState)
 	{
 		super(window, pos, size);
 		entities = List.of();
-		vertexUniformVariables = Lists.mutable.of(ShaderVariable.PROJECTION, ShaderVariable.MODEL);
-		fragmentUniformVariables = Lists.mutable.of();
+		this.uniformState = uniformState;
 		this.spatialMoveComputeShaderResource = spatialMoveComputeShaderResource;
 		this.initComputeShaderResource = initComputeShaderResource;
 		this.transformComputeShaderResource = transformComputeShaderResource;
@@ -98,6 +246,7 @@ public class CameraView extends AbstractWidget {
 	public void setCamera(Camera camera)
 	{
 		this.camera = camera;
+		newCameraFlag = true;
 	}
 	
 	public void setController(Controller controller)
@@ -120,22 +269,20 @@ public class CameraView extends AbstractWidget {
 		this.transformComputeShaderResource = transformComputeShaderResource;
 	}
 	
-	public void setVertexUniformVariables(MutableList<ShaderVariable> vertexUniformVariables)
+	public void setUniformState(UniformState uniformState)
 	{
-		this.vertexUniformVariables = vertexUniformVariables;
-	}
-	
-	public void setFragmentUniformVariables(MutableList<ShaderVariable> fragmentUniformVariables)
-	{
-		this.fragmentUniformVariables = fragmentUniformVariables;
+		this.uniformState = uniformState;
 	}
 	
 	@Override
 	public void initBuffers(MemoryManager memoryManager, CommandBuffer commandBuffer) throws VulkanException
 	{
+		windowResizeFlag = false;
+		newCameraFlag = false;
+		Reserved r = uniformState.reserveUpdate();
 		super.initBuffers(memoryManager, commandBuffer);
 		renderEngine = new RenderEngine(window.getDevice());
-		renderEngine.init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.SurfaceTarget(window), vertexUniformVariables, fragmentUniformVariables, entities);
+		renderEngine.init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.SurfaceTarget(window), uniformState.getVertexUniformVariables(), uniformState.getFragmentUniformVariables(), entities);
 		
 		Matrix4f projection = new Matrix4f(camera.getProjection((float) window.getWidth() / window.getHeight(), true)).multiply(camera.getView());
 		
@@ -145,9 +292,11 @@ public class CameraView extends AbstractWidget {
 				case 0 -> {
 					writer.set(ShaderVariable.PROJECTION, projection);
 					writer.set(ShaderVariable.MODEL, new Matrix4f().translateX(-pos.x()).translateY(-pos.y()));
+					r.update(i, writer);
 					writer.flush();
 				}
-				case 1 -> {
+				default -> {
+					if (r.update(i, writer)) writer.flush();
 				}
 			}
 		});
@@ -172,23 +321,26 @@ public class CameraView extends AbstractWidget {
 		{
 			renderEngine.reinit(commandBuffer, null, null, null, new RenderEngine.SurfaceTarget(window), null, null);
 		}
-		if (windowResizeFlag || camera.isProjectionDirty() || camera.isViewDirty())
+		boolean flag0 = windowResizeFlag || newCameraFlag || camera.isProjectionDirty() || camera.isViewDirty();
+		Reserved r = uniformState.reserveUpdate();
+		if (flag0 || r.isDirty)
 		{
-			Matrix4f projection = new Matrix4f(camera.getProjection((float) window.getWidth() / window.getHeight(), windowResizeFlag)).multiply(camera.getView());
+			Matrix4f projection = flag0 ? new Matrix4f(camera.getProjection((float) window.getWidth() / window.getHeight(), windowResizeFlag)).multiply(camera.getView()) : null;
+			
+			windowResizeFlag = false;
+			newCameraFlag = false;
 			
 			renderEngine.setUniforms((i, writer) -> {
 				switch (i)
 				{
 					case 0 -> {
-						writer.set(ShaderVariable.PROJECTION, projection);
-						writer.flush();
+						if (flag0) writer.set(ShaderVariable.PROJECTION, (@NonNull Matrix4f) projection);
+						if (r.update(i, writer) || flag0) writer.flush();
 					}
-					case 1 -> {
-						
+					default -> {
+						if (r.update(i, writer)) writer.flush();
 					}
 				}
-			}, () -> {
-				windowResizeFlag = false;
 			});
 		}
 		renderEngine.draw(commandBuffer, window.getFrameIndex());
@@ -208,5 +360,11 @@ public class CameraView extends AbstractWidget {
 	public @Nullable Controller getController()
 	{
 		return controller;
+	}
+	
+	@Override
+	public void close() throws VulkanException
+	{
+		renderEngine.close();
 	}
 }

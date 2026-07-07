@@ -287,7 +287,7 @@ public class BufferLayoutWriter {
 		}
 	}
 	
-	private void checkValue(ShaderInputType required, ShaderInputType provided)
+	private void checkValue(ShaderInputType provided, ShaderInputType required)
 	{
 		if (required != provided)
 		{

@@ -9,6 +9,7 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.list.mutable.FastList;
+import org.jspecify.annotations.NonNull;
 import org.lwjgl.glfw.GLFW;
 
 import com.alcadrial.kector.AngleUnit;
@@ -40,6 +41,7 @@ import com.alcadrial.kirry.render.util.future.VulkanFuture;
 import com.alcadrial.kirry.render.window.VulkanWindow;
 import com.alcadrial.kirry.render.window.event.KeyboardEvent;
 import com.alcadrial.kirry.render.window.widget.CameraView;
+import com.alcadrial.kirry.render.window.widget.CameraView.UniformState;
 import com.alcadrial.kirry.render.window.widget.Sprite;
 
 public class CameraTest extends RenderTest {
@@ -52,25 +54,15 @@ public class CameraTest extends RenderTest {
 	private static final String SHADER4 = SHADERS + "shader4";
 	private static final String SHADER5 = SHADERS + "shader5";
 	
-	private static boolean showGui;
-	
 	private static Mesh lightModel;
 	private static Entity lightEntity;
-	private static Vector3f oldLightPos;
 	private static MutableList<Mesh> models;
 	private static MutableList<Entity> entities;
 	
 	private static ShaderResource vertexShaderResource;
 	private static ShaderResource fragmentShaderResource;
-	private static TextureResource overlayResource;
 	
-	private static ShaderVariable lightPos = ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS");
-	private static ShaderVariable lightIntensity = ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY");
-	private static ShaderVariable spaceFogIntensity = ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY");
-	
-	private static float lightIntensityValue;
-	private static float spaceFogIntensityValue;
-	private static boolean rebuildLightValues;
+	//private static boolean showGui;
 	
 	public static void start() throws VulkanException
 	{
@@ -89,7 +81,6 @@ public class CameraTest extends RenderTest {
 			
 			vertexShaderResource = fileManager.getResource(SHADER5 + ".vert", ShaderResource.TYPE);
 			fragmentShaderResource = fileManager.getResource(SHADER5 + ".frag", ShaderResource.TYPE);
-			overlayResource = fileManager.getResource(TEXTURES + "overlay.png", TextureResource.TYPE);
 			
 			screenShaderProgram = ShaderProgram.create().add(loadShader(SHADER4 + ".vert"), loadShader(SHADER4 + ".frag")).build();
 		}
@@ -169,11 +160,10 @@ public class CameraTest extends RenderTest {
 			}
 			//light entity
 			{
-				oldLightPos = Vector3f.of();
 				Entity e = Entity.of(maxId);
 				e.setComponent(MeshComponent.TYPE, MeshComponent.ofMesh(lightModel));
 				e.setComponent(ShaderComponent.TYPE, ShaderComponent.ofResource(vertexShaderResource, fragmentShaderResource));
-				e.setComponent(SpatialComponent.TYPE, SpatialComponent.of(Vector3f.of(), oldLightPos));
+				e.setComponent(SpatialComponent.TYPE, SpatialComponent.of(Vector3f.of(), Vector3f.of()));
 				e.listenComponents();
 				entities.add(lightEntity = e);
 			}
@@ -192,7 +182,14 @@ public class CameraTest extends RenderTest {
 				Throwable ex = futures.get(j).join();
 				if (ex != null)
 				{
-					System.out.println("Failed to load entity (" + entities.remove(i).getComponent(MeshComponent.TYPE) + "): " + ex.getLocalizedMessage());
+					if (i < entities.size())
+					{
+						System.out.println("Failed to load entity (" + entities.remove(i).getComponent(MeshComponent.TYPE) + "): " + ex.getLocalizedMessage());
+					}
+					else
+					{
+						System.out.println("Failed to load overlay: " + ex.getLocalizedMessage());
+					}
 				}
 				else i++;
 			}
@@ -206,22 +203,41 @@ public class CameraTest extends RenderTest {
 		CameraController controller = new CameraController(camera0);
 		EntityController lightController = new EntityController(lightEntity);
 		
-		CameraView cameraView = CameraView.ofFull(window, camera0);
+		//@formatter:off
+		CameraView cameraView = CameraView.ofFull(window, camera0, new UniformState() {{
+			add(new Var<>(ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS"), lightController.getPos(), (w, v, t) -> w.set(v, t)), 1);
+			add(new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY"), 1F, (w, v, t) -> w.set(v, t)), 1);
+			add(new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY"), 0.1F, (w, v, t) -> w.set(v, t)), 1);
+		}
+		@Override
+			public @NonNull MutableList<ShaderVariable> getFragmentUniformVariables()
+			{
+				return Lists.fixedSize.of(ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS"),
+					ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY"),
+					ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY"));
+			}
+		});
+		//@formatter:on
 		cameraView.setCamera(camera0);
 		cameraView.setController(controller);
 		cameraView.setEntities(entities);
 		cameraView.setFocus(true);
 		
+		float scale = 3;
+		Vector2ir overlaySize = Vector2ir.of((int) (32 * scale), (int) (32 * scale));
+		
 		BasicScreen s = new BasicScreen();
+		s.add(Sprite.ofWindowed(window, Vector3ir.of((window.getWidth() - overlaySize.x()) / 2, (window.getHeight() - overlaySize.y()) / 2, 0), overlaySize, TEXTURES + "overlay.png"));
+		s.add(cameraView);
 		s.add(Sprite.ofWindowed(window, Vector3ir.of(20, 20, 0), Vector2ir.of(256, 256), IMAGES + "icon0.png"));
 		s.add(Sprite.ofWindowed(window, Vector3ir.of(296, 20, 0), Vector2ir.of(256, 256), IMAGES + "icon.png"));
 		s.add(Sprite.ofWindowed(window, Vector3ir.of(20, 296, 0), Vector2ir.of(256, 256), IMAGES + "icon.png"));
 		s.add(Sprite.ofWindowed(window, Vector3ir.of(296, 296, 0), Vector2ir.of(256, 256), IMAGES + "icon0.png"));
-		s.add(cameraView);
 		s.setShaderProgram(screenShaderProgram);
 		
 		window.setScreen(s);
 		controller.registerEvents(window.getEventRegistry());
+		boolean[] holdController = new boolean[] {true};
 		window.getEventRegistry().register((KeyboardEvent) (key, _, action, _) -> {
 			if (action == GLFW.GLFW_PRESS)
 			{
@@ -233,15 +249,19 @@ public class CameraTest extends RenderTest {
 					}
 					case GLFW.GLFW_KEY_1 -> {
 						cameraView.setCamera(camera0);
+						if (holdController[0]) controller.setCamera(camera0);
 					}
 					case GLFW.GLFW_KEY_2 -> {
 						cameraView.setCamera(camera1);
+						if (holdController[0]) controller.setCamera(camera1);
 					}
 					case GLFW.GLFW_KEY_3 -> {
 						cameraView.setCamera(camera2);
+						if (holdController[0]) controller.setCamera(camera2);
 					}
 					case GLFW.GLFW_KEY_4 -> {
 						cameraView.setCamera(camera3);
+						if (holdController[0]) controller.setCamera(camera3);
 					}
 					case GLFW.GLFW_KEY_7 -> {
 						controller.setCamera(camera0);
@@ -258,6 +278,9 @@ public class CameraTest extends RenderTest {
 					case GLFW.GLFW_KEY_L -> {
 						cameraView.setController(cameraView.getController() == lightController ? controller : lightController);
 					}
+					case GLFW.GLFW_KEY_H -> {
+						holdController[0] = !holdController[0];
+					}
 				}
 			}
 		});
@@ -266,13 +289,20 @@ public class CameraTest extends RenderTest {
 	public static void loop() throws VulkanException
 	{
 		VulkanWindow window = KirryVulkan.getVulkan().getWindow();
+		int fps = TestProperties.MAX_FRAME_RATE.getValue();
+		long frameTime = 1000 / fps;
+		
 		try
 		{
+			long t0 = System.currentTimeMillis();
+			long t1 = t0;
 			while (!window.shouldClose())
 			{
-				window.renderScreenOnce(50);
+				window.renderScreenOnce(t1 - t0);
 				window.pollEvents();
-				Thread.sleep(50);
+				Thread.sleep(frameTime);
+				t0 = t1;
+				t1 = System.currentTimeMillis();
 			}
 		}
 		catch (InterruptedException _)
@@ -281,6 +311,7 @@ public class CameraTest extends RenderTest {
 	
 	public static void end()
 	{
+		if (entities != null) for (Entity entity : entities) entity.close();
 		KirryVulkan.terminate();
 	}
 }

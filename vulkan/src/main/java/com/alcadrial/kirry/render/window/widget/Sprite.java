@@ -150,4 +150,11 @@ public class Sprite extends AbstractWidget {
 	{
 		throw new UnsupportedOperationException();
 	}
+	
+	@Override
+	public void close() throws VulkanException
+	{
+		vertexBuffer.close();
+		indexBuffer.close();
+	}
 }

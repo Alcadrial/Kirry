@@ -9,13 +9,16 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2fr;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3fr;
+import com.alcadrial.kector.vector.quaternion.Quaternionf;
+import com.alcadrial.kector.vector.quaternion.Quaternionfr;
 
 public class Camera {
 	
 	private @Nullable Matrix4f projection;
 	private @Angle float fieldOfView;
 	private float maxDistance;
-	
+
+	private @Nullable Quaternionf flatViewQ;
 	private @Nullable Matrix4f view;
 	private Vector3f position;
 	private @Angle float xRotation;
@@ -28,6 +31,12 @@ public class Camera {
 		position = Vector3f.of();
 		xRotation = 0;
 		yRotation = 0;
+	}
+	
+	public Quaternionfr getFlatViewQuaternion()
+	{
+		if (flatViewQ == null) flatViewQ = Quaternionf.ofAngles(0, -yRotation / 2, 0);
+		return (@NonNull Quaternionfr) flatViewQ;
 	}
 	
 	public Matrix4f getView()
@@ -94,6 +103,7 @@ public class Camera {
 	{
 		this.yRotation = yRotation % Math.DOUBLE_PIF;
 		view = null;
+		flatViewQ = null;
 	}
 	
 	public @Angle float getFieldOfView()
