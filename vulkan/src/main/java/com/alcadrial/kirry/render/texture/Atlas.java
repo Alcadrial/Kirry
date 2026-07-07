@@ -19,6 +19,7 @@ import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkImageCopy;
+import org.lwjgl.vulkan.VkPhysicalDeviceLimits;
 
 import com.alcadrial.kirry.core.util.Pair;
 import com.alcadrial.kirry.core.util.color.Color;
@@ -202,6 +203,8 @@ public class Atlas implements AutoCloseable {
 	private final float loadFactor;
 	private int width;
 	private int height;
+	private int maxWidth;
+	private int maxHeight;
 	private @Nullable Texture texture;
 	private boolean isDirty;
 	
@@ -215,15 +218,27 @@ public class Atlas implements AutoCloseable {
 	
 	public Atlas(Device device, int format, int usage, int aspectMask) throws VulkanException
 	{
-		this(device, format, usage, aspectMask, DEFAULT_LOAD_FACTOR);
+		VkPhysicalDeviceLimits limits = device.getPhysicalDevice().getLimits();
+		this(device, limits.maxImageDimension2D(), limits.maxImageDimension2D(), format, usage, aspectMask, DEFAULT_LOAD_FACTOR);
 	}
 	
 	public Atlas(Device device, int format, int usage, int aspectMask, float loadFactor) throws VulkanException
 	{
-		this(device, format, usage, aspectMask, loadFactor, false);
+		VkPhysicalDeviceLimits limits = device.getPhysicalDevice().getLimits();
+		this(device, limits.maxImageDimension2D(), limits.maxImageDimension2D(), format, usage, aspectMask, loadFactor, false);
 	}
 	
-	public Atlas(Device device, int format, int usage, int aspectMask, float loadFactor, boolean debug) throws VulkanException
+	public Atlas(Device device, int maxWidth, int maxHeight, int format, int usage, int aspectMask) throws VulkanException
+	{
+		this(device, maxWidth, maxHeight, format, usage, aspectMask, DEFAULT_LOAD_FACTOR);
+	}
+	
+	public Atlas(Device device, int maxWidth, int maxHeight, int format, int usage, int aspectMask, float loadFactor) throws VulkanException
+	{
+		this(device, maxWidth, maxHeight, format, usage, aspectMask, loadFactor, false);
+	}
+	
+	public Atlas(Device device, int maxWidth, int maxHeight, int format, int usage, int aspectMask, float loadFactor, boolean debug) throws VulkanException
 	{
 		this.device = device;
 		this.format = format;
@@ -233,6 +248,8 @@ public class Atlas implements AutoCloseable {
 		this.debug = debug;
 		width = 256;
 		height = 256;
+		this.maxWidth = maxWidth;
+		this.maxHeight = maxHeight;
 		isDirty = true;
 		texture = null;
 		slots = new TreeSet<>();
@@ -248,7 +265,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public TextureRegion add(Texture texture, Object id)
+	public @Nullable TextureRegion add(Texture texture, Object id)
 	{
 		return add(new TextureResource(texture, id));
 	}
@@ -262,7 +279,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public <T> List<TextureRegion> addAllTextures(Function<T, Texture> getTexture, Function<T, Object> getId, @SuppressWarnings("unchecked") T... textures)
+	public <T> List<@Nullable TextureRegion> addAllTextures(Function<T, Texture> getTexture, Function<T, Object> getId, @SuppressWarnings("unchecked") T... textures)
 	{
 		List<Resource> resources = new ArrayList<>(textures.length);
 		for (T texture : textures) resources.add(new TextureResource(getTexture.apply(texture), getId.apply(texture)));
@@ -275,7 +292,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public <T> List<TextureRegion> addAllTextures(Map<T, Texture> textures)
+	public <T> List<@Nullable TextureRegion> addAllTextures(Map<T, Texture> textures)
 	{
 		List<Resource> resources = new ArrayList<>(textures.size());
 		for (Entry<T, Texture> e : textures.entrySet()) resources.add(new TextureResource(e.getValue(), e.getKey()));
@@ -289,7 +306,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public TextureRegion add(TextureBuffer buffer)
+	public @Nullable TextureRegion add(TextureBuffer buffer)
 	{
 		return add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), buffer.getId()));
 	}
@@ -300,7 +317,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public TextureRegion add(TextureBuffer buffer, Object id)
+	public @Nullable TextureRegion add(TextureBuffer buffer, Object id)
 	{
 		return add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), id));
 	}
@@ -311,7 +328,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public List<TextureRegion> addAllBuffers(Iterable<TextureBuffer> buffers)
+	public List<@Nullable TextureRegion> addAllBuffers(Iterable<TextureBuffer> buffers)
 	{
 		List<Resource> resources = new ArrayList<>();
 		for (TextureBuffer buffer : buffers) resources.add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), buffer.getId()));
@@ -324,7 +341,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public List<TextureRegion> addAllBuffers(Collection<TextureBuffer> buffers)
+	public List<@Nullable TextureRegion> addAllBuffers(Collection<TextureBuffer> buffers)
 	{
 		List<Resource> resources = new ArrayList<>(buffers.size());
 		for (TextureBuffer buffer : buffers) resources.add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), buffer.getId()));
@@ -337,7 +354,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public List<TextureRegion> addAllBuffers(TextureBuffer... buffers)
+	public List<@Nullable TextureRegion> addAllBuffers(TextureBuffer... buffers)
 	{
 		List<Resource> resources = new ArrayList<>(buffers.length);
 		for (TextureBuffer buffer : buffers)
@@ -356,7 +373,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public <T> List<TextureRegion> addAllBuffers(Function<T, TextureBuffer> getBuffer, Function<T, Object> getId, @SuppressWarnings("unchecked") T... buffers)
+	public <T> List<@Nullable TextureRegion> addAllBuffers(Function<T, TextureBuffer> getBuffer, Function<T, Object> getId, @SuppressWarnings("unchecked") T... buffers)
 	{
 		List<Resource> resources = new ArrayList<>(buffers.length);
 		for (T bufferT : buffers)
@@ -390,7 +407,7 @@ public class Atlas implements AutoCloseable {
 	 * @see #freeRegion(TextureRegion)
 	 * @see TextureRegion
 	 */
-	public <T> List<TextureRegion> addAllBuffers(Map<T, TextureBuffer> buffers)
+	public <T> List<@Nullable TextureRegion> addAllBuffers(Map<T, TextureBuffer> buffers)
 	{
 		List<Resource> resources = new ArrayList<>(buffers.size());
 		for (Entry<T, TextureBuffer> e : buffers.entrySet())
@@ -448,12 +465,12 @@ public class Atlas implements AutoCloseable {
 		availableArea += (region.getXEnd() - region.getXStart()) * (region.getYEnd() - region.getYStart());
 	}
 	
-	private TextureRegion add(Resource resource)
+	private @Nullable TextureRegion add(Resource resource)
 	{
 		return addAll(List.of(resource)).getFirst();
 	}
 	
-	private List<TextureRegion> addAll(List<Resource> resources)
+	private List<@Nullable TextureRegion> addAll(List<Resource> resources)
 	{
 		record Holder(Resource r, int i) {}
 		
@@ -477,6 +494,7 @@ public class Atlas implements AutoCloseable {
 			
 			int requiredArea = 0;
 			for (Holder h : newResources) requiredArea += h.r.width * h.r.height;
+			requiredArea = Math.min(requiredArea, maxWidth * maxHeight);
 			
 			int currentArea = availableArea;
 			int growCount = 0;
@@ -497,12 +515,25 @@ public class Atlas implements AutoCloseable {
 				height <<= growCount0;
 				width <<= growCount1;
 			}
+			
+			if (height > maxHeight)
+			{
+				width <<= (height / maxHeight) >>> 1;
+				height = maxHeight;
+			}
+			else if (width > maxWidth)
+			{
+				height <<= (width / maxWidth) >>> 1;
+				width = maxWidth;
+			}
+			
 			if (currentArea != availableArea)
 			{
 				rebuildAtlas();
 				availableArea = currentArea;
 			}
 			
+			out:
 			for (Holder h : newResources)
 			{
 				boolean isRebuilt = false;
@@ -511,7 +542,7 @@ public class Atlas implements AutoCloseable {
 				{
 					if (isRebuilt)
 					{
-						growAtlas();
+						if (!growAtlas()) break out;
 						rebuildAtlas();
 					}
 					else
@@ -631,16 +662,19 @@ public class Atlas implements AutoCloseable {
 		for (Pair<Resource, TextureRegion> p : l)
 		{
 			Region region;
-			while ((region = tryInsert(p.left, p.right)) == null) growAtlas();
+			while ((region = tryInsert(p.left, p.right)) == null && growAtlas());
+			if (region == null) throw new IllegalStateException("Cannot find space for all textures");
 			regions.add(region);
 		}
 	}
 	
-	private void growAtlas()
+	private boolean growAtlas()
 	{
-		if (height < width) height *= 2;
-		else width *= 2;
+		if (height < width && height < maxHeight) height *= 2;
+		else if (width < maxWidth) width *= 2;
+		else return false;
 		availableArea *= 2;
+		return true;
 	}
 	
 	/**

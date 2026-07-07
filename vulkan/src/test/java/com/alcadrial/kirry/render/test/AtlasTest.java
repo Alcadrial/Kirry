@@ -37,7 +37,7 @@ public class AtlasTest {
 				.useDepthTexture(false)
 				.build(64, 64, "Test");
 			
-			Atlas atlas = new Atlas(window.getDevice(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, 0.75F, true);
+			Atlas atlas = new Atlas(window.getDevice(), 256, 4096, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, 0.75F, true);
 			
 			List<TextureBuffer> textures = new ArrayList<>();
 			
