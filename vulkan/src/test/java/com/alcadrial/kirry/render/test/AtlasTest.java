@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.kirry.render.KirryVulkan;
@@ -73,9 +74,20 @@ public class AtlasTest {
 			
 			RenderTest.renderTexture(window, atlas.getTexture());
 			
+			boolean[] rerender = new boolean[] {false};
+			
+			window.setCallback((GLFWWindowRefreshCallbackI) _ -> {
+				rerender[0] = true;
+			});
+			
 			while (!window.shouldClose())
 			{
 				Thread.sleep(50);
+				if (rerender[0])
+				{
+					RenderTest.renderTexture(window, atlas.getTexture());
+					rerender[0] = false;
+				}
 				window.pollEvents();
 			}
 			

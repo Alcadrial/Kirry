@@ -51,14 +51,16 @@ public class Memory extends RawDeviceResource {
 	
 	private final int size;
 	private final int memoryTypeBits;
+	private final int propertyFlags;
 	private final int index;
 	private @Nullable Mapping mapping;
 	
-	public Memory(Device device, long vk, int size, int memoryTypeBits, int index)
+	public Memory(Device device, long vk, int size, int memoryTypeBits, int propertyFlags, int index)
 	{
 		super(device);
 		this.vk = vk;
 		this.size = size;
+		this.propertyFlags = propertyFlags;
 		this.memoryTypeBits = memoryTypeBits;
 		this.index = index;
 	}
@@ -123,6 +125,11 @@ public class Memory extends RawDeviceResource {
 		return memoryTypeBits;
 	}
 	
+	public int getPropertyFlags()
+	{
+		return propertyFlags;
+	}
+	
 	public int getMemoryIndex()
 	{
 		return index;
@@ -130,7 +137,7 @@ public class Memory extends RawDeviceResource {
 	
 	public boolean isHostCoherent()
 	{
-		return (memoryTypeBits & VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
+		return (propertyFlags & VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
 	}
 	
 	@Override

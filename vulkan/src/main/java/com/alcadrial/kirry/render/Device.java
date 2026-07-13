@@ -440,6 +440,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		
 		int minimal = requiredProperties;
 		int optimal = minimal | optimalProperties;
+		int propertyFlags = 0;
 		int result = 0;
 		
 		int index;
@@ -448,6 +449,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			if ((memoryRequirements.memoryTypeBits() & (1 << index)) != 0 && (memoryProperties.memoryTypes(index).propertyFlags() & optimal) == optimal)
 			{
 				result = memoryRequirements.memoryTypeBits();
+				propertyFlags = memoryProperties.memoryTypes(index).propertyFlags();
 				break;
 			}
 		}
@@ -461,6 +463,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 					if ((memoryRequirements.memoryTypeBits() & (1 << index)) != 0 && (memoryProperties.memoryTypes(index).propertyFlags() & minimal) == minimal)
 					{
 						result = memoryRequirements.memoryTypeBits();
+						propertyFlags = memoryProperties.memoryTypes(index).propertyFlags();
 						break;
 					}
 				}
@@ -470,7 +473,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		
 		LongBuffer p = stack.mallocLong(1);
 		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(vk, VulkanUtils.memoryAllocateInfo(stack, memoryRequirements.size(), index), null, p), () -> "Failed to allocate image memory (" + memoryRequirements.size() + " bytes)");
-		return new Memory(this, p.get(), (int) memoryRequirements.size(), result, index);
+		return new Memory(this, p.get(), (int) memoryRequirements.size(), result, propertyFlags, index);
 	}
 	
 	@Override

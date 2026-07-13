@@ -72,8 +72,8 @@ public class SphereDataCollector {
 			offsetExtra += meridianCount;
 		}
 		
-		for (int i = 1; i < meridianCount; i++) indexBuffer.put(offset + i, offsetExtra, offset + i - 1);
-		indexBuffer.put(offset, offsetExtra, offsetExtra - 1);
+		for (int i = 1; i < meridianCount; i++) indexBuffer.put(offset + i - 1, offsetExtra, offset + i);
+		indexBuffer.put(offset, offsetExtra - 1, offsetExtra);
 	}
 	
 	private static Vector3fr[] getRingVertices(Vector3fr origin, float offset, float radius, int vertexCount, float y)

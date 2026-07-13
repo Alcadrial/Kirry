@@ -84,7 +84,7 @@ public class ComputerTest extends RenderTest {
 	private static GraphicsPipeline graphicsPipeline;
 	private static PipelineLayout computeLayout;
 	private static ComputePipeline computePipeline;
-
+	
 	private static RenderTest.SpatialMovementData spatialMovementData;
 	private static ShaderVariable particleRadius;
 	private static ShaderVariable minBound;
@@ -250,6 +250,9 @@ public class ComputerTest extends RenderTest {
 					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
 					.addAttribute(1, 1, ShaderInputType.VECTOR_FLOAT_3, 0)
 					.addAttribute(2, 2, ShaderInputType.VECTOR_FLOAT_4, 0)
+				)
+				.configureRasterizationState(s -> s
+					.frontFace(VK10.VK_FRONT_FACE_COUNTER_CLOCKWISE)
 				)
 				.build();
 			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
