@@ -557,7 +557,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 				if (name != null) device.setObjectDebugName(VK10.VK_OBJECT_TYPE_IMAGE_VIEW, p1[0], "Frame" + i + " ImageView (" + name + ")");
 				
 				framebufferCreateInfo.pAttachments(attachments.put(0, p1[0]));
-				FrameBuffer frameBuffer = new FrameBuffer(device, framebufferCreateInfo);
+				FrameBuffer frameBuffer = new FrameBuffer(device, renderPass, framebufferCreateInfo);
 				if (name != null) frameBuffer.setName("Frame" + i + " FrameBuffer (" + name + ")");
 				
 				if (oldFrames == null)
@@ -640,6 +640,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		}
 		finally
 		{
+			isSurfaceSizeChanged = false;
 			swapchainRecreatedCondition.signal();
 		}
 	}
@@ -673,7 +674,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		{
 			if (isSurfaceSizeChanged)
 			{
-				isSurfaceSizeChanged = false;
 				if (!recreateSwapchain()) return PresentationResult.EMPTY_SURFACE;
 			}
 			else
@@ -824,6 +824,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 			
 			Matrix4f matrix = screenMatrix;
 			if (matrix == null) matrix = screenMatrix = new Matrix4f().orthographicPositive(width, height);
+			screen.render(matrix, commandBuffer);
 			
 			screen.draw(matrix, commandBuffer);
 			return endPresentation(commandBuffer);
@@ -988,7 +989,7 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		try
 		{
 			isSurfaceSizeChanged = true;
-			swapchainRecreatedCondition.awaitUninterruptibly();
+			while (isSurfaceSizeChanged) swapchainRecreatedCondition.awaitUninterruptibly();
 		}
 		finally
 		{

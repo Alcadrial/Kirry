@@ -3,7 +3,6 @@ package com.alcadrial.kirry.render.window;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2ir;
 import com.alcadrial.kirry.render.FrameBuffer;
-import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.memory.MemoryManager;
@@ -13,7 +12,7 @@ import com.alcadrial.kirry.render.util.exception.VulkanException;
 public interface Screen extends AutoCloseable {
 	
 	/**
-	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, CommandBuffer, Renderer, float)} method.
+	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, CommandBuffer)} method.
 	 * @throws VulkanException
 	 */
 	void init(MemoryManager memoryManager, CommandBuffer commandBuffer) throws VulkanException;
@@ -24,10 +23,9 @@ public interface Screen extends AutoCloseable {
 	 * 
 	 * @param matrix a custom matrix
 	 * @param commandBuffer
-	 * @param renderer
-	 * @param elapsed
+	 * @throws VulkanException
 	 */
-	void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float elapsed);
+	void render(Matrix4f matrix, CommandBuffer commandBuffer) throws VulkanException;
 	/**
 	 * 
 	 * 
@@ -42,7 +40,7 @@ public interface Screen extends AutoCloseable {
 	 * <p>
 	 * If the method {@link #requestDraw()} is called, is guaranteed to that this call will draw the entire widget.
 	 * <p>
-	 * This method is called after {@link #render(Matrix4f, CommandBuffer, Renderer, float)}.
+	 * This method is called after {@link #render(Matrix4f, CommandBuffer)}.
 	 * 
 	 * @param matrix the transformation matrix
 	 * @param commandBuffer
@@ -64,19 +62,19 @@ public interface Screen extends AutoCloseable {
 	boolean isOnSurface();
 	/**
 	 * Returns true if this widget has collected all the vertices after a
-	 * {@link #render(Matrix4f, CommandBuffer, Renderer, float)} and is ready to {@link #draw(Matrix4f, CommandBuffer)}.
+	 * {@link #render(Matrix4f, CommandBuffer)} and is ready to {@link #draw(Matrix4f, CommandBuffer)}.
 	 * 
 	 * @return true if this widget has been rendered
 	 */
 	boolean isRendered();
 	/**
-	 * Returns true if this widget had created all the rendering objects necessary for {@link #render(Matrix4f, CommandBuffer, Renderer, float)}.
+	 * Returns true if this widget had created all the rendering objects necessary for {@link #render(Matrix4f, CommandBuffer)}.
 	 * 
 	 * @return true if this widget has been initialized for rendering
 	 */
 	boolean isInitialized();
 	/**
-	 * Marks this widget to not skip the next {@link #render(Matrix4f, CommandBuffer, Renderer, float)}.
+	 * Marks this widget to not skip the next {@link #render(Matrix4f, CommandBuffer)}.
 	 */
 	void requestRender();
 	/**

@@ -15,7 +15,7 @@ import com.alcadrial.kirry.core.util.EmptyImplementation;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.memory.MemoryManager;
-import com.alcadrial.kirry.render.texture.Atlas;
+import com.alcadrial.kirry.render.texture.TextureManager;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 
 public abstract class AbstractWidget implements Widget {
@@ -59,14 +59,14 @@ public abstract class AbstractWidget implements Widget {
 	{
 		setInternalStateBit(INITIALIZED_BIT, true);
 	}
-	
+
 	@EmptyImplementation
 	@Override
-	public void initAtlas(MemoryManager memoryManager, CommandBuffer commandBuffer, Atlas atlas) throws VulkanException
+	public void initTextures(MemoryManager memoryManager, CommandBuffer commandBuffer, TextureManager textureManager) throws VulkanException
 	{}
 	
 	@Override
-	public void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame)
+	public void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer) throws VulkanException
 	{
 		setInternalStateBit(RENDERED_BIT, true);
 	}
@@ -78,7 +78,7 @@ public abstract class AbstractWidget implements Widget {
 	
 	@EmptyImplementation
 	@Override
-	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer) throws VulkanException
+	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, TextureManager textureManager) throws VulkanException
 	{}
 	
 	@Override

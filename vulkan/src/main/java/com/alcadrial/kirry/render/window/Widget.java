@@ -10,7 +10,7 @@ import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.memory.MemoryManager;
-import com.alcadrial.kirry.render.texture.Atlas;
+import com.alcadrial.kirry.render.texture.TextureManager;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 
 public interface Widget extends AutoCloseable {
@@ -18,11 +18,11 @@ public interface Widget extends AutoCloseable {
 	/**
 	 * Use to load textures into an atlas, called only once before {@link #initBuffers(MemoryManager, CommandBuffer)}.
 	 * 
-	 * @param atlas
+	 * @param textureManager
 	 */
-	void initAtlas(MemoryManager memoryManager, CommandBuffer commandBuffer, Atlas atlas) throws VulkanException;
+	void initTextures(MemoryManager memoryManager, CommandBuffer commandBuffer, TextureManager textureManager) throws VulkanException;
 	/**
-	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, CommandBuffer, Renderer, float) render} method.
+	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, CommandBuffer, Renderer) render} method.
 	 * 
 	 * @param memoryManager
 	 * @param commandBuffer
@@ -30,16 +30,16 @@ public interface Widget extends AutoCloseable {
 	 */
 	void initBuffers(MemoryManager memoryManager, CommandBuffer commandBuffer) throws VulkanException;
 	/**
-	 * Draws textures and collects vertices to use in the {@link #draw(Matrix4f, CommandBuffer, Renderer) draw} method.
+	 * Draws textures and collects vertices to use in the {@link #draw(Matrix4f, CommandBuffer, Renderer, TextureManager) draw} method.
 	 * <p>
 	 * This method is called after {@link #initBuffers(MemoryManager, CommandBuffer) initializeRendering}.
 	 * 
 	 * @param matrix a custom matrix
 	 * @param commandBuffer
 	 * @param renderer
-	 * @param partialFrame
+	 * @throws VulkanException
 	 */
-	void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame);
+	void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer) throws VulkanException;
 	/**
 	 * 
 	 * 
@@ -52,14 +52,15 @@ public interface Widget extends AutoCloseable {
 	 * Draws the widget on the screen. If the widget is already drawn on the screen, the implementation may not draw anything or may draw only
 	 * the missing portion of the widget if any.
 	 * <p>
-	 * This method is called after {@link #render(Matrix4f, CommandBuffer, Renderer, float) render}.
+	 * This method is called after {@link #render(Matrix4f, CommandBuffer, Renderer) render}.
 	 * 
 	 * @param matrix the transformation matrix
 	 * @param commandBuffer
+	 * @param textureManager
 	 * @param manager
 	 * @throws VulkanException
 	 */
-	void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer) throws VulkanException;
+	void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, TextureManager textureManager) throws VulkanException;
 	/**
 	 * Closes any resource previously allocated in {@link #initBuffers(MemoryManager, CommandBuffer) initializeRendering}.
 	 * <p>
@@ -71,30 +72,30 @@ public interface Widget extends AutoCloseable {
 	void close() throws VulkanException;
 	
 	/**
-	 * Computes the rectangle of the screen that will be affected by a call to {@link #draw(Matrix4f, CommandBuffer, Renderer) draw} using the given matrix.
+	 * Computes the rectangle of the screen that will be affected by a call to {@link #draw(Matrix4f, CommandBuffer, Renderer, TextureManager) draw} using the given matrix.
 	 * <p>
 	 * The x and y components of the returned {@link Vector4i} are the position of the rectangle, the z and w components are the width and height of the rectangle.
 	 * 
 	 * @param matrix the transformation matrix
 	 * @param partialFrame
-	 * @return the area affected by {@link #draw(Matrix4f, CommandBuffer, Renderer) draw} or null if not known
+	 * @return the area affected by {@link #draw(Matrix4f, CommandBuffer, Renderer, TextureManager) draw} or null if not known
 	 */
 	Vector4i drawingArea(Matrix4f matrix, float partialFrame);
 	/**
 	 * Returns true if this widget has collected all the vertices after a
-	 * {@link #render(Matrix4f, CommandBuffer, Renderer, float) render} and is ready to {@link #draw(Matrix4f, CommandBuffer, Renderer) draw}.
+	 * {@link #render(Matrix4f, CommandBuffer, Renderer) render} and is ready to {@link #draw(Matrix4f, CommandBuffer, Renderer, TextureManager) draw}.
 	 * 
 	 * @return true if this widget has been rendered
 	 */
 	boolean isRendered();
 	/**
-	 * Returns true if this widget had created all the rendering objects necessary for {@link #render(Matrix4f, CommandBuffer, Renderer, float) render}.
+	 * Returns true if this widget had created all the rendering objects necessary for {@link #render(Matrix4f, CommandBuffer, Renderer) render}.
 	 * 
 	 * @return true if this widget has been initialized for rendering
 	 */
 	boolean isInitialized();
 	/**
-	 * Marks this widget to not skip the next {@link #render(Matrix4f, CommandBuffer, Renderer, float) render}.
+	 * Marks this widget to not skip the next {@link #render(Matrix4f, CommandBuffer, Renderer) render}.
 	 */
 	void requestRender();
 	

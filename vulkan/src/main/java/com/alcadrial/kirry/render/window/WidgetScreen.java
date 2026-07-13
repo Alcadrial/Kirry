@@ -7,7 +7,6 @@ import org.jspecify.annotations.NonNull;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2ir;
-import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.memory.MemoryManager;
 import com.alcadrial.kirry.render.renderpass.RenderPass;
@@ -33,7 +32,7 @@ public class WidgetScreen implements Screen {
 	}
 	
 	@Override
-	public void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float elapsed)
+	public void render(Matrix4f matrix, CommandBuffer commandBuffer)
 	{}
 	
 	@Override

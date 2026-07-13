@@ -226,13 +226,13 @@ public class CameraTest extends RenderTest {
 		float scale = 3;
 		Vector2ir overlaySize = Vector2ir.of((int) (32 * scale), (int) (32 * scale));
 		
-		BasicScreen s = new BasicScreen();
-		s.add(Sprite.ofWindowed(window, Vector3ir.of((window.getWidth() - overlaySize.x()) / 2, (window.getHeight() - overlaySize.y()) / 2, 0), overlaySize, TEXTURES + "overlay.png"));
-		s.add(cameraView);
+		BasicScreen s = new BasicScreen(window);
 		s.add(Sprite.ofWindowed(window, Vector3ir.of(20, 20, 0), Vector2ir.of(256, 256), IMAGES + "icon0.png"));
 		s.add(Sprite.ofWindowed(window, Vector3ir.of(296, 20, 0), Vector2ir.of(256, 256), IMAGES + "icon.png"));
 		s.add(Sprite.ofWindowed(window, Vector3ir.of(20, 296, 0), Vector2ir.of(256, 256), IMAGES + "icon.png"));
 		s.add(Sprite.ofWindowed(window, Vector3ir.of(296, 296, 0), Vector2ir.of(256, 256), IMAGES + "icon0.png"));
+		s.add(cameraView);
+		s.add(Sprite.ofWindowed(window, Vector3ir.of((window.getWidth() - overlaySize.x()) / 2, (window.getHeight() - overlaySize.y()) / 2, 0), overlaySize, TEXTURES + "overlay.png"));
 		s.setShaderProgram(screenShaderProgram);
 		
 		window.setScreen(s);

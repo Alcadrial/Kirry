@@ -92,7 +92,7 @@ public class RenderPassTemplate implements AutoCloseable {
 				.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE)
 				.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE)
 				.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
-				.finalLayout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
+				.finalLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
 			.addSubpass(config -> config
 				.pipelineBindPoint(VK10.VK_PIPELINE_BIND_POINT_GRAPHICS)
 				.addColor(0, VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
@@ -148,7 +148,7 @@ public class RenderPassTemplate implements AutoCloseable {
 				.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE)
 				.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE)
 				.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
-				.finalLayout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+				.finalLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 			).addAttachment(config -> config
 				.format(VK10.VK_FORMAT_D24_UNORM_S8_UINT)
 				.samples(sampleCount)
@@ -243,7 +243,7 @@ public class RenderPassTemplate implements AutoCloseable {
 	
 	public static class Builder {
 		
-		public class AttachmentConfigurator {
+		public static class AttachmentConfigurator {
 			
 			private int flags;
 			private int format;
@@ -315,7 +315,7 @@ public class RenderPassTemplate implements AutoCloseable {
 			}
 		}
 		
-		public class SubpassConfigurator {
+		public static class SubpassConfigurator {
 			
 			private int flags;
 			private int pipelineBindPoint;
@@ -420,7 +420,7 @@ public class RenderPassTemplate implements AutoCloseable {
 			}
 		}
 		
-		public class SubpassDependencyConfigurator {
+		public static class SubpassDependencyConfigurator {
 			
 			private int srcSubpass;
 			private int dstSubpass;

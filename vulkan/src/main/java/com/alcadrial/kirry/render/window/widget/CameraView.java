@@ -9,21 +9,38 @@ import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.list.mutable.FastList;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.lwjgl.system.MemoryStack;
+import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkClearValue;
+import org.lwjgl.vulkan.VkExtent2D;
+import org.lwjgl.vulkan.VkRect2D;
+import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2ir;
 import com.alcadrial.kector.vector.Vector3ir;
 import com.alcadrial.kirry.core.component.Entity;
 import com.alcadrial.kirry.core.resources.ResourceManager;
+import com.alcadrial.kirry.render.Device;
+import com.alcadrial.kirry.render.FrameBuffer;
 import com.alcadrial.kirry.render.Renderer;
+import com.alcadrial.kirry.render.RenderingDataUtils;
+import com.alcadrial.kirry.render.Surface.SurfaceData;
 import com.alcadrial.kirry.render.buffer.BufferLayoutWriter;
+import com.alcadrial.kirry.render.buffer.VulkanBuffer;
+import com.alcadrial.kirry.render.buffer.writer.DeferredBufferWriter;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.component.RenderEngine;
 import com.alcadrial.kirry.render.memory.MemoryManager;
+import com.alcadrial.kirry.render.memory.MemoryTransferState;
+import com.alcadrial.kirry.render.renderpass.RenderPass;
+import com.alcadrial.kirry.render.renderpass.RenderPassTemplate;
 import com.alcadrial.kirry.render.resources.ShaderResource;
 import com.alcadrial.kirry.render.scene.Camera;
 import com.alcadrial.kirry.render.scene.Controller;
 import com.alcadrial.kirry.render.shader.ShaderVariable;
+import com.alcadrial.kirry.render.texture.Texture;
+import com.alcadrial.kirry.render.texture.TextureManager;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.exception.ExternalException;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
@@ -84,9 +101,9 @@ public class CameraView extends AbstractWidget {
 					MutableList<Var<?>> l = Lists.mutable.withInitialCapacity(list.size());
 					for (Var<?> var : list) if (var.isDirty)
 					{
-						 l.add(var.clone());
-						 var.isDirty = false;
-						 isDirty = true;
+						l.add(var.clone());
+						var.isDirty = false;
+						isDirty = true;
 					}
 					vars.add(l);
 				}
@@ -214,6 +231,13 @@ public class CameraView extends AbstractWidget {
 	private boolean pausedFlag;
 	private UniformState uniformState;
 	
+	private Texture sceneColorTexture;
+	private Texture sceneDepthTexture;
+	private FrameBuffer frameBuffer;
+	private VulkanBuffer vertexBuffer;
+	private VulkanBuffer indexBuffer;
+	private int textureIndex;
+	
 	private Collection<Entity> entities;
 	
 	private Camera camera;
@@ -229,6 +253,11 @@ public class CameraView extends AbstractWidget {
 		this.transformComputeShaderResource = transformComputeShaderResource;
 		
 		renderEngine = (@NonNull RenderEngine) null;
+		sceneColorTexture = (@NonNull Texture) null;
+		sceneDepthTexture = (@NonNull Texture) null;
+		frameBuffer = (@NonNull FrameBuffer) null;
+		vertexBuffer = (@NonNull VulkanBuffer) null;
+		indexBuffer = (@NonNull VulkanBuffer) null;
 		
 		this.camera = camera;
 	}
@@ -275,14 +304,37 @@ public class CameraView extends AbstractWidget {
 	}
 	
 	@Override
+	public void initTextures(MemoryManager memoryManager, CommandBuffer commandBuffer, TextureManager textureManager) throws VulkanException
+	{
+		Device device = window.getDevice();
+		int width = window.getWidth();
+		int height = window.getHeight();
+		SurfaceData data = window.getSurface().getData();
+		sceneColorTexture = Texture.create2dTexture(device, width, height, data.format().format(), VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, 1, 1);
+		sceneDepthTexture = Texture.create2dTexture(device, width, height, VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT, 1, 1);
+		
+		textureIndex = textureManager.addTexture(sceneColorTexture);
+	}
+	
+	@Override
 	public void initBuffers(MemoryManager memoryManager, CommandBuffer commandBuffer) throws VulkanException
 	{
 		windowResizeFlag = false;
 		newCameraFlag = false;
 		Reserved r = uniformState.reserveUpdate();
 		super.initBuffers(memoryManager, commandBuffer);
-		renderEngine = new RenderEngine(window.getDevice());
-		renderEngine.init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.SurfaceTarget(window), uniformState.getVertexUniformVariables(), uniformState.getFragmentUniformVariables(), entities);
+		
+		Device device = window.getDevice();
+		
+		RenderPass renderPass;
+		try (RenderPassTemplate renderPassTemplate = RenderPassTemplate.transformColorDepthTextureTemplate(sceneColorTexture.getFormat(), 1))
+		{
+			renderPass = renderPassTemplate.createRenderPass(device);
+		}
+		frameBuffer = FrameBuffer.ofDepth(sceneColorTexture, sceneDepthTexture, renderPass);
+		
+		renderEngine = new RenderEngine(device);
+		renderEngine.init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.TextureTarget(frameBuffer), uniformState.getVertexUniformVariables(), uniformState.getFragmentUniformVariables(), entities);
 		
 		Matrix4f projection = new Matrix4f(camera.getProjection((float) window.getWidth() / window.getHeight(), true)).multiply(camera.getView());
 		
@@ -300,6 +352,17 @@ public class CameraView extends AbstractWidget {
 				}
 			}
 		});
+		
+		vertexBuffer = memoryManager.allocate((5 * 4) * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		indexBuffer = memoryManager.allocate(6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		
+		try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, indexBuffer))
+		{
+			DeferredBufferWriter localVertexWriter = transfer.getWriter(vertexBuffer);
+			DeferredBufferWriter localIndexWriter = transfer.getWriter(indexBuffer);
+			
+			RenderingDataUtils.loadRectangleUv(localVertexWriter, localIndexWriter, 0, pos.x(), pos.y(), pos.x() + size.x(), pos.y() + size.y(), 1, 0, 0, 1, 1);
+		}
 	}
 	
 	@Override
@@ -313,7 +376,7 @@ public class CameraView extends AbstractWidget {
 	}
 	
 	@Override
-	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer) throws VulkanException
+	public void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer) throws VulkanException
 	{
 		if (!renderEngine.isInit()) return;
 		
@@ -343,7 +406,36 @@ public class CameraView extends AbstractWidget {
 				}
 			});
 		}
-		renderEngine.draw(commandBuffer, window.getFrameIndex());
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
+			renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
+			renderPassBeginInfo.pNext(0);
+			renderPassBeginInfo.renderPass(frameBuffer.getRenderPass().getVk());
+			renderPassBeginInfo.framebuffer(frameBuffer.getVk());
+			
+			VkRect2D renderArea = VkRect2D.calloc(stack);
+			renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
+			renderPassBeginInfo.renderArea(renderArea);
+			
+			VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
+			clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
+			clearValues.get().depthStencil().depth(1).stencil(0);
+			renderPassBeginInfo.pClearValues(clearValues.rewind());
+			
+			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
+			renderEngine.draw(commandBuffer, 0);
+			commandBuffer.endRenderPass();
+		}
+		//super.render(matrix, commandBuffer, renderer);
+	}
+	
+	@Override
+	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, TextureManager textureManager) throws VulkanException
+	{
+		renderer.setBuffer(0, vertexBuffer);
+		renderer.setIndexBuffer(indexBuffer);
+		renderer.draw(commandBuffer, textureManager.textureIndexToGlobal(textureIndex));
 	}
 	
 	@Override
@@ -366,5 +458,10 @@ public class CameraView extends AbstractWidget {
 	public void close() throws VulkanException
 	{
 		renderEngine.close();
+		frameBuffer.close();
+		frameBuffer.getRenderPass().close();
+		sceneDepthTexture.close();
+		vertexBuffer.close();
+		indexBuffer.close();
 	}
 }

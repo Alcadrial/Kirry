@@ -124,11 +124,11 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			)
 			.configureMultisampleState(_ -> {})
 			.configureDepthStencilState(s -> s
-				.depthTestEnable(true)
+				.depthTestEnable(false)
 			)
 			.configureColorBlendState(s -> s
 				.blendConstants(0, 0, 0, 0)
-				.addAttachment(false, 0, 0, 0, 0, 0, 0, VK10.VK_COLOR_COMPONENT_R_BIT | VK10.VK_COLOR_COMPONENT_G_BIT | VK10.VK_COLOR_COMPONENT_B_BIT | VK10.VK_COLOR_COMPONENT_A_BIT)
+				.addAttachment(true, VK10.VK_BLEND_FACTOR_SRC_ALPHA, VK10.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK10.VK_BLEND_OP_ADD, VK10.VK_BLEND_FACTOR_ONE, VK10.VK_BLEND_FACTOR_ONE, VK10.VK_BLEND_OP_MAX, VK10.VK_COLOR_COMPONENT_R_BIT | VK10.VK_COLOR_COMPONENT_G_BIT | VK10.VK_COLOR_COMPONENT_B_BIT | VK10.VK_COLOR_COMPONENT_A_BIT)
 			)
 			.configureDynamicStateState(_ -> {});
 	}

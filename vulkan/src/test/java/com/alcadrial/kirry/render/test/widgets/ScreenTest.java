@@ -107,7 +107,7 @@ public class ScreenTest extends RenderTest {
 		}
 		
 		SCREENS.add(BlackScreen.BLACK_SCREEN);
-		BasicScreen s = new BasicScreen();
+		BasicScreen s = new BasicScreen(window);
 		s.add(Sprite.ofWindowed(window, Vector3ir.of(20, 20, 0), Vector2ir.of(256, 256), icon0));
 		s.add(Sprite.ofWindowed(window, Vector3ir.of(296, 20, 0), Vector2ir.of(256, 256), icon));
 		s.add(Sprite.ofWindowed(window, Vector3ir.of(20, 296, 0), Vector2ir.of(256, 256), icon));

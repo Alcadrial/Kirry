@@ -38,6 +38,7 @@ import com.alcadrial.kirry.render.shader.descriptor.DescriptorPool;
 import com.alcadrial.kirry.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.kirry.render.shader.descriptor.DescriptorSetLayout;
 import com.alcadrial.kirry.render.texture.Atlas;
+import com.alcadrial.kirry.render.texture.TextureManager;
 import com.alcadrial.kirry.render.texture.TextureSampler;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.window.ActionResult;
@@ -64,7 +65,7 @@ public class BasicScreen implements Screen {
 	private ShaderProgram shaderProgram;
 	
 	private VulkanBuffer uniformBuffer;
-	private Atlas atlas;
+	private TextureManager textureManager;
 	
 	private RenderPassTemplate renderPassTemplate;
 	private RenderPass renderPass;
@@ -79,10 +80,11 @@ public class BasicScreen implements Screen {
 	private DescriptorSetLayout descriptorSetLayout;
 	private DescriptorPool descriptorPool;
 	
-	public BasicScreen() throws VulkanException
+	public BasicScreen(VulkanWindow window) throws VulkanException
 	{
 		widgets = new LinkedList<>();
 		state = NEW | DIRTY_MASK;
+		textureManager = TextureManager.getDefault(() -> new Atlas(window.getDevice(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT));
 	}
 	
 	private boolean checkState(int state)
@@ -151,20 +153,20 @@ public class BasicScreen implements Screen {
 		
 		if (checkState(WIDGET_STATE_DIRTY))
 		{
-			if (atlas == null)
+			if (textureManager.getAtlasSize() == 0)
 			{
-				atlas = new Atlas(device, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
 				for (Widget widget : widgets)
 				{
-					widget.initAtlas(memoryManager, commandBuffer, atlas);
+					widget.initTextures(memoryManager, commandBuffer, textureManager);
 				}
-				atlas.draw(commandBuffer);
+				for (Atlas atlas : textureManager.getAtlases()) atlas.draw(commandBuffer);
 			}
 			for (Widget widget : widgets)
 			{
 				widget.initBuffers(memoryManager, commandBuffer);
 			}
 		}
+		int textureCount = textureManager.getAtlasSize() + textureManager.getTextureSize();
 		
 		if (checkState(SURFACE_FORMAT_DIRTY))
 		{
@@ -185,67 +187,67 @@ public class BasicScreen implements Screen {
 				)
 				.build();
 			if (graphicsPipeline != null) graphicsPipeline.close();
-			if (pipelineLayout != null) pipelineLayout.close();
 			
-			try (MemoryStack stack = MemoryStack.stackPush())
+			if (descriptorPool == null)
 			{
-				descriptorPool = new DescriptorPool(device, VkDescriptorPoolCreateInfo.malloc(stack)
-					.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
-					.pNext(0)
-					.flags(0)
-					.maxSets(1)
-					.pPoolSizes(VkDescriptorPoolSize.malloc(2, stack)
-						.apply(b -> b
-							.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-							.descriptorCount(1)
+				try (MemoryStack stack = MemoryStack.stackPush())
+				{
+					descriptorPool = new DescriptorPool(device, VkDescriptorPoolCreateInfo.malloc(stack)
+						.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
+						.pNext(0)
+						.flags(0)
+						.maxSets(textureCount)
+						.pPoolSizes(VkDescriptorPoolSize.malloc(2, stack)
+							.apply(b -> b
+								.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+								.descriptorCount(1)
+							)
+							.apply(b -> b
+								.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+								.descriptorCount(1)
+							)
+							.rewind()
 						)
-						.apply(b -> b
-							.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-							.descriptorCount(1)
+					);
+					descriptorSetLayout = new DescriptorSetLayout(device, VkDescriptorSetLayoutCreateInfo.malloc(stack)
+						.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
+						.pNext(0)
+						.flags(0)
+						.pBindings(VkDescriptorSetLayoutBinding.malloc(2, stack)
+							.apply(b -> b
+								.binding(0)
+								.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+								.descriptorCount(1)
+								.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
+								.pImmutableSamplers(null))
+							.apply(b -> b
+								.binding(1)
+								.descriptorType(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+								.descriptorCount(1)
+								.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
+								.pImmutableSamplers(null))
+							.rewind()
 						)
-						.rewind()
-					)
-				);
-				descriptorSetLayout = new DescriptorSetLayout(device, VkDescriptorSetLayoutCreateInfo.malloc(stack)
-					.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
-					.pNext(0)
-					.flags(0)
-					.pBindings(VkDescriptorSetLayoutBinding.malloc(2, stack)
-						.apply(b -> b
-							.binding(0)
-							.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-							.descriptorCount(1)
-							.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
-							.pImmutableSamplers(null))
-						.apply(b -> b
-							.binding(1)
-							.descriptorType(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-							.descriptorCount(1)
-							.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
-							.pImmutableSamplers(null))
-						.rewind()
-					)
-				);
-				pipelineLayout = new PipelineLayout(device, VkPipelineLayoutCreateInfo.calloc(stack)
-					.pSetLayouts(stack.longs(descriptorSetLayout.getVk()))
-				);
-				graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, data.size(), pipelineLayout, renderPass, 0);
-				
-				descriptorSets = descriptorPool.allocates(descriptorSetLayout, 1);
+					);
+					pipelineLayout = new PipelineLayout(device, VkPipelineLayoutCreateInfo.calloc(stack).pSetLayouts(stack.longs(descriptorSetLayout.getVk())));
+					descriptorSets = descriptorPool.allocates(descriptorSetLayout, textureCount);
+				}
 			}
+			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, data.size(), pipelineLayout, renderPass, 0);
 		}
 		if (checkState(SURFACE_DIRTY) || checkState(SHADER_DIRTY))
 		{
 			renderer = Renderer.builder()
 				.graphicsPipeline(graphicsPipeline)
 				.descriptorSets(descriptorSets)
-				.bindings(
+				.buffersCount(textureCount)
+				.bindings(i -> new BindingInfo[] {
 					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 0, 1, 16 * 2), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.PROJECTION,
 						ShaderVariable.MODEL
 					)),
-					BindingInfo.ofTexture(atlas.getTexture(), new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.ATLAS)
-				)
+					BindingInfo.ofTexture(i < textureManager.getAtlasSize() ? textureManager.getAtlas(i).getTexture() : textureManager.getTexture(i - textureManager.getAtlasSize()), new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.ATLAS)
+				})
 				.build();
 		}
 		removeState(DIRTY_MASK);
@@ -253,13 +255,13 @@ public class BasicScreen implements Screen {
 	}
 	
 	@Override
-	public void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float elapsed)
+	public void render(Matrix4f matrix, CommandBuffer commandBuffer) throws VulkanException
 	{
 		for (Widget widget : widgets)
 		{
 			if (!widget.isRendered())
 			{
-				widget.render(matrix, commandBuffer, renderer, elapsed);
+				widget.render(matrix, commandBuffer, renderer);
 			}
 		}
 	}
@@ -296,11 +298,13 @@ public class BasicScreen implements Screen {
 			clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
 			clearValues.get().depthStencil().depth(1).stencil(0);
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
-			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 			
+			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 			for (Widget widget : widgets)
 			{
-				widget.draw(matrix, commandBuffer, renderer);
+				widget.draw(matrix, commandBuffer, renderer, textureManager);
+				
+				//commandBuffer.pipelineBarrier(VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, VkMemoryBarrier.malloc(1).apply(s -> s.sType$Default().pNext(0).srcAccessMask(VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT).dstAccessMask(VK10.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT)).rewind(), null, null);
 			}
 			commandBuffer.endRenderPass();
 		}
@@ -401,7 +405,7 @@ public class BasicScreen implements Screen {
 	{
 		for (Widget widget : widgets) widget.close();
 		if (uniformBuffer != null) uniformBuffer.close();
-		if (atlas != null) atlas.close();
+		if (textureManager != null) textureManager.close();
 		
 		if (renderPassTemplate != null) renderPassTemplate.close();
 		if (renderPass != null) renderPass.close();

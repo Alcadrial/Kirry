@@ -19,8 +19,8 @@ import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.memory.MemoryManager;
 import com.alcadrial.kirry.render.memory.MemoryTransferState;
 import com.alcadrial.kirry.render.resources.TextureResource;
-import com.alcadrial.kirry.render.texture.Atlas;
 import com.alcadrial.kirry.render.texture.TextureBuffer;
+import com.alcadrial.kirry.render.texture.TextureManager;
 import com.alcadrial.kirry.render.texture.TextureRegion;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.exception.ExternalException;
@@ -83,6 +83,7 @@ public class Sprite extends AbstractWidget {
 	private VulkanBuffer indexBuffer;
 	private TextureResource textureResource;
 	private TextureRegion texture;
+	private int textureIndex;
 	
 	public Sprite(VulkanWindow window, Vector3ir pos, Vector2ir size, TextureResource texture)
 	{
@@ -92,9 +93,9 @@ public class Sprite extends AbstractWidget {
 		indexBuffer = (@NonNull VulkanBuffer) null;
 		this.texture = (@NonNull TextureRegion) null;
 	}
-	
+
 	@Override
-	public void initAtlas(MemoryManager memoryManager, CommandBuffer commandBuffer, Atlas atlas) throws VulkanException
+	public void initTextures(MemoryManager memoryManager, CommandBuffer commandBuffer, TextureManager textureManager) throws VulkanException
 	{
 		textureResource.load().join();
 		TextureResource.Properties properties = textureResource.getProperties();
@@ -102,7 +103,8 @@ public class Sprite extends AbstractWidget {
 		{
 			VulkanBuffer buffer = transfer.getLocal(properties.size());
 			textureResource.copy(buffer);
-			texture = atlas.add(TextureBuffer.create(buffer, properties.width(), properties.height(), textureResource));
+			texture = textureManager.addToAtlas(TextureBuffer.create(buffer, properties.width(), properties.height(), textureResource));
+			textureIndex = textureManager.getAtlasSize() - 1;
 		}
 	}
 	
@@ -126,17 +128,17 @@ public class Sprite extends AbstractWidget {
 	}
 	
 	@Override
-	public void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, float partialFrame)
+	public void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer) throws VulkanException
 	{
-		super.render(matrix, commandBuffer, renderer, partialFrame);
+		super.render(matrix, commandBuffer, renderer);
 	}
 	
 	@Override
-	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer) throws VulkanException
+	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, TextureManager textureManager) throws VulkanException
 	{
 		renderer.setBuffer(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
-		renderer.draw(commandBuffer, 0);
+		renderer.draw(commandBuffer, textureManager.atlasIndexToGlobal(textureIndex));
 	}
 	
 	@Override
