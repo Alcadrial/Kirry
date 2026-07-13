@@ -130,7 +130,7 @@ public class Memory extends RawDeviceResource {
 	
 	public boolean isHostCoherent()
 	{
-		return (memoryTypeBits | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
+		return (memoryTypeBits & VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
 	}
 	
 	@Override

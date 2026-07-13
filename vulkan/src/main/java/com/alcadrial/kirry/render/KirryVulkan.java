@@ -233,7 +233,7 @@ public class KirryVulkan extends KirryCore {
 			initializated = true;
 			vulkan = new Vulkan(createInfo, debugUtilsExtensionEnabled);
 		}
-		catch (Exception e)
+		catch (VulkanException | RuntimeException e)
 		{
 			mainThreadActions = null;
 			initException = e;

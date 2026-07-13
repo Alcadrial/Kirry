@@ -50,7 +50,7 @@ public class VulkanBuffer extends MemoryResource {
 		return ofUniforms(device, minSize * bindingsCount, 0);
 	}
 	
-	public static VulkanBuffer ofUniformsBindingsView(VulkanBuffer parent, int bindingsOffset, int bindingsCount, int bindingSize) throws VulkanException
+	public static VulkanBuffer ofUniformsBindingsView(VulkanBuffer parent, long bindingsOffset, int bindingsCount, int bindingSize) throws VulkanException
 	{
 		int minUniformBufferOffsetAlignment = (int) parent.getDevice().getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment();
 		int minSize = Math.ceilDiv(bindingSize, minUniformBufferOffsetAlignment) * minUniformBufferOffsetAlignment;

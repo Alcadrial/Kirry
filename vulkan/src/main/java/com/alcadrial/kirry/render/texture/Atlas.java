@@ -490,7 +490,7 @@ public class Atlas implements AutoCloseable {
 		{
 			isDirty = true;
 			
-			newResources.sortThis((t0, t1) -> -Integer.compare(t0.r.width, t1.r.width));
+			newResources.sortThis((t0, t1) -> Integer.compare(t1.r.width, t0.r.width));
 			
 			int requiredArea = 0;
 			for (Holder h : newResources) requiredArea += h.r.width * h.r.height;
@@ -656,7 +656,7 @@ public class Atlas implements AutoCloseable {
 		invalidateAllRegions();
 		
 		List<Pair<Resource, TextureRegion>> l = regions.collect(r -> new Pair<>(r.resource, r.texture));
-		l.sort((t0, t1) -> -Integer.compare(t0.left.width, t1.left.width));
+		l.sort((t0, t1) -> Integer.compare(t1.left.width, t0.left.width));
 		
 		regions.clear();
 		for (Pair<Resource, TextureRegion> p : l)

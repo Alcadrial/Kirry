@@ -424,7 +424,7 @@ public class RenderTest {
 					frame[0] = 0;
 					highMilestone[0] += (enlapsed - highMilestone[0] + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
 				}
-				println("Frame " + frame, () -> action.run(enlapsed, enlapsedFrame), TestProperties.PRINT_FRAME_TIMES);
+				println("Frame " + frame[0], () -> action.run(enlapsed, enlapsedFrame), TestProperties.PRINT_FRAME_TIMES);
 				frame[0]++;
 				lastCurrent[0] = current;
 				if (window.shouldClose()) window.postEmptyEvent();

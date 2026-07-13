@@ -248,7 +248,7 @@ public class DefaultMemoryManager implements MemoryManager {
 	
 	protected static class DynamicSegment extends AbstractSegment {
 		
-		protected class Slot {
+		protected static class Slot {
 			
 			int x;
 			int w;
@@ -389,6 +389,7 @@ public class DefaultMemoryManager implements MemoryManager {
 					((@NonNull Slot) lower).w += ((@NonNull Slot) higher).w;
 					slotsW.add(lower);
 				}
+				default -> {}
 			}
 		}
 		
@@ -401,7 +402,7 @@ public class DefaultMemoryManager implements MemoryManager {
 	
 	protected static class CacheSegment extends DynamicSegment {
 		
-		private class CacheState implements MemoryCacheState {
+		private static class CacheState implements MemoryCacheState {
 			
 			private VulkanBuffer buffer;
 			private boolean isValid;

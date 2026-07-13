@@ -67,7 +67,7 @@ public class MergedFileSystem extends FileSystem {
 	
 	MergedFileSystem(MutableList<Path> sources, MergedFileSystemProvider provider)
 	{
-		this.sources = new ConcurrentSkipListMap<>((s0, s1) -> -s0.compareTo(s1));
+		this.sources = new ConcurrentSkipListMap<>((s0, s1) -> s1.compareTo(s0));
 		int i = sources.size();
 		for (Path path : sources)
 		{
@@ -533,7 +533,7 @@ public class MergedFileSystem extends FileSystem {
 	public Iterable<FileStore> getFileStores()
 	{
 		if (isClosed) throw new ClosedFileSystemException();
-		return () -> new Iterator<FileStore>() {
+		return () -> new Iterator<>() {
 			
 			private Iterator<Source> sourcesIterator = getSources().iterator();
 			private @Nullable Iterator<FileStore> sourceFileStoreIterator;
