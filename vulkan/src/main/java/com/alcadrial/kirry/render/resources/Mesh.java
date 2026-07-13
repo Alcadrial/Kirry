@@ -125,7 +125,8 @@ public class Mesh extends AbstractVulkanResource<Mesh> {
 				{
 					VulkanBuffer buffer = transfer.getLocal(properties.size());
 					textureResource.copy(buffer);
-					TextureRegion region = atlas.add(TextureBuffer.create(buffer, properties.width(), properties.height(), textureResource));
+					//TODO use TextureManager
+					TextureRegion region = VulkanErrorUtils.nonNull(atlas.add(TextureBuffer.create(buffer, properties.width(), properties.height(), textureResource)), "Missing space in atlas");
 					materials.add(new Material(new TextureData(textureResource, region, 0, materialIndex.indices.size())));
 				}
 			}
@@ -206,7 +207,6 @@ public class Mesh extends AbstractVulkanResource<Mesh> {
 		}
 		else
 		{
-			
 			if (indexBuffer == null)
 			{
 				if (useVertexes || useNormals)

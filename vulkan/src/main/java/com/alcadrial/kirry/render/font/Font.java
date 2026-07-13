@@ -117,7 +117,8 @@ public class Font implements AutoCloseable {
 					throw new FreeTypeException("Unsupported format (pixel mode) " + bitmap.pixel_mode());
 				}
 			}
-			return atlas.add(TextureBuffer.create(buffer, bitmap.width(), bitmap.rows(), glyphIndex));
+			//TODO: remove old glyphs
+			return FreeTypeErrorUtils.nonNull(atlas.add(TextureBuffer.create(buffer, bitmap.width(), bitmap.rows(), glyphIndex)), "Missing space in atlas");
 		}
 	}
 	

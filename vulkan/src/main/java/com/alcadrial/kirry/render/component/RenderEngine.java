@@ -42,6 +42,7 @@ import com.alcadrial.kirry.core.component.Entity;
 import com.alcadrial.kirry.render.Computer;
 import com.alcadrial.kirry.render.Debug;
 import com.alcadrial.kirry.render.Device;
+import com.alcadrial.kirry.render.FrameBuffer;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.BufferLayoutWriter;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
@@ -56,7 +57,6 @@ import com.alcadrial.kirry.render.pipeline.GraphicsPipeline;
 import com.alcadrial.kirry.render.pipeline.GraphicsPipelineTemplate;
 import com.alcadrial.kirry.render.pipeline.PipelineLayout;
 import com.alcadrial.kirry.render.renderpass.RenderPass;
-import com.alcadrial.kirry.render.renderpass.RenderPassTemplate;
 import com.alcadrial.kirry.render.resources.Mesh;
 import com.alcadrial.kirry.render.resources.Mesh.Material;
 import com.alcadrial.kirry.render.resources.Mesh.Properties;
@@ -70,7 +70,6 @@ import com.alcadrial.kirry.render.shader.descriptor.DescriptorPool;
 import com.alcadrial.kirry.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.kirry.render.shader.descriptor.DescriptorSetLayout;
 import com.alcadrial.kirry.render.texture.Atlas;
-import com.alcadrial.kirry.render.texture.Texture;
 import com.alcadrial.kirry.render.texture.TextureSampler;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.exception.InvalidEntityException;
@@ -93,7 +92,7 @@ public class RenderEngine implements AutoCloseable {
 	
 	public record SurfaceTarget(VulkanWindow window) implements PipelineOutputTarget {}
 	
-	public record TextureTarget(Texture texture) implements PipelineOutputTarget {}
+	public record TextureTarget(FrameBuffer frameBuffer) implements PipelineOutputTarget {}
 	
 	private class Data implements AutoCloseable {
 		
@@ -130,6 +129,7 @@ public class RenderEngine implements AutoCloseable {
 		VulkanBuffer uniformBuffer;
 		Cache cache;
 		
+		PipelineOutputTarget target;
 		RenderPass renderPass;
 		Vector2ir outputSize;
 		int buffersCount;
@@ -140,7 +140,6 @@ public class RenderEngine implements AutoCloseable {
 		/** null key entities use defaultRendering */
 		MutableListMultimap<ShaderProgram, Entity> groupedEntities;
 		Collection<Entity> entities;
-		int[] reloadCounters;
 		
 		@Nullable
 		ProgramRenderer defaultRendering;
@@ -160,18 +159,17 @@ public class RenderEngine implements AutoCloseable {
 		
 		Atlas atlas;
 		boolean[] isFrameUniformsDirty;
-		int vertexCount;
 		
 		//@formatter:off
 		public Data(MemoryManager memoryManager, VulkanBuffer vertexBuffer, VulkanBuffer textureUvBuffer, VulkanBuffer uniformBuffer, Cache cache,
-			PipelineOutputTarget target, RenderPass renderPass, Vector2ir outputSize, int buffersCount, int[] reloadCounters,
+			PipelineOutputTarget target, RenderPass renderPass, Vector2ir outputSize, int buffersCount,
 			MutableListMultimap<ShaderProgram, Entity> groupedEntities, Collection<Entity> entities,
 			@Nullable ProgramRenderer defaultRendering, MutableList<ProgramRenderer> renderings,
 			DescriptorPool descriptorPool, GraphicsPipelineTemplate graphicsPipelineTemplate,
 			PipelineLayout spatialMoveComputePipelineLayout, ComputePipeline spatialMoveComputePipeline, Computer spatialMoveComputer,
 			PipelineLayout initComputePipelineLayout, ComputePipeline initComputePipeline, Computer initComputer,
 			PipelineLayout transformComputePipelineLayout, ComputePipeline transformComputePipeline, Computer transformComputer,
-			Atlas atlas, boolean[] isFrameUniformsDirty, int vertexCount)
+			Atlas atlas, boolean[] isFrameUniformsDirty)
 		{
 			//@formatter:on
 			this.memoryManager = memoryManager;
@@ -179,11 +177,11 @@ public class RenderEngine implements AutoCloseable {
 			this.textureUvBuffer = textureUvBuffer;
 			this.uniformBuffer = uniformBuffer;
 			this.cache = cache;
+			this.target = target;
 			this.renderPass = renderPass;
 			this.outputSize = outputSize;
 			this.buffersCount = buffersCount;
 			this.descriptorPool = descriptorPool;
-			this.reloadCounters = reloadCounters;
 			this.entities = entities;
 			this.groupedEntities = groupedEntities;
 			this.defaultRendering = defaultRendering;
@@ -200,7 +198,6 @@ public class RenderEngine implements AutoCloseable {
 			this.transformComputer = transformComputer;
 			this.atlas = atlas;
 			this.isFrameUniformsDirty = isFrameUniformsDirty;
-			this.vertexCount = vertexCount;
 		}
 		
 		@Override
@@ -250,12 +247,9 @@ public class RenderEngine implements AutoCloseable {
 				buffersCount = window.getFramesCount();
 			}
 			case TextureTarget t -> {
-				Texture texture = t.texture;
-				try (RenderPassTemplate template = RenderPassTemplate.transformColorDepthTextureTemplate(texture.getFormat(), texture.getSamples()))
-				{
-					renderPass = template.createRenderPass(device);
-				}
-				outputSize = Vector2ir.of(texture.getWidth(), texture.getHeight());
+				FrameBuffer frameBuffer = t.frameBuffer;
+				renderPass = frameBuffer.getRenderPass();
+				outputSize = Vector2ir.of(frameBuffer.getWidth(), frameBuffer.getHeight());
 				buffersCount = 1;
 			}
 		}
@@ -629,7 +623,6 @@ public class RenderEngine implements AutoCloseable {
 				{
 					return Vector3fr.of();
 				}
-				
 			}, () -> new Iterator<>() {
 				
 				int k = 0;
@@ -645,11 +638,11 @@ public class RenderEngine implements AutoCloseable {
 				{
 					return k++;
 				}
-				
 			}, commandBuffer);
 			atlas.draw(commandBuffer);
 			if (useTextureUv) computeInitData(entities, initComputer, commandBuffer);
 			
+			//TODO: support multisample
 			GraphicsPipelineTemplate graphicsPipelineTemplate = GraphicsPipelineTemplate.create3dRenderingPipeline()
 				.configureVertexInputState(s -> s
 					.addBinding(0, 24, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
@@ -693,15 +686,14 @@ public class RenderEngine implements AutoCloseable {
 			data = new Data(
 				memoryManager, vertexBuffer, textureUvBuffer, uniformBuffer, cache,
 				target, renderPass, outputSize, buffersCount,
-				new int[entities.size()], groupedEntities, Lists.mutable.ofAll(entities),
+				groupedEntities, Lists.mutable.ofAll(entities),
 				defaultRendering, renderings,
 				descriptorPool,	graphicsPipelineTemplate,
 				computeLayout, spatialMoveComputePipeline, spatialMoveComputer,
 				computeLayout, initComputePipeline, initComputer,
 				computeLayout, transformComputePipeline, transformComputer,
 				atlas,
-				isFrameUniformsDirty,
-				vertexCount
+				isFrameUniformsDirty
 			);
 			//@formatter:on
 			updateBufferBindings(data);
@@ -812,12 +804,9 @@ public class RenderEngine implements AutoCloseable {
 				//buffersCount = window.getFramesCount();
 			}
 			case TextureTarget t -> {
-				Texture texture = t.texture;
-				try (RenderPassTemplate template = RenderPassTemplate.transformColorDepthTextureTemplate(texture.getFormat(), texture.getSamples()))
-				{
-					renderPass = template.createRenderPass(device);
-				}
-				outputSize = Vector2ir.of(texture.getWidth(), texture.getHeight());
+				FrameBuffer frameBuffer = t.frameBuffer;
+				renderPass = frameBuffer.getRenderPass();
+				outputSize = Vector2ir.of(frameBuffer.getWidth(), frameBuffer.getHeight());
 				//buffersCount = 1;
 			}
 		}
@@ -1131,10 +1120,15 @@ public class RenderEngine implements AutoCloseable {
 		
 		renderer.draw(commandBuffer, frameIndex, 1, vertexCount);
 	}
-
+	
 	public boolean isInit()
 	{
 		return data != null;
+	}
+	
+	public RenderPass getRenderPass()
+	{
+		return getData().renderPass;
 	}
 	
 	@Override
