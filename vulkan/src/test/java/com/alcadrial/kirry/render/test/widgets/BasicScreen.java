@@ -403,7 +403,12 @@ public class BasicScreen implements Screen {
 	@Override
 	public void close() throws VulkanException
 	{
-		for (Widget widget : widgets) widget.close();
+		try
+		{
+			for (Widget widget : widgets) widget.close();
+		}
+		catch (NullPointerException _)
+		{}
 		if (uniformBuffer != null) uniformBuffer.close();
 		if (textureManager != null) textureManager.close();
 		

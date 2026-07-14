@@ -9,7 +9,6 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.list.mutable.FastList;
-import org.jspecify.annotations.NonNull;
 import org.lwjgl.glfw.GLFW;
 
 import com.alcadrial.kector.AngleUnit;
@@ -32,6 +31,7 @@ import com.alcadrial.kirry.render.scene.CameraController;
 import com.alcadrial.kirry.render.scene.EntityController;
 import com.alcadrial.kirry.render.shader.ShaderInputType;
 import com.alcadrial.kirry.render.shader.ShaderProgram;
+import com.alcadrial.kirry.render.shader.ShaderType;
 import com.alcadrial.kirry.render.shader.ShaderVariable;
 import com.alcadrial.kirry.render.test.util.RecompileShaderResource;
 import com.alcadrial.kirry.render.test.util.RenderTest;
@@ -205,18 +205,10 @@ public class CameraTest extends RenderTest {
 		
 		//@formatter:off
 		CameraView cameraView = CameraView.ofFull(window, camera0, new UniformState() {{
-			add(new Var<>(ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS"), lightController.getPos(), (w, v, t) -> w.set(v, t)), 1);
-			add(new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY"), 1F, (w, v, t) -> w.set(v, t)), 1);
-			add(new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY"), 0.1F, (w, v, t) -> w.set(v, t)), 1);
-		}
-		@Override
-			public @NonNull MutableList<ShaderVariable> getFragmentUniformVariables()
-			{
-				return Lists.fixedSize.of(ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS"),
-					ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY"),
-					ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY"));
-			}
-		});
+			add(new Var<>(ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS"), lightController.getPos(), (w, v, t) -> w.set(v, t)), ShaderType.FRAGMENT, 1);
+			add(new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY"), 1F, (w, v, t) -> w.set(v, t)), ShaderType.FRAGMENT, 1);
+			add(new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY"), 0.1F, (w, v, t) -> w.set(v, t)), ShaderType.FRAGMENT, 1);
+		}});
 		//@formatter:on
 		cameraView.setCamera(camera0);
 		cameraView.setController(controller);

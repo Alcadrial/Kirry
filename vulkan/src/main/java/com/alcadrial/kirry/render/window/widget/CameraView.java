@@ -38,6 +38,7 @@ import com.alcadrial.kirry.render.renderpass.RenderPassTemplate;
 import com.alcadrial.kirry.render.resources.ShaderResource;
 import com.alcadrial.kirry.render.scene.Camera;
 import com.alcadrial.kirry.render.scene.Controller;
+import com.alcadrial.kirry.render.shader.ShaderType;
 import com.alcadrial.kirry.render.shader.ShaderVariable;
 import com.alcadrial.kirry.render.texture.Texture;
 import com.alcadrial.kirry.render.texture.TextureManager;
@@ -96,16 +97,19 @@ public class CameraView extends AbstractWidget {
 			public Reserved()
 			{
 				vars = new FastList<>(UniformState.this.vars.size());
-				for (List<Var<?>> list : UniformState.this.vars)
+				for (FastList<List<Var<?>>> l : UniformState.this.vars)
 				{
-					MutableList<Var<?>> l = Lists.mutable.withInitialCapacity(list.size());
-					for (Var<?> var : list) if (var.isDirty)
+					MutableList<Var<?>> w = Lists.mutable.withInitialCapacity((int) l.sumOfInt(List::size));
+					for (List<Var<?>> v : l)
 					{
-						l.add(var.clone());
-						var.isDirty = false;
-						isDirty = true;
+						for (Var<?> var : v) if (var.isDirty)
+						{
+							w.add(var.clone());
+							var.isDirty = false;
+							isDirty = true;
+						}
 					}
-					vars.add(l);
+					vars.add(w);
 				}
 			}
 			
@@ -176,41 +180,57 @@ public class CameraView extends AbstractWidget {
 			}
 		}
 		
-		private FastList<List<Var<?>>> vars;
+		private FastList<FastList<List<Var<?>>>> vars;
 		
 		public UniformState()
 		{
 			vars = FastList.newList();
 		}
 		
-		protected void add(Var<?> v, int binding)
+		protected void add(Var<?> v, ShaderType type, int binding)
 		{
-			ensureCapacity(binding);
-			vars.get(binding).add(v);
+			if (!type.isKnown()) return;
+			ensureCapacity(type, binding);
+			vars.get(binding).get(type.ordinal()).add(v);
 		}
 		
 		public MutableList<ShaderVariable> getVertexUniformVariables()
 		{
-			return Lists.mutable.of(ShaderVariable.PROJECTION, ShaderVariable.MODEL);
+			return vars.asLazy().flatCollect(w -> w.size() <= ShaderType.VERTEX.ordinal() ? List.of() : w.get(ShaderType.VERTEX.ordinal())).collect(v -> v.v).concatenate(Lists.immutable.of(ShaderVariable.PROJECTION, ShaderVariable.MODEL)).toList();
 		}
 		
 		public MutableList<ShaderVariable> getFragmentUniformVariables()
 		{
-			return Lists.fixedSize.of();
+			return vars.asLazy().flatCollect(w -> w.size() <= ShaderType.FRAGMENT.ordinal() ? List.of() : w.get(ShaderType.FRAGMENT.ordinal())).collect(v -> v.v).toList();
 		}
 		
-		private void ensureCapacity(int i)
+		public MutableList<ShaderVariable> getStageUniformVariables(ShaderType type)
 		{
-			if (vars.size() <= i)
+			if (type == ShaderType.VERTEX) return getVertexUniformVariables();
+			return vars.asLazy().flatCollect(w -> w.size() <= type.ordinal() ? List.of() : w.get(type.ordinal())).collect(v -> v.v).toList();
+		}
+		
+		private void ensureCapacity(ShaderType type, int i)
+		{
+			FastList<FastList<List<Var<?>>>> l = vars;
+			if (l.size() <= i)
 			{
-				vars.ensureCapacity(i + 1);
-				while (vars.size() <= i) vars.add(Lists.mutable.of());
+				l.ensureCapacity(i + 1);
+				while (l.size() <= i)
+				{
+					l.add(FastList.newList(ShaderType.knownTypes().length));
+				}
+			}
+			FastList<List<Var<?>>> ll = l.get(i);
+			while (ll.size() <= type.ordinal())
+			{
+				ll.add(Lists.mutable.of());
 			}
 		}
 		
 		protected boolean isDirty()
 		{
-			for (List<Var<?>> v : vars) for (Var<?> w : v) if (w.isDirty) return true;
+			for (FastList<List<Var<?>>> l : vars) for (List<Var<?>> v : l) for (Var<?> w : v) if (w.isDirty) return true;
 			return false;
 		}
 		
@@ -334,7 +354,7 @@ public class CameraView extends AbstractWidget {
 		frameBuffer = FrameBuffer.ofDepth(sceneColorTexture, sceneDepthTexture, renderPass);
 		
 		renderEngine = new RenderEngine(device);
-		renderEngine.init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.TextureTarget(frameBuffer), uniformState.getVertexUniformVariables(), uniformState.getFragmentUniformVariables(), entities);
+		renderEngine.init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.TextureTarget(frameBuffer), uniformState.getVertexUniformVariables(), uniformState.getFragmentUniformVariables().toList(), entities);
 		
 		Matrix4f projection = new Matrix4f(camera.getProjection((float) window.getWidth() / window.getHeight(), true)).multiply(camera.getView());
 		
