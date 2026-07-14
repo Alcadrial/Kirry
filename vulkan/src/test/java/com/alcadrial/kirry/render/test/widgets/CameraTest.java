@@ -28,6 +28,7 @@ import com.alcadrial.kirry.render.resources.ShaderResource;
 import com.alcadrial.kirry.render.resources.TextureResource;
 import com.alcadrial.kirry.render.scene.Camera;
 import com.alcadrial.kirry.render.scene.CameraController;
+import com.alcadrial.kirry.render.scene.Controller;
 import com.alcadrial.kirry.render.scene.EntityController;
 import com.alcadrial.kirry.render.shader.ShaderInputType;
 import com.alcadrial.kirry.render.shader.ShaderProgram;
@@ -42,7 +43,6 @@ import com.alcadrial.kirry.render.window.VulkanWindow;
 import com.alcadrial.kirry.render.window.event.KeyboardEvent;
 import com.alcadrial.kirry.render.window.widget.CameraView;
 import com.alcadrial.kirry.render.window.widget.CameraView.UniformState;
-import com.alcadrial.kirry.render.window.widget.Sprite;
 
 public class CameraTest extends RenderTest {
 	
@@ -62,7 +62,8 @@ public class CameraTest extends RenderTest {
 	private static ShaderResource vertexShaderResource;
 	private static ShaderResource fragmentShaderResource;
 	
-	//private static boolean showGui;
+	private static boolean showBackground;
+	private static boolean showGui;
 	
 	public static void start() throws VulkanException
 	{
@@ -202,12 +203,15 @@ public class CameraTest extends RenderTest {
 		Camera camera3 = new Camera(AngleUnit.RADIANS.fromDegrees(120), 100);
 		CameraController controller = new CameraController(camera0);
 		EntityController lightController = new EntityController(lightEntity);
-		
 		//@formatter:off
 		CameraView cameraView = CameraView.ofFull(window, camera0, new UniformState() {{
-			add(new Var<>(ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS"), lightController.getPos(), (w, v, t) -> w.set(v, t)), ShaderType.FRAGMENT, 1);
-			add(new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY"), 1F, (w, v, t) -> w.set(v, t)), ShaderType.FRAGMENT, 1);
-			add(new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY"), 0.1F, (w, v, t) -> w.set(v, t)), ShaderType.FRAGMENT, 1);
+			Var<Vector3f> lightPosVar = new Var<>(ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS"), lightController.getPos(), (w, v, t) -> w.set(v, t));
+			Var<Float> lightIntensityVar = new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY"), 1F, (w, v, t) -> w.set(v, t));
+			Var<Float> spaceFogIntensityVar = new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY"), 0.1F, (w, v, t) -> w.set(v, t));
+			add(lightPosVar, ShaderType.FRAGMENT, 1);
+			add(lightIntensityVar, ShaderType.FRAGMENT, 1);
+			add(spaceFogIntensityVar, ShaderType.FRAGMENT, 1);
+			lightController.onUpdate(_ -> lightPosVar.markDirty());
 		}});
 		//@formatter:on
 		cameraView.setCamera(camera0);
@@ -215,20 +219,30 @@ public class CameraTest extends RenderTest {
 		cameraView.setEntities(entities);
 		cameraView.setFocus(true);
 		
+		HiddenSprite background0 = HiddenSprite.ofWindowed(window, Vector3ir.of(20, 20, 0), Vector2ir.of(256, 256), IMAGES + "icon0.png");
+		HiddenSprite background1 = HiddenSprite.ofWindowed(window, Vector3ir.of(296, 20, 0), Vector2ir.of(256, 256), IMAGES + "icon.png");
+		HiddenSprite background2 = HiddenSprite.ofWindowed(window, Vector3ir.of(20, 296, 0), Vector2ir.of(256, 256), IMAGES + "icon.png");
+		HiddenSprite background3 = HiddenSprite.ofWindowed(window, Vector3ir.of(296, 296, 0), Vector2ir.of(256, 256), IMAGES + "icon0.png");
+		
 		float scale = 3;
 		Vector2ir overlaySize = Vector2ir.of((int) (32 * scale), (int) (32 * scale));
+		HiddenSprite gui = HiddenSprite.ofWindowed(window, Vector3ir.of((window.getWidth() - overlaySize.x()) / 2, (window.getHeight() - overlaySize.y()) / 2, 0), overlaySize, TEXTURES + "overlay.png");
+		showBackground = true;
+		showGui = true;
 		
 		BasicScreen s = new BasicScreen(window);
-		s.add(Sprite.ofWindowed(window, Vector3ir.of(20, 20, 0), Vector2ir.of(256, 256), IMAGES + "icon0.png"));
-		s.add(Sprite.ofWindowed(window, Vector3ir.of(296, 20, 0), Vector2ir.of(256, 256), IMAGES + "icon.png"));
-		s.add(Sprite.ofWindowed(window, Vector3ir.of(20, 296, 0), Vector2ir.of(256, 256), IMAGES + "icon.png"));
-		s.add(Sprite.ofWindowed(window, Vector3ir.of(296, 296, 0), Vector2ir.of(256, 256), IMAGES + "icon0.png"));
+		s.add(background0);
+		s.add(background1);
+		s.add(background2);
+		s.add(background3);
 		s.add(cameraView);
-		s.add(Sprite.ofWindowed(window, Vector3ir.of((window.getWidth() - overlaySize.x()) / 2, (window.getHeight() - overlaySize.y()) / 2, 0), overlaySize, TEXTURES + "overlay.png"));
+		s.add(gui);
 		s.setShaderProgram(screenShaderProgram);
 		
 		window.setScreen(s);
 		controller.registerEvents(window.getEventRegistry());
+		lightController.registerEvents(window.getEventRegistry());
+		lightController.setActive(false);
 		boolean[] holdController = new boolean[] {true};
 		window.getEventRegistry().register((KeyboardEvent) (key, _, action, _) -> {
 			if (action == GLFW.GLFW_PRESS)
@@ -236,8 +250,10 @@ public class CameraTest extends RenderTest {
 				switch (key)
 				{
 					case GLFW.GLFW_KEY_U -> {
-						controller.setActive(!controller.isActive());
-						window.setCursorInputMode(controller.isActive() ? CursorInputMode.DISABLED : CursorInputMode.NORMAL);
+						Controller c = cameraView.getController();
+						if (c == null) break;
+						c.setActive(!c.isActive());
+						window.setCursorInputMode(c.isActive() ? CursorInputMode.DISABLED : CursorInputMode.NORMAL);
 					}
 					case GLFW.GLFW_KEY_1 -> {
 						cameraView.setCamera(camera0);
@@ -268,10 +284,26 @@ public class CameraTest extends RenderTest {
 						controller.setCamera(camera3);
 					}
 					case GLFW.GLFW_KEY_L -> {
-						cameraView.setController(cameraView.getController() == lightController ? controller : lightController);
+						Controller c = cameraView.getController();
+						if (c == null) break;
+						Controller n = cameraView.getController() == lightController ? controller : lightController;
+						n.setActive(c.isActive());
+						c.setActive(false);
+						cameraView.setController(n);
 					}
 					case GLFW.GLFW_KEY_H -> {
 						holdController[0] = !holdController[0];
+					}
+					case GLFW.GLFW_KEY_G -> {
+						showGui = !showGui;
+						gui.setShown(showGui);
+					}
+					case GLFW.GLFW_KEY_B -> {
+						showBackground = !showBackground;
+						background0.setShown(showBackground);
+						background1.setShown(showBackground);
+						background2.setShown(showBackground);
+						background3.setShown(showBackground);
 					}
 				}
 			}

@@ -45,7 +45,7 @@ public class SpatialComponent extends AbstractVulkanComponent<SpatialComponent.P
 		return new SpatialComponent(state);
 	}
 	
-	private State state;
+	private final State state;
 	private @Nullable Vector3fr oldPosition;
 	private boolean isDirty;
 	
