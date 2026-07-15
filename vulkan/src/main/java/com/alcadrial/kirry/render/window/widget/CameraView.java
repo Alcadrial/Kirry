@@ -326,6 +326,7 @@ public class CameraView extends AbstractWidget {
 	@Override
 	public void initTextures(MemoryManager memoryManager, CommandBuffer commandBuffer, TextureManager textureManager) throws VulkanException
 	{
+		if (entities.isEmpty()) return;
 		Device device = window.getDevice();
 		int width = window.getWidth();
 		int height = window.getHeight();
@@ -341,6 +342,7 @@ public class CameraView extends AbstractWidget {
 	{
 		windowResizeFlag = false;
 		newCameraFlag = false;
+		if (entities.isEmpty()) return;
 		Reserved r = uniformState.reserveUpdate();
 		super.initBuffers(memoryManager, commandBuffer);
 		
@@ -388,17 +390,19 @@ public class CameraView extends AbstractWidget {
 	@Override
 	public void update(CommandBuffer commandBuffer, float elapsed) throws VulkanException
 	{
+		if (entities.isEmpty() || !renderEngine.isInit()) return;
 		renderEngine.update(commandBuffer, window.getFrameIndex(), elapsed);
-		if (!pausedFlag)
+		if (!pausedFlag && isFocused())
 		{
-			if (controller != null) controller.update(commandBuffer, elapsed);
+			Controller c = controller;
+			if (c != null && c.isActive()) c.update(commandBuffer, elapsed);
 		}
 	}
 	
 	@Override
 	public void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer) throws VulkanException
 	{
-		if (!renderEngine.isInit()) return;
+		if (entities.isEmpty() || !renderEngine.isInit()) return;
 		
 		if (windowResizeFlag)
 		{
@@ -453,6 +457,7 @@ public class CameraView extends AbstractWidget {
 	@Override
 	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, TextureManager textureManager) throws VulkanException
 	{
+		if (entities.isEmpty() || !renderEngine.isInit()) return;
 		renderer.setBuffer(0, vertexBuffer);
 		renderer.setIndexBuffer(indexBuffer);
 		renderer.draw(commandBuffer, textureManager.textureIndexToGlobal(textureIndex));

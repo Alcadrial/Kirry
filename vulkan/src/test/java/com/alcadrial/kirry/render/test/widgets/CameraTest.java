@@ -227,6 +227,8 @@ public class CameraTest extends RenderTest {
 		float scale = 3;
 		Vector2ir overlaySize = Vector2ir.of((int) (32 * scale), (int) (32 * scale));
 		HiddenSprite gui = HiddenSprite.ofWindowed(window, Vector3ir.of((window.getWidth() - overlaySize.x()) / 2, (window.getHeight() - overlaySize.y()) / 2, 0), overlaySize, TEXTURES + "overlay.png");
+		HiddenSprite activeGui = HiddenSprite.ofWindowed(window, gui.getPos(), gui.getSize(), TEXTURES + "overlay_active.png");
+		activeGui.hide();
 		showBackground = true;
 		showGui = true;
 		
@@ -237,6 +239,7 @@ public class CameraTest extends RenderTest {
 		s.add(background3);
 		s.add(cameraView);
 		s.add(gui);
+		s.add(activeGui);
 		s.setShaderProgram(screenShaderProgram);
 		
 		window.setScreen(s);
@@ -253,6 +256,16 @@ public class CameraTest extends RenderTest {
 						Controller c = cameraView.getController();
 						if (c == null) break;
 						c.setActive(!c.isActive());
+						if (c.isActive())
+						{
+							gui.setShown(false);
+							activeGui.setShown(true);
+						}
+						else
+						{
+							gui.setShown(true);
+							activeGui.setShown(false);
+						}
 						window.setCursorInputMode(c.isActive() ? CursorInputMode.DISABLED : CursorInputMode.NORMAL);
 					}
 					case GLFW.GLFW_KEY_1 -> {
@@ -295,8 +308,25 @@ public class CameraTest extends RenderTest {
 						holdController[0] = !holdController[0];
 					}
 					case GLFW.GLFW_KEY_G -> {
+						Controller c = cameraView.getController();
+						if (c == null) break;
 						showGui = !showGui;
-						gui.setShown(showGui);
+						if (showGui)
+						{
+							if (c.isActive())
+							{
+								activeGui.setShown(true);
+							}
+							else
+							{
+								gui.setShown(true);
+							}
+						}
+						else
+						{
+							gui.setShown(false);
+							activeGui.setShown(false);
+						}
 					}
 					case GLFW.GLFW_KEY_B -> {
 						showBackground = !showBackground;
