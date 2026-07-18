@@ -4,10 +4,6 @@ layout (location = 0) in vec3 vertexPosition;
 layout (location = 1) in vec2 textureUv;
 layout (location = 2) in vec3 normalPosition;
 
-layout (binding = 0) uniform U0 {
-	mat4 PROJECTION;
-	mat4 MODEL;
-};
 layout (binding = 1) uniform U1 {
 	vec3 LIGHT_POS;
 	float LIGHT_INTENSITY;
@@ -64,5 +60,4 @@ void main()
 	else  {
 		tex = vec4(1, 1, 1, 1);
 	}
-	
 }

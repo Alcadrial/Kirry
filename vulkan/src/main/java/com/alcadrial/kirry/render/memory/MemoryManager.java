@@ -49,7 +49,7 @@ public interface MemoryManager {
 	 * @param usage usage of all allocations
 	 * @param bulkUsage usage of the returned bulk buffer
 	 * @throws VulkanException
-	 * @see {@link #allocateCache(int, int)}
+	 * @see #allocateCache(int, int)
 	 */
 	MemoryCacheBulkState allocateCacheAll(int[] sizes, int usage, int bulkUsage) throws VulkanException;
 	VulkanBuffer allocateSingleUse(int size, int usage) throws VulkanException;

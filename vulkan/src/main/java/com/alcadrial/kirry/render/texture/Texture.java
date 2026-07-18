@@ -6,6 +6,7 @@ import java.nio.file.Path;
 
 import org.jspecify.annotations.NonNull;
 import org.lwjgl.stb.STBImage;
+import org.lwjgl.stb.STBImageWrite;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VK10;
@@ -83,6 +84,14 @@ public class Texture extends MemoryResource {
 				
 				return texture;
 			}
+		});
+	}
+	
+	public static VulkanFuture<?> saveToPngFile(Texture texture, Path path)
+	{
+		return VulkanFuture.submitAsync(() -> {
+			boolean result = STBImageWrite.stbi_write_png(path.toString(), texture.width, texture.height, 4, texture.memory.getMapping().getBuffer(), 0);
+			if (!result) throw new VulkanException("Failed to write image to \"" + path + "\"");
 		});
 	}
 	

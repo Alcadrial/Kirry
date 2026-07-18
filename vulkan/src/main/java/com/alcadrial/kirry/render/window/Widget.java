@@ -57,7 +57,6 @@ public interface Widget extends AutoCloseable {
 	 * @param matrix the transformation matrix
 	 * @param commandBuffer
 	 * @param textureManager
-	 * @param manager
 	 * @throws VulkanException
 	 */
 	void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, TextureManager textureManager) throws VulkanException;
