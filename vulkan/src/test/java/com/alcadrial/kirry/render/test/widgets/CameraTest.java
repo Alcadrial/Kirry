@@ -27,9 +27,12 @@ import com.alcadrial.kirry.render.resources.Mesh;
 import com.alcadrial.kirry.render.resources.ShaderResource;
 import com.alcadrial.kirry.render.resources.TextureResource;
 import com.alcadrial.kirry.render.scene.Camera;
-import com.alcadrial.kirry.render.scene.CameraController;
+import com.alcadrial.kirry.render.scene.CameraControllerTarget;
 import com.alcadrial.kirry.render.scene.Controller;
-import com.alcadrial.kirry.render.scene.EntityController;
+import com.alcadrial.kirry.render.scene.ControllerTarget;
+import com.alcadrial.kirry.render.scene.EntityControllerTarget;
+import com.alcadrial.kirry.render.scene.JoystickController;
+import com.alcadrial.kirry.render.scene.MouseKeyboardController;
 import com.alcadrial.kirry.render.shader.ShaderInputType;
 import com.alcadrial.kirry.render.shader.ShaderProgram;
 import com.alcadrial.kirry.render.shader.ShaderType;
@@ -81,7 +84,7 @@ public class CameraTest extends RenderTest {
 			fileManager.startWatchingResources();
 			
 			vertexShaderResource = fileManager.getResource(SHADER5 + ".vert", ShaderResource.TYPE);
-			fragmentShaderResource = fileManager.getResource(SHADER5 + ".frag", ShaderResource.TYPE);
+			fragmentShaderResource = fileManager.getResource(SHADER5 + ".1.frag", ShaderResource.TYPE);
 			
 			screenShaderProgram = ShaderProgram.create().add(loadShader(SHADER4 + ".vert"), loadShader(SHADER4 + ".frag")).build();
 		}
@@ -201,21 +204,23 @@ public class CameraTest extends RenderTest {
 		Camera camera1 = new Camera(AngleUnit.RADIANS.fromDegrees(120), 100);
 		Camera camera2 = new Camera(AngleUnit.RADIANS.fromDegrees(120), 100);
 		Camera camera3 = new Camera(AngleUnit.RADIANS.fromDegrees(120), 100);
-		CameraController controller = new CameraController(camera0);
-		EntityController lightController = new EntityController(lightEntity);
+		CameraControllerTarget cameraTarget = new CameraControllerTarget(camera0);
+		EntityControllerTarget lightTarget = new EntityControllerTarget(lightEntity);
+		MouseKeyboardController mouseKeyboardController = new MouseKeyboardController(cameraTarget);
+		JoystickController joystickController = new JoystickController(cameraTarget);
 		//@formatter:off
 		CameraView cameraView = CameraView.ofFull(window, camera0, new UniformState() {{
-			Var<Vector3f> lightPosVar = new Var<>(ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS"), lightController.getPos(), (w, v, t) -> w.set(v, t));
+			Var<Vector3f> lightPosVar = new Var<>(ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS"), lightTarget.getPos(), (w, v, t) -> w.set(v, t));
 			Var<Float> lightIntensityVar = new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY"), 1F, (w, v, t) -> w.set(v, t));
 			Var<Float> spaceFogIntensityVar = new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY"), 0.1F, (w, v, t) -> w.set(v, t));
 			add(lightPosVar, ShaderType.FRAGMENT, 1);
 			add(lightIntensityVar, ShaderType.FRAGMENT, 1);
 			add(spaceFogIntensityVar, ShaderType.FRAGMENT, 1);
-			lightController.onUpdate(_ -> lightPosVar.markDirty());
+			lightTarget.onUpdate(_ -> lightPosVar.markDirty());
 		}});
 		//@formatter:on
 		cameraView.setCamera(camera0);
-		cameraView.setController(controller);
+		cameraView.setController(mouseKeyboardController);
 		cameraView.setEntities(entities);
 		cameraView.setFocus(true);
 		
@@ -243,9 +248,8 @@ public class CameraTest extends RenderTest {
 		s.setShaderProgram(screenShaderProgram);
 		
 		window.setScreen(s);
-		controller.registerEvents(window.getEventRegistry());
-		lightController.registerEvents(window.getEventRegistry());
-		lightController.setActive(false);
+		mouseKeyboardController.registerEvents(window.getEventRegistry());
+		joystickController.registerEvents(window.getEventRegistry());
 		boolean[] holdController = new boolean[] {true};
 		window.getEventRegistry().register((KeyboardEvent) (key, _, action, _) -> {
 			if (action == GLFW.GLFW_PRESS)
@@ -270,36 +274,42 @@ public class CameraTest extends RenderTest {
 					}
 					case GLFW.GLFW_KEY_1 -> {
 						cameraView.setCamera(camera0);
-						if (holdController[0]) controller.setCamera(camera0);
+						if (holdController[0]) cameraTarget.setCamera(camera0);
 					}
 					case GLFW.GLFW_KEY_2 -> {
 						cameraView.setCamera(camera1);
-						if (holdController[0]) controller.setCamera(camera1);
+						if (holdController[0]) cameraTarget.setCamera(camera1);
 					}
 					case GLFW.GLFW_KEY_3 -> {
 						cameraView.setCamera(camera2);
-						if (holdController[0]) controller.setCamera(camera2);
+						if (holdController[0]) cameraTarget.setCamera(camera2);
 					}
 					case GLFW.GLFW_KEY_4 -> {
 						cameraView.setCamera(camera3);
-						if (holdController[0]) controller.setCamera(camera3);
+						if (holdController[0]) cameraTarget.setCamera(camera3);
 					}
 					case GLFW.GLFW_KEY_7 -> {
-						controller.setCamera(camera0);
+						cameraTarget.setCamera(camera0);
 					}
 					case GLFW.GLFW_KEY_8 -> {
-						controller.setCamera(camera1);
+						cameraTarget.setCamera(camera1);
 					}
 					case GLFW.GLFW_KEY_9 -> {
-						controller.setCamera(camera2);
+						cameraTarget.setCamera(camera2);
 					}
 					case GLFW.GLFW_KEY_0 -> {
-						controller.setCamera(camera3);
+						cameraTarget.setCamera(camera3);
 					}
 					case GLFW.GLFW_KEY_L -> {
 						Controller c = cameraView.getController();
 						if (c == null) break;
-						Controller n = cameraView.getController() == lightController ? controller : lightController;
+						ControllerTarget n = c.getTarget() == lightTarget ? cameraTarget : lightTarget;
+						c.setTarget(n);
+					}
+					case GLFW.GLFW_KEY_J -> {
+						Controller c = cameraView.getController();
+						if (c == null) break;
+						Controller n = c == mouseKeyboardController ? joystickController : mouseKeyboardController;
 						n.setActive(c.isActive());
 						c.setActive(false);
 						cameraView.setController(n);

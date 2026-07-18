@@ -6,7 +6,9 @@ import org.jspecify.annotations.Nullable;
 import com.alcadrial.kector.Math;
 import com.alcadrial.kector.annotation.Angle;
 import com.alcadrial.kector.matrix.Matrix4f;
+import com.alcadrial.kector.vector.Vector2dr;
 import com.alcadrial.kector.vector.Vector2fr;
+import com.alcadrial.kector.vector.Vector3dr;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3fr;
 import com.alcadrial.kector.vector.quaternion.Quaternionf;
@@ -78,6 +80,18 @@ public class Camera {
 	}
 	
 	public void setPosition(Vector3fr position)
+	{
+		this.position.setAll(position);
+		view = null;
+	}
+	
+	public void setPosition(Vector2dr position)
+	{
+		this.position.setAll(position);
+		view = null;
+	}
+	
+	public void setPosition(Vector3dr position)
 	{
 		this.position.setAll(position);
 		view = null;

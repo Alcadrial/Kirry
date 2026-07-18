@@ -3,21 +3,22 @@ package com.alcadrial.kirry.render.scene;
 import org.lwjgl.glfw.GLFW;
 
 import com.alcadrial.kector.annotation.Angle;
+import com.alcadrial.kector.vector.Vector3d;
 import com.alcadrial.kector.vector.Vector3dr;
-import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.axis.Axisd;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.window.EventRegistry;
 import com.alcadrial.kirry.render.window.event.KeyboardEvent;
 import com.alcadrial.kirry.render.window.event.MouseMoveEvent;
 
-public class CameraController extends Controller {
+public class MouseKeyboardController extends Controller {
 	
-	private Camera camera;
+	protected Vector3d direction;
 	
-	public CameraController(Camera camera)
+	public MouseKeyboardController(ControllerTarget target)
 	{
-		this.camera = camera;
+		super(target);
+		direction = Vector3d.of();
 	}
 	
 	@Override
@@ -25,7 +26,8 @@ public class CameraController extends Controller {
 	{
 		if (direction.maxSize() > 0.00001)
 		{
-			camera.setPosition(camera.getFlatViewQuaternion().rotate(Vector3f.of(direction).unitary()).multiplyAll(elapsed / 1000).add(camera.getPosition()));
+			target.getDirection().setAll(direction).unitary();
+			target.update(commandBuffer, elapsed);
 		}
 	}
 	
@@ -35,8 +37,8 @@ public class CameraController extends Controller {
 		registry.register((MouseMoveEvent) (_, _, _, _, dx, dy) -> {
 			if (isActive)
 			{
-				camera.setXRotation((@Angle float) (camera.getXRotation() + dy * yRotationSensivity / 200));
-				camera.setYRotation((@Angle float) (camera.getYRotation() + dx * xRotationSensivity / 200));
+				target.setXRotation((@Angle float) (target.getXRotation() + dy * yRotationSensivity / 200));
+				target.setYRotation((@Angle float) (target.getYRotation() + dx * xRotationSensivity / 200));
 			}
 		});
 		registry.register((KeyboardEvent) (key, _, action, _) -> {
@@ -60,10 +62,5 @@ public class CameraController extends Controller {
 				}
 			}
 		});
-	}
-	
-	public void setCamera(Camera camera)
-	{
-		this.camera = camera;
 	}
 }

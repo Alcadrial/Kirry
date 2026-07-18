@@ -9,27 +9,41 @@ public abstract class Controller {
 	protected float xRotationSensivity;
 	protected float yRotationSensivity;
 	protected boolean isActive;
-	protected Vector3d direction;
+	protected ControllerTarget target;
 	
-	public Controller()
+	public Controller(ControllerTarget target)
 	{
 		xRotationSensivity = 1;
 		yRotationSensivity = 1;
 		isActive = false;
-		direction = Vector3d.of();
+		this.target = target;
 	}
-
-	public abstract void update(CommandBuffer commandBuffer, float elapsed);
+	
+	public void update(CommandBuffer commandBuffer, float elapsed)
+	{
+		target.update(commandBuffer, elapsed);
+	}
+	
 	public abstract void registerEvents(EventRegistry registry);
+	
+	public ControllerTarget getTarget()
+	{
+		return target;
+	}
+	
+	public void setTarget(ControllerTarget target)
+	{
+		this.target = target;
+	}
 	
 	public void setXRotationSensivity(float xRotationSensivity)
 	{
-		this.xRotationSensivity = xRotationSensivity;
+		target.setXRotationSensivity(xRotationSensivity);
 	}
 	
 	public void setYRotationSensivity(float yRotationSensivity)
 	{
-		this.yRotationSensivity = yRotationSensivity;
+		target.setYRotationSensivity(yRotationSensivity);
 	}
 	
 	public void setActive(boolean isActive)
@@ -44,6 +58,6 @@ public abstract class Controller {
 	
 	public Vector3d getDirection()
 	{
-		return direction;
+		return target.getDirection();
 	}
 }
