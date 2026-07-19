@@ -354,23 +354,17 @@ public class CameraTest extends RenderTest {
 	{
 		VulkanWindow window = KirryVulkan.getVulkan().getWindow();
 		int fps = TestProperties.MAX_FRAME_RATE.getValue();
-		long frameTime = 1000 / fps;
+		double frameTime = 1D / fps;
 		
-		try
+		long t0 = System.currentTimeMillis();
+		long t1 = t0;
+		while (!window.shouldClose())
 		{
-			long t0 = System.currentTimeMillis();
-			long t1 = t0;
-			while (!window.shouldClose())
-			{
-				window.renderScreenOnce(t1 - t0);
-				window.pollEvents();
-				Thread.sleep(frameTime);
-				t0 = t1;
-				t1 = System.currentTimeMillis();
-			}
+			window.renderScreenOnce(t1 - t0);
+			window.waitEvents(frameTime);
+			t0 = t1;
+			t1 = System.currentTimeMillis();
 		}
-		catch (InterruptedException _)
-		{}
 	}
 	
 	public static void end()

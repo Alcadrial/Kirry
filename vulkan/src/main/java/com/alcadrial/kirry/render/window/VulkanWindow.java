@@ -8,6 +8,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Queue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -81,8 +82,8 @@ import com.alcadrial.kirry.render.queue.PresentQueue;
 import com.alcadrial.kirry.render.renderpass.RenderPass;
 import com.alcadrial.kirry.render.renderpass.RenderPassTemplate;
 import com.alcadrial.kirry.render.texture.Texture;
+import com.alcadrial.kirry.render.util.VulkanDebug;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
-import com.alcadrial.kirry.render.util.VulkanResource;
 import com.alcadrial.kirry.render.util.VulkanUtils;
 import com.alcadrial.kirry.render.util.exception.PhysicalDeviceNotFoundException;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
@@ -90,7 +91,7 @@ import com.alcadrial.kirry.render.util.functional.VulkanConsumer;
 import com.alcadrial.kirry.render.util.future.VulkanFuture;
 import com.alcadrial.kirry.render.window.event.EventType;
 
-public class VulkanWindow extends Window implements VulkanResource<Long> {
+public class VulkanWindow extends Window implements VulkanDebug {
 	
 	private static final int BUFFERED_FRAMES_COUNT = 3;
 	
@@ -853,6 +854,17 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		KirryVulkan.awaitRequestMainThread(GLFW::glfwWaitEvents);
 	}
 	
+	public void waitEvents(double timeout)
+	{
+		KirryVulkan.awaitRequestMainThread(() -> GLFW.glfwWaitEventsTimeout(timeout));
+	}
+	
+	public void waitEvents(long timeout, TimeUnit unit)
+	{
+		double d = unit.toMillis(timeout) / 1000D + (unit.toNanos(timeout) % 1000000) / 1000000000D;
+		waitEvents(d);
+	}
+	
 	public void postEmptyEvent()
 	{
 		GLFW.glfwPostEmptyEvent();
@@ -1074,7 +1086,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		KirryVulkan.requestMainThread(() -> GLFW.glfwSetWindowSize(id, width, height));
 	}
 	
-	@Override
 	public Long getVk()
 	{
 		return id;
@@ -1163,7 +1174,6 @@ public class VulkanWindow extends Window implements VulkanResource<Long> {
 		return isLost;
 	}
 	
-	@Override
 	public void close()
 	{
 		if (id != 0)

@@ -22,6 +22,18 @@ public class JoystickController extends Controller {
 	@Override
 	public void update(CommandBuffer commandBuffer, float elapsed)
 	{
+		if (jid < 0)
+		{
+			for (int i = 0; i <= GLFW.GLFW_JOYSTICK_LAST; i++)
+			{
+				if (GLFW.glfwJoystickPresent(i))
+				{
+					jid = i;
+					System.out.println("Changed joystick to " + jid);
+					break;
+				}
+			}
+		}
 		if (jid < 0) return;
 		FloatBuffer axis = GLFW.glfwGetJoystickAxes(jid);
 		ByteBuffer buttons = GLFW.glfwGetJoystickButtons(jid);
@@ -40,18 +52,14 @@ public class JoystickController extends Controller {
 				if (GLFW.glfwGetGamepadState(jid, state))
 				{
 					float y = 0;
-					if (state.buttons().get(GLFW.GLFW_GAMEPAD_BUTTON_CROSS) == 1)
-						y += 1;
-					if (state.buttons().get(GLFW.GLFW_GAMEPAD_BUTTON_CIRCLE) == 1)
-						y += -1;
+					if (state.buttons().get(GLFW.GLFW_GAMEPAD_BUTTON_CROSS) == 1) y += 1;
+					if (state.buttons().get(GLFW.GLFW_GAMEPAD_BUTTON_CIRCLE) == 1) y += -1;
 					
 					float leftTrigger = state.axes().get(GLFW.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER);
 					float rightTrigger = state.axes().get(GLFW.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER);
 					
-					if (Math.abs(leftTrigger) > 0.01)
-						y += -leftTrigger;
-					if (Math.abs(rightTrigger) > 0.01)
-						y += rightTrigger;
+					if (Math.abs(leftTrigger) > 0.01) y += -leftTrigger;
+					if (Math.abs(rightTrigger) > 0.01) y += rightTrigger;
 					
 					float leftXAxis = state.axes().get(GLFW.GLFW_GAMEPAD_AXIS_LEFT_X);
 					float leftYAxis = state.axes().get(GLFW.GLFW_GAMEPAD_AXIS_LEFT_Y);
@@ -67,7 +75,7 @@ public class JoystickController extends Controller {
 					
 					float rightXAxis = state.axes().get(GLFW.GLFW_GAMEPAD_AXIS_RIGHT_X);
 					float rightYAxis = state.axes().get(GLFW.GLFW_GAMEPAD_AXIS_RIGHT_Y);
-
+					
 					if (Math.abs(rightXAxis * rightYAxis) > 0.005)
 					{
 						target.setXRotation(target.getXRotation() + rightYAxis * xRotationSensivity * elapsed / 200);
@@ -89,9 +97,11 @@ public class JoystickController extends Controller {
 			{
 				case GLFW.GLFW_CONNECTED -> {
 					if (this.jid < 0) this.jid = jid;
+					System.out.println("Connected " + jid);
 				}
 				case GLFW.GLFW_DISCONNECTED -> {
 					if (this.jid >= 0) this.jid = -1;
+					System.out.println("Disconnected " + jid);
 				}
 			}
 		});

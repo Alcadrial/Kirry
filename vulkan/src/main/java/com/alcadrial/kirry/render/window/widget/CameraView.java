@@ -42,6 +42,8 @@ import com.alcadrial.kirry.render.shader.ShaderType;
 import com.alcadrial.kirry.render.shader.ShaderVariable;
 import com.alcadrial.kirry.render.texture.Texture;
 import com.alcadrial.kirry.render.texture.TextureManager;
+import com.alcadrial.kirry.render.util.Lazy;
+import com.alcadrial.kirry.render.util.VLazy;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.exception.ExternalException;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
@@ -240,7 +242,7 @@ public class CameraView extends AbstractWidget {
 		}
 	}
 	
-	private RenderEngine renderEngine;
+	private Lazy<RenderEngine> lazyRenderEngine;
 	
 	private ShaderResource spatialMoveComputeShaderResource;
 	private ShaderResource initComputeShaderResource;
@@ -251,11 +253,11 @@ public class CameraView extends AbstractWidget {
 	private boolean pausedFlag;
 	private UniformState uniformState;
 	
-	private Texture sceneColorTexture;
-	private Texture sceneDepthTexture;
-	private FrameBuffer frameBuffer;
-	private VulkanBuffer vertexBuffer;
-	private VulkanBuffer indexBuffer;
+	private VLazy<Texture> lazySceneColorTexture;
+	private VLazy<Texture> lazySceneDepthTexture;
+	private VLazy<FrameBuffer> lazyFrameBuffer;
+	private VLazy<VulkanBuffer> lazyVertexBuffer;
+	private VLazy<VulkanBuffer> lazyIndexBuffer;
 	private int textureIndex;
 	
 	private Collection<Entity> entities;
@@ -272,12 +274,12 @@ public class CameraView extends AbstractWidget {
 		this.initComputeShaderResource = initComputeShaderResource;
 		this.transformComputeShaderResource = transformComputeShaderResource;
 		
-		renderEngine = (@NonNull RenderEngine) null;
-		sceneColorTexture = (@NonNull Texture) null;
-		sceneDepthTexture = (@NonNull Texture) null;
-		frameBuffer = (@NonNull FrameBuffer) null;
-		vertexBuffer = (@NonNull VulkanBuffer) null;
-		indexBuffer = (@NonNull VulkanBuffer) null;
+		lazyRenderEngine = new Lazy<>();
+		lazySceneColorTexture = new VLazy<>();
+		lazySceneDepthTexture = new VLazy<>();
+		lazyFrameBuffer = new VLazy<>();
+		lazyVertexBuffer = new VLazy<>();
+		lazyIndexBuffer = new VLazy<>();
 		
 		this.camera = camera;
 	}
@@ -326,72 +328,92 @@ public class CameraView extends AbstractWidget {
 	@Override
 	public void initTextures(MemoryManager memoryManager, CommandBuffer commandBuffer, TextureManager textureManager) throws VulkanException
 	{
+		try
+		{
 		if (entities.isEmpty()) return;
 		Device device = window.getDevice();
 		int width = window.getWidth();
 		int height = window.getHeight();
 		SurfaceData data = window.getSurface().getData();
-		sceneColorTexture = Texture.create2dTexture(device, width, height, data.format().format(), VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, 1, 1);
-		sceneDepthTexture = Texture.create2dTexture(device, width, height, VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT, 1, 1);
-		
-		textureIndex = textureManager.addTexture(sceneColorTexture);
+			lazySceneColorTexture.set(Texture.create2dTexture(device, width, height, data.format().format(), VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, 1, 1));
+			lazySceneDepthTexture.set(Texture.create2dTexture(device, width, height, VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT, 1, 1));
+			
+			textureIndex = textureManager.addTexture(lazySceneColorTexture.get());
+		}
+		catch (VulkanException e)
+		{
+			lazySceneColorTexture.abort();
+			lazySceneDepthTexture.abort();
+			throw e;
+		}
 	}
 	
 	@Override
 	public void initBuffers(MemoryManager memoryManager, CommandBuffer commandBuffer) throws VulkanException
 	{
-		windowResizeFlag = false;
-		newCameraFlag = false;
-		if (entities.isEmpty()) return;
-		Reserved r = uniformState.reserveUpdate();
-		super.initBuffers(memoryManager, commandBuffer);
-		
-		Device device = window.getDevice();
-		
-		RenderPass renderPass;
-		try (RenderPassTemplate renderPassTemplate = RenderPassTemplate.transformColorDepthTextureTemplate(sceneColorTexture.getFormat(), 1))
+		try
 		{
-			renderPass = renderPassTemplate.createRenderPass(device);
-		}
-		frameBuffer = FrameBuffer.ofDepth(sceneColorTexture, sceneDepthTexture, renderPass);
-		
-		renderEngine = new RenderEngine(device);
-		renderEngine.init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.TextureTarget(frameBuffer), uniformState.getVertexUniformVariables(), uniformState.getFragmentUniformVariables().toList(), entities);
-		
-		Matrix4f projection = new Matrix4f(camera.getProjection((float) window.getWidth() / window.getHeight(), true)).multiply(camera.getView());
-		
-		renderEngine.setUniforms((i, writer) -> {
-			switch (i)
-			{
-				case 0 -> {
-					writer.set(ShaderVariable.PROJECTION, projection);
-					writer.set(ShaderVariable.MODEL, new Matrix4f().translateX(-pos.x()).translateY(-pos.y()));
-					r.update(i, writer);
-					writer.flush();
-				}
-				default -> {
-					if (r.update(i, writer)) writer.flush();
-				}
-			}
-		});
-		
-		vertexBuffer = memoryManager.allocate((5 * 4) * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-		indexBuffer = memoryManager.allocate(6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-		
-		try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, indexBuffer))
-		{
-			DeferredBufferWriter localVertexWriter = transfer.getWriter(vertexBuffer);
-			DeferredBufferWriter localIndexWriter = transfer.getWriter(indexBuffer);
+			windowResizeFlag = false;
+			newCameraFlag = false;
+			if (entities.isEmpty()) return;
+			Reserved r = uniformState.reserveUpdate();
+			super.initBuffers(memoryManager, commandBuffer);
 			
-			RenderingDataUtils.loadRectangleUv(localVertexWriter, localIndexWriter, 0, pos.x(), pos.y(), pos.x() + size.x(), pos.y() + size.y(), 1, 0, 0, 1, 1);
+			Device device = window.getDevice();
+			
+			RenderPass renderPass;
+			try (RenderPassTemplate renderPassTemplate = RenderPassTemplate.transformColorDepthTextureTemplate(lazySceneColorTexture.get().getFormat(), 1))
+			{
+				renderPass = renderPassTemplate.createRenderPass(device);
+			}
+			lazyFrameBuffer.set(FrameBuffer.ofDepth(lazySceneColorTexture.get(), lazySceneDepthTexture.get(), renderPass));
+			
+			lazyRenderEngine.set(new RenderEngine(device));
+			lazyRenderEngine.get().init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.TextureTarget(lazyFrameBuffer.get()), uniformState.getVertexUniformVariables(), uniformState.getFragmentUniformVariables().toList(), entities);
+			
+			Matrix4f projection = new Matrix4f(camera.getProjection((float) window.getWidth() / window.getHeight(), true)).multiply(camera.getView());
+			
+			lazyRenderEngine.get().setUniforms((i, writer) -> {
+				switch (i)
+				{
+					case 0 -> {
+						writer.set(ShaderVariable.PROJECTION, projection);
+						writer.set(ShaderVariable.MODEL, new Matrix4f().translateX(-pos.x()).translateY(-pos.y()));
+						r.update(i, writer);
+						writer.flush();
+					}
+					default -> {
+						if (r.update(i, writer)) writer.flush();
+					}
+				}
+			});
+			
+			lazyVertexBuffer.set(memoryManager.allocate((5 * 4) * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT));
+			lazyIndexBuffer.set(memoryManager.allocate(6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT));
+			
+			try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, lazyVertexBuffer.get(), lazyIndexBuffer.get()))
+			{
+				DeferredBufferWriter localVertexWriter = transfer.getWriter(lazyVertexBuffer.get());
+				DeferredBufferWriter localIndexWriter = transfer.getWriter(lazyIndexBuffer.get());
+				
+				RenderingDataUtils.loadRectangleUv(localVertexWriter, localIndexWriter, 0, pos.x(), pos.y(), pos.x() + size.x(), pos.y() + size.y(), 1, 0, 0, 1, 1);
+			}
+		}
+		catch (VulkanException e)
+		{
+			lazyFrameBuffer.abort();
+			lazyRenderEngine.abort();
+			lazyVertexBuffer.abort();
+			lazyIndexBuffer.abort();
+			throw e;
 		}
 	}
 	
 	@Override
 	public void update(CommandBuffer commandBuffer, float elapsed) throws VulkanException
 	{
-		if (entities.isEmpty() || !renderEngine.isInit()) return;
-		renderEngine.update(commandBuffer, window.getFrameIndex(), elapsed);
+		if (entities.isEmpty() || !lazyRenderEngine.get().isInit()) return;
+		lazyRenderEngine.get().update(commandBuffer, window.getFrameIndex(), elapsed);
 		if (!pausedFlag && isFocused())
 		{
 			Controller c = controller;
@@ -402,11 +424,11 @@ public class CameraView extends AbstractWidget {
 	@Override
 	public void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer) throws VulkanException
 	{
-		if (entities.isEmpty() || !renderEngine.isInit()) return;
+		if (entities.isEmpty() || !lazyRenderEngine.get().isInit()) return;
 		
 		if (windowResizeFlag)
 		{
-			renderEngine.reinit(commandBuffer, null, null, null, new RenderEngine.SurfaceTarget(window), null, null);
+			lazyRenderEngine.get().reinit(commandBuffer, null, null, null, new RenderEngine.SurfaceTarget(window), null, null);
 		}
 		boolean flag0 = windowResizeFlag || newCameraFlag || camera.isProjectionDirty() || camera.isViewDirty();
 		Reserved r = uniformState.reserveUpdate();
@@ -417,7 +439,7 @@ public class CameraView extends AbstractWidget {
 			windowResizeFlag = false;
 			newCameraFlag = false;
 			
-			renderEngine.setUniforms((i, writer) -> {
+			lazyRenderEngine.get().setUniforms((i, writer) -> {
 				switch (i)
 				{
 					case 0 -> {
@@ -435,11 +457,11 @@ public class CameraView extends AbstractWidget {
 			VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
 			renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
 			renderPassBeginInfo.pNext(0);
-			renderPassBeginInfo.renderPass(frameBuffer.getRenderPass().getVk());
-			renderPassBeginInfo.framebuffer(frameBuffer.getVk());
+			renderPassBeginInfo.renderPass(lazyFrameBuffer.get().getRenderPass().getVk());
+			renderPassBeginInfo.framebuffer(lazyFrameBuffer.get().getVk());
 			
 			VkRect2D renderArea = VkRect2D.calloc(stack);
-			renderArea.extent(VkExtent2D.malloc(stack).set(frameBuffer.getWidth(), frameBuffer.getHeight()));
+			renderArea.extent(VkExtent2D.malloc(stack).set(lazyFrameBuffer.get().getWidth(), lazyFrameBuffer.get().getHeight()));
 			renderPassBeginInfo.renderArea(renderArea);
 			
 			VkClearValue.Buffer clearValues = VkClearValue.calloc(2, stack);
@@ -448,7 +470,7 @@ public class CameraView extends AbstractWidget {
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
 			
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
-			renderEngine.draw(commandBuffer, 0);
+			lazyRenderEngine.get().draw(commandBuffer, 0);
 			commandBuffer.endRenderPass();
 		}
 		//super.render(matrix, commandBuffer, renderer);
@@ -457,9 +479,9 @@ public class CameraView extends AbstractWidget {
 	@Override
 	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, TextureManager textureManager) throws VulkanException
 	{
-		if (entities.isEmpty() || !renderEngine.isInit()) return;
-		renderer.setBuffer(0, vertexBuffer);
-		renderer.setIndexBuffer(indexBuffer);
+		if (entities.isEmpty() || !lazyRenderEngine.get().isInit()) return;
+		renderer.setBuffer(0, lazyVertexBuffer.get());
+		renderer.setIndexBuffer(lazyIndexBuffer.get());
 		renderer.draw(commandBuffer, textureManager.textureIndexToGlobal(textureIndex));
 	}
 	
@@ -482,11 +504,11 @@ public class CameraView extends AbstractWidget {
 	@Override
 	public void close() throws VulkanException
 	{
-		renderEngine.close();
-		frameBuffer.close();
-		frameBuffer.getRenderPass().close();
-		sceneDepthTexture.close();
-		vertexBuffer.close();
-		indexBuffer.close();
+		lazyRenderEngine.ifPresent(RenderEngine::close);
+		lazyFrameBuffer.close();
+		lazyFrameBuffer.get().getRenderPass().close();
+		lazySceneDepthTexture.close();
+		lazyVertexBuffer.close();
+		lazyIndexBuffer.close();
 	}
 }
