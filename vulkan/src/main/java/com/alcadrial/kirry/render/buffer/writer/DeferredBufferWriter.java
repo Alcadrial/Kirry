@@ -6,11 +6,6 @@ import com.alcadrial.kirry.render.util.exception.VulkanException;
 
 public class DeferredBufferWriter extends AbstractBufferWriter<DeferredBufferWriter> {
 	
-	public DeferredBufferWriter(VulkanBuffer srcDstBuffer) throws VulkanException
-	{
-		this(srcDstBuffer, srcDstBuffer);
-	}
-	
 	public DeferredBufferWriter(VulkanBuffer srcBuffer, VulkanBuffer dstBuffer) throws VulkanException
 	{
 		this(srcBuffer, dstBuffer, 0, dstBuffer.getSize());
@@ -23,6 +18,7 @@ public class DeferredBufferWriter extends AbstractBufferWriter<DeferredBufferWri
 	
 	public DeferredBufferWriter(VulkanBuffer srcBuffer, int srcOffset, VulkanBuffer dstBuffer, int dstOffset, int size) throws VulkanException
 	{
+		if (srcBuffer == dstBuffer) throw new IllegalStateException("Cannot copy buffer to itself");
 		super(srcBuffer, srcOffset, dstBuffer, dstOffset, size);
 	}
 	

@@ -7,6 +7,7 @@ import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 
 import org.jspecify.annotations.Nullable;
+import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2dr;
@@ -57,6 +58,7 @@ public abstract class AbstractBufferWriter<W extends AbstractBufferWriter<W>> im
 	
 	public AbstractBufferWriter(VulkanBuffer srcBuffer, int srcOffset, VulkanBuffer dstBuffer, int dstOffset, int size) throws VulkanException
 	{
+		if ((srcBuffer.getMemory().getPropertyFlags() & VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == 0) throw new IllegalStateException("Source buffer is not HOST_VISIBLE");
 		Mapping srcBufferMapping = srcBuffer.getMemory().getMapping();
 		if (srcBufferMapping == null) throw new VulkanException("Memory of srcBuffer " + srcBuffer + " is not mapped");
 		

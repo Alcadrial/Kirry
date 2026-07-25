@@ -9,24 +9,14 @@ import com.alcadrial.kirry.render.util.exception.VulkanException;
 
 public class DirectBufferWriter extends AbstractBufferWriter<DirectBufferWriter> {
 	
-	public DirectBufferWriter(VulkanBuffer srcDstBuffer) throws VulkanException
+	public DirectBufferWriter(VulkanBuffer buffer) throws VulkanException
 	{
-		this(srcDstBuffer, srcDstBuffer);
+		this(buffer, 0, buffer.getSize());
 	}
 	
-	public DirectBufferWriter(VulkanBuffer srcBuffer, VulkanBuffer dstBuffer) throws VulkanException
+	public DirectBufferWriter(VulkanBuffer buffer, int offset, int size) throws VulkanException
 	{
-		this(srcBuffer, dstBuffer, 0, dstBuffer.getSize());
-	}
-	
-	public DirectBufferWriter(VulkanBuffer srcBuffer, VulkanBuffer dstBuffer, int offset, int size) throws VulkanException
-	{
-		this(srcBuffer, offset, dstBuffer, offset, size);
-	}
-	
-	public DirectBufferWriter(VulkanBuffer srcBuffer, int srcOffset, VulkanBuffer dstBuffer, int dstOffset, int size) throws VulkanException
-	{
-		super(srcBuffer, srcOffset, dstBuffer, dstOffset, size);
+		super(buffer, offset, buffer, offset, size);
 	}
 	
 	public void flush() throws VulkanException
