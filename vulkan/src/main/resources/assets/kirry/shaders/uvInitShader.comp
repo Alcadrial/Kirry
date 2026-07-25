@@ -3,17 +3,19 @@
 layout (binding = 0) uniform U {
 	vec2 regionUvStart;
 	vec2 regionUvEnd;
+	uint offset;
 };
 
 layout (std430, binding = 1) buffer Data {
-   vec2 textureUv[];
+   float textureUv[]; // vec2[]
 };
 
 layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
 void main()
 {
-	uint i = gl_GlobalInvocationID.x;  
+	uint i = offset / 4 + gl_GlobalInvocationID.x * 2;
 
-    textureUv[i] = (regionUvEnd - regionUvStart) * textureUv[i] + regionUvStart;
+    textureUv[i] = (regionUvEnd.x - regionUvStart.x) * textureUv[i] + regionUvStart.x;
+    textureUv[i + 1] = (regionUvEnd.y - regionUvStart.y) * textureUv[i + 1] + regionUvStart.y;
 }

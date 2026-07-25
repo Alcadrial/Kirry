@@ -82,15 +82,13 @@ public class AtlasTest {
 			
 			while (!window.shouldClose())
 			{
-				Thread.sleep(50);
 				if (rerender[0])
 				{
 					RenderTest.renderTexture(window, atlas.getTexture());
 					rerender[0] = false;
 				}
-				window.pollEvents();
+				window.waitEvents();
 			}
-			
 		}
 		catch (Exception e)
 		{

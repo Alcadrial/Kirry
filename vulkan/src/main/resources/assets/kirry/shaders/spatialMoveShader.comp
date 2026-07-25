@@ -7,19 +7,20 @@ struct Data {
 layout (binding = 0) uniform U {
 	vec3 position;
 	vec3 newPosition;
+	uint offset;
 };
 
 layout (std430, binding = 1) buffer S {
-	Data data[];
+	float data[]; // data[6][]
 };
 
 layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
 void main()
 {
-	uint i = gl_GlobalInvocationID.x;
+	uint i = offset / 4 + gl_GlobalInvocationID.x * 6;
 
-    data[i].e[0] += newPosition.x - position.x;
-    data[i].e[1] += newPosition.y - position.y;
-    data[i].e[2] += newPosition.z - position.z;
+    data[i + 0] += newPosition.x - position.x;
+    data[i + 1] += newPosition.y - position.y;
+    data[i + 2] += newPosition.z - position.z;
 }

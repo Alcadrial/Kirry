@@ -191,7 +191,7 @@ public class Test2dPanel extends RenderTest {
 		
 		long seed = Double.doubleToRawLongBits(Math.random());
 		
-		VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getComputeQueue(), commandBuffer -> {
+		VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
 			
 			try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, indexBuffer))
 			{
@@ -219,13 +219,13 @@ public class Test2dPanel extends RenderTest {
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 						.descriptorCount(1)
-						)
+					)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 						.descriptorCount(1)
-						)
+					)
 					.rewind()
-					);
+				);
 			
 			VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
@@ -239,7 +239,7 @@ public class Test2dPanel extends RenderTest {
 						.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
 						.pImmutableSamplers(null))
 					.rewind()
-					);
+				);
 			
 			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
 			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
@@ -253,7 +253,7 @@ public class Test2dPanel extends RenderTest {
 					.addBinding(0, 28, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
 					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
 					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_4, 12)
-					)
+				)
 				.build();
 			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
 			
@@ -263,7 +263,7 @@ public class Test2dPanel extends RenderTest {
 				.buffersCount(1)
 				.bindings(
 					BindingInfo.ofUniform(uniformBuffer, VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(ShaderVariable.TRANSFORMATION))
-					)
+				)
 				.build();
 		}
 		

@@ -32,6 +32,7 @@ import org.lwjgl.vulkan.VkDescriptorPoolSize;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo;
 import org.lwjgl.vulkan.VkExtent2D;
+import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
@@ -160,7 +161,7 @@ public class RenderTest {
 					System.out.println("\tName: " + properties.deviceNameString());
 					System.out.println("\tType: " + PhysicalDevice.typeToString(properties.deviceType()));
 					System.out.println("\tId: " + properties.deviceID());
-			
+					
 					int l = properties.apiVersion();
 					System.out.println("\tapiVersion: " + ((l >>> 22) & 0x7F) + "." + ((l >>> 12) & 0x3FF) + "." + (l & 0xFFF) + "." + ((l >>> 29) & 0x8));
 					l = properties.driverVersion();
@@ -938,13 +939,16 @@ public class RenderTest {
 	
 	public static void renderTexture(VulkanWindow window, Texture texture) throws VulkanException, InterruptedException
 	{
-		renderTexture(window, texture, 1);
+		renderTexture(window, texture, 1, "shaders/shader4");
 	}
 	
 	public static void renderTexture(VulkanWindow window, Texture texture, int samples) throws VulkanException, InterruptedException
 	{
-		final String shader = "shaders/shader4";
-		
+		renderTexture(window, texture, samples, "shaders/shader4");
+	}
+	
+	public static void renderTexture(VulkanWindow window, Texture texture, int samples, String shader) throws VulkanException, InterruptedException
+	{
 		VulkanFuture<ShaderProgram> shaderProgramFuture = VulkanFuture.submitAsync(() -> {
 			PreparedShader vertexShader = loadShader(shader + ".vert");
 			PreparedShader fragmentShader = loadShader(shader + ".frag");
@@ -1068,7 +1072,6 @@ public class RenderTest {
 			
 			transferFuture.join();
 			
-			
 			switch (window.startPresentation())
 			{
 				case EMPTY_SURFACE:
@@ -1098,7 +1101,7 @@ public class RenderTest {
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 			renderer.draw(commandBuffer, 0);
 			commandBuffer.endRenderPass();
-
+			
 			window.show();
 			window.endPresentation(commandBuffer, () -> {
 				graphicsPipeline.close();
@@ -1110,7 +1113,7 @@ public class RenderTest {
 			});
 		}
 	}
-
+	
 	public static final float XRotationSensivity = 0.005F;
 	public static final float YRotationSensivity = 0.01F;
 }
