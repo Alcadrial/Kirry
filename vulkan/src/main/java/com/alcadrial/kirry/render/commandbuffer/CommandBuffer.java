@@ -72,13 +72,32 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		this.name = name;
 	}
 	
+	public boolean beginUniqueRecording()
+	{
+		if (isRecording) return false;
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.malloc(stack)
+				.sType$Default()
+				.pNext(0)
+				.flags(VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
+				.pInheritanceInfo(null);
+			if (VK10.vkBeginCommandBuffer(vk, beginInfo) < 0) return false;
+		}
+		isRecording = true;
+		return true;
+	}
+	
 	public boolean beginRecording()
 	{
 		if (isRecording) return false;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.calloc(stack)
-				.sType(VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
+			VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.malloc(stack)
+				.sType$Default()
+				.pNext(0)
+				.flags(0)
+				.pInheritanceInfo(null);
 			if (VK10.vkBeginCommandBuffer(vk, beginInfo) < 0) return false;
 		}
 		isRecording = true;

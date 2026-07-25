@@ -548,6 +548,9 @@ public class RenderEngine implements AutoCloseable {
 			
 			int bufferSize = renderersUniformSize + computersUniformSize;
 			VulkanBuffer uniformBuffer = VulkanBuffer.ofUniforms(device, bufferSize);
+			Debug.runOnDebug(() -> {
+				uniformBuffer.setName("RenderEngine UniformBuffer");
+			});
 			
 			int computerBuffersCount = entityMaterialCount;
 			int computerUniformOffset0 = renderersUniformSize;
@@ -556,6 +559,11 @@ public class RenderEngine implements AutoCloseable {
 			ComputePipeline spatialMoveComputePipeline = new ComputePipeline(device, computeLayout, spatialMoveComputeShader.getShader());
 			ComputePipeline initComputePipeline = new ComputePipeline(device, computeLayout, initComputeShader.getShader());
 			ComputePipeline transformComputePipeline = new ComputePipeline(device, computeLayout, transformComputeShader.getShader());
+			Debug.runOnDebug(() -> {
+				spatialMoveComputePipeline.setName("RenderEngine SpatialMove Pipeline");
+				initComputePipeline.setName("RenderEngine Init Pipeline");
+				transformComputePipeline.setName("RenderEngine Transform Pipeline");
+			});
 			
 			Computer spatialMoveComputer = Computer.builder()
 				.computePipeline(spatialMoveComputePipeline)
