@@ -232,7 +232,7 @@ public class Renderer implements VulkanDebug {
 					writeDescriptorSet.pImageInfo(null);
 					writeDescriptorSet.pTexelBufferView(null);
 					writeDescriptorSet.descriptorCount(1);
-					Debug.debug("[Set 0, Binding " + binding + ", Index 0] " + variables);
+					Debug.debug("[Set " + i + ", Binding " + binding + ", Index 0] " + variables);
 				}
 				ImageBindingInfo imageBindingInfo = writer.imageBindingInfo;
 				if (imageBindingInfo != null)
@@ -246,7 +246,7 @@ public class Renderer implements VulkanDebug {
 						descriptorImageInfo.imageLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 						descriptorImageInfo.imageView(texture.get(j).getView().getVk());
 						descriptorImageInfo.sampler(sampler.get(j).getVk());
-						Debug.debug("[Set 0, Binding " + binding + ", Index " + j + "] " + variables.get(j));
+						Debug.debug("[Set " + i + ", Binding " + binding + ", Index " + j + "] " + variables.get(j));
 					}
 					writeDescriptorSet.pBufferInfo(null);
 					writeDescriptorSet.pImageInfo(descriptorImageInfos.rewind());

@@ -41,8 +41,9 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	{
 		KirryVulkan.assertLoaded();
 	}
-	
-	private static final int[] BEST_MATCHER_MAP = new int[] {4, 2, 0, 1, 3};
+
+	private static final String[] TYPE_STRINGS = new String[] {"Other GPU", "Integrated GPU", "Discrete GPU", "Virtual GPU", "CPU"};
+	private static final int[] BEST_MATCHER_MAP = new int[] {0, 2, 4, 3, 1};
 	private static final String[] PREFIXS;
 	private static final String[] PADDED_PREFIXS;
 	
@@ -161,6 +162,10 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	public static String queueFlagsToPaddedString(int flag)
 	{
 		return PADDED_PREFIXS[Objects.checkIndex(flag, PREFIXS.length)];
+	}
+	public static String typeToString(int type)
+	{
+		return TYPE_STRINGS[Objects.checkIndex(type, TYPE_STRINGS.length)];
 	}
 	
 	private VkPhysicalDeviceProperties properties;

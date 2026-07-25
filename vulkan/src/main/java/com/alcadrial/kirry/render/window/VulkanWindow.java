@@ -228,6 +228,8 @@ public class VulkanWindow extends Window implements VulkanDebug {
 			{
 				throw new VulkanException("A broken PhysicalDevicePickStrategy has been used", e);
 			}
+			Debug.debug("Using PhysicalDevice: " + vulkan.getPhysicalDevice().getProperties().deviceNameString());
+			
 			Device device = vulkan.createDevice(deviceFeatures, surface, deviceExtensions);
 			VulkanWindow window = new VulkanWindow(this, vk, title, device, surface);
 			if (defaultPrimary) vulkan.setDefaultWindow(window);
@@ -374,6 +376,7 @@ public class VulkanWindow extends Window implements VulkanDebug {
 	private final Device device;
 	private final PresentQueue presentQueue;
 	private final MemoryManager memoryManager;
+	private final boolean isCustomMemory;
 	
 	private final Surface surface;
 	private final Lock surfaceSizeChangedLock;
@@ -416,7 +419,7 @@ public class VulkanWindow extends Window implements VulkanDebug {
 		
 		this.title = title;
 		this.device = device;
-		memoryManager = builder.memoryManager != null ? builder.memoryManager : MemoryManager.getDefault(device);
+		memoryManager = (isCustomMemory = builder.memoryManager != null) ? builder.memoryManager : MemoryManager.getDefault(device);;
 		presentQueue = (@NonNull PresentQueue) device.getPresentQueue();
 		surface = surfaceBuilder.window(this).build();
 		surfaceSizeChangedLock = new ReentrantLock();
@@ -448,6 +451,7 @@ public class VulkanWindow extends Window implements VulkanDebug {
 		
 		resourceManager = builder.resourceManager;
 		mousePos = Vector2d.of(Double.NaN, Double.NaN);
+		setName(title);
 	}
 	
 	private @Nullable Texture createDepthTexture(SurfaceData surfaceData) throws VulkanException
@@ -663,6 +667,12 @@ public class VulkanWindow extends Window implements VulkanDebug {
 		SURFACE_LOST,
 		OUT_OF_MEMORY,
 		FATAL_ERROR;
+	}
+	
+	public void awaitPresentation(int frameIndex)
+	{
+		FrameData frame = frames[frameIndex];
+		device.waitForFences(frame.getFence());
 	}
 	
 	/**
@@ -1210,6 +1220,7 @@ public class VulkanWindow extends Window implements VulkanDebug {
 	{
 		this.name = name;
 		device.setObjectDebugName(surface, "Surface(" + name + ")");
+		if (!isCustomMemory) memoryManager.setName("MemoryManager(" + name + ")");
 		if (depthTexture != null) depthTexture.setName("DepthTexture(" + name + ")");
 		for (int i = 0; i < commandBuffers.size(); i++) commandBuffers.get(i).setName("CommandBuffer " + i + " (" + name + ")");
 	}
