@@ -261,23 +261,24 @@ public class RenderEngine implements AutoCloseable {
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
+			int maxSets = (buffersCount + 1 + 2) * entities.size();
 			DescriptorPool descriptorPool = new DescriptorPool(device, VkDescriptorPoolCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
 				.pNext(0)
 				.flags(0)
-				.maxSets((buffersCount + 1 + 2) * entities.size())
+				.maxSets(maxSets)
 				.pPoolSizes(VkDescriptorPoolSize.malloc(3, stack)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-						.descriptorCount(2)
+						.descriptorCount(2 * maxSets)
 					)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-						.descriptorCount(1)
+						.descriptorCount(1 * maxSets)
 					)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
-						.descriptorCount(1)
+						.descriptorCount(1 * maxSets)
 					)
 					.rewind()
 				));

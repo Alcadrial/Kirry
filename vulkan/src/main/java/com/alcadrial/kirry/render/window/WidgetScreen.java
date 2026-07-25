@@ -200,11 +200,11 @@ public class WidgetScreen implements Screen {
 						.pPoolSizes(VkDescriptorPoolSize.malloc(2, stack)
 							.apply(b -> b
 								.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-								.descriptorCount(1)
+								.descriptorCount(textureCount)
 							)
 							.apply(b -> b
 								.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-								.descriptorCount(1)
+								.descriptorCount(textureCount)
 							)
 							.rewind()
 						)
@@ -242,7 +242,7 @@ public class WidgetScreen implements Screen {
 				.descriptorSets((DescriptorSet @NonNull[]) descriptorSets)
 				.buffersCount(textureCount)
 				.bindings(i -> new BindingInfo[] {
-					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView((@NonNull VulkanBuffer) uniformBuffer, 0, 1, 16 * 2), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
+					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView((@NonNull VulkanBuffer) uniformBuffer, 0, 1, 64 * 2), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.PROJECTION,
 						ShaderVariable.MODEL
 					)),

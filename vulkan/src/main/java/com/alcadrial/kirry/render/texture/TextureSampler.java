@@ -31,13 +31,13 @@ public class TextureSampler extends RawDeviceResource {
 			samplerInfo.addressModeU(VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT);
 			samplerInfo.addressModeV(VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT);
 			samplerInfo.addressModeW(VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT);
-			samplerInfo.anisotropyEnable(device.getPhysicalDevice().getFeatures().samplerAnisotropy());
+			samplerInfo.anisotropyEnable(false);
 			samplerInfo.maxAnisotropy(Math.min(16, device.getPhysicalDevice().getProperties().limits().maxSamplerAnisotropy()));
 			samplerInfo.borderColor(VK10.VK_BORDER_COLOR_INT_OPAQUE_BLACK);
 			samplerInfo.unnormalizedCoordinates(false);
 			samplerInfo.compareEnable(false);
 			samplerInfo.compareOp(VK10.VK_COMPARE_OP_ALWAYS);
-			samplerInfo.mipmapMode(VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR);
+			samplerInfo.mipmapMode(VK10.VK_SAMPLER_MIPMAP_MODE_NEAREST);
 			
 			long[] p = new long[1];
 			
