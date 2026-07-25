@@ -52,6 +52,7 @@ import com.alcadrial.kirry.render.FrameBuffer;
 import com.alcadrial.kirry.render.KirryProperties;
 import com.alcadrial.kirry.render.KirryVulkan;
 import com.alcadrial.kirry.render.KirryVulkan.Builder;
+import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.buffer.writer.DeferredBufferWriter;
@@ -148,6 +149,23 @@ public class RenderTest {
 						Debug.error("GLFW Error " + e + ": " + stack.pointers(m).getStringUTF8());
 					}
 				});
+			}
+			if (TestProperties.LIST_DEVICES.getValue())
+			{
+				int i = 0;
+				for (PhysicalDevice physicalDevice : KirryVulkan.getVulkan().getAvailablePhysicalDevices())
+				{
+					VkPhysicalDeviceProperties properties = physicalDevice.getProperties();
+					System.out.println("Device " + i++ + ":");
+					System.out.println("\tName: " + properties.deviceNameString());
+					System.out.println("\tType: " + PhysicalDevice.typeToString(properties.deviceType()));
+					System.out.println("\tId: " + properties.deviceID());
+			
+					int l = properties.apiVersion();
+					System.out.println("\tapiVersion: " + ((l >>> 22) & 0x7F) + "." + ((l >>> 12) & 0x3FF) + "." + (l & 0xFFF) + "." + ((l >>> 29) & 0x8));
+					l = properties.driverVersion();
+					System.out.println("\tdriverVersion: " + ((l >>> 22) & 0x3FF) + "." + ((l >>> 12) & 0x3FF) + "." + (l & 0xFFF));
+				}
 			}
 			
 			Thread mainThread = null;
