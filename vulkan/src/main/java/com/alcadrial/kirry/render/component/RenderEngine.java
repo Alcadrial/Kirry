@@ -233,6 +233,38 @@ public class RenderEngine implements AutoCloseable {
 		this.device = device;
 	}
 	
+	/**
+	 * VN layout:<pre>
+	 *  *--------*--------*--------*--------*-----*
+	 *  |Vertex 0|Normal 0|Vertex 1|Normal 1| ... |
+	 *  *--------*--------*--------*--------*-----*
+	 * </pre>
+	 * UV layout:<pre>
+	 *  *----*----*-----*
+	 *  |Uv 0|Uv 1| ... |
+	 *  *----*----*-----*
+	 * </pre>
+	 * Mesh layout:<pre>
+	 *  *----*----*
+	 *  | VN | UV |
+	 *  *----*----*
+	 * </pre>
+	 * Cache layout:<pre>
+	 *  *------*------*-----*
+	 *  |Mesh 0|Mesh 1| ... |
+	 *  *------*------*-----*
+	 * </pre>
+	 * VertexBuffer layout:<pre>
+	 *  *----*----*-----*
+	 *  |VN 0|VN 1| ... |
+	 *  *----*----*-----*
+	 * </pre>
+	 * UvBuffer layout:<pre>
+	 *  *----*----*-----*
+	 *  |UV 0|UV 1| ... |
+	 *  *----*----*-----*
+	 * </pre>
+	 */
 	public void init(@Nullable ShaderProgram defaultProgram, ShaderResource spatialMoveComputeShader, ShaderResource initComputeShader, ShaderResource transformComputeShader, MemoryManager memoryManager, CommandBuffer commandBuffer, PipelineOutputTarget target, MutableList<ShaderVariable> vertexStageUniforms, MutableList<ShaderVariable> fragmentStageUniforms, Collection<Entity> entities) throws VulkanException
 	{
 		RenderPass renderPass;
@@ -315,13 +347,17 @@ public class RenderEngine implements AutoCloseable {
 			record MeshData(Mesh mesh, int size) {}
 			MutableList<MeshData> meshSizes = Lists.mutable.withInitialCapacity(entities.size());
 			
-			int vertexBufferSize = 0;
+			int minStorageBufferOffsetAlignment = (int) device.getPhysicalDevice().getLimits().minStorageBufferOffsetAlignment();
+			
 			int textureUvBufferSize = 0;
-			int vertexCount = 0;
-			int[] textureUvSizes = new int[entities.size()];
+			//offset from minStorageBufferOffsetAlignment
+			int[] vertexBlockOffsets = new int[entities.size()];
+			int[] vertexOffsets = new int[entities.size()];
+			int[] vertexSizes = new int[entities.size()];
 			int entityMaterialCount = 0;
 			
 			{
+				int vertexOffset = 0;
 				MutableSet<Mesh> meshes = Sets.mutable.of();
 				int j = 0;
 				for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
@@ -331,11 +367,12 @@ public class RenderEngine implements AutoCloseable {
 					if (mesh == null) continue;
 					MeshComponent.Properties properties = mesh.getProperties();
 					
-					vertexBufferSize += properties.vertexesSize();
 					textureUvBufferSize += properties.textureUvSize();
-					vertexBufferSize += properties.normalsSize();
-					vertexCount += properties.vertexCount();
-					textureUvSizes[j] = Math.max(properties.textureUvSize(), 1);
+					
+					vertexSizes[j] = properties.vertexesSize() + properties.normalsSize();
+					vertexOffsets[j] = vertexOffset;
+					vertexBlockOffsets[j] = Math.align(vertexOffset - minStorageBufferOffsetAlignment, minStorageBufferOffsetAlignment);
+					vertexOffset += vertexSizes[j];
 					
 					if (!meshes.add(mesh.getMesh())) continue;
 					meshSizes.add(new MeshData(mesh.getMesh(), properties.vertexesSize() + properties.textureUvSize() + properties.normalsSize()));
@@ -350,40 +387,39 @@ public class RenderEngine implements AutoCloseable {
 				}
 			}
 			
+			int vertexBufferSize = vertexSizes[entities.size() - 1] + vertexOffsets[entities.size() - 1];
 			//TODO: handle missing uv
 			if (vertexBufferSize == 0 || textureUvBufferSize == 0)
 			{
 				data = null;
 				return;
 			}
-			int minStorageBufferOffsetAlignment = (int) device.getPhysicalDevice().getLimits().minStorageBufferOffsetAlignment();
 			
+			int[] textureUvBlockOffsets = new int[entityMaterialCount];
 			int[] textureUvOffsets = new int[entityMaterialCount];
+			int[] textureUvSizes = new int[entityMaterialCount];
 			
 			{
 				int offset = 0;
-				int j = 0, k = 0;
-				for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
+				int k = 0;
+				for (Iterator<Entity> i = entities.iterator(); i.hasNext();)
 				{
 					Entity e = i.next();
 					MeshComponent mesh = (MeshComponent) e.getComponent(MeshComponent.TYPE);
 					if (mesh == null) continue;
 					
-					int offset0 = 0;
 					for (Material material : mesh.getMaterials())
 					{
 						TextureData colorTexture = material.colorTexture();
 						if (colorTexture == null) continue;
-						textureUvOffsets[k] = offset + offset0;
-						offset0 += Math.align(colorTexture.vertexCount() * mesh.getTextureUvLength(), minStorageBufferOffsetAlignment);
+						textureUvSizes[k] = colorTexture.vertexCount() * mesh.getTextureUvLength() * 4;
+						textureUvOffsets[k] = offset;
+						textureUvBlockOffsets[k] = Math.align(offset - minStorageBufferOffsetAlignment, minStorageBufferOffsetAlignment);
+						offset += textureUvSizes[k];
 						k++;
 					}
-					offset += textureUvSizes[j];
 				}
 			}
-			
-			int textureUvOffset = Math.max(8, minStorageBufferOffsetAlignment);
-			textureUvBufferSize = vertexCount * textureUvOffset;
 			
 			Data.Cache cache = new Data.Cache();
 			
@@ -406,9 +442,9 @@ public class RenderEngine implements AutoCloseable {
 				try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, buffer))
 				{
 					VulkanBuffer localBuffer = transfer.getLocal(buffer);
-					int vertexBufferOffset = 0;
 					
 					int i = 0;
+					int vertexBufferOffset = 0;
 					for (MeshData d : meshSizes)
 					{
 						Mesh mesh = d.mesh;
@@ -422,9 +458,22 @@ public class RenderEngine implements AutoCloseable {
 						
 						mesh.flush(localBuffer, vertexSize, vertexBufferOffset, localBuffer, textureUvSize, textureUvBufferOffset, localBuffer, vertexSize, vertexBufferOffset + meshProperties.vertexesSize() / meshProperties.indicesSize(), null);
 						
-						vertexBufferOffset += (vertexBufferByteSize + meshProperties.textureUvSize()) / 4;
+						vertexBufferOffset = textureUvBufferOffset + textureUvSize * meshProperties.vertexCount();
 					}
 					commandBuffer.copyBuffer(localBuffer, 0, buffer, 0, buffer.getSize());
+					
+					commandBuffer.pipelineBarrier(VK10.VK_PIPELINE_STAGE_TRANSFER_BIT, VK10.VK_PIPELINE_STAGE_TRANSFER_BIT, 0, null, VkBufferMemoryBarrier.malloc(1, stack)
+						.apply(b -> b
+							.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER)
+							.pNext(0)
+							.srcAccessMask(VK10.VK_ACCESS_MEMORY_WRITE_BIT)
+							.dstAccessMask(VK10.VK_ACCESS_MEMORY_READ_BIT)
+							.srcQueueFamilyIndex(0)
+							.dstQueueFamilyIndex(0)
+							.buffer(buffer.getVk())
+							.offset(0)
+							.size(buffer.getSize())
+						).rewind(), null);
 				}
 			}
 			else
@@ -449,18 +498,15 @@ public class RenderEngine implements AutoCloseable {
 						commandBuffer.copyBuffer(localBuffer, 0, buffer, 0, buffer.getSize());
 					}
 				}
+				//TODO: add barrier
 			}
 			
-			int[] vertexOffsets = new int[entities.size()];
-			int[] vertexSizes = new int[entities.size()];
 			boolean useTextureUv = false;
 			boolean useSpatial = false;
 			
 			{
 				ShaderComponent.Params shaderParams = new ShaderComponent.Params(device);
 				
-				int vertexBufferOffset = 0;
-				int textureUvBufferOffset = 0;
 				int i = 0;
 				for (Entity entity : entities)
 				{
@@ -471,15 +517,9 @@ public class RenderEngine implements AutoCloseable {
 					Properties meshProperties = mesh.getProperties();
 					MemoryCacheState cacheState = meshCaches.get(mesh);
 					
-					commandBuffer.copyBuffer(cacheState.getBuffer(), 0, vertexBuffer, vertexBufferOffset, meshProperties.vertexesSize() + meshProperties.normalsSize());
-					commandBuffer.copyBuffer(cacheState.getBuffer(), meshProperties.vertexesSize() + meshProperties.normalsSize(), textureUvBuffer, textureUvBufferOffset, meshProperties.textureUvSize());
+					commandBuffer.copyBuffer(cacheState.getBuffer(), 0, vertexBuffer, vertexOffsets[i], vertexSizes[i]);
+					commandBuffer.copyBuffer(cacheState.getBuffer(), vertexSizes[i], textureUvBuffer, textureUvOffsets[i], meshProperties.textureUvSize());
 					commandBuffer.addCompletionAction(cacheState::release);
-					
-					vertexOffsets[i] = vertexBufferOffset;
-					vertexSizes[i] = meshProperties.vertexesSize() + meshProperties.normalsSize();
-					
-					vertexBufferOffset += meshProperties.vertexesSize() + meshProperties.normalsSize();
-					textureUvBufferOffset += meshProperties.textureUvSize();
 					
 					if (meshProperties.useTextureUv()) useTextureUv = true;
 					
@@ -499,7 +539,8 @@ public class RenderEngine implements AutoCloseable {
 					}
 					i++;
 				}
-				commandBuffer.pipelineBarrier(VK10.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK10.VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, null, VkBufferMemoryBarrier.malloc(2, stack)
+			}
+			commandBuffer.pipelineBarrier(VK10.VK_PIPELINE_STAGE_TRANSFER_BIT, VK10.VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, null, VkBufferMemoryBarrier.malloc(2, stack)
 					.apply(b -> b
 						.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER)
 						.pNext(0)
@@ -521,7 +562,6 @@ public class RenderEngine implements AutoCloseable {
 						.offset(0)
 						.size(vertexBuffer.getSize())
 					).rewind(), null);
-			}
 			
 			int renderersCount = shaders.size();
 			if (defaultProgram != null) renderersCount++;
@@ -530,8 +570,8 @@ public class RenderEngine implements AutoCloseable {
 			
 			int vertexBindingSize = (int) vertexStageUniforms.sumOfInt(v -> v.getType().getLength());
 			int fragmentBindingSize = (int) fragmentStageUniforms.sumOfInt(v -> v.getType().getLength());
-			int spatialMoveComputeBindingSize = ShaderInputType.VECTOR_FLOAT_4.getLength() * 2;
-			int initComputeBindingSize = ShaderInputType.VECTOR_FLOAT_2.getLength() * 2 + ShaderInputType.INT.getLength();
+			int spatialMoveComputeBindingSize = ShaderInputType.VECTOR_FLOAT_4.getLength() * 2 + ShaderInputType.INT.getLength();
+			int initComputeBindingSize = ShaderInputType.VECTOR_FLOAT_2.getLength() * 3 + ShaderInputType.INT.getLength();
 			int transformComputeBindingSize = ShaderInputType.VECTOR_FLOAT_2.getLength() * 3 + ShaderInputType.INT.getLength();
 			
 			int minVertexSize = Math.align(vertexBindingSize, minUniformBufferOffsetAlignment);
@@ -574,9 +614,10 @@ public class RenderEngine implements AutoCloseable {
 				.bindings(i -> new BindingInfo[] {
 					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, computerUniformOffset0 + minComputeSize * i, spatialMoveComputeBindingSize), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.POSITION,
-						ShaderVariable.POSITION_EXTRA_1
+						ShaderVariable.POSITION_EXTRA_1,
+						ShaderVariable.OFFSET
 					)),
-					BindingInfo.ofStorage(VulkanBuffer.view(vertexBuffer, vertexOffsets[i], vertexSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+					BindingInfo.ofStorage(VulkanBuffer.view(vertexBuffer, vertexBlockOffsets[i], vertexOffsets[i] - vertexBlockOffsets[i] + vertexSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.VERTEX_POSITION,
 						ShaderVariable.NORMAL_POSITION
 					))
@@ -593,9 +634,10 @@ public class RenderEngine implements AutoCloseable {
 					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, computerUniformOffset1 + minComputeSize * i, initComputeBindingSize), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.UV,
 						ShaderVariable.UV_EXTRA_1,
+						ShaderVariable.PADDING_2,
 						ShaderVariable.OFFSET
 					)),
-					BindingInfo.ofStorage(VulkanBuffer.view(textureUvBuffer, textureUvOffsets[i], textureUvSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+					BindingInfo.ofStorage(VulkanBuffer.view(textureUvBuffer, textureUvBlockOffsets[i], textureUvOffsets[i] - textureUvBlockOffsets[i] + textureUvSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.UV
 					))
 				})
@@ -613,13 +655,13 @@ public class RenderEngine implements AutoCloseable {
 						ShaderVariable.UV_EXTRA_2,
 						ShaderVariable.OFFSET
 					)),
-					BindingInfo.ofStorage(VulkanBuffer.view(textureUvBuffer, textureUvOffsets[i], textureUvSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+					BindingInfo.ofStorage(VulkanBuffer.view(textureUvBuffer, textureUvBlockOffsets[i], textureUvOffsets[i] - textureUvBlockOffsets[i] + textureUvSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.UV
 					))
 				})
 				.build();
 			
-			if (useSpatial) computeSpatialMoveData(spatialMoveComputer, entities, () -> new Iterator<>() {
+			if (useSpatial) computeSpatialMoveData(spatialMoveComputer, vertexBlockOffsets, vertexOffsets, entities, () -> new Iterator<>() {
 				
 				@Override
 				public boolean hasNext()
@@ -649,7 +691,7 @@ public class RenderEngine implements AutoCloseable {
 				}
 			}, commandBuffer);
 			atlas.draw(commandBuffer);
-			if (useTextureUv) computeInitData(entities, initComputer, commandBuffer);
+			if (useTextureUv) computeInitData(entities, vertexBlockOffsets, vertexOffsets, initComputer, commandBuffer);
 			
 			//TODO: support multisample
 			GraphicsPipelineTemplate graphicsPipelineTemplate = GraphicsPipelineTemplate.create3dRenderingPipeline()
@@ -1177,6 +1219,34 @@ public class RenderEngine implements AutoCloseable {
 		return VulkanErrorUtils.nonNull(data, "Renderer was not initialized");
 	}
 	
+	private void computeSpatialMoveData(Computer spatialMoveComputer, int[] vertexBlockOffsets, int[] vertexOffsets, Iterable<Entity> entities, Iterable<Vector3fr> oldPositions, Iterable<Integer> indices, CommandBuffer commandBuffer) throws VulkanException
+	{
+		Iterator<Vector3fr> pi = oldPositions.iterator();
+		Iterator<Integer> ki = indices.iterator();
+		for (Iterator<Entity> i = entities.iterator(); i.hasNext() && pi.hasNext();)
+		{
+			Entity e = i.next();
+			Vector3fr p = pi.next();
+			int k = ki.next();
+			MeshComponent mesh = e.getComponent(MeshComponent.TYPE);
+			if (mesh == null) continue;
+			SpatialComponent spatial = e.getComponent(SpatialComponent.TYPE);
+			if (spatial == null) continue;
+			
+			int vertexCount = mesh.getProperties().vertexCount();
+			SpatialComponent.State state = spatial.getState();
+			
+			int offset = vertexOffsets[k] - vertexBlockOffsets[k];
+			spatialMoveComputer.useBufferLayoutWriter(k, 0, writer -> {
+				writer.set(ShaderVariable.POSITION, p);
+				writer.set(ShaderVariable.POSITION_EXTRA_1, state.position());
+				writer.set(ShaderVariable.OFFSET, offset);
+			});
+			
+			spatialMoveComputer.dispatch(commandBuffer, k, vertexCount, 1, 1);
+		}
+	}
+	
 	private void computeSpatialMoveData(Computer spatialMoveComputer, Iterable<Entity> entities, Iterable<Vector3fr> oldPositions, Iterable<Integer> indices, CommandBuffer commandBuffer) throws VulkanException
 	{
 		Iterator<Vector3fr> pi = oldPositions.iterator();
@@ -1203,6 +1273,35 @@ public class RenderEngine implements AutoCloseable {
 		}
 	}
 	
+	private void computeInitData(Collection<Entity> entities, int[] vertexBlockOffsets, int[] vertexOffsets, Computer initComputer, CommandBuffer commandBuffer) throws VulkanException
+	{
+		int k = 0;
+		for (Iterator<Entity> i = entities.iterator(); i.hasNext();)
+		{
+			Entity e = i.next();
+			MeshComponent mesh = e.getComponent(MeshComponent.TYPE);
+			if (mesh == null) continue;
+			MeshComponent.Properties meshProperties = mesh.getProperties();
+			if (!meshProperties.useTextureUv()) continue;
+			
+			for (Material material : mesh.getMaterials())
+			{
+				TextureData colorTexture = material.colorTexture();
+				if (colorTexture == null) continue;
+				
+				int offset = vertexOffsets[k] - vertexBlockOffsets[k];
+				initComputer.useBufferLayoutWriter(k, 0, writer -> {
+					writer.set(ShaderVariable.UV, colorTexture.region().getUvStart());
+					writer.set(ShaderVariable.UV_EXTRA_1, colorTexture.region().getUvEnd());
+					writer.set(ShaderVariable.OFFSET, offset);
+				});
+				
+				initComputer.dispatch(commandBuffer, k, colorTexture.vertexCount(), 1, 1);
+				k++;
+			}
+		}
+	}
+	
 	private void computeInitData(Collection<Entity> entities, Computer initComputer, CommandBuffer commandBuffer) throws VulkanException
 	{
 		int k = 0;
@@ -1222,7 +1321,6 @@ public class RenderEngine implements AutoCloseable {
 				initComputer.useBufferLayoutWriter(k, 0, writer -> {
 					writer.set(ShaderVariable.UV, colorTexture.region().getUvStart());
 					writer.set(ShaderVariable.UV_EXTRA_1, colorTexture.region().getUvEnd());
-					writer.set(ShaderVariable.OFFSET, colorTexture.vertexOffset());
 				});
 				
 				initComputer.dispatch(commandBuffer, k, colorTexture.vertexCount(), 1, 1);
