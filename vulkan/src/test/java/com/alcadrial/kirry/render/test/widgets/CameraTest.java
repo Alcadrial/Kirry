@@ -236,8 +236,25 @@ public class CameraTest extends RenderTest {
 		activeGui.hide();
 		showBackground = true;
 		showGui = true;
+		/*
+		BasicScreen s0 = new BasicScreen(window);
+		s0.setShaderProgram(screenShaderProgram);
+		s0.add(background0);
+		s0.add(background1);
+		s0.add(background2);
+		s0.add(background3);
 		
+		window.setScreen(s0);
+		window.renderScreenOnce(0);
+		window.renderScreenOnce(0);
+		window.renderScreenOnce(0);
+		int fi = window.getFrameIndex();
+		window.renderScreenOnce(0);
+		window.awaitPresentation(fi);
+		s0.close();
+		*/
 		BasicScreen s = new BasicScreen(window);
+		s.setShaderProgram(screenShaderProgram);
 		s.add(background0);
 		s.add(background1);
 		s.add(background2);
@@ -245,7 +262,6 @@ public class CameraTest extends RenderTest {
 		s.add(cameraView);
 		s.add(gui);
 		s.add(activeGui);
-		s.setShaderProgram(screenShaderProgram);
 		
 		window.setScreen(s);
 		mouseKeyboardController.registerEvents(window.getEventRegistry());

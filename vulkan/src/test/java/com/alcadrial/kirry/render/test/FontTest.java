@@ -1,10 +1,12 @@
 package com.alcadrial.kirry.render.test;
 
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 
 import com.alcadrial.kirry.render.KirryVulkan;
 import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.font.Font;
+import com.alcadrial.kirry.render.memory.MemoryManager;
 import com.alcadrial.kirry.render.test.util.RenderTest;
 import com.alcadrial.kirry.render.test.util.TestProperties;
 import com.alcadrial.kirry.render.texture.Texture;
@@ -32,8 +34,10 @@ public class FontTest extends RenderTest {
 				.build(128, 128, "Test");
 			registerDragging();
 			
-			Font font = new Font(window.getDevice(), getPath("fonts/ITCBLKAD.TTF"), 0);
-			//Font font = new Font(window.getDevice(), getFile("fonts/ARIALI.TTF"), 0);
+			MemoryManager memoryManager = MemoryManager.getDefault(window.getDevice());
+			
+			Font font = new Font(window.getDevice(), getPath("fonts/ITCBLKAD.TTF"), 0, 0, memoryManager);
+			//Font font = new Font(window.getDevice(), getFile("fonts/ARIALI.TTF"), 0, memoryManager);
 			System.out.println(font);
 			font.setSize(64);
 			println("Indexing", () -> {
@@ -49,17 +53,17 @@ public class FontTest extends RenderTest {
 				{
 					try
 					{
-						System.out.println(font.getCharRegion(c));
+						System.out.println(font.getData(c));
 					}
 					catch (FreeTypeException e)
 					{
-						System.out.println("Failed to load char:" + c);
+						System.out.println("Failed to load char: " + c);
 					}
 				}
 				font.getAtlas().tryFit();
 			}, TestProperties.PRINT_LOADING_TIMES);
 			println("Draw", () -> {
-				window.getDevice().configureAndSubmitSingleUseCommandBuffer(window.getDevice().getGraphicsQueue(), font.getAtlas()::draw);
+				window.getDevice().configureAndSubmitSingleUseCommandBuffer(window.getDevice().getGraphicsQueue(), font::prepare).join();
 			}, TestProperties.PRINT_LOADING_TIMES);
 			System.out.println(font.getAtlas());
 			Texture texture = font.getAtlas().getTexture();
@@ -71,15 +75,26 @@ public class FontTest extends RenderTest {
 			window.setSize((int) (w * scale), (int) (h * scale));
 			window.pollEvents();
 			window.getSurface().reinit();
-
-			RenderTest.renderTexture(window, texture, 1);
+			
+			RenderTest.renderTexture(window, texture, 1, "shaders/shader4");
+			
+			boolean[] rerender = new boolean[] {false};
+			
+			window.setCallback((GLFWWindowRefreshCallbackI) _ -> {
+				rerender[0] = true;
+			});
 			
 			while (!window.shouldClose())
 			{
-				Thread.sleep(50);
-				window.pollEvents();
+				if (rerender[0])
+				{
+					RenderTest.renderTexture(window, font.getAtlas().getTexture());
+					rerender[0] = false;
+				}
+				window.waitEvents();
 			}
 			font.close();
+			memoryManager.close();
 		}
 		catch (Exception e)
 		{

@@ -201,38 +201,61 @@ public class Renderer implements VulkanDebug {
 				BufferBindingInfo bufferBindingInfo = writer.bufferBindingInfo;
 				if (bufferBindingInfo != null)
 				{
-					VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1);
-					if (variables.isEmpty())
+					switch (descriptorType)
 					{
-						VulkanBuffer buffer = bufferBindingInfo.getBuffer();
-						descriptorBufferInfo.buffer(buffer.getVk());
-						descriptorBufferInfo.offset(buffer.getOffset());
-						descriptorBufferInfo.range(Math.max(device.getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment(), buffer.getSize()));
-					}
-					else
-					{
-						VulkanBuffer buffer = bufferBindingInfo.getBuffer();
-						BufferLayout layout = descriptorType.isUniform() ? new BufferLayout() : null;
-						int range = 0;
-						int offset = 0;
-						for (ShaderVariable variable : variables)
-						{
-							int size = variable.getType().getLength();
-							if (offset > 0 && offset + size > 16) range += 16 - offset;
-							if (layout != null) layout.mark(variable, range / 4);
-							range += size;
-							offset = range % 16;
+						case UNIFORM_BUFFER -> {
+							VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.malloc(1);
+							if (variables.isEmpty())
+							{
+								VulkanBuffer buffer = bufferBindingInfo.getBuffer();
+								descriptorBufferInfo.buffer(buffer.getVk());
+								descriptorBufferInfo.offset(buffer.getOffset());
+								descriptorBufferInfo.range(Math.max(device.getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment(), buffer.getSize()));
+							}
+							else
+							{
+								VulkanBuffer buffer = bufferBindingInfo.getBuffer();
+								BufferLayout layout = new BufferLayout();
+								
+								int range = 0;
+								int offset = 0;
+								for (ShaderVariable variable : variables)
+								{
+									int size = variable.getType().getLength();
+									if (offset > 0 && offset + size > 16) range += 16 - offset;
+									layout.mark(variable, range / 4);
+									range += size;
+									offset = range % 16;
+								}
+								writer.layout = layout;
+								descriptorBufferInfo.buffer(buffer.getVk());
+								descriptorBufferInfo.offset(buffer.getOffset());
+								descriptorBufferInfo.range(Math.min(range, buffer.getSize()));
+							}
+							writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
+							writeDescriptorSet.pImageInfo(null);
+							writeDescriptorSet.pTexelBufferView(null);
+							writeDescriptorSet.descriptorCount(1);
+							Debug.debug("[Set " + i + ", Binding " + binding + ", Index 0] " + variables);
 						}
-						writer.layout = layout;
-						descriptorBufferInfo.buffer(buffer.getVk());
-						descriptorBufferInfo.offset(buffer.getOffset());
-						descriptorBufferInfo.range(Math.min(range, buffer.getSize()));
+						case STORAGE_BUFFER -> {
+							VulkanBuffer buffer = bufferBindingInfo.getBuffer();
+							
+							VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.malloc(1);
+							descriptorBufferInfo.buffer(buffer.getVk());
+							descriptorBufferInfo.offset(buffer.getOffset());
+							descriptorBufferInfo.range(buffer.getSize());
+							
+							writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
+							writeDescriptorSet.pImageInfo(null);
+							writeDescriptorSet.pTexelBufferView(null);
+							writeDescriptorSet.descriptorCount(1);
+							Debug.debug("[Set " + i + ", Binding " + binding + ", Index 0] " + variables);
+						}
+						default -> {
+							Debug.debug("WARNING: Unsupported descriptor type " + descriptorType);
+						}
 					}
-					writeDescriptorSet.pBufferInfo(descriptorBufferInfo);
-					writeDescriptorSet.pImageInfo(null);
-					writeDescriptorSet.pTexelBufferView(null);
-					writeDescriptorSet.descriptorCount(1);
-					Debug.debug("[Set " + i + ", Binding " + binding + ", Index 0] " + variables);
 				}
 				ImageBindingInfo imageBindingInfo = writer.imageBindingInfo;
 				if (imageBindingInfo != null)

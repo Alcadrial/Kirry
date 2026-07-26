@@ -833,8 +833,7 @@ public class VulkanWindow extends Window implements VulkanDebug {
 			}
 			screen.update(commandBuffer, elapsed);
 			
-			Matrix4f matrix = screenMatrix;
-			if (matrix == null) matrix = screenMatrix = new Matrix4f().orthographicPositive(width, height);
+			Matrix4f matrix = getScreenMatrix();
 			screen.render(matrix, commandBuffer);
 			
 			screen.draw(matrix, commandBuffer);
@@ -1177,6 +1176,17 @@ public class VulkanWindow extends Window implements VulkanDebug {
 	public CommandBuffer getCurrentCommandBuffer()
 	{
 		return commandBuffers.get(frameIndex);
+	}
+
+	public Matrix4f getScreenMatrix()
+	{
+		if (screenMatrix == null)
+		{
+			Matrix4f matrix = new Matrix4f().orthographicPositive(width, height);
+			screenMatrix = matrix;
+			return matrix;
+		}
+		return screenMatrix;
 	}
 	
 	public boolean isLost()

@@ -133,6 +133,31 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			.configureDynamicStateState(_ -> {});
 	}
 	
+	public static Builder createFontRenderingPipeline()
+	{
+		return create()
+			.configureVertexInputState(_ -> {})
+			.configureInputAssemblyState(s -> s
+				.topology(VK10.VK_PRIMITIVE_TOPOLOGY_POINT_LIST)
+			)
+			.configureViewportState(s -> s
+				.addDefaultViewport()
+				.addFullScissor()
+			)
+			.configureRasterizationState(s -> s
+				.cullMode(VK10.VK_CULL_MODE_NONE)
+			)
+			.configureMultisampleState(_ -> {})
+			.configureDepthStencilState(s -> s
+				.depthTestEnable(false)
+			)
+			.configureColorBlendState(s -> s
+				.blendConstants(0, 0, 0, 0)
+				.addAttachment(true, VK10.VK_BLEND_FACTOR_SRC_ALPHA, VK10.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK10.VK_BLEND_OP_ADD, VK10.VK_BLEND_FACTOR_ONE, VK10.VK_BLEND_FACTOR_ONE, VK10.VK_BLEND_OP_MAX, VK10.VK_COLOR_COMPONENT_R_BIT | VK10.VK_COLOR_COMPONENT_G_BIT | VK10.VK_COLOR_COMPONENT_B_BIT | VK10.VK_COLOR_COMPONENT_A_BIT)
+			)
+			.configureDynamicStateState(_ -> {});
+	}
+	
 	private VkGraphicsPipelineCreateInfo createInfo;
 	private Builder.ViewportStateConfigurator.@Nullable ExtraConfiguration viewportStateExtraConfiguration;
 	
@@ -224,7 +249,15 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 	}
 	
 	public static class Builder {
-		
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * bindings = []
+		 * attributes = []
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public class VertexInputStateConfigurator {
 			
 			private Map<Integer, Pair<Integer, Integer>> bindings;
@@ -287,7 +320,16 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				return Builder.this;
 			}
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		 * primitiveRestartEnable = false;
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public class InputAssemblyStateConfigurator {
 			
 			private int topology;
@@ -326,7 +368,15 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				return Builder.this;
 			}
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * patchControlPoints = 0
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public class TessellationStateConfigurator {
 			
 			private int patchControlPoints;
@@ -356,7 +406,16 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				return Builder.this;
 			}
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * viewports = []
+		 * scissors = []
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public class ViewportStateConfigurator {
 			
 			@FunctionalInterface
@@ -505,6 +564,23 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 			}
 		}
 		
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * depthClampEnable = false;
+		 * rasterizerDiscardEnable = false;
+		 * polygonMode = VK_POLYGON_MODE_FILL;
+		 * cullMode = VK_CULL_MODE_BACK_BIT;
+		 * frontFace = VK_FRONT_FACE_CLOCKWISE;
+		 * depthBiasEnable = false;
+		 * depthBiasConstantFactor = 1;
+		 * depthBiasClamp = 0;
+		 * depthBiasSlopeFactor = 1;
+		 * lineWidth = 1;
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public class RasterizationStateConfigurator {
 			
 			private boolean depthClampEnable;
@@ -615,7 +691,20 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				return Builder.this;
 			}
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		 * sampleShadingEnable = false;
+		 * minSampleShading = 0;
+		 * sampleMask = null;
+		 * alphaToCoverageEnable = false;
+		 * alphaToOneEnable = false;
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public class MultisampleStateConfigurator {
 			
 			private int rasterizationSamples;
@@ -703,7 +792,22 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				return Builder.this;
 			}
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * flags = 0;
+		 * depthTestEnable = false;
+		 * depthWriteEnable = true;
+		 * depthCompareOp = VK_COMPARE_OP_LESS;
+		 * depthBoundsTestEnable = false;
+		 * stencilTestEnable = false;
+		 * minDepthBounds = 0;
+		 * maxDepthBounds = 1;
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public class DepthStencilStateConfigurator {
 			
 			private int flags;
@@ -797,7 +901,19 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				return Builder.this;
 			}
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * flags = 0;
+		 * logicOpEnable = false;
+		 * logicOp = VK_LOGIC_OP_COPY;
+		 * attachments = [];
+		 * blendConstants = new float[4];
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public class ColorBlendStateConfigurator {
 			
 			private record AttachmentData(boolean blendEnable, int srcColorBlendFactor, int dstColorBlendFactor, int colorBlendOp, int srcAlphaBlendFactor, int dstAlphaBlendFactor, int alphaBlendOp, int colorWriteMask) {}
@@ -907,7 +1023,15 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 				return Builder.this;
 			}
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * dynamicStates = []
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public class DynamicStateConfigurator {
 			
 			private List<Integer> dynamicStates;
@@ -954,100 +1078,300 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		{
 			
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * bindings = []
+		 * attributes = []
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public VertexInputStateConfigurator configureVertexInputState()
 		{
 			return vertexInputStateConfigurator = new VertexInputStateConfigurator();
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * bindings = []
+		 * attributes = []
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public Builder configureVertexInputState(Consumer<VertexInputStateConfigurator> configure)
 		{
 			configure.accept(vertexInputStateConfigurator = new VertexInputStateConfigurator());
 			return this;
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		 * primitiveRestartEnable = false;
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public InputAssemblyStateConfigurator configureInputAssemblyState()
 		{
 			return inputAssemblyStateConfigurator = new InputAssemblyStateConfigurator();
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		 * primitiveRestartEnable = false;
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public Builder configureInputAssemblyState(Consumer<InputAssemblyStateConfigurator> configure)
 		{
 			configure.accept(inputAssemblyStateConfigurator = new InputAssemblyStateConfigurator());
 			return this;
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * patchControlPoints = 0
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public TessellationStateConfigurator configureTessellationState()
 		{
 			return tessellationStateConfigurator = new TessellationStateConfigurator();
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * patchControlPoints = 0
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public Builder configureTessellationState(Consumer<TessellationStateConfigurator> configure)
 		{
 			configure.accept(tessellationStateConfigurator = new TessellationStateConfigurator());
 			return this;
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * viewports = []
+		 * scissors = []
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public ViewportStateConfigurator configureViewportState()
 		{
 			return viewportStateConfigurator = new ViewportStateConfigurator();
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * viewports = []
+		 * scissors = []
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public Builder configureViewportState(Consumer<ViewportStateConfigurator> configure)
 		{
 			configure.accept(viewportStateConfigurator = new ViewportStateConfigurator());
 			return this;
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * depthClampEnable = false;
+		 * rasterizerDiscardEnable = false;
+		 * polygonMode = VK_POLYGON_MODE_FILL;
+		 * cullMode = VK_CULL_MODE_BACK_BIT;
+		 * frontFace = VK_FRONT_FACE_CLOCKWISE;
+		 * depthBiasEnable = false;
+		 * depthBiasConstantFactor = 1;
+		 * depthBiasClamp = 0;
+		 * depthBiasSlopeFactor = 1;
+		 * lineWidth = 1;
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public RasterizationStateConfigurator configureRasterizationState()
 		{
 			return rasterizationStateConfigurator = new RasterizationStateConfigurator();
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * depthClampEnable = false;
+		 * rasterizerDiscardEnable = false;
+		 * polygonMode = VK_POLYGON_MODE_FILL;
+		 * cullMode = VK_CULL_MODE_BACK_BIT;
+		 * frontFace = VK_FRONT_FACE_CLOCKWISE;
+		 * depthBiasEnable = false;
+		 * depthBiasConstantFactor = 1;
+		 * depthBiasClamp = 0;
+		 * depthBiasSlopeFactor = 1;
+		 * lineWidth = 1;
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public Builder configureRasterizationState(Consumer<RasterizationStateConfigurator> configure)
 		{
 			configure.accept(rasterizationStateConfigurator = new RasterizationStateConfigurator());
 			return this;
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		 * sampleShadingEnable = false;
+		 * minSampleShading = 0;
+		 * sampleMask = null;
+		 * alphaToCoverageEnable = false;
+		 * alphaToOneEnable = false;
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public MultisampleStateConfigurator configureMultisampleState()
 		{
 			return multisampleStateConfigurator = new MultisampleStateConfigurator();
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		 * sampleShadingEnable = false;
+		 * minSampleShading = 0;
+		 * sampleMask = null;
+		 * alphaToCoverageEnable = false;
+		 * alphaToOneEnable = false;
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public Builder configureMultisampleState(Consumer<MultisampleStateConfigurator> configure)
 		{
 			configure.accept(multisampleStateConfigurator = new MultisampleStateConfigurator());
 			return this;
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * flags = 0;
+		 * depthTestEnable = false;
+		 * depthWriteEnable = true;
+		 * depthCompareOp = VK_COMPARE_OP_LESS;
+		 * depthBoundsTestEnable = false;
+		 * stencilTestEnable = false;
+		 * minDepthBounds = 0;
+		 * maxDepthBounds = 1;
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public DepthStencilStateConfigurator configureDepthStencilState()
 		{
 			return depthStencilStateConfigurator = new DepthStencilStateConfigurator();
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * flags = 0;
+		 * depthTestEnable = false;
+		 * depthWriteEnable = true;
+		 * depthCompareOp = VK_COMPARE_OP_LESS;
+		 * depthBoundsTestEnable = false;
+		 * stencilTestEnable = false;
+		 * minDepthBounds = 0;
+		 * maxDepthBounds = 1;
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public Builder configureDepthStencilState(Consumer<DepthStencilStateConfigurator> configure)
 		{
 			configure.accept(depthStencilStateConfigurator = new DepthStencilStateConfigurator());
 			return this;
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * flags = 0;
+		 * logicOpEnable = false;
+		 * logicOp = VK_LOGIC_OP_COPY;
+		 * attachments = [];
+		 * blendConstants = new float[4];
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public ColorBlendStateConfigurator configureColorBlendState()
 		{
 			return colorBlendStateConfigurator = new ColorBlendStateConfigurator();
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * flags = 0;
+		 * logicOpEnable = false;
+		 * logicOp = VK_LOGIC_OP_COPY;
+		 * attachments = [];
+		 * blendConstants = new float[4];
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public Builder configureColorBlendState(Consumer<ColorBlendStateConfigurator> configure)
 		{
 			configure.accept(colorBlendStateConfigurator = new ColorBlendStateConfigurator());
 			return this;
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * dynamicStates = []
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public DynamicStateConfigurator configureDynamicStateState()
 		{
 			return dynamicStateConfigurator = new DynamicStateConfigurator();
 		}
-		
+
+		/**
+		 * Default State:
+		 * <pre><code>
+		 * dynamicStates = []
+		 * </pre></code>
+		 * 
+		 * @author Alcadrial
+		 */
 		public Builder configureDynamicStateState(Consumer<DynamicStateConfigurator> configure)
 		{
 			configure.accept(dynamicStateConfigurator = new DynamicStateConfigurator());

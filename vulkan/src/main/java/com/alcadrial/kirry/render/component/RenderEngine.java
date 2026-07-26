@@ -81,12 +81,21 @@ import com.alcadrial.kirry.render.window.VulkanWindow;
 // TODO: implement a wrapper for renderdoc
 public class RenderEngine implements AutoCloseable {
 	
+	public static final String SHADERS_PATH = "assets/kirry/shaders/";
+	
+	public static final String FONT_VERTEX_SHADER_NAME = "font.vert";
+	public static final String FONT_VERTEX_SHADER_PATHNAME = SHADERS_PATH + FONT_VERTEX_SHADER_NAME;
+	public static final String FONT_GEOMETRY_SHADER_NAME = "font.geom";
+	public static final String FONT_GEOMETRY_SHADER_PATHNAME = SHADERS_PATH + FONT_GEOMETRY_SHADER_NAME;
+	public static final String FONT_FRAGMENT_SHADER_NAME = "font.frag";
+	public static final String FONT_FRAGMENT_SHADER_PATHNAME = SHADERS_PATH + FONT_FRAGMENT_SHADER_NAME;
+	
 	public static final String SPATIAL_MOVE_COMPUTE_SHADER_NAME = "spatialMoveShader.comp";
-	public static final String SPATIAL_MOVE_COMPUTE_SHADER_PATHNAME = "assets/kirry/shaders/spatialMoveShader.comp";
+	public static final String SPATIAL_MOVE_COMPUTE_SHADER_PATHNAME = SHADERS_PATH + SPATIAL_MOVE_COMPUTE_SHADER_NAME;
 	public static final String INIT_COMPUTE_SHADER_NAME = "uvInitShader.comp";
-	public static final String INIT_COMPUTE_SHADER_PATHNAME = "assets/kirry/shaders/uvInitShader.comp";
+	public static final String INIT_COMPUTE_SHADER_PATHNAME = SHADERS_PATH + INIT_COMPUTE_SHADER_NAME;
 	public static final String TRANSFORM_COMPUTE_SHADER_NAME = "uvTransformShader.comp";
-	public static final String TRANSFORM_COMPUTE_SHADER_PATHNAME = "assets/kirry/shaders/uvTransformShader.comp";
+	public static final String TRANSFORM_COMPUTE_SHADER_PATHNAME = SHADERS_PATH + TRANSFORM_COMPUTE_SHADER_NAME;
 	
 	public static sealed interface PipelineOutputTarget permits SurfaceTarget, TextureTarget {}
 	
@@ -371,7 +380,7 @@ public class RenderEngine implements AutoCloseable {
 					
 					vertexSizes[j] = properties.vertexesSize() + properties.normalsSize();
 					vertexOffsets[j] = vertexOffset;
-					vertexBlockOffsets[j] = Math.align(vertexOffset - minStorageBufferOffsetAlignment, minStorageBufferOffsetAlignment);
+					vertexBlockOffsets[j] = Math.ceilDiv(vertexOffset, minStorageBufferOffsetAlignment) * minStorageBufferOffsetAlignment;
 					vertexOffset += vertexSizes[j];
 					
 					if (!meshes.add(mesh.getMesh())) continue;
@@ -414,7 +423,7 @@ public class RenderEngine implements AutoCloseable {
 						if (colorTexture == null) continue;
 						textureUvSizes[k] = colorTexture.vertexCount() * mesh.getTextureUvLength() * 4;
 						textureUvOffsets[k] = offset;
-						textureUvBlockOffsets[k] = Math.align(offset - minStorageBufferOffsetAlignment, minStorageBufferOffsetAlignment);
+						textureUvBlockOffsets[k] = Math.ceilDiv(offset, minStorageBufferOffsetAlignment) * minStorageBufferOffsetAlignment;
 						offset += textureUvSizes[k];
 						k++;
 					}
@@ -541,27 +550,27 @@ public class RenderEngine implements AutoCloseable {
 				}
 			}
 			commandBuffer.pipelineBarrier(VK10.VK_PIPELINE_STAGE_TRANSFER_BIT, VK10.VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, null, VkBufferMemoryBarrier.malloc(2, stack)
-					.apply(b -> b
-						.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER)
-						.pNext(0)
-						.srcAccessMask(VK10.VK_ACCESS_MEMORY_WRITE_BIT)
-						.dstAccessMask(VK10.VK_ACCESS_SHADER_READ_BIT)
-						.srcQueueFamilyIndex(0)
-						.dstQueueFamilyIndex(0)
-						.buffer(textureUvBuffer.getVk())
-						.offset(0)
-						.size(textureUvBuffer.getSize())
-					).apply(b -> b
-						.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER)
-						.pNext(0)
-						.srcAccessMask(VK10.VK_ACCESS_MEMORY_WRITE_BIT)
-						.dstAccessMask(VK10.VK_ACCESS_SHADER_READ_BIT)
-						.srcQueueFamilyIndex(0)
-						.dstQueueFamilyIndex(0)
-						.buffer(vertexBuffer.getVk())
-						.offset(0)
-						.size(vertexBuffer.getSize())
-					).rewind(), null);
+				.apply(b -> b
+					.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER)
+					.pNext(0)
+					.srcAccessMask(VK10.VK_ACCESS_MEMORY_WRITE_BIT)
+					.dstAccessMask(VK10.VK_ACCESS_SHADER_READ_BIT)
+					.srcQueueFamilyIndex(0)
+					.dstQueueFamilyIndex(0)
+					.buffer(textureUvBuffer.getVk())
+					.offset(0)
+					.size(textureUvBuffer.getSize())
+				).apply(b -> b
+					.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER)
+					.pNext(0)
+					.srcAccessMask(VK10.VK_ACCESS_MEMORY_WRITE_BIT)
+					.dstAccessMask(VK10.VK_ACCESS_SHADER_READ_BIT)
+					.srcQueueFamilyIndex(0)
+					.dstQueueFamilyIndex(0)
+					.buffer(vertexBuffer.getVk())
+					.offset(0)
+					.size(vertexBuffer.getSize())
+				).rewind(), null);
 			
 			int renderersCount = shaders.size();
 			if (defaultProgram != null) renderersCount++;
