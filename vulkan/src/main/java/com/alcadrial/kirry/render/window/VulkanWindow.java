@@ -432,18 +432,22 @@ public class VulkanWindow extends Window implements VulkanDebug {
 		queuedCommands = new LinkedList<>();
 		//	drawCount = 0;
 		
-		int format = surfaceData.format().format();
-		try (RenderPassTemplate renderPassTemplate = builder.useDepthTexture ? RenderPassTemplate.initColorDepthTextureTemplate(format) : RenderPassTemplate.initColorTextureTemplate(format))
-		{
-			renderPass = renderPassTemplate.createRenderPass(device);
-		}
 		frameIndex = 0;
 		
 		commandBuffers = device.createMultiUseCommandBuffer(BUFFERED_FRAMES_COUNT);
 		
 		onSwapchainRecreationCallbacks = new LinkedList<>();
 		swapchain = createSwapchain(surfaceData, null);
+		
 		depthTexture = builder.useDepthTexture ? createDepthTexture(surfaceData) : null;
+		
+		int format = surfaceData.format().format();
+		int depthFormat = builder.useDepthTexture ? ((@NonNull Texture) depthTexture).getFormat() : 0;
+		try (RenderPassTemplate renderPassTemplate = builder.useDepthTexture ? RenderPassTemplate.initColorDepthTextureTemplate(format, depthFormat) : RenderPassTemplate.initColorTextureTemplate(format))
+		{
+			renderPass = renderPassTemplate.createRenderPass(device);
+		}
+		
 		frames = prepareFrameBuffers(surfaceData, swapchain, depthTexture, null);
 		
 		screen = BlackScreen.BLACK_SCREEN;
@@ -454,12 +458,24 @@ public class VulkanWindow extends Window implements VulkanDebug {
 		setName(title);
 	}
 	
-	private @Nullable Texture createDepthTexture(SurfaceData surfaceData) throws VulkanException
+	private static final int[] SUPPORTED_FORMATS = new int[] {
+		VK10.VK_FORMAT_D16_UNORM,
+		VK10.VK_FORMAT_D16_UNORM_S8_UINT,
+		VK10.VK_FORMAT_D24_UNORM_S8_UINT,
+		VK10.VK_FORMAT_D32_SFLOAT,
+		VK10.VK_FORMAT_D32_SFLOAT_S8_UINT
+	};
+	
+	private Texture createDepthTexture(SurfaceData surfaceData) throws VulkanException
 	{
 		VkExtent2D extent = surfaceData.extent();
-		Texture depthTexture = Texture.create2dTexture(device, extent.width(), extent.height(), VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
-		queuedCommands.add(commandBuffer -> depthTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL));
 		
+		PhysicalDevice physicalDevice = device.getPhysicalDevice();
+		int format = physicalDevice.getSupportedFormat(SUPPORTED_FORMATS, VK10.VK_IMAGE_TILING_OPTIMAL);
+		int aspects = VK10.VK_IMAGE_ASPECT_DEPTH_BIT;
+		if (format != VK10.VK_FORMAT_D16_UNORM && format != VK10.VK_FORMAT_D32_SFLOAT) aspects |= VK10.VK_IMAGE_ASPECT_STENCIL_BIT;
+		Texture depthTexture = Texture.create2dTexture(device, extent.width(), extent.height(), format, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, aspects);
+		queuedCommands.add(commandBuffer -> depthTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL));
 		if (name != null) depthTexture.setName("DepthTexture (" + name + ")");
 		return depthTexture;
 	}
@@ -1130,6 +1146,11 @@ public class VulkanWindow extends Window implements VulkanDebug {
 		return depthTexture != null;
 	}
 	
+	public Texture getDepthTexture()
+	{
+		return VulkanErrorUtils.nonNull(depthTexture, "Missing depth texture, check #hasDepthBuffer before calling #getDepthTexture");
+	}
+	
 	public int getWidth()
 	{
 		return width;
@@ -1177,7 +1198,7 @@ public class VulkanWindow extends Window implements VulkanDebug {
 	{
 		return commandBuffers.get(frameIndex);
 	}
-
+	
 	public Matrix4f getScreenMatrix()
 	{
 		if (screenMatrix == null)

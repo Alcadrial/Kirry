@@ -242,6 +242,14 @@ public class CameraView extends AbstractWidget {
 		}
 	}
 	
+	private static final int[] SUPPORTED_DEPTH_FORMATS = new int[] {
+		VK10.VK_FORMAT_D16_UNORM,
+		VK10.VK_FORMAT_D16_UNORM_S8_UINT,
+		VK10.VK_FORMAT_D24_UNORM_S8_UINT,
+		VK10.VK_FORMAT_D32_SFLOAT,
+		VK10.VK_FORMAT_D32_SFLOAT_S8_UINT
+	};
+	
 	private Lazy<RenderEngine> lazyRenderEngine;
 	
 	private ShaderResource spatialMoveComputeShaderResource;
@@ -330,13 +338,13 @@ public class CameraView extends AbstractWidget {
 	{
 		try
 		{
-		if (entities.isEmpty()) return;
-		Device device = window.getDevice();
-		int width = window.getWidth();
-		int height = window.getHeight();
-		SurfaceData data = window.getSurface().getData();
+			if (entities.isEmpty()) return;
+			Device device = window.getDevice();
+			int width = window.getWidth();
+			int height = window.getHeight();
+			SurfaceData data = window.getSurface().getData();
 			lazySceneColorTexture.set(Texture.create2dTexture(device, width, height, data.format().format(), VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, 1, 1));
-			lazySceneDepthTexture.set(Texture.create2dTexture(device, width, height, VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT, 1, 1));
+			lazySceneDepthTexture.set(Texture.create2dTexture(device, width, height, device.getPhysicalDevice().getSupportedFormat(SUPPORTED_DEPTH_FORMATS, VK10.VK_IMAGE_TILING_OPTIMAL), VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT, 1, 1));
 			
 			textureIndex = textureManager.addTexture(lazySceneColorTexture.get());
 		}
@@ -362,7 +370,7 @@ public class CameraView extends AbstractWidget {
 			Device device = window.getDevice();
 			
 			RenderPass renderPass;
-			try (RenderPassTemplate renderPassTemplate = RenderPassTemplate.transformColorDepthTextureTemplate(lazySceneColorTexture.get().getFormat(), 1))
+			try (RenderPassTemplate renderPassTemplate = RenderPassTemplate.transformColorDepthTextureTemplate(lazySceneColorTexture.get().getFormat(), lazySceneDepthTexture.get().getFormat(), 1))
 			{
 				renderPass = renderPassTemplate.createRenderPass(device);
 			}

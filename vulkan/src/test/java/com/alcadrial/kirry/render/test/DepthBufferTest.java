@@ -18,6 +18,7 @@ import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.AngleUnit;
+import com.alcadrial.kector.Math;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kirry.core.util.color.Color;
@@ -116,16 +117,22 @@ public class DepthBufferTest extends RenderTest {
 		
 		registerDragging();
 		
-		try (RenderPassTemplate template = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format()))
+		try (RenderPassTemplate template = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format(), window.getDepthTexture().getFormat()))
 		{
 			renderPass = template.createRenderPass(device);
 		}
 		
 		memoryManager = MemoryManager.getDefault(device);
+		int minUniformBufferOffsetAlignment = (int) device.getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment();
+		int vertexUniformSize = 16 * 2 * 4;
+		int fragmentUniformSize = (3 + 1 + 1) * 4;
+		int fragmentUniformOffset = Math.align(vertexUniformSize, minUniformBufferOffsetAlignment);
+		int frameUniformSize = fragmentUniformOffset + Math.align(fragmentUniformSize, minUniformBufferOffsetAlignment);
+		int lastFrameUniformSize = fragmentUniformOffset + fragmentUniformSize;
 		
 		vertexBuffer = memoryManager.allocate(24 * 10 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		indexBuffer = memoryManager.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 6, 16 * 2 * 4);
+		uniformBuffer = VulkanBuffer.ofUniforms(device, frameUniformSize * 2 + lastFrameUniformSize);
 		
 		Color[] colors = new Color[] {
 			Color.VERY_LIGHT_YELLOW,
@@ -136,7 +143,7 @@ public class DepthBufferTest extends RenderTest {
 			Color.VERY_LIGHT_BLUE
 		};
 		
-		VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getComputeQueue(), commandBuffer -> {
+		VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
 			
 			try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, indexBuffer))
 			{
@@ -158,18 +165,18 @@ public class DepthBufferTest extends RenderTest {
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
 				.pNext(0)
 				.flags(0)
-				.maxSets(3)
+				.maxSets(window.getFramesCount())
 				.pPoolSizes(VkDescriptorPoolSize.malloc(2, stack)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-						.descriptorCount(1)
-						)
+						.descriptorCount(window.getFramesCount())
+					)
 					.apply(b -> b
-						.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-						.descriptorCount(1)
-						)
+						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+						.descriptorCount(window.getFramesCount())
+					)
 					.rewind()
-					);
+				);
 			VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
 				.pNext(0)
@@ -188,10 +195,10 @@ public class DepthBufferTest extends RenderTest {
 						.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
 						.pImmutableSamplers(null))
 					.rewind()
-					);
+				);
 			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
 			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
-			DescriptorSet[] descriptorSets = descriptorPool.allocates(descriptorSetLayout, 3);
+			DescriptorSet[] descriptorSets = descriptorPool.allocates(descriptorSetLayout, window.getFramesCount());
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
 				.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
 			pipelineLayout = new PipelineLayout(device, pipelineLayoutInfo);
@@ -201,7 +208,7 @@ public class DepthBufferTest extends RenderTest {
 					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
 					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_4, 12)
 					.addAttribute(2, 0, ShaderInputType.VECTOR_FLOAT_3, 28)
-					)
+				)
 				.build();
 			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
 			renderer = Renderer.builder()
@@ -209,15 +216,15 @@ public class DepthBufferTest extends RenderTest {
 				.buffersCount(window.getFramesCount())
 				.descriptorSets(descriptorSets)
 				.bindings(i -> new BindingInfo[] {
-					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i, 1, 16 * 2 * 4), 1, List.of(
+					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, frameUniformSize * i, vertexUniformSize), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.PROJECTION,
 						ShaderVariable.MODEL
-						)),
-					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i + 1, 1, (3 + 1 + 1) * 4), 1, List.of(
+					)),
+					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, frameUniformSize * i + fragmentUniformOffset, fragmentUniformSize), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
 						ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS"),
 						ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY"),
 						ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY")
-						))
+					))
 				})
 				.build();
 			renderer.setBuffer(0, vertexBuffer);

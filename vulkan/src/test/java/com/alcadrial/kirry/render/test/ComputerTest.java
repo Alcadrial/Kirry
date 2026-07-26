@@ -191,7 +191,7 @@ public class ComputerTest extends RenderTest {
 			}
 		});
 		
-		try (RenderPassTemplate template = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format()))
+		try (RenderPassTemplate template = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format(), window.getDepthTexture().getFormat()))
 		{
 			renderPass = template.createRenderPass(device);
 		}
@@ -206,11 +206,11 @@ public class ComputerTest extends RenderTest {
 				.pPoolSizes(VkDescriptorPoolSize.malloc(2, stack)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-						.descriptorCount(3)
+						.descriptorCount(3 * window.getFramesCount())
 					)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
-						.descriptorCount(2)
+						.descriptorCount(2 * window.getFramesCount())
 					)
 					.rewind()
 				);
@@ -321,7 +321,7 @@ public class ComputerTest extends RenderTest {
 				.buffersCount(window.getFramesCount())
 				.groupCount(Vector3i.of(256, 1, 1))
 				.bindings(i -> new BindingInfo[] {
-					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, i + 2 * window.getFramesCount(), 1, 7 * 4), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, i + 2 * window.getFramesCount(), 1, 8 * 4), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						minBound,
 						maxBound,
 						enlapsedTime

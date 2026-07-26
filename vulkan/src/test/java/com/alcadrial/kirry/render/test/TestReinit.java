@@ -167,7 +167,7 @@ public class TestReinit extends RenderTest {
 			indexBuffer.setName("IndexBuffer");
 			uniformBuffer.setName("UniformBuffer");
 			
-			VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getComputeQueue(), commandBuffer -> {
+			VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
 				
 				try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, indexBuffer))
 				{
@@ -203,7 +203,7 @@ public class TestReinit extends RenderTest {
 			});
 			
 			
-			try (RenderPassTemplate template = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format()))
+			try (RenderPassTemplate template = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format(), window.getDepthTexture().getFormat()))
 			{
 				renderPass = template.createRenderPass(device);
 			}

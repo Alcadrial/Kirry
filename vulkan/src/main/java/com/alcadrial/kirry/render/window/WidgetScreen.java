@@ -173,7 +173,7 @@ public class WidgetScreen implements Screen {
 			if (renderPass != null) renderPass.close();
 			if (renderPassTemplate == null)
 			{
-				renderPassTemplate = window.hasDepthBuffer() ? RenderPassTemplate.initColorDepthTextureTemplate(data.format().format()) : RenderPassTemplate.initColorTextureTemplate(data.format().format());
+				renderPassTemplate = window.hasDepthBuffer() ? RenderPassTemplate.initColorDepthTextureTemplate(data.format().format(), window.getDepthTexture().getFormat()) : RenderPassTemplate.initColorTextureTemplate(data.format().format());
 			}
 			renderPass = ((@NonNull RenderPassTemplate) renderPassTemplate).createRenderPass(device);
 		}

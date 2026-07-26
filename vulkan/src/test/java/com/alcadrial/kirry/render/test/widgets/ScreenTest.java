@@ -64,9 +64,6 @@ public class ScreenTest extends RenderTest {
 		
 		VulkanWindow window = VulkanWindow.defaultBuilder()
 			.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
-			.deviceFeatures(f -> f
-				.samplerAnisotropy(true)
-			)
 			.resourceManager(fileManager)
 			.build(1080, 720, "Test");
 		window.setCallback((GLFWKeyCallbackI) (_, k, _, a, _) -> {

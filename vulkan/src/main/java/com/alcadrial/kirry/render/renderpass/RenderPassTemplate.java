@@ -104,7 +104,7 @@ public class RenderPassTemplate implements AutoCloseable {
 			.build();
 	}
 	
-	public static RenderPassTemplate colorDepthTextureTemplate(int format)
+	public static RenderPassTemplate colorDepthTextureTemplate(int format, int depthFormat)
 	{
 		return create()
 			.addAttachment(config -> config
@@ -117,7 +117,7 @@ public class RenderPassTemplate implements AutoCloseable {
 				.initialLayout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 				.finalLayout(KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
 			).addAttachment(config -> config
-				.format(VK10.VK_FORMAT_D24_UNORM_S8_UINT)
+				.format(depthFormat)
 				.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
 				.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR)
 				.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE)
@@ -137,7 +137,7 @@ public class RenderPassTemplate implements AutoCloseable {
 			).build();
 	}
 	
-	public static RenderPassTemplate transformColorDepthTextureTemplate(int format, int sampleCount)
+	public static RenderPassTemplate transformColorDepthTextureTemplate(int format, int depthFormat, int sampleCount)
 	{
 		return create()
 			.addAttachment(config -> config
@@ -150,7 +150,7 @@ public class RenderPassTemplate implements AutoCloseable {
 				.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
 				.finalLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 			).addAttachment(config -> config
-				.format(VK10.VK_FORMAT_D24_UNORM_S8_UINT)
+				.format(depthFormat)
 				.samples(sampleCount)
 				.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR)
 				.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE)
@@ -169,7 +169,7 @@ public class RenderPassTemplate implements AutoCloseable {
 				.dstAccessMask(VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
 			).build();
 	}
-	public static RenderPassTemplate initColorDepthTextureTemplate(int format)
+	public static RenderPassTemplate initColorDepthTextureTemplate(int format, int depthFormat)
 	{
 		return create()
 			.addAttachment(config -> config
@@ -182,7 +182,7 @@ public class RenderPassTemplate implements AutoCloseable {
 				.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
 				.finalLayout(KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
 			).addAttachment(config -> config
-				.format(VK10.VK_FORMAT_D24_UNORM_S8_UINT)
+				.format(depthFormat)
 				.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
 				.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR)
 				.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE)
