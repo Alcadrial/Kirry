@@ -58,7 +58,7 @@ import com.alcadrial.kirry.render.window.VulkanWindow;
 
 public class TextTest extends RenderTest {
 	
-	public static final String MESSAGE = "Alkaisr Tuilla";//"Alkaisr Tuilla";
+	public static final String MESSAGE = "Alkaisr Tuilla";
 	public static final ColorRGB COLOR = ColorRGB.LIGHT_YELLOW;
 	public static final Vector3f POS = Vector3f.of();
 	public static final float MAX_WIDTH = 800;
@@ -103,6 +103,7 @@ public class TextTest extends RenderTest {
 				.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
 				.deviceFeatures(f -> f
 					.geometryShader(true)
+					.samplerAnisotropy(true)
 				)
 				.useDepthTexture(false)
 				.build((int) MAX_WIDTH, (int) MAX_HEIGHT, "Test");
@@ -111,7 +112,7 @@ public class TextTest extends RenderTest {
 			Device device = window.getDevice();
 			memoryManager = MemoryManager.getDefault(device);
 			Font font = new Font(device, getPath(FONTS + "ITCBLKAD.TTF"), 0, VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, memoryManager);
-			//Font font = new Font(window.getDevice(), getFile("fonts/ARIALI.TTF"), 0);
+			//Font font = new Font(window.getDevice(), getPath(FONTS + "ARIALI.TTF"), 0, VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, memoryManager);
 			
 			font.setSize(120);
 			int nonEmptyCharCount = 0;
@@ -123,7 +124,7 @@ public class TextTest extends RenderTest {
 				}
 				catch (FreeTypeException e)
 				{
-					System.out.println("Failed to load char:" + c);
+					System.out.println("Failed to load char: " + c);
 				}
 			}
 			
@@ -271,7 +272,7 @@ public class TextTest extends RenderTest {
 							Font.GLYPH_UV_START,
 							Font.GLYPH_UV_END
 						)),
-						BindingInfo.ofTexture(font.getAtlas().getTexture(), new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.ATLAS),
+						BindingInfo.ofTexture(font.getAtlas().getTexture(), TextureSampler.ofLinear(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.ATLAS),
 						BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 1, 1, (16 * 2 + 4) * 4), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
 							ShaderVariable.PROJECTION,
 							ShaderVariable.MODEL,

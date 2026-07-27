@@ -251,6 +251,7 @@ public class CameraView extends AbstractWidget {
 	};
 	
 	private Lazy<RenderEngine> lazyRenderEngine;
+	private RenderEngine.Config config;
 	
 	private ShaderResource spatialMoveComputeShaderResource;
 	private ShaderResource initComputeShaderResource;
@@ -283,6 +284,7 @@ public class CameraView extends AbstractWidget {
 		this.transformComputeShaderResource = transformComputeShaderResource;
 		
 		lazyRenderEngine = new Lazy<>();
+		config = new RenderEngine.Config(false);
 		lazySceneColorTexture = new VLazy<>();
 		lazySceneDepthTexture = new VLazy<>();
 		lazyFrameBuffer = new VLazy<>();
@@ -311,6 +313,11 @@ public class CameraView extends AbstractWidget {
 	public void setController(Controller controller)
 	{
 		this.controller = controller;
+	}
+	
+	public void setRenderEngineConfig(RenderEngine.Config config)
+	{
+		this.config = config;
 	}
 	
 	public void setSpatialMoveComputeShaderResource(ShaderResource spatialMoveComputeShaderResource)
@@ -377,7 +384,7 @@ public class CameraView extends AbstractWidget {
 			lazyFrameBuffer.set(FrameBuffer.ofDepth(lazySceneColorTexture.get(), lazySceneDepthTexture.get(), renderPass));
 			
 			lazyRenderEngine.set(new RenderEngine(device));
-			lazyRenderEngine.get().init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.TextureTarget(lazyFrameBuffer.get()), uniformState.getVertexUniformVariables(), uniformState.getFragmentUniformVariables().toList(), entities);
+			lazyRenderEngine.get().init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.TextureTarget(lazyFrameBuffer.get()), uniformState.getVertexUniformVariables(), uniformState.getFragmentUniformVariables().toList(), entities, config);
 			
 			Matrix4f projection = new Matrix4f(camera.getProjection((float) window.getWidth() / window.getHeight(), true)).multiply(camera.getView());
 			

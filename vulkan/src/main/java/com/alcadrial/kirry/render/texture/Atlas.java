@@ -200,6 +200,7 @@ public class Atlas implements AutoCloseable {
 	private final int format;
 	private final int usage;
 	private final int aspectMask;
+	private final int mipLevels;
 	private final float loadFactor;
 	private int width;
 	private int height;
@@ -216,34 +217,35 @@ public class Atlas implements AutoCloseable {
 	
 	private boolean debug;
 	
-	public Atlas(Device device, int format, int usage, int aspectMask) throws VulkanException
+	public Atlas(Device device, int format, int usage, int aspectMask, int mipLevels) throws VulkanException
 	{
 		VkPhysicalDeviceLimits limits = device.getPhysicalDevice().getLimits();
-		this(device, limits.maxImageDimension2D(), limits.maxImageDimension2D(), format, usage, aspectMask, DEFAULT_LOAD_FACTOR);
+		this(device, limits.maxImageDimension2D(), limits.maxImageDimension2D(), format, usage, aspectMask, mipLevels, DEFAULT_LOAD_FACTOR);
 	}
 	
-	public Atlas(Device device, int format, int usage, int aspectMask, float loadFactor) throws VulkanException
+	public Atlas(Device device, int format, int usage, int aspectMask, int mipLevels, float loadFactor) throws VulkanException
 	{
 		VkPhysicalDeviceLimits limits = device.getPhysicalDevice().getLimits();
-		this(device, limits.maxImageDimension2D(), limits.maxImageDimension2D(), format, usage, aspectMask, loadFactor, false);
+		this(device, limits.maxImageDimension2D(), limits.maxImageDimension2D(), format, usage, aspectMask, mipLevels, loadFactor, false);
 	}
 	
-	public Atlas(Device device, int maxWidth, int maxHeight, int format, int usage, int aspectMask) throws VulkanException
+	public Atlas(Device device, int maxWidth, int maxHeight, int format, int usage, int aspectMask, int mipLevels) throws VulkanException
 	{
-		this(device, maxWidth, maxHeight, format, usage, aspectMask, DEFAULT_LOAD_FACTOR);
+		this(device, maxWidth, maxHeight, format, usage, aspectMask, mipLevels, DEFAULT_LOAD_FACTOR);
 	}
 	
-	public Atlas(Device device, int maxWidth, int maxHeight, int format, int usage, int aspectMask, float loadFactor) throws VulkanException
+	public Atlas(Device device, int maxWidth, int maxHeight, int format, int usage, int aspectMask, int mipLevels, float loadFactor) throws VulkanException
 	{
-		this(device, maxWidth, maxHeight, format, usage, aspectMask, loadFactor, false);
+		this(device, maxWidth, maxHeight, format, usage, aspectMask, mipLevels, loadFactor, false);
 	}
 	
-	public Atlas(Device device, int maxWidth, int maxHeight, int format, int usage, int aspectMask, float loadFactor, boolean debug) throws VulkanException
+	public Atlas(Device device, int maxWidth, int maxHeight, int format, int usage, int aspectMask, int mipLevels, float loadFactor, boolean debug) throws VulkanException
 	{
 		this.device = device;
 		this.format = format;
 		this.usage = usage | VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 		this.aspectMask = aspectMask;
+		this.mipLevels = mipLevels;
 		this.loadFactor = loadFactor;
 		this.debug = debug;
 		width = 256;
@@ -690,17 +692,22 @@ public class Atlas implements AutoCloseable {
 	 */
 	public boolean draw(CommandBuffer commandBuffer) throws VulkanException
 	{
-		if (!isDirty) return false;
+		if (!isDirty || width == 0 || height == 0) return false;
 		
 		int newRegionsStartingIndex = oldRegions.size();
 		boolean invalid = false;
 		Texture oldTexture = texture;
+		int mipLevels = this.mipLevels;
+		if (mipLevels < 0)
+		{
+			mipLevels = (int) (Math.log(Math.max(width, height)) / Math.log(2));
+		}
 		
 		if (oldTexture != null)
 		{
 			if (newRegionsStartingIndex != 0)
 			{
-				Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask);
+				Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask, 1, mipLevels);
 				Debug.runOnDebug(() -> newTexture.setName("Atlas"));
 				
 				oldTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
@@ -753,7 +760,7 @@ public class Atlas implements AutoCloseable {
 			else if (oldTexture.getWidth() < width || oldTexture.getHeight() < height)
 			{
 				oldTexture.close();
-				Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask);
+				Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask, 1, mipLevels);
 				Debug.runOnDebug(() -> newTexture.setName("Atlas"));
 				
 				newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -771,7 +778,7 @@ public class Atlas implements AutoCloseable {
 		}
 		else
 		{
-			Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask);
+			Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask, 1, mipLevels);
 			Debug.runOnDebug(() -> newTexture.setName("Atlas"));
 			
 			newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -783,6 +790,8 @@ public class Atlas implements AutoCloseable {
 			updateRegions(regions);
 			invalid = true;
 		}
+		if (this.mipLevels != 1) ((@NonNull Texture) texture).generateMipmaps(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		else if (oldTexture != texture) ((@NonNull Texture) texture).changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		commandBuffer.addCompletionAction(() -> {
 			for (Region region : regions) region.resource.close();
 		});
@@ -807,7 +816,6 @@ public class Atlas implements AutoCloseable {
 				region.isDirty = false;
 			}
 		}
-		texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 	
 	private void updateRegions(Iterable<Region> regions)

@@ -2,8 +2,6 @@ package com.alcadrial.kirry.render.texture;
 
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
-import org.lwjgl.vulkan.VkComponentMapping;
-import org.lwjgl.vulkan.VkImageSubresourceRange;
 import org.lwjgl.vulkan.VkImageViewCreateInfo;
 
 import com.alcadrial.kirry.render.Debug;
@@ -25,29 +23,27 @@ public class TextureView extends RawDeviceResource {
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VkImageViewCreateInfo createInfo = VkImageViewCreateInfo.malloc(stack);
-			createInfo.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO);
-			createInfo.pNext(0);
-			createInfo.flags(0);
-			createInfo.image(texture.getVk());
-			createInfo.viewType(texture.getImageType());
-			createInfo.format(texture.getFormat());
-			
-			VkComponentMapping components = createInfo.components();
-			components.r(VK10.VK_COMPONENT_SWIZZLE_IDENTITY);
-			components.g(VK10.VK_COMPONENT_SWIZZLE_IDENTITY);
-			components.b(VK10.VK_COMPONENT_SWIZZLE_IDENTITY);
-			components.a(VK10.VK_COMPONENT_SWIZZLE_IDENTITY);
-			
-			VkImageSubresourceRange subresourceRange = createInfo.subresourceRange();
-			subresourceRange.aspectMask(texture.getAspectMask());
-			subresourceRange.baseMipLevel(0);
-			subresourceRange.levelCount(1);
-			subresourceRange.baseArrayLayer(0);
-			subresourceRange.layerCount(1);
-			
 			long[] p = new long[1];
-			VulkanErrorUtils.assertNoError(VK10.vkCreateImageView(device.getVk(), createInfo, null, p), "Failed to create image view");
+			VulkanErrorUtils.assertNoError(VK10.vkCreateImageView(device.getVk(), VkImageViewCreateInfo.malloc(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
+				.pNext(0)
+				.flags(0)
+				.image(texture.getVk())
+				.viewType(texture.getImageType())
+				.format(texture.getFormat())
+				.components(c -> c
+					.r(VK10.VK_COMPONENT_SWIZZLE_IDENTITY)
+					.g(VK10.VK_COMPONENT_SWIZZLE_IDENTITY)
+					.b(VK10.VK_COMPONENT_SWIZZLE_IDENTITY)
+					.a(VK10.VK_COMPONENT_SWIZZLE_IDENTITY)
+				)
+				.subresourceRange(r -> r
+					.aspectMask(texture.getAspectMask())
+					.baseMipLevel(0)
+					.levelCount(texture.getMipLevels())
+					.baseArrayLayer(0)
+					.layerCount(1)
+				), null, p), "Failed to create image view");
 			vk = p[0];
 		}
 	}

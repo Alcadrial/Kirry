@@ -14,6 +14,7 @@ import org.lwjgl.vulkan.VkClearColorValue;
 import org.lwjgl.vulkan.VkClearRect;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
+import org.lwjgl.vulkan.VkImageBlit;
 import org.lwjgl.vulkan.VkImageMemoryBarrier;
 import org.lwjgl.vulkan.VkImageSubresourceRange;
 import org.lwjgl.vulkan.VkMemoryBarrier;
@@ -131,15 +132,15 @@ public class SynchronizedCommandBuffer extends CommandBuffer {
 			VK10.vkCmdBindVertexBuffers(vk, bindingOffset, buffers, new long[buffers.length]);
 		}
 	}
+
 	
-	/**
-	 * NYI
-	 */
 	@Override
-	public void blitImage()
+	public void blitImage(Texture src, int srcLayout, Texture dst, int dstLayout, VkImageBlit.Buffer regions, int filter)
 	{
-		// VK10.vkCmdBlitImage(vk);
-		throw new NotYetImplementedException();
+		synchronized (pool)
+		{
+			VK10.vkCmdBlitImage(vk, src.getVk(), srcLayout, dst.getVk(), dstLayout, regions, filter);
+		}
 	}
 	
 	@Override

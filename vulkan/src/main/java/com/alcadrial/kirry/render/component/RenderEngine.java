@@ -103,6 +103,8 @@ public class RenderEngine implements AutoCloseable {
 	
 	public record TextureTarget(FrameBuffer frameBuffer) implements PipelineOutputTarget {}
 	
+	public record Config(boolean nearestAtlasFilter) {}
+	
 	private class Data implements AutoCloseable {
 		
 		private static class ProgramRenderer {
@@ -274,7 +276,7 @@ public class RenderEngine implements AutoCloseable {
 	 *  *----*----*-----*
 	 * </pre>
 	 */
-	public void init(@Nullable ShaderProgram defaultProgram, ShaderResource spatialMoveComputeShader, ShaderResource initComputeShader, ShaderResource transformComputeShader, MemoryManager memoryManager, CommandBuffer commandBuffer, PipelineOutputTarget target, MutableList<ShaderVariable> vertexStageUniforms, MutableList<ShaderVariable> fragmentStageUniforms, Collection<Entity> entities) throws VulkanException
+	public void init(@Nullable ShaderProgram defaultProgram, ShaderResource spatialMoveComputeShader, ShaderResource initComputeShader, ShaderResource transformComputeShader, MemoryManager memoryManager, CommandBuffer commandBuffer, PipelineOutputTarget target, MutableList<ShaderVariable> vertexStageUniforms, MutableList<ShaderVariable> fragmentStageUniforms, Collection<Entity> entities, Config config) throws VulkanException
 	{
 		RenderPass renderPass;
 		Vector2ir outputSize;
@@ -351,7 +353,7 @@ public class RenderEngine implements AutoCloseable {
 			pipelineLayoutInfo.pSetLayouts(stack.longs(computeDescriptorSetLayout.getVk()));
 			PipelineLayout computeLayout = new PipelineLayout(device, pipelineLayoutInfo);
 			
-			Atlas atlas = new Atlas(device, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+			Atlas atlas = new Atlas(device, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, config.nearestAtlasFilter ? 1 : -1);
 			
 			record MeshData(Mesh mesh, int size) {}
 			MutableList<MeshData> meshSizes = Lists.mutable.withInitialCapacity(entities.size());
@@ -719,12 +721,13 @@ public class RenderEngine implements AutoCloseable {
 			int uniformStride[] = {minVertexSize};
 			
 			Data.ProgramRenderer defaultRendering = null;
+			TextureSampler sampler = config.nearestAtlasFilter ? TextureSampler.ofNearest(device) : TextureSampler.ofLinear(device);
 			if (defaultProgram != null)
 			{
 				defaultRendering = createRenderer(stack, defaultProgram, vertexStageUniforms, fragmentStageUniforms, descriptorPool, pipelineLayoutInfo, renderPass, outputSize, graphicsPipelineTemplate, buffersCount, vertexBuffer, textureUvBuffer, atlas, i -> new BindingInfo[] {
 					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, renderingUniformSize * i + uniformOffset[0], vertexBindingSize), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, vertexStageUniforms),
 					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, renderingUniformSize * i + uniformStride[0], fragmentBindingSize), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, fragmentStageUniforms),
-					BindingInfo.ofTexture(atlas.getTexture(), new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
+					BindingInfo.ofTexture(atlas.getTexture(), sampler, VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
 				});
 				uniformOffset[0] += renderingUniformSize * buffersCount;
 				uniformStride[0] += renderingUniformSize * buffersCount;
@@ -734,7 +737,7 @@ public class RenderEngine implements AutoCloseable {
 				renderings.add(createRenderer(stack, e.getKey(), vertexStageUniforms, fragmentStageUniforms, descriptorPool, pipelineLayoutInfo, renderPass, outputSize, graphicsPipelineTemplate, buffersCount, vertexBuffer, textureUvBuffer, atlas, i -> new BindingInfo[] {
 					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, renderingUniformSize * i + uniformOffset[0], vertexBindingSize), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, vertexStageUniforms),
 					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, renderingUniformSize * i + uniformStride[0], fragmentBindingSize), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, fragmentStageUniforms),
-					BindingInfo.ofTexture(atlas.getTexture(), new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
+					BindingInfo.ofTexture(atlas.getTexture(), sampler, VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
 				}));
 				uniformOffset[0] += renderingUniformSize * buffersCount;
 				uniformStride[0] += renderingUniformSize * buffersCount;

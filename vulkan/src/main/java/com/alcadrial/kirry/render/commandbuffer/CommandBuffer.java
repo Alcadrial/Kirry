@@ -19,6 +19,7 @@ import org.lwjgl.vulkan.VkClearRect;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
 import org.lwjgl.vulkan.VkDependencyInfo;
+import org.lwjgl.vulkan.VkImageBlit;
 import org.lwjgl.vulkan.VkImageCopy;
 import org.lwjgl.vulkan.VkImageMemoryBarrier;
 import org.lwjgl.vulkan.VkImageMemoryBarrier2;
@@ -164,13 +165,9 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		VK10.vkCmdBindVertexBuffers(vk, bindingOffset, buffers, offsets);
 	}
 	
-	/**
-	 * NYI
-	 */
-	public void blitImage()
+	public void blitImage(Texture src, int srcLayout, Texture dst, int dstLayout, VkImageBlit.Buffer regions, int filter)
 	{
-		// VK10.vkCmdBlitImage(vk);
-		throw new NotYetImplementedException();
+		VK10.vkCmdBlitImage(vk, src.getVk(), srcLayout, dst.getVk(), dstLayout, regions, filter);
 	}
 	
 	public void clear(List<VkClearAttachment> clearAttachments, List<VkClearRect> clearRects)

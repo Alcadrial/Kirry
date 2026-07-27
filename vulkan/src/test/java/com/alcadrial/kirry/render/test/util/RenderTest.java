@@ -937,18 +937,15 @@ public class RenderTest {
 		}
 	}
 	
-	public static void renderTexture(VulkanWindow window, Texture texture) throws VulkanException, InterruptedException
-	{
-		renderTexture(window, texture, 1, "shaders/shader4");
-	}
+	public record RenderParams(Texture texture, int samples, @Nullable TextureSampler sampler, @Nullable String shader) {}
 	
-	public static void renderTexture(VulkanWindow window, Texture texture, int samples) throws VulkanException, InterruptedException
+	public static void renderTexture(VulkanWindow window, RenderParams params) throws VulkanException, InterruptedException
 	{
-		renderTexture(window, texture, samples, "shaders/shader4");
-	}
-	
-	public static void renderTexture(VulkanWindow window, Texture texture, int samples, String shader) throws VulkanException, InterruptedException
-	{
+		Texture texture = params.texture;
+		int samples = params.samples > 0 ? params.samples : 1;
+		String shader = params.shader != null ? params.shader :"shaders/shader4";
+		TextureSampler sampler = params.sampler != null ? params.sampler : TextureSampler.ofNearest(window.getDevice());
+		
 		VulkanFuture<ShaderProgram> shaderProgramFuture = VulkanFuture.submitAsync(() -> {
 			PreparedShader vertexShader = loadShader(shader + ".vert");
 			PreparedShader fragmentShader = loadShader(shader + ".frag");
@@ -1052,7 +1049,7 @@ public class RenderTest {
 						ShaderVariable.TRANSFORMATION,
 						ShaderVariable.MODEL
 					)),
-					BindingInfo.ofTexture(texture, new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
+					BindingInfo.ofTexture(texture, sampler, VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
 				)
 				.build();
 			

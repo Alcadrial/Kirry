@@ -82,7 +82,7 @@ public class WidgetScreen implements Screen {
 	{
 		widgets = new LinkedList<>();
 		state = NEW | DIRTY_MASK;
-		textureManager = TextureManager.getDefault(() -> new Atlas(window.getDevice(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT));
+		textureManager = TextureManager.getDefault(() -> new Atlas(window.getDevice(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, 1));
 		this.window = window;
 	}
 	
@@ -246,7 +246,7 @@ public class WidgetScreen implements Screen {
 						ShaderVariable.PROJECTION,
 						ShaderVariable.MODEL
 					)),
-					BindingInfo.ofTexture(i < textureManager.getAtlasSize() ? textureManager.getAtlas(i).getTexture() : textureManager.getTexture(i - textureManager.getAtlasSize()), new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.ATLAS)
+					BindingInfo.ofTexture(i < textureManager.getAtlasSize() ? textureManager.getAtlas(i).getTexture() : textureManager.getTexture(i - textureManager.getAtlasSize()), TextureSampler.ofNearest(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.ATLAS)
 				})
 				.build();
 		}

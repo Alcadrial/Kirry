@@ -177,7 +177,7 @@ public class Font implements AutoCloseable {
 			if (FreeType.FT_New_Face(KirryVulkan.getFTLibrary(), path.toRealPath().toString(), faceIndex, p) != 0) throw new IOException("Failed to load font file");
 			face = FT_Face.create(p.get(0));
 			
-			atlas = new Atlas(device, VK10.VK_FORMAT_B8G8R8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+			atlas = new Atlas(device, VK10.VK_FORMAT_B8G8R8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, -1);
 			setSize(16);
 			
 			this.memoryManager = memoryManager;

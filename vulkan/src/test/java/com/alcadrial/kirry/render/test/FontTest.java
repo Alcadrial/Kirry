@@ -10,6 +10,7 @@ import com.alcadrial.kirry.render.memory.MemoryManager;
 import com.alcadrial.kirry.render.test.util.RenderTest;
 import com.alcadrial.kirry.render.test.util.TestProperties;
 import com.alcadrial.kirry.render.texture.Texture;
+import com.alcadrial.kirry.render.texture.TextureSampler;
 import com.alcadrial.kirry.render.util.exception.FreeTypeException;
 import com.alcadrial.kirry.render.window.VulkanWindow;
 
@@ -75,8 +76,10 @@ public class FontTest extends RenderTest {
 			window.setSize((int) (w * scale), (int) (h * scale));
 			window.pollEvents();
 			window.getSurface().reinit();
+
+			RenderParams params = new RenderParams(font.getAtlas().getTexture(), 1, TextureSampler.ofLinear(window.getDevice()), null);
 			
-			RenderTest.renderTexture(window, texture, 1, "shaders/shader4");
+			RenderTest.renderTexture(window, params);
 			
 			boolean[] rerender = new boolean[] {false};
 			
@@ -88,7 +91,7 @@ public class FontTest extends RenderTest {
 			{
 				if (rerender[0])
 				{
-					RenderTest.renderTexture(window, font.getAtlas().getTexture());
+					RenderTest.renderTexture(window, params);
 					rerender[0] = false;
 				}
 				window.waitEvents();

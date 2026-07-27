@@ -20,6 +20,7 @@ import com.alcadrial.kirry.core.cursor.CursorInputMode;
 import com.alcadrial.kirry.render.KirryVulkan;
 import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.component.MeshComponent;
+import com.alcadrial.kirry.render.component.RenderEngine;
 import com.alcadrial.kirry.render.component.ShaderComponent;
 import com.alcadrial.kirry.render.component.SpatialComponent;
 import com.alcadrial.kirry.render.resources.FileManager;
@@ -219,6 +220,7 @@ public class CameraTest extends RenderTest {
 		cameraView.setCamera(camera0);
 		cameraView.setController(mouseKeyboardController);
 		cameraView.setEntities(entities);
+		cameraView.setRenderEngineConfig(new RenderEngine.Config(true));
 		cameraView.setFocus(true);
 		
 		HiddenSprite background0 = HiddenSprite.ofWindowed(window, Vector3ir.of(20, 20, 0), Vector2ir.of(256, 256), IMAGES + "icon0.png");

@@ -229,8 +229,8 @@ public class TextureTest extends RenderTest {
 						ShaderVariable.TRANSFORMATION
 					)),
 					BindingInfo.ofTextures(VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
-						.add(texture, new TextureSampler(device), ShaderVariable.TEXTURE)
-						.add(texture0, new TextureSampler(device), ShaderVariable.ATLAS)
+						.add(texture, TextureSampler.ofNearest(device), ShaderVariable.TEXTURE)
+						.add(texture0, TextureSampler.ofNearest(device), ShaderVariable.ATLAS)
 						.build()
 				)
 				.build();

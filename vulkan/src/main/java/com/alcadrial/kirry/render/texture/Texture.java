@@ -11,6 +11,7 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VK13;
+import org.lwjgl.vulkan.VkImageBlit;
 import org.lwjgl.vulkan.VkImageCreateInfo;
 import org.lwjgl.vulkan.VkImageMemoryBarrier;
 
@@ -136,6 +137,7 @@ public class Texture extends MemoryResource {
 	private int imageType;
 	private int aspectMask;
 	private int layout;
+	private int mipLayout;
 	
 	private Texture(Device device, int width, int height, int depth, int format, int samples, int tiling, int usage, int aspectMask, int mipLevels, int imageType) throws VulkanException
 	{
@@ -149,13 +151,17 @@ public class Texture extends MemoryResource {
 		this.imageType = imageType;
 		this.aspectMask = aspectMask;
 		layout = VK10.VK_IMAGE_LAYOUT_UNDEFINED;
+		mipLayout = VK10.VK_IMAGE_LAYOUT_UNDEFINED;
+		
+		if (mipLevels > 1) usage |= VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		
 		long vk;
 		Memory memory;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VkImageCreateInfo createInfo = VkImageCreateInfo.malloc(stack)
-				.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
+			long[] p = new long[1];
+			VulkanErrorUtils.assertNoError(VK10.vkCreateImage(device.getVk(), VkImageCreateInfo.malloc(stack)
+				.sType$Default()
 				.pNext(0)
 				.flags(0)
 				.imageType(imageType)
@@ -168,10 +174,7 @@ public class Texture extends MemoryResource {
 				.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE)
 				.usage(usage)
 				.pQueueFamilyIndices(null)
-				.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED);
-			
-			long[] p = new long[1];
-			VulkanErrorUtils.assertNoError(VK10.vkCreateImage(device.getVk(), createInfo, null, p), "Failed to create image");
+				.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED), null, p), "Failed to create image");
 			vk = p[0];
 			
 			memory = device.allocateTextureMemory(stack, p[0], VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
@@ -186,6 +189,7 @@ public class Texture extends MemoryResource {
 	public void setName(String name)
 	{
 		device.setObjectDebugName(this, name);
+		view.setName(name + " View");
 		this.name = name;
 	}
 	
@@ -200,82 +204,186 @@ public class Texture extends MemoryResource {
 	
 	public void changeLayout(CommandBuffer commandBuffer, int layout)
 	{
-		if (this.layout != layout)
+		changeLayout(commandBuffer, layout, 0, 1);
+	}
+	
+	public void changeMipLayout(CommandBuffer commandBuffer, int layout)
+	{
+		changeLayout(commandBuffer, layout, 1, mipLevels);
+	}
+	
+	private void changeLayout(CommandBuffer commandBuffer, int layout, int baseMipLevel, int levelCount)
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				VkImageMemoryBarrier.Buffer barrier = VkImageMemoryBarrier.calloc(1, stack);
-				barrier.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER);
-				barrier.oldLayout(this.layout);
-				barrier.newLayout(layout);
-				barrier.srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED);
-				barrier.dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED);
-				barrier.image(vk);
-				barrier.subresourceRange().aspectMask(aspectMask);
-				barrier.subresourceRange().baseMipLevel(0);
-				barrier.subresourceRange().levelCount(1);
-				barrier.subresourceRange().baseArrayLayer(0);
-				barrier.subresourceRange().layerCount(1);
-				
-				int sourceStage = 0;
-				int destinationStage = 0;
-				
-				if (this.layout == VK10.VK_IMAGE_LAYOUT_UNDEFINED)
-				{
-					barrier.srcAccessMask(VK13.VK_ACCESS_NONE);
-					sourceStage = VK10.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-					
-					switch (layout)
-					{
-						case VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL -> {
-							barrier.dstAccessMask(VK10.VK_ACCESS_TRANSFER_WRITE_BIT);
-							destinationStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
-						}
-						case VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL -> {
-							barrier.dstAccessMask(VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
-							destinationStage = VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-						}
-						default -> throw new UnsupportedOperationException("Transition not supported: " + this.layout + " -> " + layout);
-					}
-				}
-				else if (this.layout == VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && layout == VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-				{
-					barrier.srcAccessMask(VK10.VK_ACCESS_TRANSFER_READ_BIT);
-					barrier.dstAccessMask(VK10.VK_ACCESS_TRANSFER_WRITE_BIT);
-					
-					sourceStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
-					destinationStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
-				}
-				else if (this.layout == VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && layout == VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-				{
-					barrier.srcAccessMask(VK10.VK_ACCESS_TRANSFER_WRITE_BIT);
-					barrier.dstAccessMask(VK10.VK_ACCESS_TRANSFER_READ_BIT);
-					
-					sourceStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
-					destinationStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
-				}
-				else if (this.layout == VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && layout == VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-				{
-					barrier.srcAccessMask(VK10.VK_ACCESS_TRANSFER_WRITE_BIT);
-					barrier.dstAccessMask(VK10.VK_ACCESS_SHADER_READ_BIT);
-					
-					sourceStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
-					destinationStage = VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-				}
-				else if (this.layout == VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && layout == VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-				{
-					barrier.srcAccessMask(VK10.VK_ACCESS_SHADER_READ_BIT);
-					barrier.dstAccessMask(VK10.VK_ACCESS_TRANSFER_WRITE_BIT);
-					
-					sourceStage = VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-					destinationStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
-				}
-				else throw new UnsupportedOperationException("Transition not supported: " + this.layout + " -> " + layout);
-				
-				commandBuffer.pipelineBarrier(sourceStage, destinationStage, 0, null, null, barrier);
-				
-				this.layout = layout;
+			VkImageMemoryBarrier.Buffer barrier = VkImageMemoryBarrier.malloc(1, stack)
+				.sType$Default()
+				.pNext(0)
+				.oldLayout(this.layout)
+				.newLayout(layout)
+				.srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+				.dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+				.image(vk)
+				.subresourceRange(r -> r
+					.aspectMask(aspectMask)
+					.baseMipLevel(baseMipLevel)
+					.levelCount(levelCount)
+					.baseArrayLayer(0)
+					.layerCount(1)
+				);
+			changeLayout(commandBuffer, barrier);
+			this.layout = layout;
+		}
+	}
+	
+	private void changeLayout(CommandBuffer commandBuffer, VkImageMemoryBarrier.Buffer barrier)
+	{
+		int sourceStage = 0;
+		int destinationStage = 0;
+		
+		switch (barrier.oldLayout())
+		{
+			case VK10.VK_IMAGE_LAYOUT_UNDEFINED -> {
+				barrier.srcAccessMask(VK13.VK_ACCESS_NONE);
+				sourceStage = VK10.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 			}
+			case VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL -> {
+				barrier.srcAccessMask(VK10.VK_ACCESS_TRANSFER_READ_BIT);
+				sourceStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
+			}
+			case VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL -> {
+				barrier.srcAccessMask(VK10.VK_ACCESS_TRANSFER_WRITE_BIT);
+				sourceStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
+			}
+			case VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL -> {
+				barrier.srcAccessMask(VK10.VK_ACCESS_SHADER_READ_BIT);
+				sourceStage = VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			}
+			default -> throw new UnsupportedOperationException("Transition not supported: " + barrier.oldLayout() + " -> " + barrier.newLayout());
+		}
+		switch (barrier.newLayout())
+		{
+			case VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL -> {
+				barrier.dstAccessMask(VK10.VK_ACCESS_TRANSFER_READ_BIT);
+				destinationStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
+			}
+			case VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL -> {
+				barrier.dstAccessMask(VK10.VK_ACCESS_TRANSFER_WRITE_BIT);
+				destinationStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
+			}
+			case VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL -> {
+				barrier.dstAccessMask(VK10.VK_ACCESS_SHADER_READ_BIT);
+				destinationStage = VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			}
+			case VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL -> {
+				barrier.dstAccessMask(VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+				destinationStage = VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			}
+			default -> throw new UnsupportedOperationException("Transition not supported: " + barrier.oldLayout() + " -> " + barrier.newLayout());
+		}
+		
+		commandBuffer.pipelineBarrier(sourceStage, destinationStage, 0, null, null, barrier);
+	}
+	
+	public void generateMipmaps(CommandBuffer commandBuffer)
+	{
+		generateMipmaps(commandBuffer, layout);
+	}
+	
+	public void generateMipmaps(CommandBuffer commandBuffer, int targetLayout)
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VkImageBlit.Buffer regions = VkImageBlit.malloc(1, stack)
+				.srcSubresource(r -> r
+					.aspectMask(aspectMask)
+					.baseArrayLayer(0)
+					.layerCount(1)
+				)
+				.srcOffsets(os -> os
+					.apply(o -> o.x(0).y(0).z(0))
+					.apply(o -> o.z(1))
+					.rewind()
+				)
+				.dstSubresource(r -> r
+					.aspectMask(aspectMask)
+					.baseArrayLayer(0)
+					.layerCount(1)
+				)
+				.dstOffsets(os -> os
+					.apply(o -> o.x(0).y(0).z(0))
+					.apply(o -> o.z(1))
+					.rewind()
+				);
+			VkImageMemoryBarrier.Buffer barriers = VkImageMemoryBarrier.malloc(1, stack)
+				.sType$Default()
+				.pNext(0)
+				.srcAccessMask(VK10.VK_ACCESS_TRANSFER_READ_BIT)
+				.dstAccessMask(VK10.VK_ACCESS_TRANSFER_WRITE_BIT)
+				.oldLayout(layout)
+				.newLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+				.srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+				.dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+				.image(vk)
+				.subresourceRange(r -> r
+					.aspectMask(aspectMask)
+					.baseMipLevel(0)
+					.levelCount(1)
+					.baseArrayLayer(0)
+					.layerCount(1)
+				);
+			
+			if (layout != VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+			{
+				changeLayout(commandBuffer, barriers);
+			}
+			if (mipLayout != VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+			{
+				barriers.subresourceRange().baseMipLevel(1);
+				barriers.subresourceRange().levelCount(mipLevels - 1);
+				barriers.oldLayout(mipLayout);
+				barriers.newLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+				changeLayout(commandBuffer, barriers);
+			}
+			
+			barriers.oldLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			barriers.newLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+			
+			int[] data = {width, height, width / 2, height / 2};
+			for (int i = 0; i < mipLevels - 2; i++)
+			{
+				int j = i;
+				regions
+					.srcSubresource(r -> r.mipLevel(j))
+					.srcOffsets(os -> os.apply(1, o -> o.x(data[0]).y(data[1])))
+					.dstSubresource(r -> r.mipLevel(j + 1))
+					.dstOffsets(os -> os.apply(1, o -> o.x(data[2]).y(data[3])));
+				commandBuffer.blitImage(this, VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, this, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, regions, VK10.VK_FILTER_LINEAR);
+				data[0] = data[2];
+				data[1] = data[3];
+				if (data[2] > 1) data[2] /= 2;
+				if (data[3] > 1) data[3] /= 2;
+				barriers.subresourceRange().baseMipLevel(j + 1);
+				barriers.subresourceRange().levelCount(1);
+				commandBuffer.pipelineBarrier(VK10.VK_PIPELINE_STAGE_TRANSFER_BIT, VK10.VK_PIPELINE_STAGE_TRANSFER_BIT, 0, null, null, barriers);
+			}
+			regions
+				.srcSubresource(r -> r.mipLevel(mipLevels - 2))
+				.srcOffsets(os -> os.apply(1, o -> o.x(data[0]).y(data[1])))
+				.dstSubresource(r -> r.mipLevel(mipLevels - 1))
+				.dstOffsets(os -> os.apply(1, o -> o.x(data[2]).y(data[3])));
+			commandBuffer.blitImage(this, VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, this, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, regions, VK10.VK_FILTER_LINEAR);
+			
+			barriers.oldLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+			barriers.newLayout(targetLayout);
+			barriers.subresourceRange().baseMipLevel(0);
+			barriers.subresourceRange().levelCount(mipLevels - 1);
+			changeLayout(commandBuffer, barriers);
+			barriers.oldLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			barriers.subresourceRange().baseMipLevel(mipLevels - 1);
+			barriers.subresourceRange().levelCount(1);
+			changeLayout(commandBuffer, barriers);
+			mipLayout = layout = targetLayout;
 		}
 	}
 	
@@ -314,7 +422,7 @@ public class Texture extends MemoryResource {
 		return samples;
 	}
 	
-	public int getMipmapLevels()
+	public int getMipLevels()
 	{
 		return mipLevels;
 	}

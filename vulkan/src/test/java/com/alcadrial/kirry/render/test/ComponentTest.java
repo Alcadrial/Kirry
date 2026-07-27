@@ -322,7 +322,7 @@ public class ComponentTest extends RenderTest {
 			if (entities.isEmpty()) return;
 			
 			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
-				renderEngine.init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.SurfaceTarget(window), Lists.mutable.of(ShaderVariable.PROJECTION, ShaderVariable.MODEL), Lists.mutable.of(lightPos, lightIntensity, spaceFogIntensity), entities);
+				renderEngine.init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.SurfaceTarget(window), Lists.mutable.of(ShaderVariable.PROJECTION, ShaderVariable.MODEL), Lists.mutable.of(lightPos, lightIntensity, spaceFogIntensity), entities, new RenderEngine.Config(true));
 			}).join();
 		});
 		
@@ -405,7 +405,7 @@ public class ComponentTest extends RenderTest {
 				}
 				reloadShaders = false;
 			}
-
+			
 			CommandBuffer commandBuffer = window.getCurrentCommandBuffer();
 			if (rebuildProjectionMatrix)
 			{
@@ -417,7 +417,7 @@ public class ComponentTest extends RenderTest {
 				projectionMatrix.multiply(new Matrix4f().scale(Vector3fr.of(1, -1, 1)));
 				projectionMatrix.multiply(new Matrix4f().view(cameraSpatialMovementData.position, cameraSpatialMovementData.xRotation, cameraSpatialMovementData.yRotation));
 				//Matrix4f modelMatrix = new Matrix4f();
-
+				
 				Vector3fr position = Vector3fr.of(lightSpatialMovementData.position);
 				float lightIntensityV = lightIntensityValue;
 				float spaceFogIntensityV = spaceFogIntensityValue;
@@ -469,7 +469,7 @@ public class ComponentTest extends RenderTest {
 			clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
 			clearValues.get().depthStencil().depth(1).stencil(0);
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
-
+			
 			renderEngine.update(commandBuffer, window.getFrameIndex(), enlapsed / 1000000000F);
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 			renderEngine.draw(commandBuffer, window.getFrameIndex());
