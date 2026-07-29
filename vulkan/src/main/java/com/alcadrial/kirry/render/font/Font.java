@@ -38,6 +38,8 @@ public class Font implements AutoCloseable {
 	public static final ShaderVariable GLYPH_BEARING = ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_2, "bearing");
 	public static final ShaderVariable GLYPH_UV_START = ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_2, "uvStart");
 	public static final ShaderVariable GLYPH_UV_END = ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_2, "uvEnd");
+	public static final String ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890.,:'?!\"()][}{<>¡!~";
+	public static final String LATIN_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890àèìùòäëïöü.,:'?!\"";
 	
 	public static class GlyphData {
 		
@@ -124,7 +126,7 @@ public class Font implements AutoCloseable {
 		
 		public boolean isEmpty()
 		{
-			return startU == endV;
+			return startU == endU;
 		}
 		
 		private void load(BufferWriter writer)
@@ -152,20 +154,20 @@ public class Font implements AutoCloseable {
 	private long faceIndex;
 	private FT_Face face;
 	
+	private String alphabet;
 	private Atlas atlas;
 	private MemoryManager memoryManager;
 	
 	private int nextDataIndex;
 	private VulkanBuffer localFontData;
 	private DirectBufferWriter localFontDataWriter;
+	private VulkanBuffer remoteFontData;
 	
 	private GlyphData emptyGlyphData;
 	private GlyphData[] hotData;
 	private int hotDataRangeStart;
 	private int hotDataRangeEnd;
 	private MutableIntObjectMap<GlyphData> loadedGlyphs;
-	
-	//private MutableList<VulkanBuffer> glyphDataBuffers;
 	
 	public Font(Device device, Path path, long faceIndex, int dataBufferUsage, MemoryManager memoryManager) throws VulkanException, FreeTypeException, IOException
 	{
@@ -177,15 +179,18 @@ public class Font implements AutoCloseable {
 			if (FreeType.FT_New_Face(KirryVulkan.getFTLibrary(), path.toRealPath().toString(), faceIndex, p) != 0) throw new IOException("Failed to load font file");
 			face = FT_Face.create(p.get(0));
 			
+			alphabet = ALPHABET;
 			atlas = new Atlas(device, VK10.VK_FORMAT_B8G8R8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, -1);
+			atlas.setOnStructuralChange(this::updateUvs);
 			setSize(16);
 			
 			this.memoryManager = memoryManager;
-			localFontData = memoryManager.allocateHost(BLOCK_SIZE, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | dataBufferUsage);
+			localFontData = memoryManager.allocateHost(BLOCK_SIZE, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 			localFontDataWriter = new DirectBufferWriter(localFontData);
+			remoteFontData = memoryManager.allocateHost(BLOCK_SIZE, VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT | dataBufferUsage);
 			nextDataIndex = 0;
 			
-			hotDataRangeStart = 20;
+			hotDataRangeStart = 32;
 			hotDataRangeEnd = 128;
 			hotData = new GlyphData[hotDataRangeEnd - hotDataRangeStart];
 			emptyGlyphData = new GlyphData();
@@ -205,6 +210,11 @@ public class Font implements AutoCloseable {
 	{
 		FreeTypeErrorUtils.assertNoError(FreeType.FT_Set_Pixel_Sizes(face, width, height));
 		atlas.clear(width * 8, height * 8);
+	}
+	
+	public void setAlphabet(String alphabet)
+	{
+		this.alphabet = alphabet;
 	}
 	
 	public float getHeight()
@@ -234,7 +244,23 @@ public class Font implements AutoCloseable {
 	
 	public void prepare(CommandBuffer commandBuffer) throws VulkanException
 	{
+		loadAlphabet();
+		if (atlas.isStructurallyModified()) atlas.tryFit();
 		atlas.draw(commandBuffer);
+		commandBuffer.copyBuffer(localFontData, 0, remoteFontData, 0, remoteFontData.getSize());
+	}
+	
+	public void loadAlphabet() throws VulkanException
+	{
+		for (char c : alphabet.toCharArray())
+		{
+			try
+			{
+				getData(c);
+			}
+			catch (FreeTypeException _)
+			{}
+		}
 	}
 	/*
 	 * TODO use resources
@@ -268,9 +294,14 @@ public class Font implements AutoCloseable {
 		return "Font{name=" + FreeType.FT_Get_Postscript_Name(face) + ", path=" + path + ", faceIndex=" + faceIndex + "}";
 	}
 	
-	public VulkanBuffer getData()
+	public VulkanBuffer getLocalData()
 	{
 		return localFontData;
+	}
+	
+	public VulkanBuffer getRemoteData()
+	{
+		return remoteFontData;
 	}
 	
 	public GlyphData getData(int codepoint) throws FreeTypeException, VulkanException
@@ -364,7 +395,7 @@ public class Font implements AutoCloseable {
 					throw new FreeTypeException("Unsupported format (pixel mode) " + bitmap.pixel_mode());
 				}
 			}
-			TextureRegion region = atlas.add(TextureBuffer.create(buffer, bitmap.pitch(), bitmap.rows(), glyphIndex));
+			TextureRegion region = atlas.add(TextureBuffer.create(buffer, bitmap.pitch(), bitmap.rows(), codepoint));
 			if (region == null)
 			{
 				//TODO: try to remove old/unused glyphs
@@ -389,5 +420,46 @@ public class Font implements AutoCloseable {
 			glyphData.load(localFontDataWriter);
 			return glyphData;
 		}
+	}
+	
+	private void updateUvs() throws VulkanException
+	{
+		for (int i = 0; i < hotData.length; i++)
+		{
+			if (updateGlyph(hotData[i], i + hotDataRangeStart)) hotData[i] = null;
+		}
+		for (IntObjectPair<GlyphData> p : loadedGlyphs.keyValuesView())
+		{
+			if (updateGlyph(p.getTwo(), p.getOne())) loadedGlyphs.remove(p.getOne());
+		}
+	}
+	
+	private boolean updateGlyph(@Nullable GlyphData glyphData, int codepoint) throws VulkanException
+	{
+		TextureRegion region = atlas.getRegion(codepoint);
+		if (region == null) return true;
+		if (glyphData == null)
+		{
+			try
+			{
+				loadGlyph(codepoint);
+			}
+			catch (FreeTypeException _)
+			{
+				atlas.freeRegion(region);
+			}
+			return false;
+		}
+		glyphData.startU = region.getXStart();
+		glyphData.startV = region.getYStart();
+		glyphData.endU = region.getXEnd();
+		glyphData.endV = region.getYEnd();
+		
+		localFontDataWriter.setCursor(glyphData.index * 12 + 8).put(
+			glyphData.startU, glyphData.startV,
+			glyphData.endU, glyphData.endV
+		);
+		localFontDataWriter.setCursor(nextDataIndex * 12);
+		return false;
 	}
 }
