@@ -798,7 +798,6 @@ public class RenderEngine implements AutoCloseable {
 			.buffersCount(buffersCount)
 			.descriptorSets(renderingDescriptorSets)
 			.bindings(bindingFactory)
-			.initDescriptorSets(false)
 			.build();
 		
 		long atlasViewVk = atlas.getTexture().getView().getVk();

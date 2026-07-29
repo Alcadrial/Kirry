@@ -270,6 +270,7 @@ public class ComputerTest extends RenderTest {
 					))
 				})
 				.build();
+			renderer.updateAllDescriptorSets();
 			renderer.setBuffer(0, vertexBuffer);
 			renderer.setBuffer(2, colorBuffer);
 			renderer.setIndexBuffer(indexBuffer);

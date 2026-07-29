@@ -249,6 +249,7 @@ public class WidgetScreen implements Screen {
 					BindingInfo.ofTexture(i < textureManager.getAtlasSize() ? textureManager.getAtlas(i).getTexture() : textureManager.getTexture(i - textureManager.getAtlasSize()), TextureSampler.ofNearest(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.ATLAS)
 				})
 				.build();
+			renderer.updateAllDescriptorSets();
 		}
 		removeState(DIRTY_MASK);
 		setState(INIT);

@@ -1052,6 +1052,7 @@ public class RenderTest {
 					BindingInfo.ofTexture(texture, sampler, VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
 				)
 				.build();
+			renderer.updateAllDescriptorSets();
 			
 			renderer.setBuffer(0, vertexBuffer);
 			renderer.setIndexBuffer(indexBuffer);

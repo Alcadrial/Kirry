@@ -234,6 +234,7 @@ public class TextureTest extends RenderTest {
 						.build()
 				)
 				.build();
+			renderer.updateAllDescriptorSets();
 			
 			renderer.setBuffer(0, vertexBuffer);
 			renderer.setIndexBuffer(indexBuffer);

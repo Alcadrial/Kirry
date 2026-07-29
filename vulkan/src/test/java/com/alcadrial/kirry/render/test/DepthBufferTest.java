@@ -227,6 +227,7 @@ public class DepthBufferTest extends RenderTest {
 					))
 				})
 				.build();
+			renderer.updateAllDescriptorSets();
 			renderer.setBuffer(0, vertexBuffer);
 			renderer.setIndexBuffer(indexBuffer);
 			

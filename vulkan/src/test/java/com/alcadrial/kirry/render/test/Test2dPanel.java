@@ -265,6 +265,7 @@ public class Test2dPanel extends RenderTest {
 					BindingInfo.ofUniform(uniformBuffer, VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(ShaderVariable.TRANSFORMATION))
 				)
 				.build();
+			renderer.updateAllDescriptorSets();
 		}
 		
 		renderer.setBuffer(0, vertexBuffer);

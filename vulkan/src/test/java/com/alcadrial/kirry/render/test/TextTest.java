@@ -2,7 +2,6 @@ package com.alcadrial.kirry.render.test;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.system.MemoryStack;
@@ -19,6 +18,7 @@ import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3fr;
 import com.alcadrial.kector.vector.Vector4f;
 import com.alcadrial.kirry.core.util.color.ColorRGB;
 import com.alcadrial.kirry.render.Device;
@@ -27,11 +27,10 @@ import com.alcadrial.kirry.render.KirryVulkan;
 import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
-import com.alcadrial.kirry.render.buffer.writer.DeferredBufferWriter;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
-import com.alcadrial.kirry.render.component.RenderEngine;
+import com.alcadrial.kirry.render.font.DefaultStringFormatter;
 import com.alcadrial.kirry.render.font.Font;
-import com.alcadrial.kirry.render.font.Font.GlyphData;
+import com.alcadrial.kirry.render.font.StringFormatter;
 import com.alcadrial.kirry.render.memory.MemoryManager;
 import com.alcadrial.kirry.render.memory.MemoryTransferState;
 import com.alcadrial.kirry.render.pipeline.GraphicsPipeline;
@@ -58,11 +57,12 @@ import com.alcadrial.kirry.render.window.VulkanWindow;
 
 public class TextTest extends RenderTest {
 	
-	public static final String MESSAGE = "Alkaisr Tuilla";
+	public static final String MESSAGE = "Alkaisr Tuillà";
 	public static final ColorRGB COLOR = ColorRGB.LIGHT_YELLOW;
 	public static final Vector3f POS = Vector3f.of();
-	public static final float MAX_WIDTH = 800;
-	public static final float MAX_HEIGHT = 500;
+	public static final float MAX_WIDTH = 1200;
+	public static final float MAX_HEIGHT = 800;
+	public static final float SCALE = 0.2F;
 	
 	private static MemoryManager memoryManager = null;
 	
@@ -78,9 +78,9 @@ public class TextTest extends RenderTest {
 			fileManager.registerResourceType(ShaderResource.TYPE, RecompileShaderResource::new);
 			fileManager.startWatchingResources();
 			
-			ShaderResource fontVertexShaderResource = fileManager.getResource(RenderEngine.FONT_VERTEX_SHADER_PATHNAME, ShaderResource.TYPE);
-			ShaderResource fontGeometryShaderResource = fileManager.getResource(RenderEngine.FONT_GEOMETRY_SHADER_PATHNAME, ShaderResource.TYPE);
-			ShaderResource fontFragmentShaderResource = fileManager.getResource(RenderEngine.FONT_FRAGMENT_SHADER_PATHNAME, ShaderResource.TYPE);
+			ShaderResource fontVertexShaderResource = fileManager.getResource(Font.FONT_VERTEX_SHADER_PATHNAME, ShaderResource.TYPE);
+			ShaderResource fontGeometryShaderResource = fileManager.getResource(Font.FONT_GEOMETRY_SHADER_PATHNAME, ShaderResource.TYPE);
+			ShaderResource fontFragmentShaderResource = fileManager.getResource(Font.FONT_FRAGMENT_SHADER_PATHNAME, ShaderResource.TYPE);
 			
 			TestProperties.init(args);
 			KirryVulkan.enableDebug();
@@ -116,63 +116,34 @@ public class TextTest extends RenderTest {
 			
 			font.setSize(120);
 			int nonEmptyCharCount = 0;
+			
+			font.loadAlphabet();
 			for (char c : MESSAGE.toCharArray())
 			{
 				try
 				{
 					if (!font.getData(c).isEmpty()) nonEmptyCharCount++;
 				}
-				catch (FreeTypeException e)
-				{
-					System.out.println("Failed to load char: " + c);
-				}
+				catch (FreeTypeException _)
+				{}
 			}
 			
-			//font.getAtlas().tryFit();
 			System.out.println("Font Atlas size: " + font.getAtlas().getWidth() + "x" + font.getAtlas().getHeight());
-			
-			VulkanBuffer fontDataStorageBuffer = font.getData();
 			
 			VulkanBuffer uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 2, (16 + 16 + 4) * 4);
 			VulkanBuffer vertexBuffer = memoryManager.allocate(MESSAGE.length() * (1 + 3) * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 			
-			CountDownLatch textureAtlasBuilt = new CountDownLatch(1);
-			
-			POS.setY(font.getHeight());
-			
 			VulkanFuture<?> dataReady = device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
-				font.getAtlas().draw(commandBuffer);
-				textureAtlasBuilt.countDown();
+				font.prepare(commandBuffer);
 				
 				try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer))
 				{
-					DeferredBufferWriter vertexWriter = transfer.getWriter(vertexBuffer);
-					
-					Vector3f pos = Vector3f.of(POS);
-					for (char c : MESSAGE.toCharArray())
-					{
-						try
-						{
-							GlyphData glyphData = font.getData(c);
-							if (!glyphData.isEmpty())
-							{
-								vertexWriter.put(pos);
-								vertexWriter.put(glyphData.getIndex());
-							}
-							pos.add(glyphData.getAdvanceX(), 0);
-							if (pos.x() + glyphData.getHorizontalBearingX() + glyphData.getWidth() >= MAX_WIDTH)
-							{
-								pos.x(POS.x());
-								pos.y(pos.y() + font.getHeight());
-							}
-							if (pos.x() >= MAX_WIDTH || pos.y() >= MAX_HEIGHT)
-							{
-								break;
-							}
-						}
-						catch (FreeTypeException _)
-						{}
-					}
+					DefaultStringFormatter formatter = StringFormatter.ofDefault();
+					formatter.setMaxWidth(MAX_WIDTH);
+					formatter.setMaxHeight(MAX_HEIGHT);
+					formatter.setScale(SCALE);
+					formatter.setOrigin(POS);
+					formatter.loadText(font, MESSAGE, transfer.getWriter(vertexBuffer));
 				}
 			});
 			
@@ -255,30 +226,9 @@ public class TextTest extends RenderTest {
 					graphicsPipeline = template.createPipeline(device, shaderProgramFuture.get(), window, pipelineLayout, window.getRenderPass(), 0);
 				}
 				
-				textureAtlasBuilt.await();
 				renderer = Renderer.builder()
 					.graphicsPipeline(graphicsPipeline)
 					.descriptorSets(descriptorSet)
-					.bindings(
-						BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 0, 1, (16 + 16) * 4), VK10.VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT, List.of(
-							ShaderVariable.PROJECTION,
-							ShaderVariable.MODEL
-						)),
-						BindingInfo.ofStorage(fontDataStorageBuffer, VK10.VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT, List.of(
-							Font.GLYPH_SIZE,
-							ShaderVariable.PADDING_2,
-							Font.GLYPH_BEARING,
-							ShaderVariable.PADDING_2,
-							Font.GLYPH_UV_START,
-							Font.GLYPH_UV_END
-						)),
-						BindingInfo.ofTexture(font.getAtlas().getTexture(), TextureSampler.ofLinear(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.ATLAS),
-						BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 1, 1, (16 * 2 + 4) * 4), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
-							ShaderVariable.PROJECTION,
-							ShaderVariable.MODEL,
-							ShaderVariable.COLOR
-						))
-					)
 					.build();
 				
 				renderer.setBuffer(0, vertexBuffer);
@@ -288,12 +238,35 @@ public class TextTest extends RenderTest {
 			
 			Texture texture = font.getAtlas().getTexture();
 			
+			renderer.loadDescriptors(
+				BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 0, 1, (16 + 16) * 4), VK10.VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT, List.of(
+					ShaderVariable.PROJECTION,
+					ShaderVariable.MODEL
+				)),
+				BindingInfo.ofStorage(font.getRemoteData(), VK10.VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT, List.of(
+					Font.GLYPH_SIZE,
+					ShaderVariable.PADDING_2,
+					Font.GLYPH_BEARING,
+					ShaderVariable.PADDING_2,
+					Font.GLYPH_UV_START,
+					Font.GLYPH_UV_END
+				)),
+				BindingInfo.ofTexture(texture, TextureSampler.ofLinear(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.ATLAS),
+				BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 1, 1, (16 * 2 + 4) * 4), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
+					ShaderVariable.PROJECTION,
+					ShaderVariable.MODEL,
+					ShaderVariable.COLOR
+				))
+			);
+			renderer.updateAllDescriptorSets();
+			
+			
 			int w = texture.getWidth();
 			int h = texture.getHeight();
 			
 			renderer.useBufferLayoutWriter(0, 0, writer -> {
 				writer.set(ShaderVariable.PROJECTION, new Matrix4f().orthographicPositive(MAX_WIDTH, MAX_HEIGHT));
-				writer.set(ShaderVariable.MODEL, new Matrix4f());
+				writer.set(ShaderVariable.MODEL, new Matrix4f().scale(Vector3fr.of(SCALE, SCALE, 1)));
 			});
 			renderer.useBufferLayoutWriter(0, 3, writer -> {
 				writer.set(ShaderVariable.PROJECTION, new Matrix4f().orthographic(2 * w, 2 * h));
