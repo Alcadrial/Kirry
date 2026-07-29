@@ -8,6 +8,8 @@ public enum ShaderInputType {
 	BOOL(VK10.VK_FORMAT_R8_UINT, VK10.VK_FORMAT_R8_UINT, 1, 4, 1, "bool"),
 	INT(VK10.VK_FORMAT_R32_SINT, VK10.VK_FORMAT_R32_SINT, 1, 4, 1, "int"),
 	UNSIGNED_INT(VK10.VK_FORMAT_R32_UINT, VK10.VK_FORMAT_R32_UINT, 1, 4, 1, "uint"),
+	LONG(VK10.VK_FORMAT_R64_SINT, VK10.VK_FORMAT_R64_SINT, 1, 8, 1, "long"),
+	UNSIGNED_LONG(VK10.VK_FORMAT_R64_UINT, VK10.VK_FORMAT_R64_UINT, 1, 8, 1, "ulong"),
 	FLOAT(VK10.VK_FORMAT_R32_SFLOAT, VK10.VK_FORMAT_R32_SFLOAT, 1, 4, 1, "float"),
 	DOUBLE(VK10.VK_FORMAT_R64_SFLOAT, VK10.VK_FORMAT_R64_SFLOAT, 1, 8, 1, "double"),
 	
@@ -20,12 +22,12 @@ public enum ShaderInputType {
 	VECTOR_UNSIGNED_INT_2(VK10.VK_FORMAT_R32_UINT, VK10.VK_FORMAT_R32G32_UINT, 2, 8, 1, "uvec2"),
 	VECTOR_UNSIGNED_INT_3(VK10.VK_FORMAT_R32_UINT, VK10.VK_FORMAT_R32G32B32_UINT, 3, 12, 1, "uvec3"),
 	VECTOR_UNSIGNED_INT_4(VK10.VK_FORMAT_R32_UINT, VK10.VK_FORMAT_R32G32B32A32_UINT, 4, 16, 1, "uvec4"),
-	VECTOR_FLOAT_2(VK10.VK_FORMAT_R32_SFLOAT, VK10.VK_FORMAT_R32G32_SFLOAT, 2, 8, 1, "vec2"),
-	VECTOR_FLOAT_3(VK10.VK_FORMAT_R32_SFLOAT, VK10.VK_FORMAT_R32G32B32_SFLOAT, 3, 12, 1, "vec3"),
-	VECTOR_FLOAT_4(VK10.VK_FORMAT_R32_SFLOAT, VK10.VK_FORMAT_R32G32B32A32_SFLOAT, 4, 16, 1, "vec4"),
 	VECTOR_LONG_2(VK10.VK_FORMAT_R64_SINT, VK10.VK_FORMAT_R64G64_SINT, 2, 16, 1, "lvec2"),
 	VECTOR_LONG_3(VK10.VK_FORMAT_R64_SINT, VK10.VK_FORMAT_R64G64B64_SINT, 3, 24, 2, "lvec3"),
 	VECTOR_LONG_4(VK10.VK_FORMAT_R64_SINT, VK10.VK_FORMAT_R64G64B64A64_SINT, 4, 32, 2, "lvec4"),
+	VECTOR_FLOAT_2(VK10.VK_FORMAT_R32_SFLOAT, VK10.VK_FORMAT_R32G32_SFLOAT, 2, 8, 1, "vec2"),
+	VECTOR_FLOAT_3(VK10.VK_FORMAT_R32_SFLOAT, VK10.VK_FORMAT_R32G32B32_SFLOAT, 3, 12, 1, "vec3"),
+	VECTOR_FLOAT_4(VK10.VK_FORMAT_R32_SFLOAT, VK10.VK_FORMAT_R32G32B32A32_SFLOAT, 4, 16, 1, "vec4"),
 	VECTOR_DOUBLE_2(VK10.VK_FORMAT_R64_SFLOAT, VK10.VK_FORMAT_R64G64_SFLOAT, 2, 16, 1, "dvec2"),
 	VECTOR_DOUBLE_3(VK10.VK_FORMAT_R64_SFLOAT, VK10.VK_FORMAT_R64G64B64_SFLOAT, 3, 24, 2, "dvec3"),
 	VECTOR_DOUBLE_4(VK10.VK_FORMAT_R64_SFLOAT, VK10.VK_FORMAT_R64G64B64A64_SFLOAT, 4, 32, 2, "dvec4"),
@@ -99,6 +101,33 @@ public enum ShaderInputType {
 		
 			case "sampler2D" -> SAMPLER_2D;
 		
+			default -> null;
+		};
+	}
+	
+	public static @Nullable ShaderInputType ofMatrix(boolean doublePrecision, int columns, int rows)
+	{
+		return switch (columns + rows * 4 + (doublePrecision ? 16 : 0))
+		{
+			case 5 -> MATRIX_FLOAT_2X2;
+			case 6 -> MATRIX_FLOAT_2X3;
+			case 7 -> MATRIX_FLOAT_2X4;
+			case 9 -> MATRIX_FLOAT_3X2;
+			case 10 -> MATRIX_FLOAT_3X3;
+			case 11 -> MATRIX_FLOAT_3X4;
+			case 13 -> MATRIX_FLOAT_4X2;
+			case 14 -> MATRIX_FLOAT_4X3;
+			case 15 -> MATRIX_FLOAT_4X4;
+		
+			case 21 -> MATRIX_DOUBLE_2X2;
+			case 22 -> MATRIX_DOUBLE_2X3;
+			case 23 -> MATRIX_DOUBLE_2X4;
+			case 25 -> MATRIX_DOUBLE_3X2;
+			case 26 -> MATRIX_DOUBLE_3X3;
+			case 27 -> MATRIX_DOUBLE_3X4;
+			case 29 -> MATRIX_DOUBLE_4X2;
+			case 30 -> MATRIX_DOUBLE_4X3;
+			case 31 -> MATRIX_DOUBLE_4X4;
 			default -> null;
 		};
 	}
@@ -187,6 +216,41 @@ public enum ShaderInputType {
 	public String getName()
 	{
 		return name;
+	}
+	
+	private boolean checkRange(ShaderInputType start, ShaderInputType end)
+	{
+		return start.compareTo(this) <= 0 && compareTo(end) <= 0;
+	}
+	
+	public boolean isMatrix()
+	{
+		return checkRange(MATRIX_FLOAT_2X2, MATRIX_DOUBLE_4X4);
+	}
+	
+	public boolean isSquareMatrix()
+	{
+		return this == MATRIX_FLOAT_2X2 || this == MATRIX_FLOAT_3X3 || this == MATRIX_FLOAT_4X4 || this == MATRIX_DOUBLE_2X2 || this == MATRIX_DOUBLE_3X3 || this == MATRIX_DOUBLE_4X4;
+	}
+	
+	public boolean isVector()
+	{
+		return checkRange(VECTOR_BOOL_2, VECTOR_DOUBLE_4);
+	}
+	
+	public boolean isFloatVector()
+	{
+		return checkRange(VECTOR_FLOAT_2, VECTOR_DOUBLE_4);
+	}
+	
+	public boolean isIntegerVector()
+	{
+		return checkRange(VECTOR_INT_2, VECTOR_LONG_4);
+	}
+	
+	public boolean isScalar()
+	{
+		return checkRange(BOOL, DOUBLE);
 	}
 	
 	@Override
