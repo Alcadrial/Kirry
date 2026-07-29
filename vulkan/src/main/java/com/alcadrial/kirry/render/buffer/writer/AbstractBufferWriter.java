@@ -118,6 +118,12 @@ public abstract class AbstractBufferWriter<W extends AbstractBufferWriter<W>> im
 	}
 	
 	@Override
+	public int getCursor()
+	{
+		return cursor;
+	}
+	
+	@Override
 	public W put(byte... values)
 	{
 		return put(values, 0, values.length);
@@ -200,22 +206,25 @@ public abstract class AbstractBufferWriter<W extends AbstractBufferWriter<W>> im
 		cursor += size;
 		return self();
 	}
-
+	
 	@Override
 	public W put(Vector2ir v)
 	{
 		return put(v.x(), v.y());
 	}
+	
 	@Override
 	public W put(Vector2lr v)
 	{
 		return put(v.x(), v.y());
 	}
+	
 	@Override
 	public W put(Vector2fr v)
 	{
 		return put(v.x(), v.y());
 	}
+	
 	@Override
 	public W put(Vector2dr v)
 	{
@@ -227,16 +236,19 @@ public abstract class AbstractBufferWriter<W extends AbstractBufferWriter<W>> im
 	{
 		return put(v.x(), v.y(), v.z());
 	}
+	
 	@Override
 	public W put(Vector3lr v)
 	{
 		return put(v.x(), v.y(), v.z());
 	}
+	
 	@Override
 	public W put(Vector3fr v)
 	{
 		return put(v.x(), v.y(), v.z());
 	}
+	
 	@Override
 	public W put(Vector3dr v)
 	{
@@ -248,16 +260,19 @@ public abstract class AbstractBufferWriter<W extends AbstractBufferWriter<W>> im
 	{
 		return put(v.x(), v.y(), v.z(), v.w());
 	}
+	
 	@Override
 	public W put(Vector4lr v)
 	{
 		return put(v.x(), v.y(), v.z(), v.w());
 	}
+	
 	@Override
 	public W put(Vector4fr v)
 	{
 		return put(v.x(), v.y(), v.z(), v.w());
 	}
+	
 	@Override
 	public W put(Vector4dr v)
 	{

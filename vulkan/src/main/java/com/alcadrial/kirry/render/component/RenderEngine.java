@@ -43,6 +43,7 @@ import com.alcadrial.kirry.render.Computer;
 import com.alcadrial.kirry.render.Debug;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.FrameBuffer;
+import com.alcadrial.kirry.render.KirryVulkan;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.BufferLayoutWriter;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
@@ -81,21 +82,12 @@ import com.alcadrial.kirry.render.window.VulkanWindow;
 // TODO: implement a wrapper for renderdoc
 public class RenderEngine implements AutoCloseable {
 	
-	public static final String SHADERS_PATH = "assets/kirry/shaders/";
-	
-	public static final String FONT_VERTEX_SHADER_NAME = "font.vert";
-	public static final String FONT_VERTEX_SHADER_PATHNAME = SHADERS_PATH + FONT_VERTEX_SHADER_NAME;
-	public static final String FONT_GEOMETRY_SHADER_NAME = "font.geom";
-	public static final String FONT_GEOMETRY_SHADER_PATHNAME = SHADERS_PATH + FONT_GEOMETRY_SHADER_NAME;
-	public static final String FONT_FRAGMENT_SHADER_NAME = "font.frag";
-	public static final String FONT_FRAGMENT_SHADER_PATHNAME = SHADERS_PATH + FONT_FRAGMENT_SHADER_NAME;
-	
 	public static final String SPATIAL_MOVE_COMPUTE_SHADER_NAME = "spatialMoveShader.comp";
-	public static final String SPATIAL_MOVE_COMPUTE_SHADER_PATHNAME = SHADERS_PATH + SPATIAL_MOVE_COMPUTE_SHADER_NAME;
+	public static final String SPATIAL_MOVE_COMPUTE_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + SPATIAL_MOVE_COMPUTE_SHADER_NAME;
 	public static final String INIT_COMPUTE_SHADER_NAME = "uvInitShader.comp";
-	public static final String INIT_COMPUTE_SHADER_PATHNAME = SHADERS_PATH + INIT_COMPUTE_SHADER_NAME;
+	public static final String INIT_COMPUTE_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + INIT_COMPUTE_SHADER_NAME;
 	public static final String TRANSFORM_COMPUTE_SHADER_NAME = "uvTransformShader.comp";
-	public static final String TRANSFORM_COMPUTE_SHADER_PATHNAME = SHADERS_PATH + TRANSFORM_COMPUTE_SHADER_NAME;
+	public static final String TRANSFORM_COMPUTE_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + TRANSFORM_COMPUTE_SHADER_NAME;
 	
 	public static sealed interface PipelineOutputTarget permits SurfaceTarget, TextureTarget {}
 	

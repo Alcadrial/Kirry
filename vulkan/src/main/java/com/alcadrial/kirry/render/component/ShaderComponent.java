@@ -105,6 +105,7 @@ public abstract class ShaderComponent extends AbstractVulkanComponent<ShaderComp
 			program = ShaderProgram.create().addAll(resources.asLazy().collect(ShaderResource::getShader)).build();
 			isLoaded = true;
 			reloadCounter++;
+			
 		}
 		
 		@Override

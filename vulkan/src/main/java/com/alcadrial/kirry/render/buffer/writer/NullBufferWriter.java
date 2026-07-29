@@ -41,6 +41,12 @@ final class NullBufferWriter implements BufferWriter {
 	}
 	
 	@Override
+	public int getCursor()
+	{
+		return 0;
+	}
+	
+	@Override
 	public BufferWriter put(int... values)
 	{
 		return this;
@@ -123,97 +129,97 @@ final class NullBufferWriter implements BufferWriter {
 	{
 		throw new IllegalStateException("Missing destination");
 	}
-
+	
 	@Override
 	public BufferWriter put(long @NonNull... values)
 	{
 		return this;
 	}
-
+	
 	@Override
 	public BufferWriter put(long[] values, int offset, int size)
 	{
 		return this;
 	}
-
+	
 	@Override
 	public BufferWriter put(double @NonNull... values)
 	{
 		return this;
 	}
-
+	
 	@Override
 	public BufferWriter put(double[] values, int offset, int size)
 	{
 		return this;
 	}
-
+	
 	@Override
 	public BufferWriter put(Vector2ir v)
 	{
 		return this;
 	}
-
+	
 	@Override
 	public BufferWriter put(Vector2lr v)
 	{
 		return this;
 	}
-
+	
 	@Override
 	public BufferWriter put(Vector2fr v)
 	{
 		return this;
 	}
-
+	
 	@Override
 	public BufferWriter put(Vector2dr v)
 	{
 		return this;
 	}
-
+	
 	@Override
 	public BufferWriter put(Vector3ir v)
 	{
 		return this;
 	}
-
+	
 	@Override
 	public BufferWriter put(Vector3lr v)
 	{
 		return this;
 	}
-
+	
 	@Override
 	public BufferWriter put(Vector3fr v)
 	{
 		return this;
 	}
-
+	
 	@Override
 	public BufferWriter put(Vector3dr v)
 	{
 		return this;
 	}
-
+	
 	@Override
 	public BufferWriter put(Vector4ir v)
 	{
 		return this;
 	}
-
+	
 	@Override
 	public BufferWriter put(Vector4lr v)
 	{
 		return this;
 	}
-
+	
 	@Override
 	public BufferWriter put(Vector4fr v)
 	{
 		return this;
 	}
-
+	
 	@Override
 	public BufferWriter put(Vector4dr v)
 	{

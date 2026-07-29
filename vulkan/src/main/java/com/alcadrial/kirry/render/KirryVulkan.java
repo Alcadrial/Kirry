@@ -65,6 +65,8 @@ public class KirryVulkan extends KirryCore {
 	private static volatile boolean multiThreading = false;
 	private static volatile @Nullable Thread mainThread = null;
 	private static volatile @Nullable LinkedBlockingQueue<Runnable> mainThreadActions = null;
+
+	public static final String SHADERS_PATH = "assets/kirry/shaders/";
 	
 	/**
 	 * Creates a builder that can be used to choose various aspects of the engine.

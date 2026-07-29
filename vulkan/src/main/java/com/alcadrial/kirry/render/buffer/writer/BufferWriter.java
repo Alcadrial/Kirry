@@ -67,6 +67,7 @@ public interface BufferWriter {
 	BufferWriter resetCursor() throws VulkanException;
 	
 	BufferWriter setCursor(int index) throws VulkanException;
+	int getCursor();
 	
 	BufferWriter put(ByteBuffer values);
 	BufferWriter put(ByteBuffer values, int offset, int size);

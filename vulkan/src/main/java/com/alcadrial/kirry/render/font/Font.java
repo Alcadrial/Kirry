@@ -6,6 +6,7 @@ import java.nio.file.Path;
 
 import org.eclipse.collections.api.factory.primitive.IntObjectMaps;
 import org.eclipse.collections.api.map.primitive.MutableIntObjectMap;
+import org.eclipse.collections.api.tuple.primitive.IntObjectPair;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
@@ -40,6 +41,13 @@ public class Font implements AutoCloseable {
 	public static final ShaderVariable GLYPH_UV_END = ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_2, "uvEnd");
 	public static final String ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890.,:'?!\"()][}{<>¡!~";
 	public static final String LATIN_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890àèìùòäëïöü.,:'?!\"";
+	
+	public static final String FONT_VERTEX_SHADER_NAME = "font.vert";
+	public static final String FONT_VERTEX_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + FONT_VERTEX_SHADER_NAME;
+	public static final String FONT_GEOMETRY_SHADER_NAME = "font.geom";
+	public static final String FONT_GEOMETRY_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + FONT_GEOMETRY_SHADER_NAME;
+	public static final String FONT_FRAGMENT_SHADER_NAME = "font.frag";
+	public static final String FONT_FRAGMENT_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + FONT_FRAGMENT_SHADER_NAME;
 	
 	public static class GlyphData {
 		
