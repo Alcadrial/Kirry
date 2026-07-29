@@ -7,7 +7,9 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDescriptorBufferInfo;
+import org.lwjgl.vulkan.VkDescriptorImageInfo;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
+import org.lwjgl.vulkan.VkWriteDescriptorSet.Buffer;
 
 import com.alcadrial.kector.Math;
 import com.alcadrial.kector.vector.Vector3ir;
@@ -22,6 +24,8 @@ import com.alcadrial.kirry.render.shader.binding.BufferBindingInfo;
 import com.alcadrial.kirry.render.shader.binding.ImageBindingInfo;
 import com.alcadrial.kirry.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.kirry.render.shader.layout.ShaderLayout.Type;
+import com.alcadrial.kirry.render.texture.Texture;
+import com.alcadrial.kirry.render.texture.TextureSampler;
 import com.alcadrial.kirry.render.util.VulkanDebug;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
@@ -93,6 +97,11 @@ public class Computer implements VulkanDebug {
 		}
 	}
 	
+	public static Builder builder()
+	{
+		return new Builder();
+	}
+	
 	private static class InfoHolder {
 		
 		@Nullable
@@ -113,9 +122,22 @@ public class Computer implements VulkanDebug {
 		}
 	}
 	
-	public static Builder builder()
-	{
-		return new Builder();
+	private class DescriptorsData {
+		
+		private InfoHolder[][] info;
+		private VkWriteDescriptorSet.Buffer[] writeDescriptorSets;
+		private @Nullable BufferLayoutWriter[][] writers;
+		
+		public DescriptorsData(InfoHolder[][] info, Buffer[] writeDescriptorSets)
+		{
+			this.info = info;
+			this.writeDescriptorSets = writeDescriptorSets;
+			writers = new BufferLayoutWriter[info.length][];
+			for (int i = 0; i < bindings.length; i++)
+			{
+				writers[i] = new BufferLayoutWriter[bindings[i].length];
+			}
+		}
 	}
 	
 	private final BindingInfo[][] bindings;
@@ -123,9 +145,7 @@ public class Computer implements VulkanDebug {
 	private Device device;
 	private ComputePipeline computePipeline;
 	private Vector3ir groupCount;
-	private InfoHolder[][] info;
-	private VkWriteDescriptorSet.Buffer[] writeDescriptorSets;
-	private @Nullable BufferLayoutWriter[][] writers;
+	private @Nullable DescriptorsData descriptorsData;
 	private DescriptorSet[] descriptorSets;
 	
 	private Computer(Builder builder) throws VulkanException
@@ -137,23 +157,16 @@ public class Computer implements VulkanDebug {
 		groupCount = VulkanErrorUtils.nonNull(builder.groupCount);
 		
 		bindings = new BindingInfo[builder.buffersCount][];
-		VulkanFunction<Integer, BindingInfo[]> bindingsFactory = VulkanErrorUtils.nonNull(builder.bindings);
-		for (int i = 0; i < bindings.length; i++) bindings[i] = bindingsFactory.apply(i);
-		
-		InitResult result = initInfo();
-		info = result.info;
-		writeDescriptorSets = result.writeDescriptorSets;
-		writers = new BufferLayoutWriter[info.length][];
-		for (int i = 0; i < bindings.length; i++)
+		VulkanFunction<Integer, BindingInfo[]> bindingsFactory = builder.bindings;
+
+		if (bindingsFactory != null)
 		{
-			writers[i] = new BufferLayoutWriter[bindings[i].length];
-			updateDescriptorSet(i);
+			for (int i = 0; i < bindings.length; i++) bindings[i] = bindingsFactory.apply(i);
+			descriptorsData = initInfo();
 		}
 	}
 	
-	private record InitResult(InfoHolder[][] info, VkWriteDescriptorSet.Buffer[] writeDescriptorSets) {}
-	
-	private InitResult initInfo() throws VulkanException
+	private DescriptorsData initInfo() throws VulkanException
 	{
 		InfoHolder[][] info = new InfoHolder[bindings.length][];
 		VkWriteDescriptorSet.Buffer[] writeDescriptorSetsResult = new VkWriteDescriptorSet.Buffer[bindings.length];
@@ -240,7 +253,7 @@ public class Computer implements VulkanDebug {
 			}
 			writeDescriptorSetsResult[i] = writeDescriptorSets.rewind();
 		}
-		return new InitResult(info, writeDescriptorSetsResult);
+		return new DescriptorsData(info, writeDescriptorSetsResult);
 	}
 	
 	public void changePipeline(@Nullable ComputePipeline newPipeline, DescriptorSet @Nullable [] newSets) throws VulkanException
@@ -258,20 +271,34 @@ public class Computer implements VulkanDebug {
 	
 	private void updateInfo() throws VulkanException
 	{
-		InitResult result = initInfo();
-		info = result.info;
-		writeDescriptorSets = result.writeDescriptorSets;
-		writers = new BufferLayoutWriter[info.length][];
-		for (int i = 0; i < bindings.length; i++)
-		{
-			writers[i] = new BufferLayoutWriter[bindings[i].length];
-			updateDescriptorSet(i);
-		}
+		descriptorsData = initInfo();
+	}
+	
+	public void loadDescriptors(BindingInfo... bindings) throws VulkanException
+	{
+		loadDescriptors(_ -> bindings);
+	}
+	
+	public void loadDescriptors(BindingInfo[][] bindings) throws VulkanException
+	{
+		loadDescriptors(i -> bindings[i]);
+	}
+	
+	public void loadDescriptors(VulkanFunction<Integer, BindingInfo[]> bindingsFactory) throws VulkanException
+	{
+		for (int i = 0; i < bindings.length; i++) bindings[i] = bindingsFactory.apply(i);
+		
+		descriptorsData = initInfo();
+	}
+	
+	private DescriptorsData getDescriptorsData()
+	{
+		return VulkanErrorUtils.nonNull(descriptorsData, "Descriptors has not been loaded");
 	}
 	
 	public BufferLayout getBufferLayout(int frameIndex, int binding)
 	{
-		return VulkanErrorUtils.nonNull(info[frameIndex][binding].layout);
+		return VulkanErrorUtils.nonNull(getDescriptorsData().info[frameIndex][binding].layout);
 	}
 	
 	public void useBufferLayoutWriter(int frameIndex, int binding, VulkanConsumer<BufferLayoutWriter> action) throws VulkanException
@@ -282,33 +309,57 @@ public class Computer implements VulkanDebug {
 	
 	public BufferLayoutWriter getBufferLayoutWriter(int frameIndex, int binding) throws VulkanException
 	{
-		BufferLayoutWriter writer = writers[frameIndex][binding];
+		DescriptorsData descriptorsData = getDescriptorsData();
+		BufferLayoutWriter writer = descriptorsData.writers[frameIndex][binding];
 		if (writer == null)
 		{
-			BufferLayout layout = VulkanErrorUtils.nonNull(info[frameIndex][binding].layout);
-			BufferBindingInfo bufferBindingInfo = VulkanErrorUtils.nonNull(info[frameIndex][binding].bufferBindingInfo);
+			BufferLayout layout = VulkanErrorUtils.nonNull(descriptorsData.info[frameIndex][binding].layout);
+			BufferBindingInfo bufferBindingInfo = VulkanErrorUtils.nonNull(descriptorsData.info[frameIndex][binding].bufferBindingInfo);
 			writer = new BufferLayoutWriter(bufferBindingInfo.getBuffer(), layout);
 			
-			writers[frameIndex][binding] = writer;
+			descriptorsData.writers[frameIndex][binding] = writer;
 		}
 		return writer;
 	}
 	
 	public void freeBufferLayoutWriter(int frameIndex, int binding) throws VulkanException
 	{
-		BufferLayoutWriter writer = writers[frameIndex][binding];
-		if (writer != null) writers[frameIndex][binding] = null;
+		DescriptorsData descriptorsData = getDescriptorsData();
+		BufferLayoutWriter writer = descriptorsData.writers[frameIndex][binding];
+		if (writer != null) descriptorsData.writers[frameIndex][binding] = null;
+	}
+	
+	public void updateDescriptor(int frameIndex, int binding, VulkanBuffer buffer) throws VulkanException
+	{
+		VkDescriptorBufferInfo.Buffer p = getDescriptorsData().writeDescriptorSets[frameIndex].get(binding).pBufferInfo();
+		if (p == null) throw new IllegalStateException("Cannot change descriptor type");
+		p.get(0).set(buffer.getVk(), buffer.getOffset(), buffer.getSize());
+	}
+	
+	public void updateDescriptor(int frameIndex, int binding, Texture texture) throws VulkanException
+	{
+		VkDescriptorImageInfo.Buffer p = getDescriptorsData().writeDescriptorSets[frameIndex].get(binding).pImageInfo();
+		if (p == null) throw new IllegalStateException("Cannot change descriptor type");
+		p.get(0).imageView(texture.getView().getVk()).imageLayout(texture.getLayout());
+	}
+	
+	public void updateDescriptor(int frameIndex, int binding, TextureSampler sampler) throws VulkanException
+	{
+		VkDescriptorImageInfo.Buffer p = getDescriptorsData().writeDescriptorSets[frameIndex].get(binding).pImageInfo();
+		if (p == null) throw new IllegalStateException("Cannot change descriptor type");
+		p.get(0).sampler(sampler.getVk());
 	}
 	
 	public void updateDescriptorSet(int frameIndex, VulkanConsumer<VkWriteDescriptorSet.Buffer> action) throws VulkanException
 	{
-		action.accept(writeDescriptorSets[frameIndex]);
-		VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets[frameIndex], null);
+		DescriptorsData descriptorsData = getDescriptorsData();
+		action.accept(descriptorsData.writeDescriptorSets[frameIndex]);
+		VK10.vkUpdateDescriptorSets(device.getVk(), descriptorsData.writeDescriptorSets[frameIndex], null);
 	}
 	
 	public void updateDescriptorSet(int frameIndex)
 	{
-		VK10.vkUpdateDescriptorSets(device.getVk(), writeDescriptorSets[frameIndex], null);
+		VK10.vkUpdateDescriptorSets(device.getVk(), getDescriptorsData().writeDescriptorSets[frameIndex], null);
 	}
 	
 	public void setGroupCount(Vector3ir groupCount)
