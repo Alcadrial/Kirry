@@ -5,7 +5,9 @@ import java.nio.ByteBuffer;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkPhysicalDeviceLimits;
 
+import com.alcadrial.kector.Math;
 import com.alcadrial.kirry.render.Debug;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.KirryVulkan;
@@ -36,6 +38,32 @@ public class VulkanBuffer extends MemoryResource {
 	public static VulkanBuffer view(VulkanBuffer parent, long offset, int size) throws VulkanException
 	{
 		return new VulkanBuffer(parent, parent.getVk(), offset, size, parent.usage, true);
+	}
+	
+	/** Does not need to be closed */
+	public static VulkanBuffer alignedView(VulkanBuffer parent, long offset, int size) throws VulkanException
+	{
+		VkPhysicalDeviceLimits limits = parent.device.getPhysicalDevice().getLimits();
+		int minOffsetAlignment = 0;
+		if ((parent.usage & VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0) minOffsetAlignment = (int) Math.max(minOffsetAlignment, limits.minUniformBufferOffsetAlignment());
+		if ((parent.usage & VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0) minOffsetAlignment = (int) Math.max(minOffsetAlignment, limits.minStorageBufferOffsetAlignment());
+		if ((parent.usage & (VK10.VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK10.VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) != 0) minOffsetAlignment = (int) Math.max(minOffsetAlignment, limits.minTexelBufferOffsetAlignment());
+		
+		return new VulkanBuffer(parent, parent.getVk(), Math.align(offset, minOffsetAlignment), size, parent.usage, true);
+	}
+	
+	/** Does not need to be closed */
+	public static VulkanBuffer alignedView(VulkanBuffer parent, long offset, int size, int usage) throws VulkanException
+	{
+		if ((usage & parent.usage) != usage) throw new IllegalArgumentException("Cannot add an extra usage from parent");
+		
+		VkPhysicalDeviceLimits limits = parent.device.getPhysicalDevice().getLimits();
+		int minOffsetAlignment = 0;
+		if ((usage & VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0) minOffsetAlignment = (int) Math.max(minOffsetAlignment, limits.minUniformBufferOffsetAlignment());
+		if ((usage & VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0) minOffsetAlignment = (int) Math.max(minOffsetAlignment, limits.minStorageBufferOffsetAlignment());
+		if ((usage & (VK10.VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK10.VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) != 0) minOffsetAlignment = (int) Math.max(minOffsetAlignment, limits.minTexelBufferOffsetAlignment());
+		
+		return new VulkanBuffer(parent, parent.getVk(), Math.align(offset, minOffsetAlignment), size, usage, true);
 	}
 	
 	public static VulkanBuffer asLocal(VulkanBuffer vulkanBuffer) throws VulkanException

@@ -25,6 +25,7 @@ public class ShaderVariable {
 	public static final ShaderVariable UV = of(ShaderInputType.VECTOR_FLOAT_2, "uv");
 	public static final ShaderVariable UV_EXTRA_1 = of(ShaderInputType.VECTOR_FLOAT_2, "uv1");
 	public static final ShaderVariable UV_EXTRA_2 = of(ShaderInputType.VECTOR_FLOAT_2, "uv2");
+	public static final ShaderVariable UVUV = of(ShaderInputType.VECTOR_FLOAT_4, "uvuv");
 	public static final ShaderVariable NORMAL_POSITION = of(ShaderInputType.VECTOR_FLOAT_3, "normalPosition");
 	public static final ShaderVariable NORMAL_POSITION_EXTRA_1 = of(ShaderInputType.VECTOR_FLOAT_3, "normalPosition1");
 	public static final ShaderVariable POSITION = of(ShaderInputType.VECTOR_FLOAT_3, "position");
@@ -47,9 +48,17 @@ public class ShaderVariable {
 	public static final ShaderVariable OFFSET_1 = of(ShaderInputType.INT, "offset1");
 	public static final ShaderVariable OFFSET_2 = of(ShaderInputType.INT, "offset2");
 	
+	public static final ShaderVariable STRIDE = of(ShaderInputType.INT, "stride");
+	public static final ShaderVariable STRIDE_1 = of(ShaderInputType.INT, "stride1");
+	public static final ShaderVariable STRIDE_2 = of(ShaderInputType.INT, "stride2");
+	
+	public static final ShaderVariable SIZE = of(ShaderInputType.INT, "size");
+	public static final ShaderVariable SIZE_1 = of(ShaderInputType.INT, "size1");
+	public static final ShaderVariable SIZE_2 = of(ShaderInputType.INT, "size2");
+	
 	public static final ShaderVariable TEXTURE = of(ShaderInputType.SAMPLER_2D, "TEXTURE_SAMPLER");
 	public static final ShaderVariable ATLAS = of(ShaderInputType.SAMPLER_2D, "ATLAS");
-	
+
 	public static ShaderVariable parse(JsonNode json) throws IOException
 	{
 		return parse(json, "$");

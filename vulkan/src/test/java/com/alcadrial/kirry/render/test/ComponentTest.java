@@ -32,6 +32,7 @@ import com.alcadrial.kirry.render.KirryVulkan;
 import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.component.MeshComponent;
+import com.alcadrial.kirry.render.component.PipelineOutputTarget.SurfaceTarget;
 import com.alcadrial.kirry.render.component.RenderEngine;
 import com.alcadrial.kirry.render.component.ShaderComponent;
 import com.alcadrial.kirry.render.component.SpatialComponent;
@@ -322,7 +323,7 @@ public class ComponentTest extends RenderTest {
 			if (entities.isEmpty()) return;
 			
 			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
-				renderEngine.init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.SurfaceTarget(window), Lists.mutable.of(ShaderVariable.PROJECTION, ShaderVariable.MODEL), Lists.mutable.of(lightPos, lightIntensity, spaceFogIntensity), entities, new RenderEngine.Config(true));
+				renderEngine.init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new SurfaceTarget(window), Lists.mutable.of(ShaderVariable.PROJECTION, ShaderVariable.MODEL), Lists.mutable.of(lightPos, lightIntensity, spaceFogIntensity), entities, new RenderEngine.Config(true));
 			}).join();
 		});
 		
@@ -409,7 +410,7 @@ public class ComponentTest extends RenderTest {
 			CommandBuffer commandBuffer = window.getCurrentCommandBuffer();
 			if (rebuildProjectionMatrix)
 			{
-				renderEngine.reinit(commandBuffer, null, null, null, new RenderEngine.SurfaceTarget(window), null, null);
+				renderEngine.reinit(commandBuffer, null, null, null, new SurfaceTarget(window), null, null);
 			}
 			if (rebuildProjectionMatrix || rebuildViewMatrix || rebuildLightValues)
 			{

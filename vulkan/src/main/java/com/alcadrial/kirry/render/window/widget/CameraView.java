@@ -30,6 +30,8 @@ import com.alcadrial.kirry.render.buffer.BufferLayoutWriter;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.buffer.writer.DeferredBufferWriter;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
+import com.alcadrial.kirry.render.component.PipelineOutputTarget.SurfaceTarget;
+import com.alcadrial.kirry.render.component.PipelineOutputTarget.TextureTarget;
 import com.alcadrial.kirry.render.component.RenderEngine;
 import com.alcadrial.kirry.render.memory.MemoryManager;
 import com.alcadrial.kirry.render.memory.MemoryTransferState;
@@ -384,7 +386,7 @@ public class CameraView extends AbstractWidget {
 			lazyFrameBuffer.set(FrameBuffer.ofDepth(lazySceneColorTexture.get(), lazySceneDepthTexture.get(), renderPass));
 			
 			lazyRenderEngine.set(new RenderEngine(device));
-			lazyRenderEngine.get().init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new RenderEngine.TextureTarget(lazyFrameBuffer.get()), uniformState.getVertexUniformVariables(), uniformState.getFragmentUniformVariables().toList(), entities, config);
+			lazyRenderEngine.get().init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new TextureTarget(lazyFrameBuffer.get()), uniformState.getVertexUniformVariables(), uniformState.getFragmentUniformVariables().toList(), entities, config);
 			
 			Matrix4f projection = new Matrix4f(camera.getProjection((float) window.getWidth() / window.getHeight(), true)).multiply(camera.getView());
 			
@@ -443,7 +445,7 @@ public class CameraView extends AbstractWidget {
 		
 		if (windowResizeFlag)
 		{
-			lazyRenderEngine.get().reinit(commandBuffer, null, null, null, new RenderEngine.SurfaceTarget(window), null, null);
+			lazyRenderEngine.get().reinit(commandBuffer, null, null, null, new SurfaceTarget(window), null, null);
 		}
 		boolean flag0 = windowResizeFlag || newCameraFlag || camera.isProjectionDirty() || camera.isViewDirty();
 		Reserved r = uniformState.reserveUpdate();

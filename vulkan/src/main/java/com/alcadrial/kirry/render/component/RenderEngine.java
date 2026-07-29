@@ -48,6 +48,8 @@ import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.BufferLayoutWriter;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
+import com.alcadrial.kirry.render.component.PipelineOutputTarget.SurfaceTarget;
+import com.alcadrial.kirry.render.component.PipelineOutputTarget.TextureTarget;
 import com.alcadrial.kirry.render.component.SpatialComponent.State;
 import com.alcadrial.kirry.render.memory.MemoryCacheBulkState;
 import com.alcadrial.kirry.render.memory.MemoryCacheState;
@@ -88,12 +90,6 @@ public class RenderEngine implements AutoCloseable {
 	public static final String INIT_COMPUTE_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + INIT_COMPUTE_SHADER_NAME;
 	public static final String TRANSFORM_COMPUTE_SHADER_NAME = "uvTransformShader.comp";
 	public static final String TRANSFORM_COMPUTE_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + TRANSFORM_COMPUTE_SHADER_NAME;
-	
-	public static sealed interface PipelineOutputTarget permits SurfaceTarget, TextureTarget {}
-	
-	public record SurfaceTarget(VulkanWindow window) implements PipelineOutputTarget {}
-	
-	public record TextureTarget(FrameBuffer frameBuffer) implements PipelineOutputTarget {}
 	
 	public record Config(boolean nearestAtlasFilter) {}
 	
@@ -276,13 +272,13 @@ public class RenderEngine implements AutoCloseable {
 		switch (target)
 		{
 			case SurfaceTarget t -> {
-				VulkanWindow window = t.window;
+				VulkanWindow window = t.window();
 				renderPass = window.getRenderPass();
 				outputSize = window.getSurface().getData().size();
 				buffersCount = window.getFramesCount();
 			}
 			case TextureTarget t -> {
-				FrameBuffer frameBuffer = t.frameBuffer;
+				FrameBuffer frameBuffer = t.frameBuffer();
 				renderPass = frameBuffer.getRenderPass();
 				outputSize = Vector2ir.of(frameBuffer.getWidth(), frameBuffer.getHeight());
 				buffersCount = 1;
@@ -852,13 +848,13 @@ public class RenderEngine implements AutoCloseable {
 				//buffersCount = data.buffersCount;
 			}
 			case SurfaceTarget s -> {
-				VulkanWindow window = s.window;
+				VulkanWindow window = s.window();
 				renderPass = window.getRenderPass();
 				outputSize = window.getSurface().getData().size();
 				//buffersCount = window.getFramesCount();
 			}
 			case TextureTarget t -> {
-				FrameBuffer frameBuffer = t.frameBuffer;
+				FrameBuffer frameBuffer = t.frameBuffer();
 				renderPass = frameBuffer.getRenderPass();
 				outputSize = Vector2ir.of(frameBuffer.getWidth(), frameBuffer.getHeight());
 				//buffersCount = 1;
