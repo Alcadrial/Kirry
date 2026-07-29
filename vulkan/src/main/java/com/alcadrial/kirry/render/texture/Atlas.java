@@ -30,6 +30,7 @@ import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
+import com.alcadrial.kirry.render.util.functional.VulkanRunnable;
 
 public class Atlas implements AutoCloseable {
 	
@@ -208,6 +209,7 @@ public class Atlas implements AutoCloseable {
 	private int maxHeight;
 	private @Nullable Texture texture;
 	private boolean isDirty;
+	private boolean isStructurallyModified;
 	
 	private MutableList<Region> oldRegions;
 	private MutableList<Region> regions;
@@ -668,6 +670,7 @@ public class Atlas implements AutoCloseable {
 			if (region == null) throw new IllegalStateException("Cannot find space for all textures");
 			regions.add(region);
 		}
+		isStructurallyModified = true;
 	}
 	
 	private boolean growAtlas()
@@ -753,6 +756,7 @@ public class Atlas implements AutoCloseable {
 					drawNewResources(commandBuffer, newTexture, newRegionsStartingIndex, regions.size() - newRegionsStartingIndex);
 				}
 				commandBuffer.addCompletionAction(oldTexture::close);
+				onDataChange();
 				
 				texture = newTexture;
 				invalid = true;
@@ -767,6 +771,7 @@ public class Atlas implements AutoCloseable {
 				if (debug) commandBuffer.clearColorImage(newTexture, Color.LIGHT_RED);
 				drawNewResources(commandBuffer, newTexture);
 				updateRegions(regions);
+				onStructuralChange();
 				texture = newTexture;
 				invalid = true;
 			}
@@ -774,6 +779,7 @@ public class Atlas implements AutoCloseable {
 			{
 				oldTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 				drawNewResources(commandBuffer, oldTexture);
+				onDataChange();
 			}
 		}
 		else
@@ -788,6 +794,7 @@ public class Atlas implements AutoCloseable {
 			drawNewResources(commandBuffer, newTexture);
 			texture = newTexture;
 			updateRegions(regions);
+			onStructuralChange();
 			invalid = true;
 		}
 		if (this.mipLevels != 1) ((@NonNull Texture) texture).generateMipmaps(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -795,7 +802,8 @@ public class Atlas implements AutoCloseable {
 		commandBuffer.addCompletionAction(() -> {
 			for (Region region : regions) region.resource.close();
 		});
-		
+
+		isStructurallyModified = false;
 		isDirty = false;
 		return invalid;
 	}
@@ -866,6 +874,29 @@ public class Atlas implements AutoCloseable {
 		rebuildAtlas();
 	}
 	
+	private @Nullable VulkanRunnable onDataChange;
+	private @Nullable VulkanRunnable onStructuralChange;
+	
+	private void onDataChange() throws VulkanException
+	{
+		if (onDataChange != null) onDataChange.run();
+	}
+	
+	private void onStructuralChange() throws VulkanException
+	{
+		if (onStructuralChange != null) onStructuralChange.run();
+	}
+	
+	public void setOnDataChange(VulkanRunnable action)
+	{
+		onDataChange = action;
+	}
+	
+	public void setOnStructuralChange(VulkanRunnable action)
+	{
+		onStructuralChange = action;
+	}
+	
 	public Device getDevice()
 	{
 		return device;
@@ -884,6 +915,12 @@ public class Atlas implements AutoCloseable {
 	public int getHeight()
 	{
 		return height;
+	}
+	
+	
+	public boolean isStructurallyModified()
+	{
+		return isStructurallyModified;
 	}
 	
 	@Override
