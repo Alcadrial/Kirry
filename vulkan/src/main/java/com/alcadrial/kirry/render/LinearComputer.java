@@ -36,10 +36,12 @@ import com.alcadrial.kirry.render.util.exception.VulkanException;
 
 public class LinearComputer implements AutoCloseable {
 	
-	public static final String COMPUTE_SHADER_NAME = "linearShader.comp";
-	public static final String COMPUTE_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + COMPUTE_SHADER_NAME;
-	public static final String SPARSE_COMPUTE_SHADER_NAME = "sparseLinearShader.comp";
-	public static final String SPARSE_COMPUTE_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + SPARSE_COMPUTE_SHADER_NAME;
+	public static final String COMPUTE2X2_SHADER_NAME = "linearShader2x2.comp";
+	public static final String COMPUTE2X2_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + COMPUTE2X2_SHADER_NAME;
+	public static final String COMPUTE3X3_SHADER_NAME = "linearShader3x3.comp";
+	public static final String COMPUTE3X3_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + COMPUTE3X3_SHADER_NAME;
+	public static final String COMPUTE4X4_SHADER_NAME = "linearShader4x4.comp";
+	public static final String COMPUTE4X4_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + COMPUTE4X4_SHADER_NAME;
 	
 	public static LinearComputer ofCopy(Device device, PreparedShader shader, @Nullable VulkanBuffer uniformBuffer, ShaderVariable matrixVariable, @Nullable VulkanBuffer inputBuffer, ShaderVariable inputVariable, @Nullable VulkanBuffer outputBuffer, ShaderVariable outputVariable) throws VulkanException
 	{
@@ -58,6 +60,11 @@ public class LinearComputer implements AutoCloseable {
 		if (matrixVariable.getType().getSize() / inputVariable.getType().getSize() != inputVariable.getType().getSize()) throw new IllegalArgumentException("LinearComputer matrix and vectors are not compatible");
 		
 		return new LinearComputer(device, shader, uniformBuffer, matrixVariable, inputBuffer, inputVariable, null, null);
+	}
+	
+	public static LinearComputer ofComputer(LinearComputer linearComputer) throws VulkanException
+	{
+		return new LinearComputer(linearComputer);
 	}
 	
 	private PreparedShader shader;
@@ -80,6 +87,18 @@ public class LinearComputer implements AutoCloseable {
 		this.outputBuffer = outputBuffer;
 		this.outputVariable = outputVariable;
 		computer = preInit(device);
+	}
+	
+	private LinearComputer(LinearComputer other) throws VulkanException
+	{
+		shader = other.shader;
+		uniformBuffer = other.uniformBuffer;
+		matrixVariable = other.matrixVariable;
+		inputBuffer = other.inputBuffer;
+		inputVariable = other.inputVariable;
+		outputBuffer = other.outputBuffer;
+		outputVariable = other.outputVariable;
+		computer = other.computer;
 	}
 	
 	private Computer preInit(Device device) throws VulkanException
@@ -179,7 +198,7 @@ public class LinearComputer implements AutoCloseable {
 	
 	public Computer getComputer()
 	{
-		return VulkanErrorUtils.nonNull(computer, "Not initialized");
+		return computer;
 	}
 	
 	public void dispatch(CommandBuffer commandBuffer, int count)

@@ -33,9 +33,7 @@ import com.alcadrial.kirry.render.memory.MemoryTransferState;
 import com.alcadrial.kirry.render.resources.FileManager;
 import com.alcadrial.kirry.render.resources.ShaderResource;
 import com.alcadrial.kirry.render.shader.PreparedShader;
-import com.alcadrial.kirry.render.shader.ShaderInputType;
 import com.alcadrial.kirry.render.shader.ShaderProgram;
-import com.alcadrial.kirry.render.shader.ShaderVariable;
 import com.alcadrial.kirry.render.test.util.RecompileShaderResource;
 import com.alcadrial.kirry.render.test.util.RenderTest;
 import com.alcadrial.kirry.render.test.util.TestProperties;
@@ -78,7 +76,7 @@ public class TextTest extends RenderTest {
 			ShaderResource fontVertexShaderResource = fileManager.getResource(Font.FONT_VERTEX_SHADER_PATHNAME, ShaderResource.TYPE);
 			ShaderResource fontGeometryShaderResource = fileManager.getResource(Font.FONT_GEOMETRY_SHADER_PATHNAME, ShaderResource.TYPE);
 			ShaderResource fontFragmentShaderResource = fileManager.getResource(Font.FONT_FRAGMENT_SHADER_PATHNAME, ShaderResource.TYPE);
-			ShaderResource linearShaderResource = fileManager.getResource(KirryVulkan.SHADERS_PATH + "linearShader.comp", ShaderResource.TYPE);
+			ShaderResource linearShaderResource = fileManager.getResource(LinearComputer.COMPUTE4X4_SHADER_PATHNAME, ShaderResource.TYPE);
 			
 			TestProperties.init(args);
 			KirryVulkan.enableDebug();
@@ -113,21 +111,15 @@ public class TextTest extends RenderTest {
 			
 			Device device = window.getDevice();
 			memoryManager = MemoryManager.getDefault(device);
-			Font font = new Font(device, getPath(FONTS + "ITCBLKAD.TTF"), 0, VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, memoryManager);
-			//Font font = new Font(window.getDevice(), getPath(FONTS + "ARIALI.TTF"), 0, VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, memoryManager);
-			
-			font.setSize(120);
 			
 			VulkanBuffer uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 3, (16 + 16 + 4) * 4);
 			VulkanBuffer vertexBuffer = memoryManager.allocate(MESSAGE.length() * (1 + 3) * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 			
 			VulkanBuffer offsetUniformBuffer = VulkanBuffer.alignedView(uniformBuffer, 0, (16 + 3) * 4);
-			LinearComputer linearComputer = LinearComputer.ofUpdate(device, computeShaderFuture.get(), offsetUniformBuffer, ShaderVariable.of(ShaderInputType.MATRIX_FLOAT_4X4, "matrix"), font.getRemoteData(), ShaderVariable.UVUV);
-			linearComputer.init();
-			linearComputer.setInputBuffer(font.getRemoteData());
-			linearComputer.setOffset(0);
-			linearComputer.setStride(4 * 2 * 4);
-			linearComputer.setSize(6 * 2 * 4);
+			Font font = new Font(device, getPath(FONTS + "ITCBLKAD.TTF"), 0, 0, memoryManager, computeShaderFuture.get(), offsetUniformBuffer);
+			//Font font = new Font(window.getDevice(), getPath(FONTS + "ARIALI.TTF"), 0, VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, memoryManager);
+			
+			font.setSize(120);
 			
 			int nonEmptyCharCount[] = new int[] {0};
 			VulkanFuture<?> dataReady = device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
@@ -143,10 +135,6 @@ public class TextTest extends RenderTest {
 					{}
 				}
 				font.prepare(commandBuffer);
-				float ws = 1F / font.getAtlas().getWidth();
-				float hs = 1F / font.getAtlas().getHeight();
-				linearComputer.setMatrix(new Matrix4f(new float[] {ws, 0, 0, 0, 0, hs, 0, 0, 0, 0, ws, 0, 0, 0, 0, hs}));
-				linearComputer.dispatch(commandBuffer, MESSAGE.length());
 				
 				try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer))
 				{
@@ -225,7 +213,6 @@ public class TextTest extends RenderTest {
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
 			
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
-			//	commandBuffer.bindVertexBuffers(0, vertexBuffer);
 			renderer.draw(commandBuffer, count);
 			commandBuffer.endRenderPass();
 			window.endPresentation(commandBuffer);

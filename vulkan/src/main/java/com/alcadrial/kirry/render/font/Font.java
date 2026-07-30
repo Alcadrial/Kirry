@@ -16,14 +16,18 @@ import org.lwjgl.util.freetype.FT_Face;
 import org.lwjgl.util.freetype.FT_GlyphSlot;
 import org.lwjgl.util.freetype.FreeType;
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkBufferMemoryBarrier;
 
+import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.KirryVulkan;
+import com.alcadrial.kirry.render.LinearComputer;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.buffer.writer.BufferWriter;
 import com.alcadrial.kirry.render.buffer.writer.DirectBufferWriter;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.memory.MemoryManager;
+import com.alcadrial.kirry.render.shader.PreparedShader;
 import com.alcadrial.kirry.render.shader.ShaderInputType;
 import com.alcadrial.kirry.render.shader.ShaderVariable;
 import com.alcadrial.kirry.render.texture.Atlas;
@@ -170,6 +174,7 @@ public class Font implements AutoCloseable {
 	private VulkanBuffer localFontData;
 	private DirectBufferWriter localFontDataWriter;
 	private VulkanBuffer remoteFontData;
+	private LinearComputer linearComputer;
 	
 	private GlyphData emptyGlyphData;
 	private GlyphData[] hotData;
@@ -177,7 +182,7 @@ public class Font implements AutoCloseable {
 	private int hotDataRangeEnd;
 	private MutableIntObjectMap<GlyphData> loadedGlyphs;
 	
-	public Font(Device device, Path path, long faceIndex, int dataBufferUsage, MemoryManager memoryManager) throws VulkanException, FreeTypeException, IOException
+	public Font(Device device, Path path, long faceIndex, int dataBufferUsage, MemoryManager memoryManager, PreparedShader computeShader, @Nullable VulkanBuffer uniformBuffer) throws VulkanException, FreeTypeException, IOException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -195,7 +200,7 @@ public class Font implements AutoCloseable {
 			this.memoryManager = memoryManager;
 			localFontData = memoryManager.allocateHost(BLOCK_SIZE, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 			localFontDataWriter = new DirectBufferWriter(localFontData);
-			remoteFontData = memoryManager.allocateHost(BLOCK_SIZE, VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT | dataBufferUsage);
+			remoteFontData = memoryManager.allocateHost(BLOCK_SIZE, VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | dataBufferUsage);
 			nextDataIndex = 0;
 			
 			hotDataRangeStart = 32;
@@ -204,7 +209,13 @@ public class Font implements AutoCloseable {
 			emptyGlyphData = new GlyphData();
 			emptyGlyphData.index = 0;
 			loadedGlyphs = IntObjectMaps.mutable.of();
-			//	glyphDataBuffers = Lists.mutable.of();
+			
+			linearComputer = LinearComputer.ofUpdate(device, computeShader, uniformBuffer, ShaderVariable.MATRIX, remoteFontData, ShaderVariable.UVUV);
+			linearComputer.init();
+			linearComputer.setInputBuffer(remoteFontData);
+			linearComputer.setOffset(0);
+			linearComputer.setStride(4 * 2 * 4);
+			linearComputer.setSize(6 * 2 * 4);
 		}
 	}
 	
@@ -256,6 +267,23 @@ public class Font implements AutoCloseable {
 		if (atlas.isStructurallyModified()) atlas.tryFit();
 		atlas.draw(commandBuffer);
 		commandBuffer.copyBuffer(localFontData, 0, remoteFontData, 0, remoteFontData.getSize());
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			commandBuffer.pipelineBarrier(VK10.VK_PIPELINE_STAGE_TRANSFER_BIT, VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, null, VkBufferMemoryBarrier.malloc(1, stack)
+				.sType$Default()
+				.pNext(0)
+				.srcAccessMask(VK10.VK_ACCESS_MEMORY_WRITE_BIT)
+				.dstAccessMask(VK10.VK_ACCESS_SHADER_READ_BIT)
+				.srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+				.dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+				.buffer(remoteFontData.getVk())
+				.offset(0)
+				.size(remoteFontData.getSize()), null);
+		}
+		float ws = 1F / atlas.getWidth();
+		float hs = 1F / atlas.getHeight();
+		linearComputer.setMatrix(new Matrix4f(new float[] {ws, 0, 0, 0, 0, hs, 0, 0, 0, 0, ws, 0, 0, 0, 0, hs}));
+		linearComputer.dispatch(commandBuffer, nextDataIndex);
 	}
 	
 	public void loadAlphabet() throws VulkanException
