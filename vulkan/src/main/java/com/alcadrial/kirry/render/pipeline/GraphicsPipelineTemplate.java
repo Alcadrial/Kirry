@@ -254,7 +254,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * <pre><code>
 		 * bindings = []
 		 * attributes = []
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -326,7 +326,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * <pre><code>
 		 * topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		 * primitiveRestartEnable = false;
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -373,7 +373,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * Default State:
 		 * <pre><code>
 		 * patchControlPoints = 0
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -412,7 +412,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * <pre><code>
 		 * viewports = []
 		 * scissors = []
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -577,7 +577,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * depthBiasClamp = 0;
 		 * depthBiasSlopeFactor = 1;
 		 * lineWidth = 1;
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -701,7 +701,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * sampleMask = null;
 		 * alphaToCoverageEnable = false;
 		 * alphaToOneEnable = false;
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -804,7 +804,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * stencilTestEnable = false;
 		 * minDepthBounds = 0;
 		 * maxDepthBounds = 1;
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -910,7 +910,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * logicOp = VK_LOGIC_OP_COPY;
 		 * attachments = [];
 		 * blendConstants = new float[4];
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1028,7 +1028,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * Default State:
 		 * <pre><code>
 		 * dynamicStates = []
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1084,7 +1084,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * <pre><code>
 		 * bindings = []
 		 * attributes = []
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1098,7 +1098,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * <pre><code>
 		 * bindings = []
 		 * attributes = []
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1113,7 +1113,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * <pre><code>
 		 * topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		 * primitiveRestartEnable = false;
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1127,7 +1127,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * <pre><code>
 		 * topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		 * primitiveRestartEnable = false;
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1141,7 +1141,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * Default State:
 		 * <pre><code>
 		 * patchControlPoints = 0
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1154,7 +1154,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * Default State:
 		 * <pre><code>
 		 * patchControlPoints = 0
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1169,7 +1169,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * <pre><code>
 		 * viewports = []
 		 * scissors = []
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1183,7 +1183,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * <pre><code>
 		 * viewports = []
 		 * scissors = []
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1206,7 +1206,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * depthBiasClamp = 0;
 		 * depthBiasSlopeFactor = 1;
 		 * lineWidth = 1;
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1228,7 +1228,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * depthBiasClamp = 0;
 		 * depthBiasSlopeFactor = 1;
 		 * lineWidth = 1;
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1247,7 +1247,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * sampleMask = null;
 		 * alphaToCoverageEnable = false;
 		 * alphaToOneEnable = false;
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1265,7 +1265,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * sampleMask = null;
 		 * alphaToCoverageEnable = false;
 		 * alphaToOneEnable = false;
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1286,7 +1286,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * stencilTestEnable = false;
 		 * minDepthBounds = 0;
 		 * maxDepthBounds = 1;
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1306,7 +1306,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * stencilTestEnable = false;
 		 * minDepthBounds = 0;
 		 * maxDepthBounds = 1;
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1324,7 +1324,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * logicOp = VK_LOGIC_OP_COPY;
 		 * attachments = [];
 		 * blendConstants = new float[4];
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1341,7 +1341,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * logicOp = VK_LOGIC_OP_COPY;
 		 * attachments = [];
 		 * blendConstants = new float[4];
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1355,7 +1355,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * Default State:
 		 * <pre><code>
 		 * dynamicStates = []
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */
@@ -1368,7 +1368,7 @@ public class GraphicsPipelineTemplate implements AutoCloseable {
 		 * Default State:
 		 * <pre><code>
 		 * dynamicStates = []
-		 * </pre></code>
+		 * </code></pre>
 		 * 
 		 * @author Alcadrial
 		 */

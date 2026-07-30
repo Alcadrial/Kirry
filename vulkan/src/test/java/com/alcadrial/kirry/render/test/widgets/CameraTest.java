@@ -111,6 +111,7 @@ public class CameraTest extends RenderTest {
 		{
 			for (Path path : stream)
 			{
+				System.out.println("Found model " + path);
 				if (path.endsWith("light.obj")) lightModel = fileManager.getResource(path, Mesh.TYPE);
 				else models.add(fileManager.getResource(path, Mesh.TYPE));
 			}

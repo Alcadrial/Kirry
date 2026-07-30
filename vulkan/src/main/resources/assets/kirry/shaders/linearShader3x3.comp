@@ -17,8 +17,8 @@ void main()
 {
 	uint k = (offset + gl_GlobalInvocationID.x * size + stride) / 4;
 
-	vec4 v = vec4(data[k], data[k + 1], data[k + 2]);
-	vec4 w = matrix * v;
+	vec3 v = vec3(data[k], data[k + 1], data[k + 2]);
+	vec3 w = matrix * v;
 	
     data[k] = w.x;
     data[k + 1] = w.y;

@@ -298,6 +298,19 @@ public class Font implements AutoCloseable {
 			{}
 		}
 	}
+	
+	public void loadGlyphs(String glyphs) throws VulkanException
+	{
+		for (char c : glyphs.toCharArray())
+		{
+			try
+			{
+				getData(c);
+			}
+			catch (FreeTypeException _)
+			{}
+		}
+	}
 	/*
 	 * TODO use resources
 	public void reload() throws FreeTypeException, VulkanException, IOException

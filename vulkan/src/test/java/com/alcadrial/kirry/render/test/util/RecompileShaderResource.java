@@ -12,6 +12,6 @@ public class RecompileShaderResource extends ShaderResource {
 	
 	public RecompileShaderResource(@NonNull Path path, @NonNull ResourceManager resourceManager)
 	{
-		super(path, resourceManager, true);
+		super(path, resourceManager, TestProperties.FORCE_RECOMPILE_SHADERS.getValue());
 	}
 }

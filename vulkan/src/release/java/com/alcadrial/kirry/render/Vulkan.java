@@ -287,7 +287,7 @@ public class Vulkan implements AutoCloseable {
 				
 				PointerBuffer devicePointer = stack.pointers(VK10.VK_NULL_HANDLE);
 				VulkanErrorUtils.assertNoError(VK10.vkCreateDevice(physicalDevice.getVk(), createInfo, null, devicePointer), "Failed to create logical device");
-				threadData.device = new Device(new VkDevice(devicePointer.get(0), physicalDevice.getVk(), createInfo), physicalDevice, graphicsQueue, computeQueue, graphicsComputeQueue, presentationQueue);
+				threadData.device = new Device(new VkDevice(devicePointer.get(0), physicalDevice.getVk(), createInfo), deviceFeatures, physicalDevice, graphicsQueue, computeQueue, graphicsComputeQueue, presentationQueue);
 				
 				return threadData.device;
 			}

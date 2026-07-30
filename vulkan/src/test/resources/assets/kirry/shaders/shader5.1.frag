@@ -29,7 +29,7 @@ void main()
 		tex = vec4(1, 1, 1, 1);
 	}
 	else if (lightDistance > 1.5F * factor) {
-		tex = vec4(0, 0, 0, 0);
+		tex = vec4(0, 0, 0, 1);
 	}
 	else if (d <= 0) {
 		tex = vec4(0, 0, 0, 1);
