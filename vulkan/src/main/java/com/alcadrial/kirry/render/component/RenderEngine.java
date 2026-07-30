@@ -660,6 +660,12 @@ public class RenderEngine implements AutoCloseable {
 				})
 				.build();
 			
+			for (int i = 0; i < entities.size(); i++) spatialMoveComputer.updateDescriptorSet(i);
+			for (int i = 0; i < computerBuffersCount; i++)
+			{
+				initComputer.updateDescriptorSet(i);
+				transformComputer.updateDescriptorSet(i);
+			}
 			if (useSpatial) computeSpatialMoveData(spatialMoveComputer, vertexBlockOffsets, vertexOffsets, entities, () -> new Iterator<>() {
 				
 				@Override

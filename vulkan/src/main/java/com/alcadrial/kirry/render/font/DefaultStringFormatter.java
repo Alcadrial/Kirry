@@ -25,8 +25,9 @@ public class DefaultStringFormatter implements StringFormatter {
 	}
 	
 	@Override
-	public void loadText(Font font, String text, BufferWriter dst) throws VulkanException
+	public int loadText(Font font, String text, BufferWriter dst) throws VulkanException
 	{
+		int vertexCount = 0;
 		Vector3f pos = Vector3f.of(origin).setY(origin.y() + font.getHeight());
 		for (char c : text.toCharArray())
 		{
@@ -54,6 +55,7 @@ public class DefaultStringFormatter implements StringFormatter {
 				{
 					dst.put(pos);
 					dst.put(glyphData.getIndex());
+					vertexCount++;
 				}
 				pos.add(glyphData.getAdvanceX(), 0);
 				if (maxWidth != -1)
@@ -72,6 +74,7 @@ public class DefaultStringFormatter implements StringFormatter {
 			catch (FreeTypeException _)
 			{}
 		}
+		return vertexCount;
 	}
 	
 	public void setMaxWidth(float maxWidth)

@@ -18,7 +18,6 @@ import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kirry.core.util.Test;
 import com.alcadrial.kirry.render.Debug;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.FrameBuffer;
@@ -50,7 +49,6 @@ import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.util.future.VulkanFuture;
 import com.alcadrial.kirry.render.window.VulkanWindow;
 
-@Test
 public class TestReinit extends RenderTest {
 	
 	private static final String SHADER = "shaders/shader";

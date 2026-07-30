@@ -37,7 +37,6 @@ import com.alcadrial.kirry.render.shader.ShaderProgram;
 import com.alcadrial.kirry.render.test.util.RecompileShaderResource;
 import com.alcadrial.kirry.render.test.util.RenderTest;
 import com.alcadrial.kirry.render.test.util.TestProperties;
-import com.alcadrial.kirry.render.util.exception.FreeTypeException;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.util.future.VulkanFuture;
 import com.alcadrial.kirry.render.window.VulkanWindow;
@@ -121,19 +120,11 @@ public class TextTest extends RenderTest {
 			
 			font.setSize(120);
 			
-			int nonEmptyCharCount[] = new int[] {0};
+			int vertexCount[] = new int[] {0};
 			VulkanFuture<?> dataReady = device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
 				
 				font.loadAlphabet();
-				for (char c : MESSAGE.toCharArray())
-				{
-					try
-					{
-						if (!font.getData(c).isEmpty()) nonEmptyCharCount[0]++;
-					}
-					catch (FreeTypeException _)
-					{}
-				}
+				font.loadGlyphs(MESSAGE);
 				font.prepare(commandBuffer);
 				
 				try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer))
@@ -143,7 +134,7 @@ public class TextTest extends RenderTest {
 					formatter.setMaxHeight(MAX_HEIGHT);
 					formatter.setScale(SCALE);
 					formatter.setOrigin(POS);
-					formatter.loadText(font, MESSAGE, transfer.getWriter(vertexBuffer));
+					vertexCount[0] = formatter.loadText(font, MESSAGE, transfer.getWriter(vertexBuffer));
 				}
 			});
 			
@@ -159,13 +150,13 @@ public class TextTest extends RenderTest {
 			
 			if (!window.shouldClose())
 			{
-				draw(fontRenderer, nonEmptyCharCount[0], vertexBuffer);
+				draw(fontRenderer, vertexCount[0], vertexBuffer);
 				window.show();
 				window.waitEvents();
 			}
 			while (!window.shouldClose())
 			{
-				draw(fontRenderer, nonEmptyCharCount[0], vertexBuffer);
+				draw(fontRenderer, vertexCount[0], vertexBuffer);
 				window.waitEvents();
 			}
 			font.close();

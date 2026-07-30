@@ -30,7 +30,6 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
-import com.alcadrial.kirry.core.util.Test;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.FrameBuffer;
 import com.alcadrial.kirry.render.KirryVulkan;
@@ -60,7 +59,6 @@ import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.util.future.VulkanFuture;
 import com.alcadrial.kirry.render.window.VulkanWindow;
 
-@Test
 public class Test2dPanel extends RenderTest {
 	
 	private static final String SHADER = "shaders/shader";

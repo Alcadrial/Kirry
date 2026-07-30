@@ -7,5 +7,5 @@ import com.alcadrial.kirry.render.util.exception.VulkanException;
 
 public interface TextFormatter<T> {
 	
-	void loadText(Font font, @NonNull T text, BufferWriter dst) throws VulkanException;
+	int loadText(Font font, @NonNull T text, BufferWriter dst) throws VulkanException;
 }
