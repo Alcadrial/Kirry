@@ -40,8 +40,14 @@ public class ShaderResource extends AbstractVulkanResource<ShaderResource> {
 		else
 		{
 			Path bin = path.resolveSibling(path.getFileName() + ".bin");
-			if (Files.isReadable(bin)) shader.loadCompiled(Files.readAllBytes(bin));
-			else shader.compile(type);
+			try
+			{
+				shader.loadCompiled(Files.readAllBytes(bin));
+			}
+			catch (IOException e)
+			{
+				shader.compile(type);
+			}
 		}
 		if (!shader.isCompilationSuccessfull()) throw new IOException("Shader " + shader.getPath() + " has errors");
 		this.shader = new PreparedShader(shader, type);

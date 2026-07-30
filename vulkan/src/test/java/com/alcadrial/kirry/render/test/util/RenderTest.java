@@ -816,9 +816,15 @@ public class RenderTest {
 		if (TestProperties.FORCE_RECOMPILE_SHADERS.getValue()) shader.compile(type);
 		else
 		{
-			Path binPath = getPath(pathname + ".bin");
-			if (Files.isReadable(binPath)) shader.loadCompiled(binPath);
-			else shader.compile(type);
+			Path bin = getPath(pathname + ".bin");
+			try
+			{
+				shader.loadCompiled(Files.readAllBytes(bin));
+			}
+			catch (IOException e)
+			{
+				shader.compile(type);
+			}
 		}
 		if (!shader.isCompilationSuccessfull()) throw new IOException("Shader " + shader.getPath() + " has errors");
 		return new PreparedShader(shader, type);

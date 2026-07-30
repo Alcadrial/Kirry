@@ -92,13 +92,25 @@ public class MergedPath implements Path {
 		if (other instanceof MergedPath p) return path.startsWith(p.path);
 		return false;
 	}
+
+
+    @Override
+    public boolean startsWith(String other) {
+    	return path.startsWith(other);
+    }
 	
 	@Override
 	public boolean endsWith(Path other)
 	{
-		if (other instanceof MergedPath p) return path.endsWith(p.path);
+		if (other instanceof MergedPath p)
+			return path.endsWith(p.path);
 		return false;
 	}
+
+    @Override
+    public boolean endsWith(String other) {
+    	return path.endsWith(other);
+    }
 	
 	@Override
 	public MergedPath normalize()

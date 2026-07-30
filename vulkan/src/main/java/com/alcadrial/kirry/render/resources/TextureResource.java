@@ -1,8 +1,12 @@
 package com.alcadrial.kirry.render.resources;
 
 import java.io.IOException;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 
 import org.jspecify.annotations.Nullable;
@@ -17,7 +21,7 @@ import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 
 public class TextureResource extends AbstractVulkanResource<TextureResource> {
-
+	
 	public static final ResourceType<TextureResource> TYPE = ResourceType.of(TextureResource.class);
 	
 	public record Properties(
@@ -34,19 +38,36 @@ public class TextureResource extends AbstractVulkanResource<TextureResource> {
 	
 	private @Nullable ByteBuffer data;
 	private Properties properties;
-
+	
 	@Override
 	protected void loadData(InputStreamSupplier stream) throws IOException
 	{
-		try (MemoryStack stack = MemoryStack.stackPush())
+		try (MemoryStack stack = MemoryStack.stackPush(); Arena arena = Arena.ofConfined())
 		{
 			IntBuffer widthHeightChannels = stack.mallocInt(3);
 			long address = MemoryUtil.memAddress(widthHeightChannels);
-			long dataAddress = STBImage.nstbi_load(MemoryUtil.memAddress(stack.UTF8(path.toRealPath().toString())), address, address + 4, address + 8, STBImage.STBI_rgb_alpha);
-			if (dataAddress == 0) throw new IOException("Cannot load image \"" + path + "\"");
-			int size = widthHeightChannels.get(0) * widthHeightChannels.get(1) * STBImage.STBI_rgb_alpha;
-			data = MemoryUtil.memByteBuffer(dataAddress, size);
-			properties = new Properties(widthHeightChannels.get(0), widthHeightChannels.get(1), size);
+			
+			try (FileChannel channel = FileChannel.open(path))
+			{
+				MemorySegment segment;
+				
+				try
+				{
+					segment = channel.map(MapMode.READ_ONLY, 0, channel.size(), arena);
+				}
+				catch (UnsupportedOperationException _)
+				{
+					segment = arena.allocate(channel.size());
+					channel.read(segment.asByteBuffer());
+				}
+				
+				long dataAddress = STBImage.nstbi_load_from_memory(segment.address(), (int) segment.byteSize(), address, address + 4, address + 8, STBImage.STBI_rgb_alpha);
+				
+				if (dataAddress == 0) throw new IOException("Cannot load image \"" + path + "\"");
+				int size = widthHeightChannels.get(0) * widthHeightChannels.get(1) * STBImage.STBI_rgb_alpha;
+				data = MemoryUtil.memByteBuffer(dataAddress, size);
+				properties = new Properties(widthHeightChannels.get(0), widthHeightChannels.get(1), size);
+			}
 		}
 	}
 	
@@ -54,14 +75,14 @@ public class TextureResource extends AbstractVulkanResource<TextureResource> {
 	{
 		return properties;
 	}
-
+	
 	public void copy(VulkanBuffer buffer) throws VulkanException
 	{
 		ByteBuffer d = VulkanErrorUtils.nonNull(data);
 		buffer.asBuffer().put(d);
 		d.position(0);
 	}
-
+	
 	public void copy(VulkanBuffer buffer, int offset) throws VulkanException
 	{
 		buffer.asBuffer().position(offset).put(VulkanErrorUtils.nonNull(data));
