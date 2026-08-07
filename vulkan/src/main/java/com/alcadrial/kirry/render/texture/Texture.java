@@ -1,7 +1,12 @@
 package com.alcadrial.kirry.render.texture;
 
+import java.io.IOException;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 
 import org.jspecify.annotations.NonNull;
@@ -34,23 +39,49 @@ public class Texture extends MemoryResource {
 		KirryVulkan.assertLoaded();
 	}
 	
+	public static ByteBuffer loadRaw(Path path, /*{width, height}*/int[] data) throws IOException
+	{
+		try (MemoryStack stack = MemoryStack.stackPush(); Arena arena = Arena.ofConfined())
+		{
+			IntBuffer widthHeightChannels = stack.mallocInt(3);
+			long address = MemoryUtil.memAddress(widthHeightChannels);
+			
+			try (FileChannel channel = FileChannel.open(path))
+			{
+				MemorySegment segment;
+				
+				try
+				{
+					segment = channel.map(MapMode.READ_ONLY, 0, channel.size(), arena);
+				}
+				catch (UnsupportedOperationException _)
+				{
+					segment = arena.allocate(channel.size());
+					channel.read(segment.asByteBuffer());
+				}
+				
+				long dataAddress = STBImage.nstbi_load_from_memory(segment.address(), (int) segment.byteSize(), address, address + 4, address + 8, STBImage.STBI_rgb_alpha);
+				
+				if (dataAddress == 0) throw new IOException("Cannot load image \"" + path + "\"");
+				int size = widthHeightChannels.get(0) * widthHeightChannels.get(1) * STBImage.STBI_rgb_alpha;
+				data[0] = widthHeightChannels.get(0);
+				data[1] = widthHeightChannels.get(1);
+				return MemoryUtil.memByteBuffer(dataAddress, size);
+			}
+		}
+	}
+	
 	public static VulkanFuture<TextureBuffer> loadToBufferFromFile(Device device, Path path) throws VulkanException
 	{
 		return VulkanFuture.submitAsync(() -> {
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				IntBuffer widthHeightChannels = stack.mallocInt(3);
-				long address = MemoryUtil.memAddress(widthHeightChannels);
-				long dataAddress = STBImage.nstbi_load(MemoryUtil.memAddress(stack.UTF8(path.toRealPath().toString())), address, address + 4, address + 8, STBImage.STBI_rgb_alpha);
-				if (dataAddress == 0) throw new VulkanException("Cannot load image \"" + path + "\"");
-				ByteBuffer data = MemoryUtil.memByteBuffer(dataAddress, widthHeightChannels.get(0) * widthHeightChannels.get(1) * STBImage.STBI_rgb_alpha);
-				
-				VulkanBuffer buffer = VulkanBuffer.forTransfer(device, data.limit());
-				((@NonNull Mapping) buffer.getMemory().getMapping()).getBuffer().put(data).rewind();
-				STBImage.stbi_image_free(data.rewind());
-				
-				return TextureBuffer.create(buffer, widthHeightChannels.get(0), widthHeightChannels.get(1), path);
-			}
+			int[] data = new int[2];
+			ByteBuffer byteBuffer = loadRaw(path, data);
+			
+			VulkanBuffer buffer = VulkanBuffer.forTransfer(device, byteBuffer.limit());
+			((@NonNull Mapping) buffer.getMemory().getMapping()).getBuffer().put(byteBuffer).rewind();
+			STBImage.stbi_image_free(byteBuffer.rewind());
+			
+			return TextureBuffer.create(buffer, data[0], data[1], path);
 		});
 	}
 	
@@ -62,36 +93,30 @@ public class Texture extends MemoryResource {
 	public static VulkanFuture<Texture> loadFromFile(Device device, Path path, int usage, int dstLayout) throws VulkanException
 	{
 		return VulkanFuture.submitAsync(() -> {
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				IntBuffer widthHeightChannels = stack.mallocInt(3);
-				long address = MemoryUtil.memAddress(widthHeightChannels);
-				long dataAddress = STBImage.nstbi_load(MemoryUtil.memAddress(stack.UTF8(path.toRealPath().toString())), address, address + 4, address + 8, STBImage.STBI_rgb_alpha);
-				if (dataAddress == 0) throw new VulkanException("Cannot load image \"" + path + "\"");
-				ByteBuffer data = MemoryUtil.memByteBuffer(dataAddress, widthHeightChannels.get(0) * widthHeightChannels.get(1) * STBImage.STBI_rgb_alpha);
-				
-				VulkanBuffer buffer = VulkanBuffer.forTransfer(device, data.limit());
-				((@NonNull Mapping) buffer.getMemory().getMapping()).getBuffer().put(data).rewind();
-				STBImage.stbi_image_free(data.rewind());
-				
-				Texture texture = Texture.create2dTexture(device, widthHeightChannels.get(0), widthHeightChannels.get(1), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | usage, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
-				
-				device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
-					texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-					commandBuffer.copyBufferToImage(buffer, texture);
-					texture.changeLayout(commandBuffer, dstLayout);
-				}).join();
-				buffer.close();
-				
-				return texture;
-			}
+			int[] data = new int[2];
+			ByteBuffer byteBuffer = loadRaw(path, data);
+			
+			VulkanBuffer buffer = VulkanBuffer.forTransfer(device, byteBuffer.limit());
+			((@NonNull Mapping) buffer.getMemory().getMapping()).getBuffer().put(byteBuffer).rewind();
+			STBImage.stbi_image_free(byteBuffer.rewind());
+			
+			Texture texture = Texture.create2dTexture(device, data[0], data[1], VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | usage, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+			
+			device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
+				texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+				commandBuffer.copyBufferToImage(buffer, texture);
+				texture.changeLayout(commandBuffer, dstLayout);
+			}).join();
+			buffer.close();
+			
+			return texture;
 		});
 	}
 	
 	public static VulkanFuture<?> saveToPngFile(Texture texture, Path path)
 	{
 		return VulkanFuture.submitAsync(() -> {
-			boolean result = STBImageWrite.stbi_write_png(path.toString(), texture.width, texture.height, 4, texture.memory.getMapping().getBuffer(), 0);
+			boolean result = STBImageWrite.stbi_write_png(path.toString(), texture.width, texture.height, 4, ((@NonNull Mapping) texture.getMemory().getMapping()).getBuffer(), 0);
 			if (!result) throw new VulkanException("Failed to write image to \"" + path + "\"");
 		});
 	}

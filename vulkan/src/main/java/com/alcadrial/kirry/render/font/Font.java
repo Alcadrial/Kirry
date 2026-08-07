@@ -1,7 +1,10 @@
 package com.alcadrial.kirry.render.font;
 
 import java.io.IOException;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 
 import org.eclipse.collections.api.factory.primitive.IntObjectMaps;
@@ -162,9 +165,10 @@ public class Font implements AutoCloseable {
 	
 	private static final int BLOCK_SIZE = 0x10000;
 	
-	private Path path;
-	private long faceIndex;
-	private FT_Face face;
+	private final Path path;
+	private final long faceIndex;
+	private final FT_Face face;
+	private final Arena fileDataArena;
 	
 	private String alphabet;
 	private Atlas atlas;
@@ -188,9 +192,17 @@ public class Font implements AutoCloseable {
 		{
 			this.path = path;
 			this.faceIndex = faceIndex;
-			PointerBuffer p = stack.mallocPointer(1);
-			if (FreeType.FT_New_Face(KirryVulkan.getFTLibrary(), path.toRealPath().toString(), faceIndex, p) != 0) throw new IOException("Failed to load font file");
-			face = FT_Face.create(p.get(0));
+			fileDataArena = Arena.ofConfined();
+			
+			try (FileChannel channel = FileChannel.open(path))
+			{
+				PointerBuffer p = stack.mallocPointer(1);
+				MemorySegment segment = fileDataArena.allocate(channel.size());
+				channel.read(segment.asByteBuffer());
+				
+				if (FreeType.FT_New_Memory_Face(KirryVulkan.getFTLibrary(), segment.asByteBuffer(), faceIndex, p) != 0) throw new IOException("Failed to load font file");
+				face = FT_Face.create(p.get(0));
+			}
 			
 			alphabet = ALPHABET;
 			atlas = new Atlas(device, VK10.VK_FORMAT_B8G8R8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, -1);
@@ -334,6 +346,7 @@ public class Font implements AutoCloseable {
 	public void close()
 	{
 		FreeType.FT_Done_Face(face);
+		fileDataArena.close();
 		atlas.close();
 	}
 	
