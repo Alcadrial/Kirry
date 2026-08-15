@@ -21,8 +21,8 @@ import com.alcadrial.kirry.render.test.util.RecompileShaderResource;
 import com.alcadrial.kirry.render.test.util.RenderTest;
 import com.alcadrial.kirry.render.test.util.TestProperties;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
-import com.alcadrial.kirry.render.window.BlackScreen;
-import com.alcadrial.kirry.render.window.Screen;
+import com.alcadrial.kirry.render.window.WindowScreen;
+import com.alcadrial.kirry.render.window.screen.BlackScreen;
 import com.alcadrial.kirry.render.window.VulkanWindow;
 import com.alcadrial.kirry.render.window.widget.Sprite;
 
@@ -34,7 +34,7 @@ public class ScreenTest extends RenderTest {
 	}
 	
 	private static final String SHADER = SHADERS + "shader4";
-	private static final List<Screen> SCREENS = new LinkedList<>();
+	private static final List<WindowScreen> SCREENS = new LinkedList<>();
 	
 	private static int index = 0;
 	

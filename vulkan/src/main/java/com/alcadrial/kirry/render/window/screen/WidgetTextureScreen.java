@@ -1,4 +1,4 @@
-package com.alcadrial.kirry.render.window;
+package com.alcadrial.kirry.render.window.screen;
 
 import java.util.ConcurrentModificationException;
 import java.util.LinkedList;
@@ -23,7 +23,6 @@ import com.alcadrial.kector.vector.Vector2ir;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.FrameBuffer;
 import com.alcadrial.kirry.render.Renderer;
-import com.alcadrial.kirry.render.Surface.SurfaceData;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.memory.MemoryManager;
@@ -40,13 +39,18 @@ import com.alcadrial.kirry.render.shader.descriptor.DescriptorPool;
 import com.alcadrial.kirry.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.kirry.render.shader.descriptor.DescriptorSetLayout;
 import com.alcadrial.kirry.render.texture.Atlas;
+import com.alcadrial.kirry.render.texture.Texture;
 import com.alcadrial.kirry.render.texture.TextureManager;
 import com.alcadrial.kirry.render.texture.TextureSampler;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
+import com.alcadrial.kirry.render.window.ActionResult;
+import com.alcadrial.kirry.render.window.EventRegistry;
+import com.alcadrial.kirry.render.window.FrameScreen;
+import com.alcadrial.kirry.render.window.Widget;
 
-public class WidgetScreen implements Screen {
-
+public class WidgetTextureScreen implements FrameScreen {
+	
 	protected static final int NEW = 0x00000000;
 	protected static final int INIT = 0x00000001;
 	
@@ -59,14 +63,13 @@ public class WidgetScreen implements Screen {
 	
 	protected List<Widget> widgets;
 	
-	protected VulkanWindow window;
 	protected @Nullable ShaderProgram shaderProgram;
 	
 	protected @Nullable VulkanBuffer uniformBuffer;
 	protected TextureManager textureManager;
 	
-	protected @Nullable RenderPassTemplate renderPassTemplate;
-	protected @Nullable RenderPass renderPass;
+	protected RenderPass renderPass;
+	protected FrameBuffer frameBuffer;
 	protected @Nullable PipelineLayout pipelineLayout;
 	protected @Nullable GraphicsPipelineTemplate graphicsPipelineTemplate;
 	protected @Nullable GraphicsPipeline graphicsPipeline;
@@ -74,54 +77,57 @@ public class WidgetScreen implements Screen {
 	protected @Nullable Renderer renderer;
 	
 	protected int state;
-	protected DescriptorSet @Nullable[] descriptorSets;
+	protected DescriptorSet @Nullable [] descriptorSets;
 	protected @Nullable DescriptorSetLayout descriptorSetLayout;
 	protected @Nullable DescriptorPool descriptorPool;
 	
-	public WidgetScreen(VulkanWindow window) throws VulkanException
+	public WidgetTextureScreen(Device device, int width, int height, int format) throws VulkanException
 	{
 		widgets = new LinkedList<>();
 		state = NEW | DIRTY_MASK;
-		textureManager = TextureManager.getDefault(() -> new Atlas(window.getDevice(), VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, 1));
-		this.window = window;
+		textureManager = TextureManager.getDefault(() -> new Atlas(device, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, 1));
+
+		RenderPassTemplate renderPassTemplate = RenderPassTemplate.colorTextureWriteReadTemplate(format);
+
+		renderPass = renderPassTemplate.createRenderPass(device);
+		frameBuffer = FrameBuffer.of(renderPass, Texture.create2dTexture(device, width, height, format, VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT));
 	}
 	
-	private boolean checkState(int state)
+	protected boolean checkState(int state)
 	{
 		return (this.state & state) != 0;
 	}
 	
-	private void setState(int state)
+	protected void setState(int state)
 	{
 		this.state |= state;
 	}
 	
-	private void removeState(int state)
+	protected void removeState(int state)
 	{
 		this.state &= ~state;
 	}
 	
 	public void add(Widget e)
 	{
-		if (checkState(INIT)) throw new ConcurrentModificationException("Cannot add widgets after init");
+		if (checkState(INIT)) throw new ConcurrentModificationException("Cannot add widgets after init and before clear");
 		widgets.add(e);
 	}
 	
 	@Override
-	public void setWindow(VulkanWindow window)
+	public void setOutput(FrameBuffer frameBuffer)
 	{
-		if (this.window != window)
+		if (this.frameBuffer != frameBuffer)
 		{
-			this.window.removeOnSwapchainRecreationCallback(this::onSwapchainRecreation);
-			this.window = window;
+			this.frameBuffer = frameBuffer;
 			setState(SURFACE_DIRTY);
-			window.addOnSwapchainRecreationCallback(this::onSwapchainRecreation);
 		}
 	}
 	
-	protected void onSwapchainRecreation(SurfaceData data)
+	@Override
+	public FrameBuffer getOutput()
 	{
-		setState(SURFACE_SIZE_DIRTY);
+		return frameBuffer;
 	}
 	
 	public void setShaderProgram(ShaderProgram shaderProgram)
@@ -136,7 +142,7 @@ public class WidgetScreen implements Screen {
 	@Override
 	public RenderPass getRenderPass()
 	{
-		return VulkanErrorUtils.nonNull(renderPass, "Not initialized");
+		return renderPass;
 	}
 	
 	@Override
@@ -146,21 +152,18 @@ public class WidgetScreen implements Screen {
 		if (widgets.isEmpty()) return;
 		ShaderProgram shaderProgram = VulkanErrorUtils.nonNull(this.shaderProgram, "Missing shaderProgram");
 		
-		Device device = window.getDevice();
-		SurfaceData data = window.getSurface().getData();
+		Device device = frameBuffer.getDevice();
 		
 		if (uniformBuffer == null) uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 2, 16 * 2 * 4);
 		
+		int lastTextureCount = textureManager.getAtlasSize() + textureManager.getTextureSize();
 		if (checkState(WIDGET_STATE_DIRTY))
 		{
-			if (textureManager.getAtlasSize() == 0)
+			for (Widget widget : widgets)
 			{
-				for (Widget widget : widgets)
-				{
-					widget.initTextures(memoryManager, commandBuffer, textureManager);
-				}
-				for (Atlas atlas : textureManager.getAtlases()) atlas.draw(commandBuffer);
+				widget.initTextures(memoryManager, commandBuffer, textureManager);
 			}
+			for (Atlas atlas : textureManager.getAtlases()) atlas.draw(commandBuffer);
 			for (Widget widget : widgets)
 			{
 				widget.initBuffers(memoryManager, commandBuffer);
@@ -168,15 +171,6 @@ public class WidgetScreen implements Screen {
 		}
 		int textureCount = textureManager.getAtlasSize() + textureManager.getTextureSize();
 		
-		if (checkState(SURFACE_FORMAT_DIRTY))
-		{
-			if (renderPass != null) renderPass.close();
-			if (renderPassTemplate == null)
-			{
-				renderPassTemplate = window.hasDepthBuffer() ? RenderPassTemplate.initColorDepthTextureTemplate(data.format().format(), window.getDepthTexture().getFormat()) : RenderPassTemplate.initColorTextureTemplate(data.format().format());
-			}
-			renderPass = ((@NonNull RenderPassTemplate) renderPassTemplate).createRenderPass(device);
-		}
 		if (checkState(SURFACE_SIZE_DIRTY) || checkState(SHADER_DIRTY))
 		{
 			if (graphicsPipelineTemplate == null) graphicsPipelineTemplate = GraphicsPipelineTemplate.createScreenRenderingPipeline()
@@ -188,8 +182,11 @@ public class WidgetScreen implements Screen {
 				.build();
 			if (graphicsPipeline != null) graphicsPipeline.close();
 			
-			if (descriptorPool == null)
+			if (lastTextureCount != textureCount)
 			{
+				if (descriptorSets != null) for (DescriptorSet descriptorSet : descriptorSets) descriptorSet.close();
+				if (descriptorSetLayout != null) descriptorSetLayout.close();
+				if (descriptorPool != null) descriptorPool.close();
 				try (MemoryStack stack = MemoryStack.stackPush())
 				{
 					descriptorPool = new DescriptorPool(device, VkDescriptorPoolCreateInfo.malloc(stack)
@@ -229,17 +226,18 @@ public class WidgetScreen implements Screen {
 							.rewind()
 						)
 					);
+					if (pipelineLayout != null) pipelineLayout.close();
 					pipelineLayout = new PipelineLayout(device, VkPipelineLayoutCreateInfo.calloc(stack).pSetLayouts(stack.longs(((@NonNull DescriptorSetLayout) descriptorSetLayout).getVk())));
 					descriptorSets = ((@NonNull DescriptorPool) descriptorPool).allocates((@NonNull DescriptorSetLayout) descriptorSetLayout, textureCount);
 				}
 			}
-			graphicsPipeline = ((@NonNull GraphicsPipelineTemplate) graphicsPipelineTemplate).createPipeline(device, shaderProgram, data.size(), (@NonNull PipelineLayout) pipelineLayout, (@NonNull RenderPass) renderPass, 0);
+			graphicsPipeline = ((@NonNull GraphicsPipelineTemplate) graphicsPipelineTemplate).createPipeline(device, shaderProgram, Vector2ir.of(frameBuffer.getWidth(), frameBuffer.getHeight()), (@NonNull PipelineLayout) pipelineLayout, (@NonNull RenderPass) renderPass, 0);
 		}
-		if (checkState(SURFACE_DIRTY) || checkState(SHADER_DIRTY))
+		if (checkState(SURFACE_DIRTY) || checkState(SHADER_DIRTY) || lastTextureCount != textureCount)
 		{
 			renderer = Renderer.builder()
 				.graphicsPipeline((@NonNull GraphicsPipeline) graphicsPipeline)
-				.descriptorSets((DescriptorSet @NonNull[]) descriptorSets)
+				.descriptorSets((DescriptorSet @NonNull []) descriptorSets)
 				.buffersCount(textureCount)
 				.bindings(i -> new BindingInfo[] {
 					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView((@NonNull VulkanBuffer) uniformBuffer, 0, 1, 64 * 2), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
@@ -288,9 +286,8 @@ public class WidgetScreen implements Screen {
 			VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
 			renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
 			renderPassBeginInfo.pNext(0);
-			renderPassBeginInfo.renderPass(getRenderPass().getVk());
+			renderPassBeginInfo.renderPass(renderPass.getVk());
 			
-			FrameBuffer frameBuffer = ((@NonNull VulkanWindow) window).getCurrentFrameBuffer();
 			renderPassBeginInfo.framebuffer(frameBuffer.getVk());
 			
 			VkRect2D renderArea = VkRect2D.calloc(stack);
@@ -301,7 +298,7 @@ public class WidgetScreen implements Screen {
 			clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
 			clearValues.get().depthStencil().depth(1).stencil(0);
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
-			
+
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 			for (Widget widget : widgets)
 			{
@@ -312,9 +309,9 @@ public class WidgetScreen implements Screen {
 	}
 	
 	@Override
-	public void clearRenderingData()
+	public void clear()
 	{
-		
+		setState(NEW | DIRTY_MASK);
 	}
 	
 	@Override
@@ -413,8 +410,9 @@ public class WidgetScreen implements Screen {
 		if (uniformBuffer != null) uniformBuffer.close();
 		textureManager.close();
 		
-		if (renderPassTemplate != null) renderPassTemplate.close();
-		if (renderPass != null) renderPass.close();
+		renderPass.close();
+		frameBuffer.getTextures()[0].close();
+		frameBuffer.close();
 		if (pipelineLayout != null) pipelineLayout.close();
 		if (graphicsPipelineTemplate != null) graphicsPipelineTemplate.close();
 		if (graphicsPipeline != null) graphicsPipeline.close();

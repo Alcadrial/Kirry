@@ -45,8 +45,10 @@ import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.util.future.VulkanFuture;
 import com.alcadrial.kirry.render.window.VulkanWindow;
 import com.alcadrial.kirry.render.window.event.KeyboardEvent;
+import com.alcadrial.kirry.render.window.screen.WidgetTextureScreen;
 import com.alcadrial.kirry.render.window.widget.CameraView;
 import com.alcadrial.kirry.render.window.widget.CameraView.UniformState;
+import com.alcadrial.kirry.render.window.widget.ScreenWidget;
 
 public class CameraTest extends RenderTest {
 	
@@ -236,29 +238,20 @@ public class CameraTest extends RenderTest {
 		activeGui.hide();
 		showBackground = true;
 		showGui = true;
-		/*
-		BasicScreen s0 = new BasicScreen(window);
+		
+		ScreenWidget screenWidget = ScreenWidget.ofWindowed(window, Vector3ir.of((window.getWidth() - 592) / 2, (window.getHeight() - 592) / 2, 0), Vector2ir.of(592, 592));
+		
+		WidgetTextureScreen s0 = new WidgetTextureScreen(window.getDevice(), 316, 316, window.getSurface().getData().format().format());
 		s0.setShaderProgram(screenShaderProgram);
 		s0.add(background0);
 		s0.add(background1);
 		s0.add(background2);
 		s0.add(background3);
+		screenWidget.setScreen(s0);
 		
-		window.setScreen(s0);
-		window.renderScreenOnce(0);
-		window.renderScreenOnce(0);
-		window.renderScreenOnce(0);
-		int fi = window.getFrameIndex();
-		window.renderScreenOnce(0);
-		window.awaitPresentation(fi);
-		s0.close();
-		*/
 		BasicScreen s = new BasicScreen(window);
 		s.setShaderProgram(screenShaderProgram);
-		s.add(background0);
-		s.add(background1);
-		s.add(background2);
-		s.add(background3);
+		s.add(screenWidget);
 		s.add(cameraView);
 		s.add(gui);
 		s.add(activeGui);

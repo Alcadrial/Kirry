@@ -60,10 +60,11 @@ public abstract class AbstractWidget implements Widget {
 		setInternalStateBit(INITIALIZED_BIT, true);
 	}
 
-	@EmptyImplementation
 	@Override
 	public void initTextures(MemoryManager memoryManager, CommandBuffer commandBuffer, TextureManager textureManager) throws VulkanException
-	{}
+	{
+		//TODO: setInternalStateBit(INITIALIZED_TEXTURES_BIT, true);
+	}
 	
 	@Override
 	public void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer) throws VulkanException
@@ -126,7 +127,7 @@ public abstract class AbstractWidget implements Widget {
 	}
 	
 	@Override
-	public void clearRenderingData()
+	public void clear()
 	{
 		setInternalStateBit(INITIALIZED_BIT, false);
 	}

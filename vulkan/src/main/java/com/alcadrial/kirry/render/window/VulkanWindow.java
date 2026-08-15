@@ -90,6 +90,7 @@ import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.util.functional.VulkanConsumer;
 import com.alcadrial.kirry.render.util.future.VulkanFuture;
 import com.alcadrial.kirry.render.window.event.EventType;
+import com.alcadrial.kirry.render.window.screen.BlackScreen;
 
 public class VulkanWindow extends Window implements VulkanDebug {
 	
@@ -394,8 +395,8 @@ public class VulkanWindow extends Window implements VulkanDebug {
 	private final List<CommandBuffer> commandBuffers;
 	private int frameIndex;
 	
-	private @Nullable Screen oldScreen;
-	private Screen screen;
+	private @Nullable WindowScreen oldScreen;
+	private WindowScreen screen;
 	private @Nullable Matrix4f screenMatrix;
 	private EventRegistry eventRegistry;
 	
@@ -842,7 +843,7 @@ public class VulkanWindow extends Window implements VulkanDebug {
 			
 			CommandBuffer commandBuffer = getCurrentCommandBuffer();
 			
-			Screen screen = this.screen;
+			WindowScreen screen = this.screen;
 			if (!screen.isInitialized())
 			{
 				screen.init(memoryManager, commandBuffer);
@@ -1034,7 +1035,7 @@ public class VulkanWindow extends Window implements VulkanDebug {
 		}
 	}
 	
-	public void setScreen(Screen screen)
+	public void setScreen(WindowScreen screen)
 	{
 		if (screen.isInitialized()) oldScreen = this.screen;
 		this.screen = Objects.requireNonNull(screen);
@@ -1042,7 +1043,7 @@ public class VulkanWindow extends Window implements VulkanDebug {
 		screen.setWindow(this);
 	}
 	
-	public Screen getScreen()
+	public WindowScreen getScreen()
 	{
 		return screen;
 	}

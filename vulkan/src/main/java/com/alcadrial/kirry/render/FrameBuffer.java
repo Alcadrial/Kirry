@@ -8,6 +8,7 @@ import com.alcadrial.kirry.render.renderpass.RenderPass;
 import com.alcadrial.kirry.render.texture.Texture;
 import com.alcadrial.kirry.render.util.RawDeviceResource;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
+import com.alcadrial.kirry.render.util.VulkanUtils;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 
 public class FrameBuffer extends RawDeviceResource {
@@ -17,50 +18,42 @@ public class FrameBuffer extends RawDeviceResource {
 		KirryVulkan.assertLoaded();
 	}
 	
-	public static FrameBuffer of(Texture texture, RenderPass renderPass) throws VulkanException
+	public static FrameBuffer of(RenderPass renderPass, Texture texture) throws VulkanException
 	{
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			return new FrameBuffer(texture.getDevice(), renderPass, VkFramebufferCreateInfo.malloc(stack)
-				.sType$Default()
-				.pNext(0)
-				.flags(0)
-				.renderPass(renderPass.getVk())
-				.pAttachments(stack.longs(texture.getView().getVk()))
-				.width(texture.getWidth())
-				.height(texture.getHeight())
-				.layers(1));
-		}
+		return of(renderPass, texture.getWidth(), texture.getHeight(), texture);
 	}
 	
-	public static FrameBuffer ofDepth(Texture texture, Texture depthStencilTexture, RenderPass renderPass) throws VulkanException
+	public static FrameBuffer of(RenderPass renderPass, int width, int height, Texture... textures) throws VulkanException
 	{
+		if (textures.length == 0) throw new VulkanException("Cannot create a FrameBuffer of zero textures");
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			return new FrameBuffer(texture.getDevice(), renderPass, VkFramebufferCreateInfo.malloc(stack)
+			return new FrameBuffer(textures[0].getDevice(), renderPass, VkFramebufferCreateInfo.malloc(stack)
 				.sType$Default()
 				.pNext(0)
 				.flags(0)
 				.renderPass(renderPass.getVk())
-				.pAttachments(stack.longs(texture.getView().getVk(), depthStencilTexture.getView().getVk()))
-				.width(texture.getWidth())
-				.height(texture.getHeight())
-				.layers(1));
+				.pAttachments(VulkanUtils.toBuffer(stack, t -> t.getView().getVk(), textures))
+				.width(width)
+				.height(height)
+				.layers(1), textures);
 		}
 	}
 	
 	private final RenderPass renderPass;
+	private final Texture[] textures;
 	private final int width;
 	private final int height;
 	private final int layers;
 	
-	public FrameBuffer(Device device, RenderPass renderPass, VkFramebufferCreateInfo info) throws VulkanException
+	public FrameBuffer(Device device, RenderPass renderPass, VkFramebufferCreateInfo info, Texture... textures) throws VulkanException
 	{
 		super(device);
 		long[] p = new long[1];
 		VulkanErrorUtils.assertNoError(VK10.vkCreateFramebuffer(device.getVk(), info, null, p), "Failed to create framebuffer");
 		vk = p[0];
 		this.renderPass = renderPass;
+		this.textures = textures;
 		width = info.width();
 		height = info.height();
 		layers = info.layers();
@@ -91,6 +84,11 @@ public class FrameBuffer extends RawDeviceResource {
 	public int getLayers()
 	{
 		return layers;
+	}
+	
+	public Texture[] getTextures()
+	{
+		return textures;
 	}
 	
 	@Override
