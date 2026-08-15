@@ -92,6 +92,7 @@ task debugJar(type: Jar)
 {
 	archiveBaseName = "${archiveBaseName.get()}-debug"
 	from(sourceSets.debug.output)
+	from(sourceSets.main.resources)
 }
 
 task testJar(type: Jar)

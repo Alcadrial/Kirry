@@ -1,5 +1,7 @@
 package com.alcadrial.kirry.core.util;
 
+import java.util.Objects;
+
 public class Pair<L, R> {
 	
 	public L left;
@@ -49,6 +51,19 @@ public class Pair<L, R> {
 	public void setRight(R right)
 	{
 		this.right = right;
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return Objects.hash(left, right);
+	}
+	
+	@Override
+	public boolean equals(Object obj)
+	{
+		if (this == obj) return true;
+		return obj instanceof Pair p && Objects.equals(left, p.left) && Objects.equals(right, p.right);
 	}
 	
 	@Override
