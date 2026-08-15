@@ -371,6 +371,30 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		VK10.vkCmdNextSubpass(vk, subpassContents);
 	}
 	
+	public void pipelineBarrierTexture(int srcStageMask, int dstStageMask, int srcAccessMask, int dstAccessMask, Texture texture)
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VK10.vkCmdPipelineBarrier(vk, srcStageMask, dstStageMask, 0, null, null, VkImageMemoryBarrier.malloc(1, stack)
+				.sType$Default()
+				.pNext(0)
+				.srcAccessMask(srcAccessMask)
+				.dstAccessMask(dstAccessMask)
+				.oldLayout(0)
+				.newLayout(0)
+				.srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+				.dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+				.image(texture.getVk())
+				.subresourceRange(s -> s
+					.aspectMask(texture.getAspectMask())
+					.baseMipLevel(0)
+					.levelCount(texture.getMipLevels())
+					.baseArrayLayer(0)
+					.layerCount(1))
+				);
+		}
+	}
+	
 	public void pipelineBarrier(int srcStageMask, int dstStageMask, int dependencyFlags, VkMemoryBarrier.@Nullable Buffer memoryBarriers, VkBufferMemoryBarrier.@Nullable Buffer bufferMemoryBarriers, VkImageMemoryBarrier.@Nullable Buffer imageMemoryBarriers)
 	{
 		VK10.vkCmdPipelineBarrier(vk, srcStageMask, dstStageMask, dependencyFlags, memoryBarriers, bufferMemoryBarriers, imageMemoryBarriers);

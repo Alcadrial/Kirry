@@ -58,6 +58,29 @@ public class RenderPassTemplate implements AutoCloseable {
 			.build();
 	}
 	
+	public static RenderPassTemplate colorTextureWriteReadTemplate(int format)
+	{
+		return create()
+			.addAttachment(config -> config
+				.format(format)
+				.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
+				.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR)
+				.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE)
+				.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+				.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE)
+				.initialLayout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+				.finalLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
+			.addSubpass(config -> config
+				.pipelineBindPoint(VK10.VK_PIPELINE_BIND_POINT_GRAPHICS)
+				.addColor(0, VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
+			.addSubpassDependency(config -> config
+				.srcSubpass(VK10.VK_SUBPASS_EXTERNAL)
+				.srcStageMask(VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
+				.dstStageMask(VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
+				.dstAccessMask(VK10.VK_ACCESS_SHADER_READ_BIT))
+			.build();
+	}
+	
 	public static RenderPassTemplate initColorTextureTemplate(int format)
 	{
 		return create()

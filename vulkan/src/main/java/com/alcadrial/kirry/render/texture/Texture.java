@@ -284,6 +284,10 @@ public class Texture extends MemoryResource {
 				barrier.srcAccessMask(VK10.VK_ACCESS_SHADER_READ_BIT);
 				sourceStage = VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 			}
+			case VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL -> {
+				barrier.srcAccessMask(VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+				sourceStage = VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			}
 			default -> throw new UnsupportedOperationException("Transition not supported: " + barrier.oldLayout() + " -> " + barrier.newLayout());
 		}
 		switch (barrier.newLayout())
@@ -299,6 +303,10 @@ public class Texture extends MemoryResource {
 			case VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL -> {
 				barrier.dstAccessMask(VK10.VK_ACCESS_SHADER_READ_BIT);
 				destinationStage = VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			}
+			case VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL -> {
+				barrier.dstAccessMask(VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+				destinationStage = VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 			}
 			case VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL -> {
 				barrier.dstAccessMask(VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
