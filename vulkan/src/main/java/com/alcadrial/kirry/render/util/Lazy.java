@@ -10,11 +10,22 @@ import com.alcadrial.kirry.render.util.functional.VulkanSupplier;
 
 public class Lazy<T> implements Supplier<@NonNull T>, VulkanSupplier<@NonNull T> {
 	
-	@Nullable
-	protected T value;
+	protected @Nullable T value;
+	protected final @Nullable Consumer<Boolean> onSet;
+	
+	public Lazy()
+	{
+		this(null);
+	}
+	
+	public Lazy(@Nullable Consumer<Boolean> onSet)
+	{
+		this.onSet = onSet;
+	}
 	
 	public void set(@NonNull T value)
 	{
+		if (onSet != null) onSet.accept(this.value == null);
 		this.value = value;
 	}
 	
@@ -28,9 +39,14 @@ public class Lazy<T> implements Supplier<@NonNull T>, VulkanSupplier<@NonNull T>
 	{
 		if (value != null) action.accept(value);
 	}
-
+	
 	public void abort()
 	{
 		value = null;
+	}
+	
+	public void abort(@NonNull T oldValue)
+	{
+		if (value != null) value = oldValue;
 	}
 }

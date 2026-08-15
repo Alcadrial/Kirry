@@ -172,13 +172,13 @@ public class Font implements AutoCloseable {
 	
 	private String alphabet;
 	private Atlas atlas;
-	private MemoryManager memoryManager;
+	private final MemoryManager memoryManager;
 	
 	private int nextDataIndex;
 	private VulkanBuffer localFontData;
 	private DirectBufferWriter localFontDataWriter;
 	private VulkanBuffer remoteFontData;
-	private LinearComputer linearComputer;
+	private final LinearComputer linearComputer;
 	
 	private GlyphData emptyGlyphData;
 	private GlyphData[] hotData;
@@ -241,6 +241,11 @@ public class Font implements AutoCloseable {
 	{
 		FreeTypeErrorUtils.assertNoError(FreeType.FT_Set_Pixel_Sizes(face, width, height));
 		atlas.clear(width * 8, height * 8);
+	}
+	
+	public float getSize()
+	{
+		return atlas.getWidth() / 8F;
 	}
 	
 	public void setAlphabet(String alphabet)
