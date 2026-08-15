@@ -250,6 +250,24 @@ public class Computer implements VulkanDebug {
 						}
 					}
 				}
+				ImageBindingInfo imageBindingInfo = writer.imageBindingInfo;
+				if (imageBindingInfo != null)
+				{
+					List<Texture> texture = imageBindingInfo.getTextures();
+					List<TextureSampler> sampler = imageBindingInfo.getSamplers();
+					VkDescriptorImageInfo.Buffer descriptorImageInfos = VkDescriptorImageInfo.calloc(variables.size());
+					for (int j = 0; j < variables.size(); j++)
+					{
+						VkDescriptorImageInfo descriptorImageInfo = descriptorImageInfos.get();
+						descriptorImageInfo.imageLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+						descriptorImageInfo.imageView(texture.get(j).getView().getVk());
+						descriptorImageInfo.sampler(sampler.get(j).getVk());
+					}
+					writeDescriptorSet.pBufferInfo(null);
+					writeDescriptorSet.pImageInfo(descriptorImageInfos.rewind());
+					writeDescriptorSet.pTexelBufferView(null);
+					writeDescriptorSet.descriptorCount(descriptorImageInfos.limit());
+				}
 			}
 			writeDescriptorSetsResult[i] = writeDescriptorSets.rewind();
 		}

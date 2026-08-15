@@ -103,6 +103,31 @@ public class DefaultTextureManager implements TextureManager {
 	}
 	
 	@Override
+	public Texture removeTexture(int index)
+	{
+		return textures.remove(index);
+	}
+	@Override
+	public Atlas removeAtlas(int index)
+	{
+		return atlases.remove(index);
+	}
+	@Override
+	public boolean removeTexture(Object id)
+	{
+		for (Atlas atlas : atlases)
+		{
+			TextureRegion region = atlas.getRegion(id);
+			if (region != null)
+			{
+				atlas.freeRegion(region);
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	@Override
 	public int getTextureSize()
 	{
 		return textures.size();

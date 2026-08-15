@@ -21,6 +21,10 @@ public interface TextureManager extends AutoCloseable {
 	Texture getTexture(int index);
 	Atlas getAtlas(int index);
 	
+	Texture removeTexture(int index);
+	Atlas removeAtlas(int index);
+	boolean removeTexture(Object id);
+	
 	int getTextureSize();
 	int getAtlasSize();
 	
