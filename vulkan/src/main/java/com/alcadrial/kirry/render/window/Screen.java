@@ -52,7 +52,7 @@ public interface Screen extends AutoCloseable {
 	 * <p>
 	 * The invocation this method will allow another invocation of init().
 	 */
-	void clearRenderingData();
+	void clear();
 	
 	/**
 	 * Returns true if this widget has been drawn into the window surface and it should not be cleared.
@@ -88,8 +88,6 @@ public interface Screen extends AutoCloseable {
 	 * @param events
 	 */
 	void registerEvents(EventRegistry events);
-	
-	void setWindow(VulkanWindow window);
 	
 	ActionResult onClick(int button, int count, Vector2ir mousePos);
 	ActionResult onPress(int button, Vector2ir mousePos);

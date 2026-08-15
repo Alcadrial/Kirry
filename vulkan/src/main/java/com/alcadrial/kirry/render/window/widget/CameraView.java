@@ -293,6 +293,7 @@ public class CameraView extends AbstractWidget {
 		lazyVertexBuffer = new VLazy<>();
 		lazyIndexBuffer = new VLazy<>();
 		
+		textureIndex = -1;
 		this.camera = camera;
 	}
 	
@@ -347,6 +348,9 @@ public class CameraView extends AbstractWidget {
 	{
 		try
 		{
+			lazySceneColorTexture.abort();
+			lazySceneDepthTexture.abort();
+			if (textureIndex != -1) textureManager.removeTexture(textureIndex);
 			if (entities.isEmpty()) return;
 			Device device = window.getDevice();
 			int width = window.getWidth();
@@ -383,7 +387,7 @@ public class CameraView extends AbstractWidget {
 			{
 				renderPass = renderPassTemplate.createRenderPass(device);
 			}
-			lazyFrameBuffer.set(FrameBuffer.ofDepth(lazySceneColorTexture.get(), lazySceneDepthTexture.get(), renderPass));
+			lazyFrameBuffer.set(FrameBuffer.of(renderPass, lazySceneColorTexture.get().getWidth(), lazySceneColorTexture.get().getHeight(), lazySceneColorTexture.get(), lazySceneDepthTexture.get()));
 			
 			lazyRenderEngine.set(new RenderEngine(device));
 			lazyRenderEngine.get().init(null, spatialMoveComputeShaderResource, initComputeShaderResource, transformComputeShaderResource, memoryManager, commandBuffer, new TextureTarget(lazyFrameBuffer.get()), uniformState.getVertexUniformVariables(), uniformState.getFragmentUniformVariables().toList(), entities, config);

@@ -85,7 +85,7 @@ public class Sprite extends AbstractWidget {
 	private Lazy<TextureRegion> lazyTexture;
 	private TextureResource textureResource;
 	private int textureIndex;
-	 
+	
 	public Sprite(VulkanWindow window, Vector3ir pos, Vector2ir size, TextureResource texture)
 	{
 		super(window, pos, size);
@@ -104,6 +104,7 @@ public class Sprite extends AbstractWidget {
 		{
 			VulkanBuffer buffer = transfer.getLocal(properties.size());
 			textureResource.copy(buffer);
+			lazyTexture.ifPresent(_ -> textureManager.removeTexture(textureResource));
 			lazyTexture.set(textureManager.addToAtlas(TextureBuffer.create(buffer, properties.width(), properties.height(), textureResource)));
 			textureIndex = textureManager.getAtlasSize() - 1;
 		}
@@ -116,10 +117,10 @@ public class Sprite extends AbstractWidget {
 		
 		try
 		{
-			lazyVertexBuffer.set(memoryManager.allocate((5 * 4) * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT));
-			lazyIndexBuffer.set(memoryManager.allocate(6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT));
-			
 			TextureRegion texture = lazyTexture.get();
+			lazyVertexBuffer.abortAndSet(memoryManager.allocate((5 * 4) * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT));
+			lazyIndexBuffer.abortAndSet(memoryManager.allocate(6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT));
+			
 			try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, lazyVertexBuffer.get(), lazyIndexBuffer.get()))
 			{
 				DeferredBufferWriter localVertexWriter = transfer.getWriter(lazyVertexBuffer.get());
@@ -172,7 +173,7 @@ public class Sprite extends AbstractWidget {
 	}
 	
 	@Override
-	public void clearRenderingData()
+	public void clear()
 	{
 		throw new UnsupportedOperationException();
 	}

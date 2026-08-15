@@ -16,13 +16,14 @@ import com.alcadrial.kirry.render.util.exception.VulkanException;
 public interface Widget extends AutoCloseable {
 
 	/**
-	 * Use to load textures into an atlas, called only once before {@link #initBuffers(MemoryManager, CommandBuffer)}.
+	 * Use to load textures into an atlas, may be called multiple times.
 	 * 
 	 * @param textureManager
 	 */
 	void initTextures(MemoryManager memoryManager, CommandBuffer commandBuffer, TextureManager textureManager) throws VulkanException;
 	/**
 	 * Use to create objects like {@link FrameBuffer}s and {@link VulkanBuffer}s to use in the {@link #render(Matrix4f, CommandBuffer, Renderer) render} method.
+	 * Called only once after {@link #initTextures(MemoryManager, CommandBuffer, TextureManager) initTextures}.
 	 * 
 	 * @param memoryManager
 	 * @param commandBuffer
@@ -32,7 +33,7 @@ public interface Widget extends AutoCloseable {
 	/**
 	 * Draws textures and collects vertices to use in the {@link #draw(Matrix4f, CommandBuffer, Renderer, TextureManager) draw} method.
 	 * <p>
-	 * This method is called after {@link #initBuffers(MemoryManager, CommandBuffer) initializeRendering}.
+	 * This method is called after {@link #initBuffers(MemoryManager, CommandBuffer) initBuffers}.
 	 * 
 	 * @param matrix a custom matrix
 	 * @param commandBuffer
@@ -63,9 +64,9 @@ public interface Widget extends AutoCloseable {
 	/**
 	 * Closes any resource previously allocated in {@link #initBuffers(MemoryManager, CommandBuffer) initializeRendering}.
 	 * <p>
-	 * The invokation this method will allow another invokation of initializeRendering.
+	 * The invocation this method will allow another invocation of initializeRendering.
 	 */
-	void clearRenderingData();
+	void clear();
 	
 	@Override
 	void close() throws VulkanException;
