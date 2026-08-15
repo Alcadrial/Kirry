@@ -26,12 +26,12 @@ import com.alcadrial.kirry.render.window.VulkanWindow;
 
 public class ScreenWidget extends AbstractWidget {
 	
-	public static ScreenWidget ofFull(VulkanWindow window) throws VulkanException
+	public static ScreenWidget ofFull(VulkanWindow window)
 	{
 		return ofWindowed(window, Vector3ir.of(), window.getSurface().getData().size());
 	}
 	
-	public static ScreenWidget ofWindowed(VulkanWindow window, Vector3ir pos, Vector2ir size) throws VulkanException
+	public static ScreenWidget ofWindowed(VulkanWindow window, Vector3ir pos, Vector2ir size)
 	{
 		return new ScreenWidget(window, pos, size);
 	}

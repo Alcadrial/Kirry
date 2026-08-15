@@ -232,14 +232,16 @@ public class RenderPassTemplate implements AutoCloseable {
 		this.createInfo = createInfo;
 	}
 	
-	public RenderPass createRenderPass() throws VulkanException
-	{
-		return createRenderPass(KirryVulkan.getVulkan().getDevice());
-	}
-	
 	public RenderPass createRenderPass(Device device) throws VulkanException
 	{
 		return new RenderPass(device, createInfo);
+	}
+	
+	public RenderPass createRenderPassAndClose(Device device) throws VulkanException
+	{
+		RenderPass renderPass = new RenderPass(device, createInfo);
+		close();
+		return renderPass;
 	}
 	
 	private void free(@Nullable NativeResource struct)

@@ -30,7 +30,6 @@ import com.alcadrial.kirry.render.pipeline.GraphicsPipeline;
 import com.alcadrial.kirry.render.pipeline.GraphicsPipelineTemplate;
 import com.alcadrial.kirry.render.pipeline.PipelineLayout;
 import com.alcadrial.kirry.render.renderpass.RenderPass;
-import com.alcadrial.kirry.render.renderpass.RenderPassTemplate;
 import com.alcadrial.kirry.render.shader.ShaderInputType;
 import com.alcadrial.kirry.render.shader.ShaderProgram;
 import com.alcadrial.kirry.render.shader.ShaderVariable;
@@ -39,9 +38,9 @@ import com.alcadrial.kirry.render.shader.descriptor.DescriptorPool;
 import com.alcadrial.kirry.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.kirry.render.shader.descriptor.DescriptorSetLayout;
 import com.alcadrial.kirry.render.texture.Atlas;
-import com.alcadrial.kirry.render.texture.Texture;
 import com.alcadrial.kirry.render.texture.TextureManager;
 import com.alcadrial.kirry.render.texture.TextureSampler;
+import com.alcadrial.kirry.render.util.VLazy;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.window.ActionResult;
@@ -68,8 +67,7 @@ public class WidgetTextureScreen implements FrameScreen {
 	protected @Nullable VulkanBuffer uniformBuffer;
 	protected TextureManager textureManager;
 	
-	protected RenderPass renderPass;
-	protected FrameBuffer frameBuffer;
+	protected VLazy<FrameBuffer> lazyFrameBuffer;
 	protected @Nullable PipelineLayout pipelineLayout;
 	protected @Nullable GraphicsPipelineTemplate graphicsPipelineTemplate;
 	protected @Nullable GraphicsPipeline graphicsPipeline;
@@ -81,16 +79,13 @@ public class WidgetTextureScreen implements FrameScreen {
 	protected @Nullable DescriptorSetLayout descriptorSetLayout;
 	protected @Nullable DescriptorPool descriptorPool;
 	
-	public WidgetTextureScreen(Device device, int width, int height, int format) throws VulkanException
+	public WidgetTextureScreen(Device device)
 	{
 		widgets = new LinkedList<>();
 		state = NEW | DIRTY_MASK;
 		textureManager = TextureManager.getDefault(() -> new Atlas(device, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, 1));
-
-		RenderPassTemplate renderPassTemplate = RenderPassTemplate.colorTextureWriteReadTemplate(format);
-
-		renderPass = renderPassTemplate.createRenderPass(device);
-		frameBuffer = FrameBuffer.of(renderPass, Texture.create2dTexture(device, width, height, format, VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT));
+		
+		lazyFrameBuffer = new VLazy<>();
 	}
 	
 	protected boolean checkState(int state)
@@ -117,9 +112,9 @@ public class WidgetTextureScreen implements FrameScreen {
 	@Override
 	public void setOutput(FrameBuffer frameBuffer)
 	{
-		if (this.frameBuffer != frameBuffer)
+		if (lazyFrameBuffer.peek() != frameBuffer)
 		{
-			this.frameBuffer = frameBuffer;
+			lazyFrameBuffer.set(frameBuffer);
 			setState(SURFACE_DIRTY);
 		}
 	}
@@ -127,7 +122,7 @@ public class WidgetTextureScreen implements FrameScreen {
 	@Override
 	public FrameBuffer getOutput()
 	{
-		return frameBuffer;
+		return lazyFrameBuffer.get();
 	}
 	
 	public void setShaderProgram(ShaderProgram shaderProgram)
@@ -142,7 +137,7 @@ public class WidgetTextureScreen implements FrameScreen {
 	@Override
 	public RenderPass getRenderPass()
 	{
-		return renderPass;
+		return lazyFrameBuffer.get().getRenderPass();
 	}
 	
 	@Override
@@ -152,6 +147,7 @@ public class WidgetTextureScreen implements FrameScreen {
 		if (widgets.isEmpty()) return;
 		ShaderProgram shaderProgram = VulkanErrorUtils.nonNull(this.shaderProgram, "Missing shaderProgram");
 		
+		FrameBuffer frameBuffer = lazyFrameBuffer.get();
 		Device device = frameBuffer.getDevice();
 		
 		if (uniformBuffer == null) uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 2, 16 * 2 * 4);
@@ -231,7 +227,7 @@ public class WidgetTextureScreen implements FrameScreen {
 					descriptorSets = ((@NonNull DescriptorPool) descriptorPool).allocates((@NonNull DescriptorSetLayout) descriptorSetLayout, textureCount);
 				}
 			}
-			graphicsPipeline = ((@NonNull GraphicsPipelineTemplate) graphicsPipelineTemplate).createPipeline(device, shaderProgram, Vector2ir.of(frameBuffer.getWidth(), frameBuffer.getHeight()), (@NonNull PipelineLayout) pipelineLayout, (@NonNull RenderPass) renderPass, 0);
+			graphicsPipeline = ((@NonNull GraphicsPipelineTemplate) graphicsPipelineTemplate).createPipeline(device, shaderProgram, Vector2ir.of(frameBuffer.getWidth(), frameBuffer.getHeight()), (@NonNull PipelineLayout) pipelineLayout, frameBuffer.getRenderPass(), 0);
 		}
 		if (checkState(SURFACE_DIRTY) || checkState(SHADER_DIRTY) || lastTextureCount != textureCount)
 		{
@@ -276,6 +272,7 @@ public class WidgetTextureScreen implements FrameScreen {
 	public void draw(Matrix4f matrix, CommandBuffer commandBuffer) throws VulkanException
 	{
 		Renderer renderer = VulkanErrorUtils.nonNull(this.renderer, "Not initialized");
+		FrameBuffer frameBuffer = lazyFrameBuffer.get();
 		if (widgets.isEmpty()) return;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -286,7 +283,7 @@ public class WidgetTextureScreen implements FrameScreen {
 			VkRenderPassBeginInfo renderPassBeginInfo = VkRenderPassBeginInfo.malloc(stack);
 			renderPassBeginInfo.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
 			renderPassBeginInfo.pNext(0);
-			renderPassBeginInfo.renderPass(renderPass.getVk());
+			renderPassBeginInfo.renderPass(frameBuffer.getRenderPass().getVk());
 			
 			renderPassBeginInfo.framebuffer(frameBuffer.getVk());
 			
@@ -298,7 +295,7 @@ public class WidgetTextureScreen implements FrameScreen {
 			clearValues.get().color().float32(stack.floats(0, 0, 0, 0));
 			clearValues.get().depthStencil().depth(1).stencil(0);
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
-
+			
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 			for (Widget widget : widgets)
 			{
@@ -410,9 +407,6 @@ public class WidgetTextureScreen implements FrameScreen {
 		if (uniformBuffer != null) uniformBuffer.close();
 		textureManager.close();
 		
-		renderPass.close();
-		frameBuffer.getTextures()[0].close();
-		frameBuffer.close();
 		if (pipelineLayout != null) pipelineLayout.close();
 		if (graphicsPipelineTemplate != null) graphicsPipelineTemplate.close();
 		if (graphicsPipeline != null) graphicsPipeline.close();

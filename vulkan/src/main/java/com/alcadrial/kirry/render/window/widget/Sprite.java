@@ -24,7 +24,6 @@ import com.alcadrial.kirry.render.texture.TextureRegion;
 import com.alcadrial.kirry.render.util.Lazy;
 import com.alcadrial.kirry.render.util.VLazy;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
-import com.alcadrial.kirry.render.util.exception.ExternalException;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.window.AbstractWidget;
 import com.alcadrial.kirry.render.window.EventRegistry;
@@ -32,50 +31,36 @@ import com.alcadrial.kirry.render.window.VulkanWindow;
 
 public class Sprite extends AbstractWidget {
 	
-	public static Sprite ofFull(VulkanWindow window, String pathname) throws VulkanException
+	public static Sprite ofFull(VulkanWindow window, String pathname) throws IOException
 	{
 		return ofWindowed(window, Vector3ir.of(), window.getSurface().getData().size(), pathname);
 	}
 	
-	public static Sprite ofFull(VulkanWindow window, Path path) throws VulkanException
+	public static Sprite ofFull(VulkanWindow window, Path path) throws IOException
 	{
 		return ofWindowed(window, Vector3ir.of(), window.getSurface().getData().size(), path);
 	}
 	
-	public static Sprite ofFull(VulkanWindow window, TextureResource texture) throws VulkanException
+	public static Sprite ofFull(VulkanWindow window, TextureResource texture)
 	{
 		return ofWindowed(window, Vector3ir.of(), window.getSurface().getData().size(), texture);
 	}
 	
-	public static Sprite ofWindowed(VulkanWindow window, Vector3ir pos, Vector2ir size, String pathname) throws VulkanException
+	public static Sprite ofWindowed(VulkanWindow window, Vector3ir pos, Vector2ir size, String pathname) throws IOException
 	{
 		ResourceManager resourceManager = VulkanErrorUtils.nonNull(window.getResourceManager(), "Missing resource manager");
 		
-		try
-		{
-			return ofWindowed(window, pos, size, resourceManager.getResource(pathname, TextureResource.TYPE));
-		}
-		catch (IOException e)
-		{
-			throw new ExternalException(e);
-		}
+		return ofWindowed(window, pos, size, resourceManager.getResource(pathname, TextureResource.TYPE));
 	}
 	
-	public static Sprite ofWindowed(VulkanWindow window, Vector3ir pos, Vector2ir size, Path path) throws VulkanException
+	public static Sprite ofWindowed(VulkanWindow window, Vector3ir pos, Vector2ir size, Path path) throws IOException
 	{
 		ResourceManager resourceManager = VulkanErrorUtils.nonNull(window.getResourceManager(), "Missing resource manager");
 		
-		try
-		{
-			return ofWindowed(window, pos, size, resourceManager.getResource(path, TextureResource.TYPE));
-		}
-		catch (IOException e)
-		{
-			throw new ExternalException(e);
-		}
+		return ofWindowed(window, pos, size, resourceManager.getResource(path, TextureResource.TYPE));
 	}
 	
-	public static Sprite ofWindowed(VulkanWindow window, Vector3ir pos, Vector2ir size, TextureResource texture) throws VulkanException
+	public static Sprite ofWindowed(VulkanWindow window, Vector3ir pos, Vector2ir size, TextureResource texture)
 	{
 		return new Sprite(window, pos, size, texture);
 	}

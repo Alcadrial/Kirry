@@ -83,7 +83,7 @@ public class WidgetScreen implements WindowScreen {
 	protected @Nullable DescriptorSetLayout descriptorSetLayout;
 	protected @Nullable DescriptorPool descriptorPool;
 	
-	public WidgetScreen(VulkanWindow window) throws VulkanException
+	public WidgetScreen(VulkanWindow window)
 	{
 		widgets = new LinkedList<>();
 		state = NEW | DIRTY_MASK;

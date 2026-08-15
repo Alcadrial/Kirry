@@ -47,7 +47,6 @@ import com.alcadrial.kirry.render.texture.TextureManager;
 import com.alcadrial.kirry.render.util.Lazy;
 import com.alcadrial.kirry.render.util.VLazy;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
-import com.alcadrial.kirry.render.util.exception.ExternalException;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.window.AbstractWidget;
 import com.alcadrial.kirry.render.window.EventRegistry;
@@ -57,36 +56,29 @@ import com.alcadrial.kirry.render.window.widget.CameraView.UniformState.Reserved
 
 public class CameraView extends AbstractWidget {
 	
-	public static CameraView ofFull(VulkanWindow window, Camera camera) throws VulkanException
+	public static CameraView ofFull(VulkanWindow window, Camera camera) throws IOException
 	{
 		return ofWindowed(window, camera, Vector3ir.of(), window.getSurface().getData().size(), UniformState.EMPTY);
 	}
 	
-	public static CameraView ofFull(VulkanWindow window, Camera camera, UniformState uniformState) throws VulkanException
+	public static CameraView ofFull(VulkanWindow window, Camera camera, UniformState uniformState) throws IOException
 	{
 		return ofWindowed(window, camera, Vector3ir.of(), window.getSurface().getData().size(), uniformState);
 	}
 	
-	public static CameraView ofWindowed(VulkanWindow window, Camera camera, Vector3ir pos, Vector2ir size) throws VulkanException
+	public static CameraView ofWindowed(VulkanWindow window, Camera camera, Vector3ir pos, Vector2ir size) throws IOException
 	{
 		return ofWindowed(window, camera, pos, size, UniformState.EMPTY);
 	}
 	
-	public static CameraView ofWindowed(VulkanWindow window, Camera camera, Vector3ir pos, Vector2ir size, UniformState uniformState) throws VulkanException
+	public static CameraView ofWindowed(VulkanWindow window, Camera camera, Vector3ir pos, Vector2ir size, UniformState uniformState) throws IOException
 	{
 		ResourceManager resourceManager = VulkanErrorUtils.nonNull(window.getResourceManager(), "Missing resource manager");
 		
-		try
-		{
 			ShaderResource spatialMove = resourceManager.getResource(RenderEngine.SPATIAL_MOVE_COMPUTE_SHADER_PATHNAME, ShaderResource.TYPE);
 			ShaderResource initCompute = resourceManager.getResource(RenderEngine.INIT_COMPUTE_SHADER_PATHNAME, ShaderResource.TYPE);
 			ShaderResource transformCompute = resourceManager.getResource(RenderEngine.TRANSFORM_COMPUTE_SHADER_PATHNAME, ShaderResource.TYPE);
 			return new CameraView(window, pos, size, camera, spatialMove, initCompute, transformCompute, uniformState);
-		}
-		catch (IOException e)
-		{
-			throw new ExternalException(e);
-		}
 	}
 	
 	public static abstract class UniformState {

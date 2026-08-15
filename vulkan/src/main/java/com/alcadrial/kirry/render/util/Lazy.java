@@ -35,6 +35,11 @@ public class Lazy<T> implements Supplier<@NonNull T>, VulkanSupplier<@NonNull T>
 		return VulkanErrorUtils.nonNull(value, "Value not initialized");
 	}
 	
+	public T peek()
+	{
+		return value;
+	}
+	
 	public void ifPresent(Consumer<@NonNull T> action)
 	{
 		if (value != null) action.accept(value);

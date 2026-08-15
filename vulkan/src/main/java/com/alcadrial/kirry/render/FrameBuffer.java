@@ -40,6 +40,26 @@ public class FrameBuffer extends RawDeviceResource {
 		}
 	}
 	
+	public static FrameBuffer ofColor(RenderPass renderPass, int width, int height, int format, int usage) throws VulkanException
+	{
+		Texture colorTexture = Texture.create2dTexture(renderPass.getDevice(), width, height, format, VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | usage, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+		return of(renderPass, width, height, colorTexture);
+	}
+	
+	public static FrameBuffer ofColorDepth(RenderPass renderPass, int width, int height, int colorFormat, int colorUsage, int depthFormat, int depthUsage) throws VulkanException
+	{
+		Texture colorTexture = Texture.create2dTexture(renderPass.getDevice(), width, height, colorFormat, VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | colorUsage, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+		Texture depthTexture = Texture.create2dTexture(renderPass.getDevice(), width, height, depthFormat, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | depthUsage, VK10.VK_IMAGE_ASPECT_DEPTH_BIT);
+		return of(renderPass, width, height, colorTexture, depthTexture);
+	}
+	
+	public static FrameBuffer ofColorDepth(RenderPass renderPass, int width, int height, int colorFormat, int colorUsage, int depthFormat, int depthUsage, boolean useStencil) throws VulkanException
+	{
+		Texture colorTexture = Texture.create2dTexture(renderPass.getDevice(), width, height, colorFormat, VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | colorUsage, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+		Texture depthTexture = Texture.create2dTexture(renderPass.getDevice(), width, height, depthFormat, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | depthUsage, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | (Texture.hasStencil(depthFormat) && useStencil ? VK10.VK_IMAGE_ASPECT_STENCIL_BIT : 0));
+		return of(renderPass, width, height, colorTexture, depthTexture);
+	}
+	
 	private final RenderPass renderPass;
 	private final Texture[] textures;
 	private final int width;

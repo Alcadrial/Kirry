@@ -151,6 +151,16 @@ public class Texture extends MemoryResource {
 		return new Texture(device, width, height, depth, format, samples, VK10.VK_IMAGE_TILING_OPTIMAL, usage, aspectMask, mipLevels, VK10.VK_IMAGE_TYPE_3D);
 	}
 	
+	public static boolean hasStencil(int format)
+	{
+		return format >= VK10.VK_FORMAT_S8_UINT && format <= VK10.VK_FORMAT_D32_SFLOAT_S8_UINT;
+	}
+	
+	public static boolean hasDepth(int format)
+	{
+		return format >= VK10.VK_FORMAT_D16_UNORM && format <= VK10.VK_FORMAT_D32_SFLOAT_S8_UINT && format != VK10.VK_FORMAT_S8_UINT;
+	}
+	
 	private TextureView view;
 	private int length;
 	private int width;

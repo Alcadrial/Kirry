@@ -10,6 +10,7 @@ import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.list.mutable.FastList;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.kector.AngleUnit;
 import com.alcadrial.kector.vector.Vector2ir;
@@ -17,12 +18,14 @@ import com.alcadrial.kector.vector.Vector3f;
 import com.alcadrial.kector.vector.Vector3ir;
 import com.alcadrial.kirry.core.component.Entity;
 import com.alcadrial.kirry.core.cursor.CursorInputMode;
+import com.alcadrial.kirry.render.FrameBuffer;
 import com.alcadrial.kirry.render.KirryVulkan;
 import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.component.MeshComponent;
 import com.alcadrial.kirry.render.component.RenderEngine;
 import com.alcadrial.kirry.render.component.ShaderComponent;
 import com.alcadrial.kirry.render.component.SpatialComponent;
+import com.alcadrial.kirry.render.renderpass.RenderPassTemplate;
 import com.alcadrial.kirry.render.resources.FileManager;
 import com.alcadrial.kirry.render.resources.Mesh;
 import com.alcadrial.kirry.render.resources.ShaderResource;
@@ -41,6 +44,7 @@ import com.alcadrial.kirry.render.shader.ShaderVariable;
 import com.alcadrial.kirry.render.test.util.RecompileShaderResource;
 import com.alcadrial.kirry.render.test.util.RenderTest;
 import com.alcadrial.kirry.render.test.util.TestProperties;
+import com.alcadrial.kirry.render.util.exception.ExternalException;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.util.future.VulkanFuture;
 import com.alcadrial.kirry.render.window.VulkanWindow;
@@ -209,52 +213,71 @@ public class CameraTest extends RenderTest {
 		EntityControllerTarget lightTarget = new EntityControllerTarget(lightEntity);
 		MouseKeyboardController mouseKeyboardController = new MouseKeyboardController(cameraTarget);
 		JoystickController joystickController = new JoystickController(cameraTarget);
-		//@formatter:off
-		CameraView cameraView = CameraView.ofFull(window, camera0, new UniformState() {{
-			Var<Vector3f> lightPosVar = new Var<>(ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS"), lightTarget.getPos(), (w, v, t) -> w.set(v, t));
-			Var<Float> lightIntensityVar = new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY"), 1F, (w, v, t) -> w.set(v, t));
-			Var<Float> spaceFogIntensityVar = new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY"), 0.1F, (w, v, t) -> w.set(v, t));
-			add(lightPosVar, ShaderType.FRAGMENT, 1);
-			add(lightIntensityVar, ShaderType.FRAGMENT, 1);
-			add(spaceFogIntensityVar, ShaderType.FRAGMENT, 1);
-			lightTarget.onUpdate(_ -> lightPosVar.markDirty());
-		}});
-		//@formatter:on
-		cameraView.setCamera(camera0);
-		cameraView.setController(mouseKeyboardController);
-		cameraView.setEntities(entities);
-		cameraView.setRenderEngineConfig(new RenderEngine.Config(true));
-		cameraView.setFocus(true);
 		
-		HiddenSprite background0 = HiddenSprite.ofWindowed(window, Vector3ir.of(20, 20, 0), Vector2ir.of(256, 256), IMAGES + "icon0.png");
-		HiddenSprite background1 = HiddenSprite.ofWindowed(window, Vector3ir.of(296, 20, 0), Vector2ir.of(256, 256), IMAGES + "icon.png");
-		HiddenSprite background2 = HiddenSprite.ofWindowed(window, Vector3ir.of(20, 296, 0), Vector2ir.of(256, 256), IMAGES + "icon.png");
-		HiddenSprite background3 = HiddenSprite.ofWindowed(window, Vector3ir.of(296, 296, 0), Vector2ir.of(256, 256), IMAGES + "icon0.png");
+		CameraView cameraView;
+		BasicScreen s;
 		
-		float scale = 3;
-		Vector2ir overlaySize = Vector2ir.of((int) (32 * scale), (int) (32 * scale));
-		HiddenSprite gui = HiddenSprite.ofWindowed(window, Vector3ir.of((window.getWidth() - overlaySize.x()) / 2, (window.getHeight() - overlaySize.y()) / 2, 0), overlaySize, TEXTURES + "overlay.png");
-		HiddenSprite activeGui = HiddenSprite.ofWindowed(window, gui.getPos(), gui.getSize(), TEXTURES + "overlay_active.png");
-		activeGui.hide();
-		showBackground = true;
-		showGui = true;
-		
-		ScreenWidget screenWidget = ScreenWidget.ofWindowed(window, Vector3ir.of((window.getWidth() - 592) / 2, (window.getHeight() - 592) / 2, 0), Vector2ir.of(592, 592));
-		
-		WidgetTextureScreen s0 = new WidgetTextureScreen(window.getDevice(), 316, 316, window.getSurface().getData().format().format());
-		s0.setShaderProgram(screenShaderProgram);
-		s0.add(background0);
-		s0.add(background1);
-		s0.add(background2);
-		s0.add(background3);
-		screenWidget.setScreen(s0);
-		
-		BasicScreen s = new BasicScreen(window);
-		s.setShaderProgram(screenShaderProgram);
-		s.add(screenWidget);
-		s.add(cameraView);
-		s.add(gui);
-		s.add(activeGui);
+		HiddenSprite background0;
+		HiddenSprite background1;
+		HiddenSprite background2;
+		HiddenSprite background3;
+		HiddenSprite gui;
+		HiddenSprite activeGui;
+		try
+		{
+			//@formatter:off
+			cameraView = CameraView.ofFull(window, camera0, new UniformState() {{
+				Var<Vector3f> lightPosVar = new Var<>(ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "LIGHT_POS"), lightTarget.getPos(), (w, v, t) -> w.set(v, t));
+				Var<Float> lightIntensityVar = new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "LIGHT_INTENSITY"), 1F, (w, v, t) -> w.set(v, t));
+				Var<Float> spaceFogIntensityVar = new Var<>(ShaderVariable.of(ShaderInputType.FLOAT, "SPACE_FOG_INTENSITY"), 0.1F, (w, v, t) -> w.set(v, t));
+				add(lightPosVar, ShaderType.FRAGMENT, 1);
+				add(lightIntensityVar, ShaderType.FRAGMENT, 1);
+				add(spaceFogIntensityVar, ShaderType.FRAGMENT, 1);
+				lightTarget.onUpdate(_ -> lightPosVar.markDirty());
+			}});
+			//@formatter:on
+			cameraView.setCamera(camera0);
+			cameraView.setController(mouseKeyboardController);
+			cameraView.setEntities(entities);
+			cameraView.setRenderEngineConfig(new RenderEngine.Config(true));
+			cameraView.setFocus(true);
+			
+			background0 = HiddenSprite.ofWindowed(window, Vector3ir.of(20, 20, 0), Vector2ir.of(256, 256), IMAGES + "icon0.png");
+			background1 = HiddenSprite.ofWindowed(window, Vector3ir.of(296, 20, 0), Vector2ir.of(256, 256), IMAGES + "icon.png");
+			background2 = HiddenSprite.ofWindowed(window, Vector3ir.of(20, 296, 0), Vector2ir.of(256, 256), IMAGES + "icon.png");
+			background3 = HiddenSprite.ofWindowed(window, Vector3ir.of(296, 296, 0), Vector2ir.of(256, 256), IMAGES + "icon0.png");
+			
+			float scale = 3;
+			Vector2ir overlaySize = Vector2ir.of((int) (32 * scale), (int) (32 * scale));
+			gui = HiddenSprite.ofWindowed(window, Vector3ir.of((window.getWidth() - overlaySize.x()) / 2, (window.getHeight() - overlaySize.y()) / 2, 0), overlaySize, TEXTURES + "overlay.png");
+			activeGui = HiddenSprite.ofWindowed(window, gui.getPos(), gui.getSize(), TEXTURES + "overlay_active.png");
+			activeGui.hide();
+			showBackground = true;
+			showGui = true;
+			
+			ScreenWidget screenWidget = ScreenWidget.ofWindowed(window, Vector3ir.of((window.getWidth() - 572) / 2, (window.getHeight() - 572) / 2, 0), Vector2ir.of(572, 572));
+			
+			WidgetTextureScreen s0 = new WidgetTextureScreen(window.getDevice());
+			int format = window.getSurface().getData().format().format();
+			s0.setOutput(FrameBuffer.ofColor(RenderPassTemplate.colorTextureWriteReadTemplate(format).createRenderPassAndClose(window.getDevice()), 316, 316, format, VK10.VK_IMAGE_USAGE_SAMPLED_BIT));
+			s0.setShaderProgram(screenShaderProgram);
+			s0.add(background0);
+			s0.add(background1);
+			s0.add(background2);
+			s0.add(background3);
+			screenWidget.setScreen(s0);
+
+			s = new BasicScreen(window);
+			s.setShaderProgram(screenShaderProgram);
+			s.add(screenWidget);
+			s.add(cameraView);
+			s.add(gui);
+			s.add(activeGui);
+		}
+		catch (IOException e)
+		{
+			throw new ExternalException(e);
+		}
 		
 		window.setScreen(s);
 		mouseKeyboardController.registerEvents(window.getEventRegistry());
