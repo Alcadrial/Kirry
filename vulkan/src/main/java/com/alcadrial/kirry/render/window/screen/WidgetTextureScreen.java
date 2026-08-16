@@ -143,8 +143,7 @@ public class WidgetTextureScreen implements FrameScreen {
 	@Override
 	public void init(MemoryManager memoryManager, CommandBuffer commandBuffer) throws VulkanException
 	{
-		if (!checkState(DIRTY_MASK)) return;
-		if (widgets.isEmpty()) return;
+		if (!checkState(DIRTY_MASK) || widgets.isEmpty()) return;
 		ShaderProgram shaderProgram = VulkanErrorUtils.nonNull(this.shaderProgram, "Missing shaderProgram");
 		
 		FrameBuffer frameBuffer = lazyFrameBuffer.get();
@@ -166,87 +165,105 @@ public class WidgetTextureScreen implements FrameScreen {
 			}
 		}
 		int textureCount = textureManager.getAtlasSize() + textureManager.getTextureSize();
+		int framesCount = Math.max(1, textureCount);
 		
 		if (checkState(SURFACE_SIZE_DIRTY) || checkState(SHADER_DIRTY))
 		{
-			if (graphicsPipelineTemplate == null) graphicsPipelineTemplate = GraphicsPipelineTemplate.createScreenRenderingPipeline()
-				.configureVertexInputState(v -> v
-					.addBinding(0, 20, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
-					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
-					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_2, 12)
-				)
-				.build();
+			if (graphicsPipelineTemplate == null) graphicsPipelineTemplate = createGraphicsPipelineTemplate();
 			if (graphicsPipeline != null) graphicsPipeline.close();
 			
-			if (lastTextureCount != textureCount)
+			if (lastTextureCount != textureCount || descriptorPool == null)
 			{
 				if (descriptorSets != null) for (DescriptorSet descriptorSet : descriptorSets) descriptorSet.close();
 				if (descriptorSetLayout != null) descriptorSetLayout.close();
 				if (descriptorPool != null) descriptorPool.close();
 				try (MemoryStack stack = MemoryStack.stackPush())
 				{
+					List<DescriptorSetDef> descriptors = getDescriptorSetDefs();
+					
+					VkDescriptorPoolSize.Buffer pPoolSizes = VkDescriptorPoolSize.malloc(descriptors.size(), stack);
+					for (DescriptorSetDef d : descriptors) pPoolSizes.apply(s -> s.set(d.type, d.count * framesCount));
+					
 					descriptorPool = new DescriptorPool(device, VkDescriptorPoolCreateInfo.malloc(stack)
 						.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
 						.pNext(0)
 						.flags(0)
-						.maxSets(textureCount)
-						.pPoolSizes(VkDescriptorPoolSize.malloc(2, stack)
-							.apply(b -> b
-								.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-								.descriptorCount(textureCount)
-							)
-							.apply(b -> b
-								.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-								.descriptorCount(textureCount)
-							)
-							.rewind()
-						)
+						.maxSets(framesCount)
+						.pPoolSizes(pPoolSizes.rewind())
 					);
+					VkDescriptorSetLayoutBinding.Buffer pBindings = VkDescriptorSetLayoutBinding.malloc(descriptors.size(), stack);
+					for (int i = 0; i < descriptors.size(); i++)
+					{
+						DescriptorSetDef d = descriptors.get(i);
+						pBindings.get().set(i, d.type, d.count, d.stage, null);
+					}
+					
 					descriptorSetLayout = new DescriptorSetLayout(device, VkDescriptorSetLayoutCreateInfo.malloc(stack)
 						.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
 						.pNext(0)
 						.flags(0)
-						.pBindings(VkDescriptorSetLayoutBinding.malloc(2, stack)
-							.apply(b -> b
-								.binding(0)
-								.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-								.descriptorCount(1)
-								.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
-								.pImmutableSamplers(null))
-							.apply(b -> b
-								.binding(1)
-								.descriptorType(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-								.descriptorCount(1)
-								.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
-								.pImmutableSamplers(null))
-							.rewind()
-						)
+						.pBindings(pBindings.rewind())
 					);
 					if (pipelineLayout != null) pipelineLayout.close();
 					pipelineLayout = new PipelineLayout(device, VkPipelineLayoutCreateInfo.calloc(stack).pSetLayouts(stack.longs(((@NonNull DescriptorSetLayout) descriptorSetLayout).getVk())));
-					descriptorSets = ((@NonNull DescriptorPool) descriptorPool).allocates((@NonNull DescriptorSetLayout) descriptorSetLayout, textureCount);
+					descriptorSets = ((@NonNull DescriptorPool) descriptorPool).allocates((@NonNull DescriptorSetLayout) descriptorSetLayout, framesCount);
 				}
 			}
 			graphicsPipeline = ((@NonNull GraphicsPipelineTemplate) graphicsPipelineTemplate).createPipeline(device, shaderProgram, Vector2ir.of(frameBuffer.getWidth(), frameBuffer.getHeight()), (@NonNull PipelineLayout) pipelineLayout, frameBuffer.getRenderPass(), 0);
 		}
-		if (checkState(SURFACE_DIRTY) || checkState(SHADER_DIRTY) || lastTextureCount != textureCount)
+		if (checkState(SURFACE_DIRTY) || checkState(SHADER_DIRTY) || lastTextureCount != textureCount || renderer == null)
 		{
 			renderer = Renderer.builder()
 				.graphicsPipeline((@NonNull GraphicsPipeline) graphicsPipeline)
 				.descriptorSets((DescriptorSet @NonNull []) descriptorSets)
-				.buffersCount(textureCount)
-				.bindings(i -> new BindingInfo[] {
-					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView((@NonNull VulkanBuffer) uniformBuffer, 0, 1, 64 * 2), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
-						ShaderVariable.PROJECTION,
-						ShaderVariable.MODEL
-					)),
-					BindingInfo.ofTexture(i < textureManager.getAtlasSize() ? textureManager.getAtlas(i).getTexture() : textureManager.getTexture(i - textureManager.getAtlasSize()), TextureSampler.ofNearest(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.ATLAS)
-				})
+				.buffersCount(framesCount)
+				.bindings(i -> getBindingInfo(i, textureCount > 0))
 				.build();
 			renderer.updateAllDescriptorSets();
 		}
 		removeState(DIRTY_MASK);
 		setState(INIT);
+	}
+	
+	protected GraphicsPipelineTemplate createGraphicsPipelineTemplate()
+	{
+		return GraphicsPipelineTemplate.createScreenRenderingPipeline()
+			.configureVertexInputState(v -> v
+				.addBinding(0, 20, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
+				.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
+				.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_2, 12)
+			)
+			.build();
+	}
+	
+	protected record DescriptorSetDef(int type, int count, int stage) {}
+	
+	protected List<DescriptorSetDef> getDescriptorSetDefs()
+	{
+		return List.of(
+			new DescriptorSetDef(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK10.VK_SHADER_STAGE_VERTEX_BIT),
+			new DescriptorSetDef(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
+		);
+	}
+	
+	public BindingInfo[] getBindingInfo(int frameIndex, boolean useTextures) throws VulkanException
+	{
+		if (useTextures)
+		{
+			return new BindingInfo[] {
+				BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView((@NonNull VulkanBuffer) uniformBuffer, 0, 1, 64 * 2), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
+					ShaderVariable.PROJECTION,
+					ShaderVariable.MODEL
+				)),
+				BindingInfo.ofTexture(frameIndex < textureManager.getAtlasSize() ? textureManager.getAtlas(frameIndex).getTexture() : textureManager.getTexture(frameIndex - textureManager.getAtlasSize()), TextureSampler.ofNearest(lazyFrameBuffer.get().getDevice()), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.ATLAS)
+			};
+		}
+		return new BindingInfo[] {
+			BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView((@NonNull VulkanBuffer) uniformBuffer, 0, 1, 64 * 2), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
+				ShaderVariable.PROJECTION,
+				ShaderVariable.MODEL
+			))
+		};
 	}
 	
 	@Override
@@ -308,7 +325,8 @@ public class WidgetTextureScreen implements FrameScreen {
 	@Override
 	public void clear()
 	{
-		setState(NEW | DIRTY_MASK);
+		removeState(~NEW);
+		setState(DIRTY_MASK);
 	}
 	
 	@Override

@@ -144,6 +144,9 @@ public class KirryVulkan extends KirryCore {
 			{
 				System.err.println(e.getLocalizedMessage());
 			}
+			catch (NoClassDefFoundError _) {
+				
+			}
 		}
 		try
 		{

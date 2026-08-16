@@ -848,6 +848,7 @@ public class VulkanWindow extends Window implements VulkanDebug {
 			{
 				screen.init(memoryManager, commandBuffer);
 			}
+			if (!screen.isInitialized()) return PresentationResult.SUCCESS;
 			screen.update(commandBuffer, elapsed);
 			
 			Matrix4f matrix = getScreenMatrix();
@@ -1240,7 +1241,7 @@ public class VulkanWindow extends Window implements VulkanDebug {
 			swapchain.close();
 			for (CommandBuffer commandBuffer : commandBuffers) commandBuffer.close();
 			if (depthTexture != null) depthTexture.close();
-			memoryManager.close();
+			if (!isCustomMemory) memoryManager.close();
 			
 			surface.close();
 			KirryVulkan.awaitRequestMainThread(() -> GLFW.glfwDestroyWindow(id));
