@@ -37,12 +37,12 @@ dependencies {
 sourceSets {
 	debug {
 		java {
-		//	if (debugOn) exclude("**")
+			
 		}
 	}
 	release {
 		java {
-			if (debugOn) exclude("**")
+			
 		}
 	}
 	main {
@@ -92,6 +92,16 @@ task debugJar(type: Jar)
 {
 	archiveBaseName = "${archiveBaseName.get()}-debug"
 	from(sourceSets.debug.output)
+	from(sourceSets.main.resources)
+}
+
+task testJar(type: Jar)
+{
+	archiveBaseName = "${archiveBaseName.get()}-debug"
+	archiveClassifier = "test"
+	from(sourceSets.debug.output)
+	from(sourceSets.test.output)
+	from(sourceSets.main.resources)
 }
 
 task releaseJavadoc(type: Javadoc) {
@@ -118,6 +128,10 @@ tasks.compileReleaseJava {
 	source(sourceSets.main.java)
 }
 
+tasks.compileJava {
+	source(sourceSets.release.java)
+}
+
 task releaseJar(type: Jar)
 {
 	archiveBaseName = "${archiveBaseName.get()}-release"
@@ -131,6 +145,7 @@ publishing {
 			artifact(debugJar)
 			artifact(javadocDebugJar)
 			artifact(sourcesDebugJar)
+			artifact(testJar)
 		}
 		release(MavenPublication) {
 			artifactId = "$project.name-release"

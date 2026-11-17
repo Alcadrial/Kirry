@@ -30,11 +30,10 @@ import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
-import com.alcadrial.kirry.core.util.Test;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.FrameBuffer;
-import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.KirryVulkan;
+import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.buffer.writer.DeferredBufferWriter;
@@ -60,7 +59,6 @@ import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.util.future.VulkanFuture;
 import com.alcadrial.kirry.render.window.VulkanWindow;
 
-@Test
 public class Test2dPanel extends RenderTest {
 	
 	private static final String SHADER = "shaders/shader";
@@ -191,7 +189,7 @@ public class Test2dPanel extends RenderTest {
 		
 		long seed = Double.doubleToRawLongBits(Math.random());
 		
-		VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getComputeQueue(), commandBuffer -> {
+		VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
 			
 			try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, indexBuffer))
 			{
@@ -219,13 +217,13 @@ public class Test2dPanel extends RenderTest {
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 						.descriptorCount(1)
-						)
+					)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 						.descriptorCount(1)
-						)
+					)
 					.rewind()
-					);
+				);
 			
 			VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
@@ -239,7 +237,7 @@ public class Test2dPanel extends RenderTest {
 						.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
 						.pImmutableSamplers(null))
 					.rewind()
-					);
+				);
 			
 			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
 			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
@@ -253,7 +251,7 @@ public class Test2dPanel extends RenderTest {
 					.addBinding(0, 28, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
 					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
 					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_4, 12)
-					)
+				)
 				.build();
 			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
 			
@@ -263,8 +261,9 @@ public class Test2dPanel extends RenderTest {
 				.buffersCount(1)
 				.bindings(
 					BindingInfo.ofUniform(uniformBuffer, VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(ShaderVariable.TRANSFORMATION))
-					)
+				)
 				.build();
+			renderer.updateAllDescriptorSets();
 		}
 		
 		renderer.setBuffer(0, vertexBuffer);
@@ -302,7 +301,7 @@ public class Test2dPanel extends RenderTest {
 				isModifiedMatrix = false;
 				float scale = (float) Math.min(window.getWidth(), window.getHeight()) / SIZE;
 				Matrix4f transformation = new Matrix4f().scale(Vector3f.of(scale / window.getWidth(), -scale / window.getHeight(), 0.02F));
-				Matrix4f model = new Matrix4f().translateTo(panelPos);
+				Matrix4f model = new Matrix4f().translateXTo(panelPos.x()).translateYTo(panelPos.y());
 				transformation.multiply(model);
 				renderer.useBufferLayoutWriter(0, 0, writer -> {
 					writer.set(ShaderVariable.TRANSFORMATION, transformation);

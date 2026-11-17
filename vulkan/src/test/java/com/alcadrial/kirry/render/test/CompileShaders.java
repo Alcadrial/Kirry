@@ -38,7 +38,7 @@ public class CompileShaders extends RenderTest {
 		List<Pair<Path, IOException>> failures = new LinkedList<>();
 		try
 		{
-			Files.walkFileTree(new File("src/main/resources").toPath(), new FileVisitor<Path>() {
+			FileVisitor<Path> visitor = new FileVisitor<>() {
 
 				@Override
 				public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException
@@ -54,7 +54,7 @@ public class CompileShaders extends RenderTest {
 						File file = path.toFile();
 						String name = file.getName();
 						Shader shader = new Shader(path);
-						ShaderType type = ShaderType.fromExtension(name.contains(".") ? name.substring(name.indexOf('.') + 1) : name);
+						ShaderType type = ShaderType.fromExtension(name.contains(".") ? name.substring(name.lastIndexOf('.') + 1) : name);
 						shader.compile(type);
 						if (!shader.isCompilationSuccessfull())
 						{
@@ -77,7 +77,9 @@ public class CompileShaders extends RenderTest {
 				{
 					return FileVisitResult.CONTINUE;
 				}
-			});
+			};
+			Files.walkFileTree(new File("src/test/resources").toPath(), visitor);
+			Files.walkFileTree(new File("src/main/resources").toPath(), visitor);
 		}
 		catch (IOException e)
 		{

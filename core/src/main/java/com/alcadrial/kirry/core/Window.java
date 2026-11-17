@@ -5,6 +5,7 @@ import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.glfw.GLFWImage.Buffer;
 
 import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector2ir;
 import com.alcadrial.kirry.core.cursor.CursorInputMode;
 import com.alcadrial.kirry.core.cursor.ICursor;
 import com.alcadrial.kirry.core.util.Image;
@@ -18,7 +19,7 @@ public class Window {
 	public Window()
 	{
 		cursorInputMode = CursorInputMode.NORMAL;
-		mousePos = Vector2i.origin();
+		mousePos = Vector2i.of();
 	}
 	
 	public boolean shouldClose()
@@ -141,11 +142,11 @@ public class Window {
 		GLFW.glfwSetInputMode(id, GLFW.GLFW_LOCK_KEY_MODS, value ? 1 : 0);
 	}
 	
-	public final void setMousePos(Vector2i mousePos)
+	public final void setMousePos(Vector2ir mousePos)
 	{
 		if (!this.mousePos.equals(mousePos))
 		{
-			this.mousePos = mousePos;
+			this.mousePos.setAll(mousePos);
 			GLFW.glfwSetCursorPos(id, mousePos.x(), mousePos.y());
 		}
 	}

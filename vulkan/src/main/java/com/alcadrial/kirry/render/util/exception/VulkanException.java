@@ -49,7 +49,7 @@ public class VulkanException extends Exception {
 	public VulkanException(int vkError, String message, Throwable cause)
 	{
 		super(message, cause);
-		vkError = VK10.VK_ERROR_UNKNOWN;
+		this.vkError = VK10.VK_ERROR_UNKNOWN;
 	}
 	
 	public int getVkError()

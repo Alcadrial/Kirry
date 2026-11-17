@@ -142,12 +142,12 @@ public class FileManager implements ResourceManager {
 	
 	private record ResourceAction<R extends Resource>(R resource, Consumer<R> action) {}
 	
-	private record PathRegistration(BiConsumer<Path, Kind<?>> action, WatchKey[] keyReference) {}
+	private record PathRegistration(Path path, BiConsumer<Path, Kind<?>> action, WatchKey[] keyReference) {}
 	
 	private FileSystem fileSystem;
 	private Path root;
-	private TreeMap<Path, PathRegistration> registeredPaths;
-	private TreeMap<Path, TreeMap<String, ResourceAction<?>>> registeredResourcePaths;
+	private TreeMap<String, PathRegistration> registeredPaths;
+	private TreeMap<String, TreeMap<String, ResourceAction<?>>> registeredResourcePaths;
 	private FastList<BiFunction<Path, ResourceManager, ? extends Resource>> registeredResourceTypes;
 	private @Nullable WatchService watchService;
 	private ScheduledExecutorService watcherService;
@@ -198,9 +198,9 @@ public class FileManager implements ResourceManager {
 	{
 		if (watchService != null) return;
 		WatchService watchService = fileSystem.newWatchService();
-		for (Path directory : registeredPaths.keySet())
+		for (PathRegistration r : registeredPaths.values())
 		{
-			directory.register(watchService,
+			r.path.register(watchService,
 				StandardWatchEventKinds.ENTRY_CREATE,
 				StandardWatchEventKinds.ENTRY_MODIFY,
 				StandardWatchEventKinds.ENTRY_DELETE,
@@ -238,7 +238,7 @@ public class FileManager implements ResourceManager {
 				StandardWatchEventKinds.ENTRY_DELETE,
 				StandardWatchEventKinds.OVERFLOW);
 		}
-		registeredPaths.put(path, new PathRegistration(action, new WatchKey[] {watchKey}));
+		registeredPaths.put(path.toString(), new PathRegistration(path, action, new WatchKey[] {watchKey}));
 	}
 	
 	@Override
@@ -246,7 +246,7 @@ public class FileManager implements ResourceManager {
 	{
 		Path path = resource.getPath();
 		Path parent = path.getParent();
-		registeredResourcePaths.computeIfAbsent(parent, _ -> new TreeMap<>()).put(path.getFileName().toString(), new ResourceAction<>(resource, action));
+		registeredResourcePaths.computeIfAbsent(parent.toString(), _ -> new TreeMap<>()).put(path.getFileName().toString(), new ResourceAction<>(resource, action));
 		registerForChanges(parent, (_, _) -> {});
 	}
 	
@@ -259,7 +259,7 @@ public class FileManager implements ResourceManager {
 	@Override
 	public void unregisterForChanges(Path path) throws IOException
 	{
-		PathRegistration registration = registeredPaths.remove(path);
+		PathRegistration registration = registeredPaths.remove(path.toString());
 		if (registration != null && registration.keyReference[0] != null) registration.keyReference[0].cancel();
 	}
 	
@@ -280,7 +280,7 @@ public class FileManager implements ResourceManager {
 					if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE || kind == StandardWatchEventKinds.ENTRY_MODIFY || event.kind() == StandardWatchEventKinds.ENTRY_DELETE || event.kind() == StandardWatchEventKinds.OVERFLOW)
 					{
 						Path path = keyPath.resolve((@NonNull Path) event.context());
-						PathRegistration registration = registeredPaths.get(keyPath);
+						PathRegistration registration = registeredPaths.get(keyPath.toString());
 						if (registration != null)
 						{
 							try
@@ -293,7 +293,7 @@ public class FileManager implements ResourceManager {
 								e.printStackTrace();
 							}
 						}
-						TreeMap<String, ResourceAction<?>> tree = registeredResourcePaths.get(keyPath);
+						TreeMap<String, ResourceAction<?>> tree = registeredResourcePaths.get(keyPath.toString());
 						if (tree == null) continue;
 						ResourceAction<?> resourceAction = tree.get(path.getFileName().toString());
 						if (resourceAction != null) handleResourceUpdate(resourceAction);
@@ -316,5 +316,14 @@ public class FileManager implements ResourceManager {
 		{
 			e.printStackTrace();
 		}
+	}
+	
+	@Override
+	public void close() throws IOException
+	{
+		fileSystem.close();
+		registeredPaths.clear();
+		registeredResourcePaths.clear();
+		registeredResourceTypes.clear();
 	}
 }

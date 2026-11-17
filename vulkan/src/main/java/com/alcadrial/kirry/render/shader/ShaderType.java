@@ -14,6 +14,8 @@ public enum ShaderType {
 	COMPUTE("comp", VK10.VK_SHADER_STAGE_COMPUTE_BIT),
 	UNKNOWN("", 0);
 	
+	private static final ShaderType[] KNOWN_TYPES = new ShaderType[] {VERTEX, TESS_CONTROL, TESS_EVALUATION, GEOMETRY, FRAGMENT, COMPUTE};
+	
 	public static ShaderType fromPath(Path path)
 	{
 		String name = path.getFileName().toString();
@@ -24,6 +26,11 @@ public enum ShaderType {
 	{
 		for (int i = 5; i >= 0; i--) if (values()[i].extension.equals(extension)) return values()[i];
 		return UNKNOWN;
+	}
+	
+	public static ShaderType[] knownTypes()
+	{
+		return KNOWN_TYPES;
 	}
 	
 	private String extension;
@@ -43,5 +50,10 @@ public enum ShaderType {
 	public int getStageBit()
 	{
 		return stageBit;
+	}
+	
+	public boolean isKnown()
+	{
+		return this != UNKNOWN;
 	}
 }

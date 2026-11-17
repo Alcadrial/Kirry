@@ -1,14 +1,24 @@
 package com.alcadrial.kirry.render.test;
 
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 
-import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.KirryVulkan;
+import com.alcadrial.kirry.render.LinearComputer;
+import com.alcadrial.kirry.render.PhysicalDevice;
+import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.font.Font;
+import com.alcadrial.kirry.render.memory.MemoryManager;
+import com.alcadrial.kirry.render.resources.FileManager;
+import com.alcadrial.kirry.render.resources.ShaderResource;
+import com.alcadrial.kirry.render.shader.PreparedShader;
+import com.alcadrial.kirry.render.test.util.RecompileShaderResource;
 import com.alcadrial.kirry.render.test.util.RenderTest;
 import com.alcadrial.kirry.render.test.util.TestProperties;
 import com.alcadrial.kirry.render.texture.Texture;
+import com.alcadrial.kirry.render.texture.TextureSampler;
 import com.alcadrial.kirry.render.util.exception.FreeTypeException;
+import com.alcadrial.kirry.render.util.future.VulkanFuture;
 import com.alcadrial.kirry.render.window.VulkanWindow;
 
 public class FontTest extends RenderTest {
@@ -17,11 +27,27 @@ public class FontTest extends RenderTest {
 	{
 		try
 		{
+			fileManager = FileManager.of(
+				"src/test/resources",
+				"src/main/resources",
+				FileManager.loaderJarResourceUri(ASSETS)
+			);
+			fileManager.registerResourceType(ShaderResource.TYPE, RecompileShaderResource::new);
+			fileManager.startWatchingResources();
+			
+			ShaderResource linearShaderResource = fileManager.getResource(LinearComputer.COMPUTE4X4_SHADER_PATHNAME, ShaderResource.TYPE);
+			
 			TestProperties.init(args);
 			KirryVulkan.enableDebug();
 			RenderTest.initKirry().multiThreading(false).useFont(true).initialize();
 			
+			VulkanFuture<PreparedShader> computeShaderFuture = VulkanFuture.submitAsync(() -> {
+				linearShaderResource.load().join();
+				return linearShaderResource.getShader();
+			});
+			
 			KirryVulkan.setWindowHint(GLFW.GLFW_TRANSPARENT_FRAMEBUFFER, true);
+			KirryVulkan.setWindowHint(GLFW.GLFW_VISIBLE, false);
 			VulkanWindow window = VulkanWindow.defaultBuilder()
 				.physicalDeviceStrategy(PhysicalDevice.Strategy.atIndexOrElse(TestProperties.DEVICE.getValue(), PhysicalDevice.Strategy.findBest()))
 				.deviceFeatures(f -> f
@@ -31,8 +57,10 @@ public class FontTest extends RenderTest {
 				.build(128, 128, "Test");
 			registerDragging();
 			
-			Font font = new Font(window.getDevice(), getPath("fonts/ITCBLKAD.TTF"), 0);
-			//Font font = new Font(window.getDevice(), getFile("fonts/ARIALI.TTF"), 0);
+			MemoryManager memoryManager = MemoryManager.getDefault(window.getDevice());
+			
+			Font font = new Font(window.getDevice(), getPath(FONTS + "ITCBLKAD.TTF"), 0, 0, memoryManager, computeShaderFuture.get(), VulkanBuffer.ofUniforms(window.getDevice(), 128));
+			//Font font = new Font(window.getDevice(), getPath(FONTS + "ARIALI.TTF"), 0, memoryManager);
 			System.out.println(font);
 			font.setSize(64);
 			println("Indexing", () -> {
@@ -48,17 +76,17 @@ public class FontTest extends RenderTest {
 				{
 					try
 					{
-						System.out.println(font.getCharRegion(c));
+						System.out.println(font.getData(c));
 					}
 					catch (FreeTypeException e)
 					{
-						System.out.println("Failed to load char:" + c);
+						System.out.println("Failed to load char: " + c);
 					}
 				}
 				font.getAtlas().tryFit();
 			}, TestProperties.PRINT_LOADING_TIMES);
 			println("Draw", () -> {
-				window.getDevice().configureAndSubmitSingleUseCommandBuffer(window.getDevice().getGraphicsQueue(), font.getAtlas()::draw);
+				window.getDevice().configureAndSubmitSingleUseCommandBuffer(window.getDevice().getGraphicsQueue(), font::prepare).join();
 			}, TestProperties.PRINT_LOADING_TIMES);
 			System.out.println(font.getAtlas());
 			Texture texture = font.getAtlas().getTexture();
@@ -71,14 +99,27 @@ public class FontTest extends RenderTest {
 			window.pollEvents();
 			window.getSurface().reinit();
 			
-			RenderTest.renderTexture(window, texture, 1);
+			RenderParams params = new RenderParams(font.getAtlas().getTexture(), 1, TextureSampler.ofLinear(window.getDevice()), SHADERS + "shader4");
+			
+			RenderTest.renderTexture(window, params);
+			
+			boolean[] rerender = new boolean[] {false};
+			
+			window.setCallback((GLFWWindowRefreshCallbackI) _ -> {
+				rerender[0] = true;
+			});
 			
 			while (!window.shouldClose())
 			{
-				Thread.sleep(50);
-				window.pollEvents();
+				if (rerender[0])
+				{
+					RenderTest.renderTexture(window, params);
+					rerender[0] = false;
+				}
+				window.waitEvents();
 			}
 			font.close();
+			memoryManager.close();
 		}
 		catch (Exception e)
 		{

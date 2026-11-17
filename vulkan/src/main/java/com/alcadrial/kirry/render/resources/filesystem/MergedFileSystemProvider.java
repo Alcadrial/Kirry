@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessMode;
@@ -19,6 +20,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.ProviderMismatchException;
+import java.nio.file.ProviderNotFoundException;
 import java.nio.file.ReadOnlyFileSystemException;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -79,7 +81,53 @@ public class MergedFileSystemProvider extends FileSystemProvider {
 						case Path source -> sources.add(source);
 						case File source -> sources.add(source.toPath());
 						case String source -> sources.add(Path.of(source));
-						case URI source -> sources.add(Path.of(source));
+						case URI source -> {
+							
+							String scheme = source.getScheme();
+							if (scheme == null)
+							{
+								throw new IllegalArgumentException(source.toString());
+							}
+							boolean found = false;
+							for (FileSystemProvider provider : FileSystemProvider.installedProviders())
+							{
+								if (scheme.equalsIgnoreCase(provider.getScheme()))
+								{
+									try
+									{
+										provider.getFileSystem(source);
+									}
+									catch (FileSystemNotFoundException _)
+									{
+										provider.newFileSystem(source, Map.of());
+									}
+									catch (IllegalArgumentException _)
+									{
+										try
+										{
+											URI uri0 = new URI(scheme, "/", null);
+											try
+											{
+												provider.getFileSystem(uri0);
+											}
+											catch (FileSystemNotFoundException _)
+											{
+												provider.newFileSystem(uri0, Map.of());
+											}
+										}
+										catch (URISyntaxException e)
+										{
+											throw new IllegalStateException(e);
+										}
+									}
+									sources.add(Path.of(source));
+									found = true;
+									break;
+								}
+							}
+							if (!found) throw new ProviderNotFoundException("Provider \"" + scheme + "\" not found");
+							
+						}
 						default -> throw new IllegalArgumentException("Invalid path: " + object);
 					}
 				}
@@ -120,7 +168,7 @@ public class MergedFileSystemProvider extends FileSystemProvider {
 			StandardOpenOption.CREATE_NEW,
 			StandardOpenOption.CREATE,
 			StandardOpenOption.DELETE_ON_CLOSE
-		).castToSet()).isEmpty()) throw new UnsupportedOperationException("TODO"); 
+		).castToSet()).isEmpty()) throw new UnsupportedOperationException("TODO");
 		return forwardToHighestFile(path, sourcePath -> Files.newByteChannel(sourcePath, options, attrs));
 	}
 	
@@ -132,7 +180,7 @@ public class MergedFileSystemProvider extends FileSystemProvider {
 			StandardOpenOption.CREATE_NEW,
 			StandardOpenOption.CREATE,
 			StandardOpenOption.DELETE_ON_CLOSE
-		).castToSet()).isEmpty()) throw new UnsupportedOperationException("TODO"); 
+		).castToSet()).isEmpty()) throw new UnsupportedOperationException("TODO");
 		return forwardToHighestFile(path, sourcePath -> FileChannel.open(sourcePath, options, attrs));
 	}
 	

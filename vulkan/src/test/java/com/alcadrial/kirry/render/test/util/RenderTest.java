@@ -14,10 +14,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
+import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWWindowRefreshCallbackI;
 import org.lwjgl.system.MemoryStack;
@@ -30,22 +32,28 @@ import org.lwjgl.vulkan.VkDescriptorPoolSize;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo;
 import org.lwjgl.vulkan.VkExtent2D;
+import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
-import com.alcadrial.kector.angle.AngleUnit;
+import com.alcadrial.kector.AngleUnit;
+import com.alcadrial.kector.Math;
 import com.alcadrial.kector.annotation.Angle;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector2i;
 import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3fr;
+import com.alcadrial.kector.vector.axis.Axisf;
+import com.alcadrial.kirry.core.cursor.CursorInputMode;
 import com.alcadrial.kirry.render.Debug;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.FrameBuffer;
 import com.alcadrial.kirry.render.KirryProperties;
 import com.alcadrial.kirry.render.KirryVulkan;
 import com.alcadrial.kirry.render.KirryVulkan.Builder;
+import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.buffer.writer.DeferredBufferWriter;
@@ -95,6 +103,16 @@ public class RenderTest {
 	
 	protected static FileManager fileManager;
 	
+	public static final Vector3fr SOUTH = Axisf.Z;
+	public static final Vector3fr NORTH = Axisf.NEGATIVE_Z;
+	public static final Vector3fr EAST = Axisf.X;
+	public static final Vector3fr WEST = Axisf.NEGATIVE_X;
+	public static final Vector3fr UP = Axisf.Y;
+	public static final Vector3fr DOWN = Axisf.NEGATIVE_Y;
+	
+	protected static boolean rebuildProjectionMatrix;
+	protected static boolean rebuildViewMatrix;
+	
 	public interface TestRunnable {
 		
 		void run() throws VulkanException, InterruptedException;
@@ -132,6 +150,23 @@ public class RenderTest {
 						Debug.error("GLFW Error " + e + ": " + stack.pointers(m).getStringUTF8());
 					}
 				});
+			}
+			if (TestProperties.LIST_DEVICES.getValue())
+			{
+				int i = 0;
+				for (PhysicalDevice physicalDevice : KirryVulkan.getVulkan().getAvailablePhysicalDevices())
+				{
+					VkPhysicalDeviceProperties properties = physicalDevice.getProperties();
+					System.out.println("Device " + i++ + ":");
+					System.out.println("\tName: " + properties.deviceNameString());
+					System.out.println("\tType: " + PhysicalDevice.typeToString(properties.deviceType()));
+					System.out.println("\tId: " + properties.deviceID());
+					
+					int l = properties.apiVersion();
+					System.out.println("\tapiVersion: " + ((l >>> 22) & 0x7F) + "." + ((l >>> 12) & 0x3FF) + "." + (l & 0xFFF) + "." + ((l >>> 29) & 0x8));
+					l = properties.driverVersion();
+					System.out.println("\tdriverVersion: " + ((l >>> 22) & 0x3FF) + "." + ((l >>> 12) & 0x3FF) + "." + (l & 0xFFF));
+				}
 			}
 			
 			Thread mainThread = null;
@@ -408,7 +443,7 @@ public class RenderTest {
 					frame[0] = 0;
 					highMilestone[0] += (enlapsed - highMilestone[0] + firstHighMilestone) / firstHighMilestone * firstHighMilestone;
 				}
-				println("Frame " + frame, () -> action.run(enlapsed, enlapsedFrame), TestProperties.PRINT_FRAME_TIMES);
+				println("Frame " + frame[0], () -> action.run(enlapsed, enlapsedFrame), TestProperties.PRINT_FRAME_TIMES);
 				frame[0]++;
 				lastCurrent[0] = current;
 				if (window.shouldClose()) window.postEmptyEvent();
@@ -482,7 +517,7 @@ public class RenderTest {
 		});
 	}
 	
-	public static void registerRotating(BiConsumer<@Angle(AngleUnit.RADIANS) Float, @Angle(AngleUnit.RADIANS) Float> callback)
+	public static void registerRotating(BiConsumer<@Angle Float, @Angle Float> callback)
 	{
 		VulkanWindow window = KirryVulkan.getVulkan().getWindow();
 		Vector2f oldMousePos = Vector2f.of(0, 0);
@@ -513,6 +548,181 @@ public class RenderTest {
 		});
 	}
 	
+	public static SpatialMovementData registerSpatialMovement(VulkanWindow window, float yRotationSensivity, float xRotationSensivity)
+	{
+		return registerSpatialMovement(window, yRotationSensivity, xRotationSensivity, null);
+	}
+	
+	public static SpatialMovementData registerSpatialMovement(VulkanWindow window, float yRotationSensivity, float xRotationSensivity, @Nullable GLFWKeyCallbackI callback)
+	{
+		SpatialMovementData data = new SpatialMovementData(Vector3f.of(0, 0, 1), Vector3f.of(0, 0, 0), 0, 0, false);
+		registerSpatialMovement(window, yRotationSensivity, xRotationSensivity, callback, () -> data);
+		return data;
+	}
+	
+	/**
+	 * <pre><code>
+	 * x-axis mouse movement -> yRotation
+	 * y-axis mouse movement -> xRotation
+	 * 
+	 * Key W -> movement += -Z
+	 * Key A -> movement += -X
+	 * Key S -> movement += Z
+	 * Key D -> movement += X
+	 * Key LEFT_SHIFT/LEFT_CONTROL -> movement += -Y
+	 * Key SPACE -> movement += Y
+	 * Key Q -> speed *= 1.1
+	 * Key Z -> speed /= 1.1
+	 * 
+	 * Final movement = normalized((cos(yRotation) * movement.x() - sin(yRotation) * movement.z(), movement.y(), sin(yRotation) * movement.x() + cos(yRotation) * movement.z())) * speed
+	 * </code></pre>
+	 * 
+	 * @param window
+	 * @param yRotationSensivity
+	 * @param xRotationSensivity
+	 * @param callback
+	 * @param data
+	 */
+	public static void registerSpatialMovement(VulkanWindow window, float yRotationSensivity, float xRotationSensivity, @Nullable GLFWKeyCallbackI callback, Supplier<SpatialMovementData> data)
+	{
+		Vector2f oldMousePos = Vector2f.of(0, 0);
+		window.setCallback((GLFWCursorPosCallbackI) (_, x, y) -> {
+			SpatialMovementData d = data.get();
+			if (d.isCameraUnlocked)
+			{
+				d.xRotation += (y - oldMousePos.y()) * yRotationSensivity;
+				if (d.xRotation > AngleUnit.RADIANS.fromDegrees(90)) d.xRotation = AngleUnit.RADIANS.fromDegrees(90);
+				else if (d.xRotation < AngleUnit.RADIANS.fromDegrees(-90)) d.xRotation = -AngleUnit.RADIANS.fromDegrees(90);
+				d.yRotation += (x - oldMousePos.x()) * xRotationSensivity;
+				RenderTest.rebuildViewMatrix = true;
+			}
+			window.getMousePos(oldMousePos);
+		});
+		
+		window.setCallback((GLFWKeyCallbackI) (w, k, s, a, m) -> {
+			SpatialMovementData d = data.get();
+			if (d.isCameraUnlocked)
+			{
+				Vector3fr v = switch (k)
+				{
+					case GLFW.GLFW_KEY_W -> NORTH;
+					case GLFW.GLFW_KEY_A -> WEST;
+					case GLFW.GLFW_KEY_S -> SOUTH;
+					case GLFW.GLFW_KEY_D -> EAST;
+					case GLFW.GLFW_KEY_SPACE -> UP;
+					case GLFW.GLFW_KEY_LEFT_SHIFT, GLFW.GLFW_KEY_LEFT_CONTROL -> DOWN;
+					default -> Vector3fr.of();
+				};
+				
+				switch (a)
+				{
+					case GLFW.GLFW_PRESS -> d.movement.add(v);
+					case GLFW.GLFW_RELEASE -> d.movement.subtract(v);
+				}
+			}
+			
+			if (a == GLFW.GLFW_RELEASE)
+			{
+				switch (k)
+				{
+					case GLFW.GLFW_KEY_U -> {
+						d.isCameraUnlocked = !d.isCameraUnlocked;
+						window.setCursorInputMode(d.isCameraUnlocked ? CursorInputMode.DISABLED : CursorInputMode.NORMAL);
+					}
+					case GLFW.GLFW_KEY_P -> {
+						d.position.setAll(0, 0, 0);
+						RenderTest.rebuildViewMatrix = true;
+					}
+				}
+			}
+			if (a == GLFW.GLFW_REPEAT || a == GLFW.GLFW_PRESS)
+			{
+				switch (k)
+				{
+					case GLFW.GLFW_KEY_Y -> {
+						SpatialMovementData dd = data.get();
+						if (dd.isCameraUnlocked)
+						{
+							dd.xRotation += (0 - oldMousePos.y()) * yRotationSensivity;
+							if (dd.xRotation > AngleUnit.RADIANS.fromDegrees(90)) dd.xRotation = AngleUnit.RADIANS.fromDegrees(90);
+							else if (dd.xRotation < AngleUnit.RADIANS.fromDegrees(-90)) dd.xRotation = -AngleUnit.RADIANS.fromDegrees(90);
+							dd.yRotation += (0.1F - oldMousePos.x()) * xRotationSensivity;
+							RenderTest.rebuildViewMatrix = true;
+						}
+						window.getMousePos(oldMousePos);
+					}
+					case GLFW.GLFW_KEY_H -> {
+						SpatialMovementData dd = data.get();
+						if (dd.isCameraUnlocked)
+						{
+							dd.xRotation += (0.1F - oldMousePos.y()) * yRotationSensivity;
+							if (dd.xRotation > AngleUnit.RADIANS.fromDegrees(90)) dd.xRotation = AngleUnit.RADIANS.fromDegrees(90);
+							else if (dd.xRotation < AngleUnit.RADIANS.fromDegrees(-90)) dd.xRotation = -AngleUnit.RADIANS.fromDegrees(90);
+							dd.yRotation += (0 - oldMousePos.x()) * xRotationSensivity;
+							RenderTest.rebuildViewMatrix = true;
+						}
+						window.getMousePos(oldMousePos);
+					}
+					case GLFW.GLFW_KEY_T -> {
+						SpatialMovementData dd = data.get();
+						if (dd.isCameraUnlocked)
+						{
+							dd.xRotation += (0 - oldMousePos.y()) * yRotationSensivity;
+							if (dd.xRotation > AngleUnit.RADIANS.fromDegrees(90)) dd.xRotation = AngleUnit.RADIANS.fromDegrees(90);
+							else if (dd.xRotation < AngleUnit.RADIANS.fromDegrees(-90)) dd.xRotation = -AngleUnit.RADIANS.fromDegrees(90);
+							dd.yRotation += (-0.1F - oldMousePos.x()) * xRotationSensivity;
+							RenderTest.rebuildViewMatrix = true;
+						}
+						window.getMousePos(oldMousePos);
+					}
+					case GLFW.GLFW_KEY_G -> {
+						SpatialMovementData dd = data.get();
+						if (dd.isCameraUnlocked)
+						{
+							dd.xRotation += (-0.1F - oldMousePos.y()) * yRotationSensivity;
+							if (dd.xRotation > AngleUnit.RADIANS.fromDegrees(90)) dd.xRotation = AngleUnit.RADIANS.fromDegrees(90);
+							else if (dd.xRotation < AngleUnit.RADIANS.fromDegrees(-90)) dd.xRotation = -AngleUnit.RADIANS.fromDegrees(90);
+							dd.yRotation += (0 - oldMousePos.x()) * xRotationSensivity;
+							RenderTest.rebuildViewMatrix = true;
+						}
+						window.getMousePos(oldMousePos);
+					}
+				}
+			}
+			if (a == GLFW.GLFW_REPEAT)
+			{
+				switch (k)
+				{
+					case GLFW.GLFW_KEY_Q -> {
+						d.speed *= 1.1F;
+					}
+					case GLFW.GLFW_KEY_Z -> {
+						d.speed /= 1.1F;
+					}
+				}
+			}
+			if (callback != null) callback.invoke(w, k, s, a, m);
+		});
+	}
+	
+	public static boolean calculatePosition(SpatialMovementData data, float enlapsed)
+	{
+		if (!data.movement.equals(Vector3fr.of()))
+		{
+			float sin = Math.sin(data.yRotation);
+			float cos = Math.cos(data.yRotation);
+			Vector3f movement = Vector3f.of(0, 0, 0);
+			movement.add(cos * data.movement.x(), 0, sin * data.movement.x());
+			movement.add(-sin * data.movement.z(), 0, cos * data.movement.z());
+			movement.add(0, data.movement.y(), 0);
+			
+			data.position.add(movement.normalize().multiplyAll(enlapsed / 1000000000F * data.speed));
+			RenderTest.rebuildViewMatrix = true;
+			return true;
+		}
+		return false;
+	}
+	
 	public static Builder initKirry() throws VulkanException
 	{
 		return KirryVulkan.create("Test", new Version(0, 0, 1, 0))
@@ -528,34 +738,34 @@ public class RenderTest {
 		VkDebugUtilsMessengerCallbackDataEXT callbackData = VkDebugUtilsMessengerCallbackDataEXT.create(callbackDataId);
 		
 		int i = switch (messageSeverity)
-			{
-				case 0x0001 -> 1;
-				case 0x0010 -> 2;
-				case 0x0100 -> 3;
-				case 0x1000 -> 4;
-				default -> 0;
-			};
-			int j = switch (messageType)
-				{
-					case 0b001 -> 1;
-					case 0b010 -> 2;
-					case 0b100 -> 3;
-					default -> 0;
-				};
-				if (messageSeverity == EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-				{
-					hasValidationError.set(true);
-				}
-				
-				Debug.debug("[" + SEVERITIES[i] + " " + TYPES[j] + "] " + callbackData.pMessageString());
-				
-				return VK10.VK_FALSE;
+		{
+			case 0x0001 -> 1;
+			case 0x0010 -> 2;
+			case 0x0100 -> 3;
+			case 0x1000 -> 4;
+			default -> 0;
+		};
+		int j = switch (messageType)
+		{
+			case 0b001 -> 1;
+			case 0b010 -> 2;
+			case 0b100 -> 3;
+			default -> 0;
+		};
+		if (messageSeverity == EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+		{
+			hasValidationError.set(true);
+		}
+		
+		Debug.debug("[" + SEVERITIES[i] + " " + TYPES[j] + "] " + callbackData.pMessageString());
+		
+		return VK10.VK_FALSE;
 	}
 	
-	public static Texture createDepthTexture(int width, int height) throws VulkanException
+	public static Texture createDepthTexture(CommandBuffer commandBuffer, int width, int height) throws VulkanException
 	{
 		Texture depthTexture = Texture.create2dTexture(KirryVulkan.getVulkan().getDevice(), width, height, VK10.VK_FORMAT_D24_UNORM_S8_UINT, VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
-		depthTexture.changeLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL).join();
+		depthTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 		return depthTexture;
 	}
 	
@@ -606,9 +816,15 @@ public class RenderTest {
 		if (TestProperties.FORCE_RECOMPILE_SHADERS.getValue()) shader.compile(type);
 		else
 		{
-			Path binPath = getPath(pathname + ".bin");
-			if (Files.isReadable(binPath)) shader.loadCompiled(binPath);
-			else shader.compile(type);
+			Path bin = getPath(pathname + ".bin");
+			try
+			{
+				shader.loadCompiled(Files.readAllBytes(bin));
+			}
+			catch (IOException e)
+			{
+				shader.compile(type);
+			}
 		}
 		if (!shader.isCompilationSuccessfull()) throw new IOException("Shader " + shader.getPath() + " has errors");
 		return new PreparedShader(shader, type);
@@ -673,7 +889,7 @@ public class RenderTest {
 		return (double) resolution.convert(endTime - startTime, localUnit) / resolution.convert(1, unit);
 	}
 	
-	public static Matrix4f buildFullSceneMatrix(VulkanWindow window, @Angle(AngleUnit.RADIANS) float fieldOfView)
+	public static Matrix4f buildFullSceneMatrix(VulkanWindow window, @Angle float fieldOfView)
 	{
 		float sceneRay = 1;//ray of the sphere containing the entire scene after applying the model matrix
 		float aspectRatio = (float) window.getWidth() / window.getHeight();
@@ -697,14 +913,44 @@ public class RenderTest {
 		public abstract void end() throws VulkanException;
 	}
 	
-	public static void renderTexture(VulkanWindow window, Texture texture) throws VulkanException, InterruptedException
-	{
-		renderTexture(window, texture, 1);
+	public static class SpatialMovementData {
+		
+		public Vector3f position;
+		public Vector3f movement;
+		public float speed;
+		public @Angle float xRotation;
+		public @Angle float yRotation;
+		public boolean isCameraUnlocked;
+		
+		public SpatialMovementData(Vector3f position, Vector3f movement, @Angle float xRotation, @Angle float yRotation, boolean isCameraUnlocked)
+		{
+			this.position = position;
+			this.movement = movement;
+			this.xRotation = xRotation;
+			this.yRotation = yRotation;
+			this.isCameraUnlocked = isCameraUnlocked;
+			speed = 1;
+		}
+		
+		public SpatialMovementData(Vector3f position)
+		{
+			this.position = position;
+			movement = Vector3f.of();
+			xRotation = 0;
+			yRotation = 0;
+			isCameraUnlocked = false;
+			speed = 1;
+		}
 	}
 	
-	public static void renderTexture(VulkanWindow window, Texture texture, int samples) throws VulkanException, InterruptedException
+	public record RenderParams(Texture texture, int samples, @Nullable TextureSampler sampler, @Nullable String shader) {}
+	
+	public static void renderTexture(VulkanWindow window, RenderParams params) throws VulkanException, InterruptedException
 	{
-		final String shader = "shaders/shader4";
+		Texture texture = params.texture;
+		int samples = params.samples > 0 ? params.samples : 1;
+		String shader = params.shader != null ? params.shader :"shaders/shader4";
+		TextureSampler sampler = params.sampler != null ? params.sampler : TextureSampler.ofNearest(window.getDevice());
 		
 		VulkanFuture<ShaderProgram> shaderProgramFuture = VulkanFuture.submitAsync(() -> {
 			PreparedShader vertexShader = loadShader(shader + ".vert");
@@ -715,8 +961,11 @@ public class RenderTest {
 		Device device = window.getDevice();
 		
 		VulkanBuffer vertexBuffer = new VulkanBuffer(device, 28 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		vertexBuffer.setName("Vertex buffer");
 		VulkanBuffer indexBuffer = new VulkanBuffer(device, 6 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		vertexBuffer.setName("Index buffer");
 		VulkanBuffer uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 1, 16 * 2 * 4);
+		vertexBuffer.setName("Uniform buffer");
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
@@ -751,13 +1000,13 @@ public class RenderTest {
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 						.descriptorCount(1)
-						)
+					)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 						.descriptorCount(1)
-						)
+					)
 					.rewind()
-					);
+				);
 			
 			VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
@@ -777,7 +1026,7 @@ public class RenderTest {
 						.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
 						.pImmutableSamplers(null))
 					.rewind()
-					);
+				);
 			
 			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
 			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
@@ -791,10 +1040,10 @@ public class RenderTest {
 					.addBinding(0, 20, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
 					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
 					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_2, 12)
-					)
+				)
 				.configureMultisampleState(s -> s
 					.rasterizationSamples(samples)
-					)
+				)
 				.build();
 			ShaderProgram shaderProgram = shaderProgramFuture.get();
 			GraphicsPipeline graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
@@ -805,17 +1054,18 @@ public class RenderTest {
 					BindingInfo.ofUniform(uniformBuffer, VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.TRANSFORMATION,
 						ShaderVariable.MODEL
-						)),
-					BindingInfo.ofTexture(texture, new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
-					)
+					)),
+					BindingInfo.ofTexture(texture, sampler, VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
+				)
 				.build();
+			renderer.updateAllDescriptorSets();
 			
 			renderer.setBuffer(0, vertexBuffer);
 			renderer.setIndexBuffer(indexBuffer);
 			
 			float textureAspectRatio = (float) texture.getHeight() / texture.getWidth();
 			float scale = Math.min(window.getWidth(), window.getHeight());
-			Matrix4f transformation = new Matrix4f().scale(Vector3f.of(scale / window.getWidth() / textureAspectRatio, scale / window.getHeight(), 0.02F));
+			Matrix4f transformation = new Matrix4f().scale(Vector3fr.of(scale / window.getWidth() / textureAspectRatio, scale / window.getHeight(), 0.02F));
 			Matrix4f model = new Matrix4f();
 			
 			renderer.useBufferLayoutWriter(0, 0, writer -> {
@@ -852,17 +1102,22 @@ public class RenderTest {
 			clearValues.get().depthStencil().depth(1).stencil(0);
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
 			
-			commandBuffer.beginRecording();
 			commandBuffer.beginRenderPass(renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
 			renderer.draw(commandBuffer, 0);
 			commandBuffer.endRenderPass();
-			commandBuffer.endRecording();
 			
+			window.show();
 			window.endPresentation(commandBuffer, () -> {
 				graphicsPipeline.close();
 				graphicsPipelineTemplate.close();
 				pipelineLayout.close();
+				vertexBuffer.close();
+				indexBuffer.close();
+				uniformBuffer.close();
 			});
 		}
 	}
+	
+	public static final float XRotationSensivity = 0.005F;
+	public static final float YRotationSensivity = 0.01F;
 }

@@ -1,6 +1,7 @@
 package com.alcadrial.kirry.render;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -13,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VkFormatProperties;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 import org.lwjgl.vulkan.VkPhysicalDeviceLimits;
@@ -21,6 +23,7 @@ import org.lwjgl.vulkan.VkQueueFamilyProperties;
 
 import com.alcadrial.kirry.render.queue.QueueFamily;
 import com.alcadrial.kirry.render.util.AbstractVulkanResource;
+import com.alcadrial.kirry.render.util.exception.VulkanException;
 
 /**
  * A physically connected device usable by vulkan that is necessary
@@ -42,7 +45,8 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 		KirryVulkan.assertLoaded();
 	}
 	
-	private static final int[] BEST_MATCHER_MAP = new int[] {4, 2, 0, 1, 3};
+	private static final String[] TYPE_STRINGS = new String[] {"Other GPU", "Integrated GPU", "Discrete GPU", "Virtual GPU", "CPU"};
+	private static final int[] BEST_MATCHER_MAP = new int[] {0, 2, 4, 3, 1};
 	private static final String[] PREFIXS;
 	private static final String[] PADDED_PREFIXS;
 	
@@ -163,6 +167,11 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 		return PADDED_PREFIXS[Objects.checkIndex(flag, PREFIXS.length)];
 	}
 	
+	public static String typeToString(int type)
+	{
+		return TYPE_STRINGS[Objects.checkIndex(type, TYPE_STRINGS.length)];
+	}
+	
 	private VkPhysicalDeviceProperties properties;
 	private VkPhysicalDeviceFeatures features;
 	private List<LinkedList<QueueFamily>> queues;
@@ -207,6 +216,55 @@ public class PhysicalDevice extends AbstractVulkanResource<VkPhysicalDevice> {
 	public VkPhysicalDeviceLimits getLimits()
 	{
 		return properties.limits();
+	}
+	
+	public VkFormatProperties getFormatProperties(MemoryStack stack, int format)
+	{
+		VkFormatProperties formatProperties = VkFormatProperties.malloc(stack);
+		VK10.vkGetPhysicalDeviceFormatProperties(vk, format, formatProperties);
+		return formatProperties;
+	}
+	
+	public boolean isFormatSupported(int format)
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VkFormatProperties formatProperties = getFormatProperties(stack, format);
+			return formatProperties.bufferFeatures() != 0 || formatProperties.linearTilingFeatures() != 0 || formatProperties.optimalTilingFeatures() != 0;
+		}
+	}
+	
+	public boolean isFormatSupported(int format, int tiling)
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VkFormatProperties formatProperties = getFormatProperties(stack, format);
+			return switch (tiling)
+			{
+				case VK10.VK_IMAGE_TILING_OPTIMAL -> formatProperties.optimalTilingFeatures() != 0;
+				case VK10.VK_IMAGE_TILING_LINEAR -> formatProperties.linearTilingFeatures() != 0;
+				default -> false;
+			};
+		}
+	}
+	
+	public int getSupportedFormat(int[] formats, int tiling) throws VulkanException
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			for (int format : formats)
+			{
+				VkFormatProperties formatProperties = getFormatProperties(stack, format);
+				boolean supported = switch (tiling)
+				{
+					case VK10.VK_IMAGE_TILING_OPTIMAL -> formatProperties.optimalTilingFeatures() != 0;
+					case VK10.VK_IMAGE_TILING_LINEAR -> formatProperties.linearTilingFeatures() != 0;
+					default -> false;
+				};
+				if (supported) return format;
+			}
+			throw new VulkanException("Texture formats not supported: " + Arrays.toString(formats));
+		}
 	}
 	
 	public QueueFamily getGraphicsQueueFamily()

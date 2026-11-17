@@ -6,9 +6,6 @@ import java.util.Random;
 
 import org.jspecify.annotations.NonNull;
 import org.lwjgl.glfw.GLFW;
-import org.lwjgl.glfw.GLFWCursorPosCallbackI;
-import org.lwjgl.glfw.GLFWKeyCallbackI;
-import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWWindowSizeCallbackI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -23,20 +20,17 @@ import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
-import com.alcadrial.kector.Math;
-import com.alcadrial.kector.angle.AngleUnit;
+import com.alcadrial.kector.AngleUnit;
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kector.vector.Vector2f;
 import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3fr;
 import com.alcadrial.kector.vector.Vector3i;
-import com.alcadrial.kector.vector.axis.Axis;
-import com.alcadrial.kirry.core.cursor.CursorInputMode;
 import com.alcadrial.kirry.core.util.color.Color;
 import com.alcadrial.kirry.render.Computer;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.FrameBuffer;
-import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.KirryVulkan;
+import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.buffer.writer.DeferredBufferWriter;
@@ -75,18 +69,8 @@ public class ComputerTest extends RenderTest {
 	
 	private static final int DIM = 8;
 	private static final int PARTICLE_COUNT = 8 * DIM * DIM * DIM;
-	private static final Vector3f MIN_BOUND_VALUE = Vector3f.of(-2, -2, -2);
-	private static final Vector3f MAX_BOUND_VALUE = Vector3f.of(2, 2, 2);
-	
-	private static final Vector3f SOUTH = Axis.Z;
-	private static final Vector3f NORTH = Axis.NEGATIVE_Z;
-	private static final Vector3f EAST = Axis.X;
-	private static final Vector3f WEST = Axis.NEGATIVE_X;
-	private static final Vector3f UP = Axis.Y;
-	private static final Vector3f DOWN = Axis.NEGATIVE_Y;
-	
-	private static final float XRotationSensivity = 0.005F;
-	private static final float YRotationSensivity = 0.01F;
+	private static final Vector3fr MIN_BOUND_VALUE = Vector3fr.of(-2, -2, -2);
+	private static final Vector3fr MAX_BOUND_VALUE = Vector3fr.of(2, 2, 2);
 	
 	private static RenderPass renderPass;
 	private static Renderer renderer;
@@ -95,19 +79,13 @@ public class ComputerTest extends RenderTest {
 	private static VulkanBuffer[] storageBuffers;
 	private static VulkanBuffer uniformBuffer;
 	
-	private static Vector3f cameraPosition;
-	private static Vector3f cameraMovement;
-	private static float cameraXRotation;
-	private static float cameraYRotation;
-	private static boolean isCameraUnlocked;
-	
-	private static boolean rebuildProjectionMatrix;
 	private static PipelineLayout pipelineLayout;
 	private static GraphicsPipelineTemplate graphicsPipelineTemplate;
 	private static GraphicsPipeline graphicsPipeline;
 	private static PipelineLayout computeLayout;
 	private static ComputePipeline computePipeline;
 	
+	private static RenderTest.SpatialMovementData spatialMovementData;
 	private static ShaderVariable particleRadius;
 	private static ShaderVariable minBound;
 	private static ShaderVariable maxBound;
@@ -143,75 +121,10 @@ public class ComputerTest extends RenderTest {
 			.build(1080, 720, "Test");
 		
 		window.setCallback((GLFWWindowSizeCallbackI) (_, _, _) -> {
-			rebuildProjectionMatrix = true;
+			RenderTest.rebuildViewMatrix = true;
 		});
 		
-		cameraPosition = Vector3f.of(0, 0, 1);
-		cameraMovement = Vector3f.of(0, 0, 0);
-		cameraXRotation = 0;
-		cameraYRotation = 0;
-		isCameraUnlocked = false;
-		
-		Vector2f oldMousePos = Vector2f.of(0, 0);
-		boolean[] pressing = new boolean[2];
-		window.setCallback((GLFWMouseButtonCallbackI) (_, button, action, _) -> {
-			if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT)
-			{
-				if (pressing[0] = action == GLFW.GLFW_PRESS)
-				{
-					window.getMousePos(oldMousePos);
-				}
-			}
-		});
-		window.setCallback((GLFWCursorPosCallbackI) (_, x, y) -> {
-			if (isCameraUnlocked)
-			{
-				cameraXRotation += (y - oldMousePos.y()) * YRotationSensivity;
-				if (cameraXRotation > AngleUnit.RADIANS.fromDegrees(90)) cameraXRotation = AngleUnit.RADIANS.fromDegrees(90);
-				else if (cameraXRotation < AngleUnit.RADIANS.fromDegrees(-90)) cameraXRotation = -AngleUnit.RADIANS.fromDegrees(90);
-				cameraYRotation += (x - oldMousePos.x()) * XRotationSensivity;
-				rebuildProjectionMatrix = true;
-			}
-			window.getMousePos(oldMousePos);
-		});
-		
-		window.setCallback((GLFWKeyCallbackI) (_, k, _, a, _) -> {
-			
-			if (isCameraUnlocked)
-			{
-				Vector3f v = switch (k)
-					{
-						case GLFW.GLFW_KEY_W -> NORTH;
-						case GLFW.GLFW_KEY_A -> WEST;
-						case GLFW.GLFW_KEY_S -> SOUTH;
-						case GLFW.GLFW_KEY_D -> EAST;
-						case GLFW.GLFW_KEY_SPACE -> UP;
-						case GLFW.GLFW_KEY_LEFT_SHIFT, GLFW.GLFW_KEY_LEFT_CONTROL -> DOWN;
-						default -> Vector3f.origin();
-					};
-					
-					switch (a)
-					{
-						case GLFW.GLFW_PRESS -> cameraMovement.add(v);
-						case GLFW.GLFW_RELEASE -> cameraMovement.subtract(v);
-					}
-			}
-			
-			if (a == GLFW.GLFW_RELEASE)
-			{
-				switch (k)
-				{
-					case GLFW.GLFW_KEY_U -> {
-						isCameraUnlocked = !isCameraUnlocked;
-						window.setCursorInputMode(isCameraUnlocked ? CursorInputMode.DISABLED : CursorInputMode.NORMAL);
-					}
-					case GLFW.GLFW_KEY_P -> {
-						cameraPosition.setAll(0, 0, 0);
-						rebuildProjectionMatrix = true;
-					}
-				}
-			}
-		});
+		spatialMovementData = RenderTest.registerSpatialMovement(window, RenderTest.YRotationSensivity, RenderTest.XRotationSensivity);
 		
 		particleRadius = ShaderVariable.of(ShaderInputType.FLOAT, "PARTICLE_RADIUS");
 		minBound = ShaderVariable.of(ShaderInputType.VECTOR_FLOAT_3, "MIN_BOUND");
@@ -260,7 +173,7 @@ public class ComputerTest extends RenderTest {
 				
 				Random random = new Random();
 				
-				SphereDataCollector.collect(vertexBufferWriter, indexBufferWriter, Vector3f.origin(), 0.06F, 8);
+				SphereDataCollector.collect(vertexBufferWriter, indexBufferWriter, Vector3fr.of(), 0.06F, 8);
 				
 				for (float i = -DIM; i < DIM; i++)
 				{
@@ -278,7 +191,7 @@ public class ComputerTest extends RenderTest {
 			}
 		});
 		
-		try (RenderPassTemplate template = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format()))
+		try (RenderPassTemplate template = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format(), window.getDepthTexture().getFormat()))
 		{
 			renderPass = template.createRenderPass(device);
 		}
@@ -293,14 +206,14 @@ public class ComputerTest extends RenderTest {
 				.pPoolSizes(VkDescriptorPoolSize.malloc(2, stack)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-						.descriptorCount(3)
-						)
+						.descriptorCount(3 * window.getFramesCount())
+					)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
-						.descriptorCount(2)
-						)
+						.descriptorCount(2 * window.getFramesCount())
+					)
 					.rewind()
-					);
+				);
 			
 			VkDescriptorSetLayoutCreateInfo createInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
@@ -320,7 +233,7 @@ public class ComputerTest extends RenderTest {
 						.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
 						.pImmutableSamplers(null))
 					.rewind()
-					);
+				);
 			
 			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
 			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, createInfo);
@@ -337,7 +250,10 @@ public class ComputerTest extends RenderTest {
 					.addAttribute(0, 0, ShaderInputType.VECTOR_FLOAT_3, 0)
 					.addAttribute(1, 1, ShaderInputType.VECTOR_FLOAT_3, 0)
 					.addAttribute(2, 2, ShaderInputType.VECTOR_FLOAT_4, 0)
-					)
+				)
+				.configureRasterizationState(s -> s
+					.frontFace(VK10.VK_FRONT_FACE_COUNTER_CLOCKWISE)
+				)
 				.build();
 			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
 			
@@ -348,12 +264,13 @@ public class ComputerTest extends RenderTest {
 				.bindings(i -> new BindingInfo[] {
 					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i, 1, 16 * 4), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.PROJECTION
-						)),
+					)),
 					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i + 1, 1, 4), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
 						particleRadius
-						))
+					))
 				})
 				.build();
+			renderer.updateAllDescriptorSets();
 			renderer.setBuffer(0, vertexBuffer);
 			renderer.setBuffer(2, colorBuffer);
 			renderer.setIndexBuffer(indexBuffer);
@@ -365,7 +282,7 @@ public class ComputerTest extends RenderTest {
 					writer.flush();
 				});
 			}
-			rebuildProjectionMatrix = true;
+			RenderTest.rebuildViewMatrix = true;
 			
 			createInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
@@ -391,7 +308,7 @@ public class ComputerTest extends RenderTest {
 						.stageFlags(VK10.VK_SHADER_STAGE_COMPUTE_BIT)
 						.pImmutableSamplers(null))
 					.rewind()
-					);
+				);
 			
 			descriptorSetLayout = new DescriptorSetLayout(device, createInfo);
 			pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayout.getVk()));
@@ -405,21 +322,21 @@ public class ComputerTest extends RenderTest {
 				.buffersCount(window.getFramesCount())
 				.groupCount(Vector3i.of(256, 1, 1))
 				.bindings(i -> new BindingInfo[] {
-					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, i + 2 * window.getFramesCount(), 1, 7 * 4), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, i + 2 * window.getFramesCount(), 1, 8 * 4), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						minBound,
 						maxBound,
 						enlapsedTime
-						)),
+					)),
 					BindingInfo.ofStorage(VulkanBuffer.view(storageBuffers[0]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.POSITION,
 						ShaderVariable.VELOCITY,
 						ShaderVariable.COLOR
-						)),
+					)),
 					BindingInfo.ofStorage(VulkanBuffer.view(storageBuffers[1]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.POSITION,
 						ShaderVariable.VELOCITY,
 						ShaderVariable.COLOR
-						))
+					))
 				})
 				.build();
 			
@@ -452,20 +369,7 @@ public class ComputerTest extends RenderTest {
 					throw new VulkanException("Presentaton error");
 			}
 			
-			if (!cameraMovement.equals(Vector3f.origin()))
-			{
-				float sin = Math.sin(cameraYRotation);
-				float cos = Math.cos(cameraYRotation);
-				Vector3f movement = Vector3f.of(0, 0, 0);
-				if (cameraMovement.z() == 1) movement.add(-sin, 0, cos);
-				if (cameraMovement.x() == -1) movement.add(-cos, 0, -sin);
-				if (cameraMovement.z() == -1) movement.add(sin, 0, -cos);
-				if (cameraMovement.x() == 1) movement.add(cos, 0, sin);
-				movement.add(0, cameraMovement.y(), 0);
-				
-				cameraPosition.add(movement.multiplyAll(enlapsed / 1000000000F));
-				rebuildProjectionMatrix = true;
-			}
+			calculatePosition(spatialMovementData, enlapsed);
 			
 			int frameIndex = window.getFrameIndex();
 			
@@ -498,12 +402,12 @@ public class ComputerTest extends RenderTest {
 			clearValues.get().depthStencil().depth(1).stencil(0);
 			renderPassBeginInfo.pClearValues(clearValues.rewind());
 			
-			if (rebuildProjectionMatrix)
+			if (RenderTest.rebuildViewMatrix)
 			{
 				Matrix4f matrix = new Matrix4f();
 				matrix.multiply(new Matrix4f().projectPositiveZ(AngleUnit.RADIANS.fromDegrees(120), 10, 0.1F, (float) window.getWidth() / window.getHeight()));
 				matrix.multiply(new Matrix4f().scale(Vector3f.of(1, -1, 1)));
-				matrix.multiply(new Matrix4f().view(cameraPosition, cameraXRotation, cameraYRotation));
+				matrix.multiply(new Matrix4f().view(spatialMovementData.position, spatialMovementData.xRotation, spatialMovementData.yRotation));
 				
 				for (int i = 0; i < window.getFramesCount(); i++)
 				{
@@ -512,7 +416,7 @@ public class ComputerTest extends RenderTest {
 						writer.flush();
 					});
 				}
-				rebuildProjectionMatrix = false;
+				RenderTest.rebuildViewMatrix = false;
 			}
 			
 			CommandBuffer commandBuffer = window.getCurrentCommandBuffer();

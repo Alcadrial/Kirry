@@ -19,7 +19,7 @@ public abstract class AbstractResource<R extends AbstractResource<R>> implements
 	protected final Path path;
 	protected final ResourceManager resourceManager;
 	private boolean isFound;
-	private boolean isValid;
+	private volatile boolean isValid;
 	private AtomicReference<@Nullable CompletableFuture<?>> currentLoading;
 	
 	public AbstractResource(Path path, ResourceManager resourceManager)

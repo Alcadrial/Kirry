@@ -34,7 +34,7 @@ public class MergedWatchService implements WatchService {
 	private Object closeLock;
 	private MergedFileSystem fileSystem;
 	private ConcurrentSkipListMap<Source, ServiceData> services;
-	private ConcurrentSkipListMap<MergedPath, Key> registeredKeys;
+	private ConcurrentSkipListMap<String, Key> registeredKeys;
 	private ConcurrentLinkedQueue<Key> signalledQueue;
 	private ExecutorService executorService;
 	private volatile boolean isClosed;
@@ -98,12 +98,12 @@ public class MergedWatchService implements WatchService {
 			synchronized (this)
 			{
 				List<WatchKey> keys = new ArrayList<>();
-				for (Entry<MergedPath, Key> e : registeredKeys.entrySet())
+				for (Entry<String, Key> e : registeredKeys.entrySet())
 				{
-					MergedPath path = e.getKey();
+					String path = e.getKey();
 					Key key = e.getValue();
 					
-					Path keyPath = sourceRoot.resolve(path.toString());
+					Path keyPath = sourceRoot.resolve(path);
 					keys.add(keyPath.register(key.watchService, key.eventKinds, key.modifiers));
 				}
 				synchronized (closeLock)
@@ -139,7 +139,7 @@ public class MergedWatchService implements WatchService {
 		Key key = new Key(path, this, events, modifiers);
 		synchronized (this)
 		{
-			Key oldKey = registeredKeys.putIfAbsent(path, key);
+			Key oldKey = registeredKeys.putIfAbsent(path.toString(), key);
 			if (oldKey == null)
 			{
 				IOException exception = null;
@@ -172,7 +172,7 @@ public class MergedWatchService implements WatchService {
 	{
 		for (MergedPath p = path; p != null; p = p.getParent())
 		{
-			Key key = registeredKeys.get(p);
+			Key key = registeredKeys.get(p.toString());
 			if (key != null)
 			{
 				boolean toEnqueue = !key.isSignalled;
@@ -203,9 +203,8 @@ public class MergedWatchService implements WatchService {
 			{
 				Source source = e.getKey();
 				Path sourceRoot = source.path();
-				Path keyPath = new MergedPath(fileSystem, sourceRoot.relativize((Path) serviceKey.watchable()));
 				
-				Key key = registeredKeys.get(keyPath);
+				Key key = registeredKeys.get(sourceRoot.relativize((Path) serviceKey.watchable()).toString());
 				if (key == null) continue;
 				
 				Key resultKey = fileSystem.handleKey(source, serviceKey, key);
@@ -282,9 +281,8 @@ public class MergedWatchService implements WatchService {
 					WatchKey rKey = r.key;
 					Source source = r.source;
 					Path sourceRoot = source.path();
-					Path keyPath = new MergedPath(fileSystem, sourceRoot.relativize((Path) rKey.watchable()));
 					
-					Key key = registeredKeys.get(keyPath);
+					Key key = registeredKeys.get(sourceRoot.relativize((Path) rKey.watchable()).toString());
 					if (key == null) continue;
 					
 					Key resultKey = fileSystem.handleKey(source, rKey, key);

@@ -134,7 +134,7 @@ public class FontRenderer implements AutoCloseable {
 						int s = data.get();
 						int d = bufferData.get();
 						float sa = s != 0 ? 1 : 0;
-						float da = ((d >>> 24) & 0xFF) / 255;
+						float da = ((d >>> 24) & 0xFF) / 255F;
 						int r = (int) ((255 * sa + ((d >>> 0) & 0xFF) * (1 - sa)));
 						int g = (int) ((255 * sa + ((d >>> 8) & 0xFF) * (1 - sa)));
 						int b = (int) ((255 * sa + ((d >>> 16) & 0xFF) * (1 - sa)));
@@ -259,7 +259,7 @@ public class FontRenderer implements AutoCloseable {
 						int s = data.get();
 						int d = bufferData.get();
 						float sa = s != 0 ? 1 : 0;
-						float da = ((d >>> 24) & 0xFF) / 255;
+						float da = ((d >>> 24) & 0xFF) / 255F;
 						int r = (int) ((255 * sa + ((d >>> 0) & 0xFF) * (1 - sa)));
 						int g = (int) ((255 * sa + ((d >>> 8) & 0xFF) * (1 - sa)));
 						int b = (int) ((255 * sa + ((d >>> 16) & 0xFF) * (1 - sa)));

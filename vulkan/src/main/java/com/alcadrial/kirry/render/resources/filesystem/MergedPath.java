@@ -10,6 +10,7 @@ import java.nio.file.WatchEvent.Modifier;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.Iterator;
+import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -91,13 +92,25 @@ public class MergedPath implements Path {
 		if (other instanceof MergedPath p) return path.startsWith(p.path);
 		return false;
 	}
+
+
+    @Override
+    public boolean startsWith(String other) {
+    	return path.startsWith(other);
+    }
 	
 	@Override
 	public boolean endsWith(Path other)
 	{
-		if (other instanceof MergedPath p) return path.endsWith(p.path);
+		if (other instanceof MergedPath p)
+			return path.endsWith(p.path);
 		return false;
 	}
+
+    @Override
+    public boolean endsWith(String other) {
+    	return path.endsWith(other);
+    }
 	
 	@Override
 	public MergedPath normalize()
@@ -193,6 +206,18 @@ public class MergedPath implements Path {
 	{
 		if (other instanceof MergedPath p) return path.compareTo(p.path);
 		return -1;
+	}
+	
+	@Override
+	public boolean equals(@Nullable Object obj)
+	{
+		return obj instanceof MergedPath p && path.equals(p.path);
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return Objects.hash(path);
 	}
 	
 	@Override

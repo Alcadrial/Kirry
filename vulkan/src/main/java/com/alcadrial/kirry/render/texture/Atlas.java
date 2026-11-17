@@ -19,6 +19,7 @@ import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkImageCopy;
+import org.lwjgl.vulkan.VkPhysicalDeviceLimits;
 
 import com.alcadrial.kirry.core.util.Pair;
 import com.alcadrial.kirry.core.util.color.Color;
@@ -27,9 +28,13 @@ import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.KirryVulkan;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
+import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
+import com.alcadrial.kirry.render.util.functional.VulkanRunnable;
 
 public class Atlas implements AutoCloseable {
+	
+	private static final float DEFAULT_LOAD_FACTOR = 0.75F;
 	
 	static
 	{
@@ -68,6 +73,12 @@ public class Atlas implements AutoCloseable {
 			c = Integer.compare(y, o.y);
 			return c;
 		}
+		
+		@Override
+		public String toString()
+		{
+			return "Slot{pos=(" + x + ";" + y + "), size=" + width + "x" + height + "}";
+		}
 	}
 	
 	private abstract class Resource {
@@ -97,6 +108,22 @@ public class Atlas implements AutoCloseable {
 		{
 			return id.hashCode();
 		}
+	}
+	
+	private class ResourceKey extends Resource {
+		
+		public ResourceKey(Object id)
+		{
+			super(0, 0, id);
+		}
+		
+		@Override
+		void copy(CommandBuffer commandBuffer, Texture atlasTexture, int x, int y)
+		{}
+		
+		@Override
+		void close()
+		{}
 	}
 	
 	private class TextureResource extends Resource {
@@ -170,14 +197,19 @@ public class Atlas implements AutoCloseable {
 		}
 	}
 	
-	private Device device;
-	private int format;
-	private int usage;
-	private int aspectMask;
+	private final Device device;
+	private final int format;
+	private final int usage;
+	private final int aspectMask;
+	private final int mipLevels;
+	private final float loadFactor;
 	private int width;
 	private int height;
-	private Texture texture;
+	private int maxWidth;
+	private int maxHeight;
+	private @Nullable Texture texture;
 	private boolean isDirty;
+	private boolean isStructurallyModified;
 	
 	private MutableList<Region> oldRegions;
 	private MutableList<Region> regions;
@@ -187,35 +219,43 @@ public class Atlas implements AutoCloseable {
 	
 	private boolean debug;
 	
-	public Atlas(Device device, int format, int usage, int aspectMask) throws VulkanException
+	public Atlas(Device device, int format, int usage, int aspectMask, int mipLevels) throws VulkanException
 	{
-		this(device, 2048, 2048, format, usage, aspectMask, false);
+		VkPhysicalDeviceLimits limits = device.getPhysicalDevice().getLimits();
+		this(device, limits.maxImageDimension2D(), limits.maxImageDimension2D(), format, usage, aspectMask, mipLevels, DEFAULT_LOAD_FACTOR);
 	}
 	
-	public Atlas(Device device, int startWidth, int startHeight, int format, int usage, int aspectMask) throws VulkanException
+	public Atlas(Device device, int format, int usage, int aspectMask, int mipLevels, float loadFactor) throws VulkanException
 	{
-		this(device, startWidth, startHeight, format, usage, aspectMask, false);
+		VkPhysicalDeviceLimits limits = device.getPhysicalDevice().getLimits();
+		this(device, limits.maxImageDimension2D(), limits.maxImageDimension2D(), format, usage, aspectMask, mipLevels, loadFactor, false);
 	}
 	
-	public Atlas(Device device, int startWidth, int startHeight, int format, int usage, int aspectMask, boolean debug) throws VulkanException
+	public Atlas(Device device, int maxWidth, int maxHeight, int format, int usage, int aspectMask, int mipLevels) throws VulkanException
+	{
+		this(device, maxWidth, maxHeight, format, usage, aspectMask, mipLevels, DEFAULT_LOAD_FACTOR);
+	}
+	
+	public Atlas(Device device, int maxWidth, int maxHeight, int format, int usage, int aspectMask, int mipLevels, float loadFactor) throws VulkanException
+	{
+		this(device, maxWidth, maxHeight, format, usage, aspectMask, mipLevels, loadFactor, false);
+	}
+	
+	public Atlas(Device device, int maxWidth, int maxHeight, int format, int usage, int aspectMask, int mipLevels, float loadFactor, boolean debug) throws VulkanException
 	{
 		this.device = device;
 		this.format = format;
 		this.usage = usage | VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 		this.aspectMask = aspectMask;
+		this.mipLevels = mipLevels;
+		this.loadFactor = loadFactor;
 		this.debug = debug;
-		width = startWidth;
-		height = startHeight;
+		width = 256;
+		height = 256;
+		this.maxWidth = maxWidth;
+		this.maxHeight = maxHeight;
 		isDirty = true;
-		texture = Texture.create2dTexture(device, width, height, format, this.usage, aspectMask);
-		Debug.runOnDebug(() -> texture.setName("Atlas"));
-		device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
-			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-			if (debug)
-			{
-				commandBuffer.clearColorImage(texture, Color.LIGHT_RED);
-			}
-		});
+		texture = null;
 		slots = new TreeSet<>();
 		oldRegions = Lists.mutable.of();
 		regions = Lists.mutable.of();
@@ -229,7 +269,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public TextureRegion add(Texture texture, Object id)
+	public @Nullable TextureRegion add(Texture texture, Object id)
 	{
 		return add(new TextureResource(texture, id));
 	}
@@ -243,7 +283,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public <T> List<TextureRegion> addAllTextures(Function<T, Texture> getTexture, Function<T, Object> getId, @SuppressWarnings("unchecked") T... textures)
+	public <T> List<@Nullable TextureRegion> addAllTextures(Function<T, Texture> getTexture, Function<T, Object> getId, @SuppressWarnings("unchecked") T... textures)
 	{
 		List<Resource> resources = new ArrayList<>(textures.length);
 		for (T texture : textures) resources.add(new TextureResource(getTexture.apply(texture), getId.apply(texture)));
@@ -256,7 +296,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public <T> List<TextureRegion> addAllTextures(Map<T, Texture> textures)
+	public <T> List<@Nullable TextureRegion> addAllTextures(Map<T, Texture> textures)
 	{
 		List<Resource> resources = new ArrayList<>(textures.size());
 		for (Entry<T, Texture> e : textures.entrySet()) resources.add(new TextureResource(e.getValue(), e.getKey()));
@@ -270,7 +310,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public TextureRegion add(TextureBuffer buffer)
+	public @Nullable TextureRegion add(TextureBuffer buffer)
 	{
 		return add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), buffer.getId()));
 	}
@@ -281,7 +321,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public TextureRegion add(TextureBuffer buffer, Object id)
+	public @Nullable TextureRegion add(TextureBuffer buffer, Object id)
 	{
 		return add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), id));
 	}
@@ -292,7 +332,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public List<TextureRegion> addAllBuffers(Iterable<TextureBuffer> buffers)
+	public List<@Nullable TextureRegion> addAllBuffers(Iterable<TextureBuffer> buffers)
 	{
 		List<Resource> resources = new ArrayList<>();
 		for (TextureBuffer buffer : buffers) resources.add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), buffer.getId()));
@@ -305,7 +345,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public List<TextureRegion> addAllBuffers(Collection<TextureBuffer> buffers)
+	public List<@Nullable TextureRegion> addAllBuffers(Collection<TextureBuffer> buffers)
 	{
 		List<Resource> resources = new ArrayList<>(buffers.size());
 		for (TextureBuffer buffer : buffers) resources.add(new VulkanBufferResource(buffer.getBuffer(), buffer.getWidth(), buffer.getHeight(), buffer.getId()));
@@ -318,7 +358,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public List<TextureRegion> addAllBuffers(TextureBuffer... buffers)
+	public List<@Nullable TextureRegion> addAllBuffers(TextureBuffer... buffers)
 	{
 		List<Resource> resources = new ArrayList<>(buffers.length);
 		for (TextureBuffer buffer : buffers)
@@ -337,7 +377,7 @@ public class Atlas implements AutoCloseable {
 	 * @return the list of {@link TextureRegion}, one for each texture
 	 * @see #addAllBuffers(Map)
 	 */
-	public <T> List<TextureRegion> addAllBuffers(Function<T, TextureBuffer> getBuffer, Function<T, Object> getId, @SuppressWarnings("unchecked") T... buffers)
+	public <T> List<@Nullable TextureRegion> addAllBuffers(Function<T, TextureBuffer> getBuffer, Function<T, Object> getId, @SuppressWarnings("unchecked") T... buffers)
 	{
 		List<Resource> resources = new ArrayList<>(buffers.length);
 		for (T bufferT : buffers)
@@ -371,7 +411,7 @@ public class Atlas implements AutoCloseable {
 	 * @see #freeRegion(TextureRegion)
 	 * @see TextureRegion
 	 */
-	public <T> List<TextureRegion> addAllBuffers(Map<T, TextureBuffer> buffers)
+	public <T> List<@Nullable TextureRegion> addAllBuffers(Map<T, TextureBuffer> buffers)
 	{
 		List<Resource> resources = new ArrayList<>(buffers.size());
 		for (Entry<T, TextureBuffer> e : buffers.entrySet())
@@ -429,12 +469,12 @@ public class Atlas implements AutoCloseable {
 		availableArea += (region.getXEnd() - region.getXStart()) * (region.getYEnd() - region.getYStart());
 	}
 	
-	private TextureRegion add(Resource resource)
+	private @Nullable TextureRegion add(Resource resource)
 	{
 		return addAll(List.of(resource)).getFirst();
 	}
 	
-	private List<TextureRegion> addAll(List<Resource> resources)
+	private List<@Nullable TextureRegion> addAll(List<Resource> resources)
 	{
 		record Holder(Resource r, int i) {}
 		
@@ -454,40 +494,65 @@ public class Atlas implements AutoCloseable {
 		{
 			isDirty = true;
 			
-			newResources.sortThis((t0, t1) -> -Integer.compare(t0.r.width, t1.r.width));
+			newResources.sortThis((t0, t1) -> Integer.compare(t1.r.width, t0.r.width));
 			
 			int requiredArea = 0;
 			for (Holder h : newResources) requiredArea += h.r.width * h.r.height;
+			requiredArea = Math.min(requiredArea, maxWidth * maxHeight);
 			
 			int currentArea = availableArea;
-			while (currentArea < requiredArea)
+			int growCount = 0;
+			while (currentArea * loadFactor < requiredArea)
 			{
-				if (height < width) height *= 2;
-				else width *= 2;
+				growCount++;
 				currentArea *= 2;
 			}
+			int growCount0 = growCount / 2;
+			int growCount1 = growCount - growCount0;
+			if (height < width)
+			{
+				height <<= growCount1;
+				width <<= growCount0;
+			}
+			else
+			{
+				height <<= growCount0;
+				width <<= growCount1;
+			}
+			
+			if (height > maxHeight)
+			{
+				width <<= (height / maxHeight) >>> 1;
+				height = maxHeight;
+			}
+			else if (width > maxWidth)
+			{
+				height <<= (width / maxWidth) >>> 1;
+				width = maxWidth;
+			}
+			
 			if (currentArea != availableArea)
 			{
-				mixTextures();
+				rebuildAtlas();
 				availableArea = currentArea;
 			}
 			
+			out:
 			for (Holder h : newResources)
 			{
-				boolean isMixed = false;
+				boolean isRebuilt = false;
 				Region region;
 				while ((region = tryInsert(h.r, null)) == null)
 				{
-					if (isMixed)
+					if (isRebuilt)
 					{
-						growAtlas();
-						mixTextures();
-						isMixed = false;
+						if (!growAtlas()) break out;
+						rebuildAtlas();
 					}
 					else
 					{
-						mixTextures();
-						isMixed = true;
+						rebuildAtlas();
+						isRebuilt = true;
 					}
 				}
 				newRegions[h.i] = region.texture;
@@ -496,6 +561,13 @@ public class Atlas implements AutoCloseable {
 			}
 		}
 		return Arrays.asList(newRegions);
+	}
+	
+	public @Nullable TextureRegion getRegion(Object id)
+	{
+		Region region = resources.get(new ResourceKey(id));
+		if (region == null) return null;
+		return region.texture;
 	}
 	
 	private @Nullable Region tryInsert(Resource resource, @Nullable TextureRegion oldRegion)
@@ -573,32 +645,41 @@ public class Atlas implements AutoCloseable {
 		}
 	}
 	
-	private void mixTextures()
+	private void invalidateAllRegions()
 	{
-		List<Resource> copy = new ArrayList<>(regions.size());
-		for (Region region : regions) copy.add(region.resource);
-		
+		slots.clear();
+		slots.add(new Slot(0, 0, width, height));
 		oldRegions.clear();
 		oldRegions.addAll(regions);
-		regions.clear();
 		
 		isDirty = true;
-		List<Pair<Resource, TextureRegion>> l = oldRegions.collect(r -> new Pair<>(r.resource, r.texture));
-		l.sort((t0, t1) -> -Integer.compare(t0.left.width, t1.left.width));
+	}
+	
+	private void rebuildAtlas()
+	{
+		invalidateAllRegions();
 		
+		List<Pair<Resource, TextureRegion>> l = regions.collect(r -> new Pair<>(r.resource, r.texture));
+		l.sort((t0, t1) -> Integer.compare(t1.left.width, t0.left.width));
+		
+		regions.clear();
 		for (Pair<Resource, TextureRegion> p : l)
 		{
 			Region region;
-			while ((region = tryInsert(p.left, p.right)) == null) growAtlas();
+			while ((region = tryInsert(p.left, p.right)) == null && growAtlas());
+			if (region == null) throw new IllegalStateException("Cannot find space for all textures");
 			regions.add(region);
 		}
+		isStructurallyModified = true;
 	}
 	
-	private void growAtlas()
+	private boolean growAtlas()
 	{
-		if (height < width) height *= 2;
-		else width *= 2;
+		if (height < width && height < maxHeight) height *= 2;
+		else if (width < maxWidth) width *= 2;
+		else return false;
 		availableArea *= 2;
+		return true;
 	}
 	
 	/**
@@ -614,118 +695,143 @@ public class Atlas implements AutoCloseable {
 	 */
 	public boolean draw(CommandBuffer commandBuffer) throws VulkanException
 	{
-		if (!isDirty) return false;
+		if (!isDirty || width == 0 || height == 0) return false;
 		
 		int newRegionsStartingIndex = oldRegions.size();
 		boolean invalid = false;
-		
-		if (newRegionsStartingIndex != 0)
+		Texture oldTexture = texture;
+		int mipLevels = this.mipLevels;
+		if (mipLevels < 0)
 		{
-			Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask);
-			Debug.runOnDebug(() -> newTexture.setName("Atlas"));
-			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-			newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-			if (debug)
-			{
-				commandBuffer.clearColorImage(newTexture, Color.LIGHT_RED);
-			}
-			try (MemoryStack stack = MemoryStack.stackPush())
-			{
-				VkImageCopy.Buffer copyRegion = VkImageCopy.malloc(oldRegions.size(), stack);
-				for (int j = 0; j < oldRegions.size(); j++)
-				{
-					Region oldRegion = oldRegions.get(j);
-					Region region = regions.get(j);
-					if (oldRegion.isDirty)
-					{
-						region.resource.copy(commandBuffer, newTexture, region.x, region.y);
-						oldRegion.isDirty = false;
-					}
-					else
-					{
-						copyRegion.get()
-							.srcOffset(o -> o.set(oldRegion.x, oldRegion.y, 0))
-							.srcSubresource(i -> i
-								.aspectMask(texture.getAspectMask())
-								.mipLevel(0)
-								.baseArrayLayer(0)
-								.layerCount(1)
-							)
-							.dstOffset(o -> o.set(region.x, region.y, 0))
-							.dstSubresource(i -> i
-								.aspectMask(newTexture.getAspectMask())
-								.mipLevel(0)
-								.baseArrayLayer(0)
-								.layerCount(1)
-							)
-							.extent(e -> e.set(region.width, region.height, 1));
-						oldRegion.texture.update(newTexture, region.x, region.y, region.x + region.width, region.y + region.height);
-					}
-				}
-				oldRegions.clear();
-				copyRegion.flip();
-				if (copyRegion.limit() > 0) commandBuffer.copyImage(texture, newTexture, copyRegion.flip());
-				for (int i = newRegionsStartingIndex; i < regions.size(); i++)
-				{
-					Region region = regions.get(i);
-					if (region.isDirty)
-					{
-						region.resource.copy(commandBuffer, newTexture, region.x, region.y);
-						region.isDirty = false;
-					}
-				}
-				newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-			}
-			Texture oldTexture = texture;
-			commandBuffer.addCompletionAction(oldTexture::close);
-			
-			texture = newTexture;
-			invalid = true;
+			mipLevels = (int) (Math.log(Math.max(width, height)) / Math.log(2));
 		}
-		else if (texture.getWidth() < width || texture.getHeight() < height)
+		
+		if (oldTexture != null)
 		{
-			texture.close();
-			Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask);
-			Debug.runOnDebug(() -> newTexture.setName("Atlas"));
-			
-			newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-			if (debug)
+			if (newRegionsStartingIndex != 0)
 			{
-				commandBuffer.clearColorImage(newTexture, Color.LIGHT_RED);
-			}
-			for (int i = 0; i < regions.size(); i++)
-			{
-				Region region = regions.get(i);
-				if (region.isDirty)
+				Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask, 1, mipLevels);
+				Debug.runOnDebug(() -> newTexture.setName("Atlas"));
+				
+				oldTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+				newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+				if (debug) commandBuffer.clearColorImage(newTexture, Color.LIGHT_RED);
+				
+				try (MemoryStack stack = MemoryStack.stackPush())
 				{
-					region.resource.copy(commandBuffer, newTexture, region.x, region.y);
-					region.isDirty = false;
+					VkImageCopy.Buffer copyRegion = VkImageCopy.malloc(oldRegions.size(), stack);
+					for (int j = 0; j < oldRegions.size(); j++)
+					{
+						Region oldRegion = oldRegions.get(j);
+						Region region = regions.get(j);
+						if (oldRegion.isDirty)
+						{
+							region.resource.copy(commandBuffer, newTexture, region.x, region.y);
+							oldRegion.isDirty = false;
+						}
+						else
+						{
+							copyRegion.get()
+								.srcOffset(o -> o.set(oldRegion.x, oldRegion.y, 0))
+								.srcSubresource(i -> i
+									.aspectMask(oldTexture.getAspectMask())
+									.mipLevel(0)
+									.baseArrayLayer(0)
+									.layerCount(1)
+								)
+								.dstOffset(o -> o.set(region.x, region.y, 0))
+								.dstSubresource(i -> i
+									.aspectMask(newTexture.getAspectMask())
+									.mipLevel(0)
+									.baseArrayLayer(0)
+									.layerCount(1)
+								)
+								.extent(e -> e.set(region.width, region.height, 1));
+							oldRegion.texture.update(newTexture, region.x, region.y, region.x + region.width, region.y + region.height);
+						}
+					}
+					oldRegions.clear();
+					copyRegion.flip();
+					if (copyRegion.limit() > 0) commandBuffer.copyImage(oldTexture, newTexture, copyRegion.flip());
+					drawNewResources(commandBuffer, newTexture, newRegionsStartingIndex, regions.size() - newRegionsStartingIndex);
 				}
+				commandBuffer.addCompletionAction(oldTexture::close);
+				onDataChange();
+				
+				texture = newTexture;
+				invalid = true;
 			}
-			newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-			texture = newTexture;
-			invalid = true;
+			else if (oldTexture.getWidth() < width || oldTexture.getHeight() < height)
+			{
+				oldTexture.close();
+				Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask, 1, mipLevels);
+				Debug.runOnDebug(() -> newTexture.setName("Atlas"));
+				
+				newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+				if (debug) commandBuffer.clearColorImage(newTexture, Color.LIGHT_RED);
+				drawNewResources(commandBuffer, newTexture);
+				updateRegions(regions);
+				onStructuralChange();
+				texture = newTexture;
+				invalid = true;
+			}
+			else
+			{
+				oldTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+				drawNewResources(commandBuffer, oldTexture);
+				onDataChange();
+			}
 		}
 		else
 		{
-			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-			for (int i = 0; i < regions.size(); i++)
-			{
-				Region region = regions.get(i);
-				if (region.isDirty)
-				{
-					region.resource.copy(commandBuffer, texture, region.x, region.y);
-					region.isDirty = false;
-				}
-			}
-			texture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			Texture newTexture = Texture.create2dTexture(device, width, height, format, usage, aspectMask, 1, mipLevels);
+			Debug.runOnDebug(() -> newTexture.setName("Atlas"));
+			
+			newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			if (debug) commandBuffer.clearColorImage(newTexture, Color.LIGHT_RED);
+			
+			newTexture.changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			drawNewResources(commandBuffer, newTexture);
+			texture = newTexture;
+			updateRegions(regions);
+			onStructuralChange();
+			invalid = true;
 		}
+		if (this.mipLevels != 1) ((@NonNull Texture) texture).generateMipmaps(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		else if (oldTexture != texture) ((@NonNull Texture) texture).changeLayout(commandBuffer, VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		commandBuffer.addCompletionAction(() -> {
 			for (Region region : regions) region.resource.close();
 		});
-		
+
+		isStructurallyModified = false;
 		isDirty = false;
 		return invalid;
+	}
+	
+	private void drawNewResources(CommandBuffer commandBuffer, Texture texture)
+	{
+		drawNewResources(commandBuffer, texture, 0, regions.size());
+	}
+	
+	private void drawNewResources(CommandBuffer commandBuffer, Texture texture, int offset, int size)
+	{
+		for (int i = offset; i < offset + size; i++)
+		{
+			Region region = regions.get(i);
+			if (region.isDirty)
+			{
+				region.resource.copy(commandBuffer, texture, region.x, region.y);
+				region.isDirty = false;
+			}
+		}
+	}
+	
+	private void updateRegions(Iterable<Region> regions)
+	{
+		for (Region region : regions)
+		{
+			region.texture.update(texture, region.x, region.y, region.x + region.width, region.y + region.height);
+		}
 	}
 	
 	/**
@@ -765,7 +871,30 @@ public class Atlas implements AutoCloseable {
 	
 	public void tryFit()
 	{
-		mixTextures();
+		rebuildAtlas();
+	}
+	
+	private @Nullable VulkanRunnable onDataChange;
+	private @Nullable VulkanRunnable onStructuralChange;
+	
+	private void onDataChange() throws VulkanException
+	{
+		if (onDataChange != null) onDataChange.run();
+	}
+	
+	private void onStructuralChange() throws VulkanException
+	{
+		if (onStructuralChange != null) onStructuralChange.run();
+	}
+	
+	public void setOnDataChange(VulkanRunnable action)
+	{
+		onDataChange = action;
+	}
+	
+	public void setOnStructuralChange(VulkanRunnable action)
+	{
+		onStructuralChange = action;
 	}
 	
 	public Device getDevice()
@@ -775,7 +904,7 @@ public class Atlas implements AutoCloseable {
 	
 	public Texture getTexture()
 	{
-		return texture;
+		return VulkanErrorUtils.nonNull(texture, "Texture not drawn");
 	}
 	
 	public int getWidth()
@@ -788,10 +917,17 @@ public class Atlas implements AutoCloseable {
 		return height;
 	}
 	
+	
+	public boolean isStructurallyModified()
+	{
+		return isStructurallyModified;
+	}
+	
 	@Override
 	public void close()
 	{
-		texture.close();
+		if (texture != null) texture.close();
+		for (Region region : regions) region.resource.close();
 	}
 	
 	@Override

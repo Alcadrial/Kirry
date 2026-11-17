@@ -7,20 +7,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 
 import org.eclipse.collections.api.RichIterable;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.api.multimap.list.MutableListMultimap;
 import org.eclipse.collections.api.set.MutableSet;
 import org.eclipse.collections.impl.factory.Multimaps;
+import org.eclipse.collections.impl.utility.LazyIterate;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkBufferCopy;
+import org.lwjgl.vulkan.VkBufferMemoryBarrier;
 import org.lwjgl.vulkan.VkDescriptorImageInfo;
 import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
 import org.lwjgl.vulkan.VkDescriptorPoolSize;
@@ -28,20 +32,27 @@ import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
-import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
-import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.Math;
+import com.alcadrial.kector.vector.Vector2ir;
 import com.alcadrial.kector.vector.Vector3f;
-import com.alcadrial.kector.vector.Vector3i;
+import com.alcadrial.kector.vector.Vector3fr;
+import com.alcadrial.kector.vector.Vector3ir;
 import com.alcadrial.kirry.core.component.Entity;
-import com.alcadrial.kirry.core.component.EntityEngine;
 import com.alcadrial.kirry.render.Computer;
 import com.alcadrial.kirry.render.Debug;
 import com.alcadrial.kirry.render.Device;
+import com.alcadrial.kirry.render.FrameBuffer;
+import com.alcadrial.kirry.render.KirryVulkan;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.BufferLayoutWriter;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
+import com.alcadrial.kirry.render.component.PipelineOutputTarget.SurfaceTarget;
+import com.alcadrial.kirry.render.component.PipelineOutputTarget.TextureTarget;
+import com.alcadrial.kirry.render.component.SpatialComponent.State;
+import com.alcadrial.kirry.render.memory.MemoryCacheBulkState;
+import com.alcadrial.kirry.render.memory.MemoryCacheState;
 import com.alcadrial.kirry.render.memory.MemoryManager;
 import com.alcadrial.kirry.render.memory.MemoryTransferState;
 import com.alcadrial.kirry.render.pipeline.ComputePipeline;
@@ -49,8 +60,9 @@ import com.alcadrial.kirry.render.pipeline.GraphicsPipeline;
 import com.alcadrial.kirry.render.pipeline.GraphicsPipelineTemplate;
 import com.alcadrial.kirry.render.pipeline.PipelineLayout;
 import com.alcadrial.kirry.render.renderpass.RenderPass;
-import com.alcadrial.kirry.render.renderpass.RenderPassTemplate;
+import com.alcadrial.kirry.render.resources.Mesh;
 import com.alcadrial.kirry.render.resources.Mesh.Material;
+import com.alcadrial.kirry.render.resources.Mesh.Properties;
 import com.alcadrial.kirry.render.resources.Mesh.TextureData;
 import com.alcadrial.kirry.render.resources.ShaderResource;
 import com.alcadrial.kirry.render.shader.ShaderInputType;
@@ -61,7 +73,6 @@ import com.alcadrial.kirry.render.shader.descriptor.DescriptorPool;
 import com.alcadrial.kirry.render.shader.descriptor.DescriptorSet;
 import com.alcadrial.kirry.render.shader.descriptor.DescriptorSetLayout;
 import com.alcadrial.kirry.render.texture.Atlas;
-import com.alcadrial.kirry.render.texture.Texture;
 import com.alcadrial.kirry.render.texture.TextureSampler;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.exception.InvalidEntityException;
@@ -71,52 +82,18 @@ import com.alcadrial.kirry.render.util.functional.VulkanFunction;
 import com.alcadrial.kirry.render.window.VulkanWindow;
 
 // TODO: implement a wrapper for renderdoc
-public class RenderEngine implements EntityEngine<RenderEngine.InitParams, RenderEngine.ReinitParams, RenderEngine.UpdateParams, RenderEngine.Properties, VulkanException> {
+public class RenderEngine implements AutoCloseable {
 	
+	public static final String SPATIAL_MOVE_COMPUTE_SHADER_NAME = "spatialMoveShader.comp";
+	public static final String SPATIAL_MOVE_COMPUTE_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + SPATIAL_MOVE_COMPUTE_SHADER_NAME;
 	public static final String INIT_COMPUTE_SHADER_NAME = "uvInitShader.comp";
-	public static final String INIT_COMPUTE_SHADER_PATHNAME = "assets/kirry/shaders/uvInitShader.comp";
+	public static final String INIT_COMPUTE_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + INIT_COMPUTE_SHADER_NAME;
 	public static final String TRANSFORM_COMPUTE_SHADER_NAME = "uvTransformShader.comp";
-	public static final String TRANSFORM_COMPUTE_SHADER_PATHNAME = "assets/kirry/shaders/uvTransformShader.comp";
+	public static final String TRANSFORM_COMPUTE_SHADER_PATHNAME = KirryVulkan.SHADERS_PATH + TRANSFORM_COMPUTE_SHADER_NAME;
 	
-	public record InitParams(
-		@Nullable ShaderProgram defaultProgram,
-		ShaderResource initComputeShader,
-		ShaderResource transformComputeShader,
-		MemoryManager memoryManager,
-		CommandBuffer commandBuffer,
-		PipelineOutputTarget target,
-		MutableList<ShaderVariable> vertexStageUniforms,
-		MutableList<ShaderVariable> fragmentStageUniforms,
-		Collection<Entity> entities
-	) {}
+	public record Config(boolean nearestAtlasFilter) {}
 	
-	public record ReinitParams(
-		CommandBuffer commandBuffer,
-		@Nullable ShaderProgram defaultProgram,
-		@Nullable ShaderResource initComputeShader,
-		@Nullable ShaderResource transformComputeShader,
-		@Nullable PipelineOutputTarget target,
-		@Nullable Collection<Entity> addedEntities,
-		@Nullable Collection<Entity> removedEntities
-	) {}
-	
-	public record UpdateParams(
-		CommandBuffer commandBuffer,
-		VkRenderPassBeginInfo renderPassBeginInfo,
-		int frameIndex
-	) {}
-	
-	public record Properties(
-		int bufferSize
-	) {}
-	
-	public static sealed interface PipelineOutputTarget permits SurfaceTarget, TextureTarget {}
-	
-	public record SurfaceTarget(VulkanWindow window) implements PipelineOutputTarget {}
-	
-	public record TextureTarget(Texture texture) implements PipelineOutputTarget {}
-	
-	private class Data {
+	private class Data implements AutoCloseable {
 		
 		private static class ProgramRenderer {
 			
@@ -135,17 +112,25 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 			}
 		}
 		
-		private static final int MESH_RELOAD_INDEX = 0;
-		private static final int SHADER_RELOAD_INDEX = 1;
-		private static final int MAX_RELOAD_INDEX = 1;
+		private static class Cache {
+			
+			Map<Mesh, MemoryCacheState> meshes;
+			
+			public Cache()
+			{
+				meshes = Maps.mutable.of();
+			}
+		}
 		
 		MemoryManager memoryManager;
 		VulkanBuffer vertexBuffer;
 		VulkanBuffer textureUvBuffer;
 		VulkanBuffer uniformBuffer;
+		Cache cache;
 		
+		PipelineOutputTarget target;
 		RenderPass renderPass;
-		Vector2i outputSize;
+		Vector2ir outputSize;
 		int buffersCount;
 		
 		DescriptorPool descriptorPool;
@@ -153,11 +138,15 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 		
 		/** null key entities use defaultRendering */
 		MutableListMultimap<ShaderProgram, Entity> groupedEntities;
-		int[] reloadCounters;
+		Collection<Entity> entities;
 		
 		@Nullable
 		ProgramRenderer defaultRendering;
 		MutableList<ProgramRenderer> renderings;
+		
+		PipelineLayout spatialMoveComputePipelineLayout;
+		ComputePipeline spatialMoveComputePipeline;
+		Computer spatialMoveComputer;
 		
 		PipelineLayout initComputePipelineLayout;
 		ComputePipeline initComputePipeline;
@@ -169,23 +158,37 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 		
 		Atlas atlas;
 		boolean[] isFrameUniformsDirty;
-		int vertexCount;
 		
-		public Data(MemoryManager memoryManager, VulkanBuffer vertexBuffer, VulkanBuffer textureUvBuffer, VulkanBuffer uniformBuffer, PipelineOutputTarget target, RenderPass renderPass, Vector2i outputSize, int buffersCount, int[] reloadCounters, MutableListMultimap<ShaderProgram, Entity> groupedEntities2, @Nullable ProgramRenderer defaultRendering, MutableList<ProgramRenderer> renderings, DescriptorPool descriptorPool, GraphicsPipelineTemplate graphicsPipelineTemplate, PipelineLayout initComputePipelineLayout, ComputePipeline initComputePipeline, Computer initComputer, PipelineLayout transformComputePipelineLayout, ComputePipeline transformComputePipeline, Computer transformComputer, Atlas atlas, boolean[] isFrameUniformsDirty, int vertexCount)
+		//@formatter:off
+		public Data(MemoryManager memoryManager, VulkanBuffer vertexBuffer, VulkanBuffer textureUvBuffer, VulkanBuffer uniformBuffer, Cache cache,
+			PipelineOutputTarget target, RenderPass renderPass, Vector2ir outputSize, int buffersCount,
+			MutableListMultimap<ShaderProgram, Entity> groupedEntities, Collection<Entity> entities,
+			@Nullable ProgramRenderer defaultRendering, MutableList<ProgramRenderer> renderings,
+			DescriptorPool descriptorPool, GraphicsPipelineTemplate graphicsPipelineTemplate,
+			PipelineLayout spatialMoveComputePipelineLayout, ComputePipeline spatialMoveComputePipeline, Computer spatialMoveComputer,
+			PipelineLayout initComputePipelineLayout, ComputePipeline initComputePipeline, Computer initComputer,
+			PipelineLayout transformComputePipelineLayout, ComputePipeline transformComputePipeline, Computer transformComputer,
+			Atlas atlas, boolean[] isFrameUniformsDirty)
 		{
+			//@formatter:on
 			this.memoryManager = memoryManager;
 			this.vertexBuffer = vertexBuffer;
 			this.textureUvBuffer = textureUvBuffer;
 			this.uniformBuffer = uniformBuffer;
+			this.cache = cache;
+			this.target = target;
 			this.renderPass = renderPass;
 			this.outputSize = outputSize;
 			this.buffersCount = buffersCount;
 			this.descriptorPool = descriptorPool;
-			this.reloadCounters = reloadCounters;
-			groupedEntities = groupedEntities2;
+			this.entities = entities;
+			this.groupedEntities = groupedEntities;
 			this.defaultRendering = defaultRendering;
 			this.renderings = renderings;
 			this.graphicsPipelineTemplate = graphicsPipelineTemplate;
+			this.spatialMoveComputePipelineLayout = spatialMoveComputePipelineLayout;
+			this.spatialMoveComputePipeline = spatialMoveComputePipeline;
+			this.spatialMoveComputer = spatialMoveComputer;
 			this.initComputePipelineLayout = initComputePipelineLayout;
 			this.initComputePipeline = initComputePipeline;
 			this.initComputer = initComputer;
@@ -194,7 +197,29 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 			this.transformComputer = transformComputer;
 			this.atlas = atlas;
 			this.isFrameUniformsDirty = isFrameUniformsDirty;
-			this.vertexCount = vertexCount;
+		}
+		
+		@Override
+		public void close()
+		{
+			vertexBuffer.close();
+			textureUvBuffer.close();
+			uniformBuffer.close();
+			cache.meshes.forEach((_, c) -> c.release());
+			descriptorPool.close();
+			forEachRendererSafe(this, (r, _) -> {
+				r.graphicsPipeline.close();
+				r.pipelineLayout.close();
+			});
+			graphicsPipelineTemplate.close();
+			spatialMoveComputePipeline.close();
+			spatialMoveComputePipelineLayout.close();
+			initComputePipeline.close();
+			//initComputePipelineLayout.close();
+			transformComputePipeline.close();
+			//transformComputePipelineLayout.close();
+			
+			atlas.close();
 		}
 	}
 	
@@ -207,62 +232,84 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 		this.device = device;
 	}
 	
-	@Override
-	public void init(InitParams params) throws VulkanException
+	/**
+	 * VN layout:<pre>
+	 *  *--------*--------*--------*--------*-----*
+	 *  |Vertex 0|Normal 0|Vertex 1|Normal 1| ... |
+	 *  *--------*--------*--------*--------*-----*
+	 * </pre>
+	 * UV layout:<pre>
+	 *  *----*----*-----*
+	 *  |Uv 0|Uv 1| ... |
+	 *  *----*----*-----*
+	 * </pre>
+	 * Mesh layout:<pre>
+	 *  *----*----*
+	 *  | VN | UV |
+	 *  *----*----*
+	 * </pre>
+	 * Cache layout:<pre>
+	 *  *------*------*-----*
+	 *  |Mesh 0|Mesh 1| ... |
+	 *  *------*------*-----*
+	 * </pre>
+	 * VertexBuffer layout:<pre>
+	 *  *----*----*-----*
+	 *  |VN 0|VN 1| ... |
+	 *  *----*----*-----*
+	 * </pre>
+	 * UvBuffer layout:<pre>
+	 *  *----*----*-----*
+	 *  |UV 0|UV 1| ... |
+	 *  *----*----*-----*
+	 * </pre>
+	 */
+	public void init(@Nullable ShaderProgram defaultProgram, ShaderResource spatialMoveComputeShader, ShaderResource initComputeShader, ShaderResource transformComputeShader, MemoryManager memoryManager, CommandBuffer commandBuffer, PipelineOutputTarget target, MutableList<ShaderVariable> vertexStageUniforms, MutableList<ShaderVariable> fragmentStageUniforms, Collection<Entity> entities, Config config) throws VulkanException
 	{
-		ShaderProgram defaultProgram = params.defaultProgram;
-		ShaderResource initComputeShader = params.initComputeShader;
-		ShaderResource transformComputeShader = params.transformComputeShader;
-		MutableList<ShaderVariable> vertexStageUniforms = params.vertexStageUniforms;
-		MutableList<ShaderVariable> fragmentStageUniforms = params.fragmentStageUniforms;
-		MemoryManager memoryManager = params.memoryManager;
-		CommandBuffer commandBuffer = params.commandBuffer;
-		Collection<Entity> entities = params.entities;
 		RenderPass renderPass;
-		Vector2i outputSize;
+		Vector2ir outputSize;
 		int buffersCount;
-		switch (params.target)
+		switch (target)
 		{
-			case SurfaceTarget target -> {
-				VulkanWindow window = target.window;
+			case SurfaceTarget t -> {
+				VulkanWindow window = t.window();
 				renderPass = window.getRenderPass();
 				outputSize = window.getSurface().getData().size();
 				buffersCount = window.getFramesCount();
 			}
-			case TextureTarget target -> {
-				Texture texture = target.texture;
-				try (RenderPassTemplate template = RenderPassTemplate.transformColorDepthTextureTemplate(texture.getFormat(), texture.getSamples()))
-				{
-					renderPass = template.createRenderPass(device);
-				}
-				outputSize = Vector2i.of(texture.getWidth(), texture.getHeight());
+			case TextureTarget t -> {
+				FrameBuffer frameBuffer = t.frameBuffer();
+				renderPass = frameBuffer.getRenderPass();
+				outputSize = Vector2ir.of(frameBuffer.getWidth(), frameBuffer.getHeight());
 				buffersCount = 1;
 			}
 		}
 		CompletableFuture<?> computeShadersFuture = CompletableFuture.allOf(
+			spatialMoveComputeShader.load(),
 			initComputeShader.load(),
 			transformComputeShader.load()
 		);
 		
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
+			int maxSets = (buffersCount + 1 + 2) * entities.size();
 			DescriptorPool descriptorPool = new DescriptorPool(device, VkDescriptorPoolCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
 				.pNext(0)
 				.flags(0)
-				.maxSets((buffersCount + 1 + 1) * entities.size())
+				.maxSets(maxSets)
 				.pPoolSizes(VkDescriptorPoolSize.malloc(3, stack)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-						.descriptorCount(2)
+						.descriptorCount(2 * maxSets)
 					)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-						.descriptorCount(1)
+						.descriptorCount(1 * maxSets)
 					)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
-						.descriptorCount(1)
+						.descriptorCount(1 * maxSets)
 					)
 					.rewind()
 				));
@@ -288,19 +335,29 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 						.pImmutableSamplers(null))
 					.rewind()
 				));
-			DescriptorSet[] computingDescriptorSets = descriptorPool.allocates(computeDescriptorSetLayout, entities.size());
+			DescriptorSet[] computingDescriptorSets = descriptorPool.allocates(computeDescriptorSetLayout, 2 * entities.size());
+			DescriptorSet[] spatialComputingDescriptorSets = Arrays.copyOfRange(computingDescriptorSets, 0, entities.size());
+			DescriptorSet[] uvComputingDescriptorSets = Arrays.copyOfRange(computingDescriptorSets, entities.size(), 2 * entities.size());
 			pipelineLayoutInfo.pSetLayouts(stack.longs(computeDescriptorSetLayout.getVk()));
 			PipelineLayout computeLayout = new PipelineLayout(device, pipelineLayoutInfo);
 			
-			Atlas atlas = new Atlas(device, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT);
+			Atlas atlas = new Atlas(device, VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_USAGE_SAMPLED_BIT, VK10.VK_IMAGE_ASPECT_COLOR_BIT, config.nearestAtlasFilter ? 1 : -1);
 			
-			int vertexBufferSize = 0;
+			record MeshData(Mesh mesh, int size) {}
+			MutableList<MeshData> meshSizes = Lists.mutable.withInitialCapacity(entities.size());
+			
+			int minStorageBufferOffsetAlignment = (int) device.getPhysicalDevice().getLimits().minStorageBufferOffsetAlignment();
+			
 			int textureUvBufferSize = 0;
-			int vertexCount = 0;
-			int[] textureUvSizes = new int[entities.size()];
+			//offset from minStorageBufferOffsetAlignment
+			int[] vertexBlockOffsets = new int[entities.size()];
+			int[] vertexOffsets = new int[entities.size()];
+			int[] vertexSizes = new int[entities.size()];
 			int entityMaterialCount = 0;
 			
 			{
+				int vertexOffset = 0;
+				MutableSet<Mesh> meshes = Sets.mutable.of();
 				int j = 0;
 				for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
 				{
@@ -308,53 +365,65 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 					MeshComponent mesh = (MeshComponent) e.getComponent(MeshComponent.TYPE);
 					if (mesh == null) continue;
 					MeshComponent.Properties properties = mesh.getProperties();
-					vertexBufferSize += properties.vertexesSize();
+					
 					textureUvBufferSize += properties.textureUvSize();
-					vertexBufferSize += properties.normalsSize();
-					vertexCount += properties.vertexCount();
-					textureUvSizes[j] = Math.max(properties.textureUvSize(), 1);
+					
+					vertexSizes[j] = properties.vertexesSize() + properties.normalsSize();
+					vertexOffsets[j] = vertexOffset;
+					vertexBlockOffsets[j] = Math.ceilDiv(vertexOffset, minStorageBufferOffsetAlignment) * minStorageBufferOffsetAlignment;
+					vertexOffset += vertexSizes[j];
+					
+					if (!meshes.add(mesh.getMesh())) continue;
+					meshSizes.add(new MeshData(mesh.getMesh(), properties.vertexesSize() + properties.textureUvSize() + properties.normalsSize()));
 					
 					mesh.init(new MeshComponent.Params(null, new MeshComponent.MaterialParams(memoryManager, commandBuffer, atlas)));
+				}
+				for (Entity e : entities)
+				{
+					MeshComponent mesh = (MeshComponent) e.getComponent(MeshComponent.TYPE);
+					if (mesh == null) continue;
 					entityMaterialCount += mesh.getMaterials().size();
 				}
 			}
 			
+			int vertexBufferSize = vertexSizes[entities.size() - 1] + vertexOffsets[entities.size() - 1];
 			//TODO: handle missing uv
 			if (vertexBufferSize == 0 || textureUvBufferSize == 0)
 			{
 				data = null;
 				return;
 			}
-			int minStorageBufferOffsetAlignment = (int) device.getPhysicalDevice().getLimits().minStorageBufferOffsetAlignment();
 			
+			int[] textureUvBlockOffsets = new int[entityMaterialCount];
 			int[] textureUvOffsets = new int[entityMaterialCount];
+			int[] textureUvSizes = new int[entityMaterialCount];
 			
 			{
 				int offset = 0;
-				int j = 0, k = 0;
-				for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
+				int k = 0;
+				for (Iterator<Entity> i = entities.iterator(); i.hasNext();)
 				{
 					Entity e = i.next();
 					MeshComponent mesh = (MeshComponent) e.getComponent(MeshComponent.TYPE);
 					if (mesh == null) continue;
 					
-					int offset0 = 0;
 					for (Material material : mesh.getMaterials())
 					{
 						TextureData colorTexture = material.colorTexture();
 						if (colorTexture == null) continue;
-						textureUvOffsets[k] = offset + offset0;
-						offset0 += Math.ceilDiv(colorTexture.vertexCount() * mesh.getTextureUvLength(), minStorageBufferOffsetAlignment) * minStorageBufferOffsetAlignment;
+						textureUvSizes[k] = colorTexture.vertexCount() * mesh.getTextureUvLength() * 4;
+						textureUvOffsets[k] = offset;
+						textureUvBlockOffsets[k] = Math.ceilDiv(offset, minStorageBufferOffsetAlignment) * minStorageBufferOffsetAlignment;
+						offset += textureUvSizes[k];
 						k++;
 					}
-					offset += textureUvSizes[j];
 				}
 			}
 			
-			int textureUvOffset = Math.max(8, minStorageBufferOffsetAlignment);
-			textureUvBufferSize = vertexCount * textureUvOffset;
+			Data.Cache cache = new Data.Cache();
 			
-			VulkanBuffer vertexBuffer = memoryManager.allocate(vertexBufferSize, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+			MemoryCacheBulkState meshCache = memoryManager.allocateCacheAll(meshSizes.asLazy().collectInt(MeshData::size).toArray(), VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+			VulkanBuffer vertexBuffer = memoryManager.allocate(vertexBufferSize, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 			VulkanBuffer textureUvBuffer = memoryManager.allocate(textureUvBufferSize, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 			Debug.runOnDebug(() -> {
 				vertexBuffer.setName("RenderEngine VertexBuffer");
@@ -363,31 +432,93 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 			
 			MutableListMultimap<ShaderProgram, Entity> groupedEntities = Multimaps.mutable.list.of();
 			Map<ShaderProgram, VkPipelineShaderStageCreateInfo.Buffer> shaders = Maps.mutable.of();
-			boolean useTextureUv = false;
-			try (MemoryTransferState transfert = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, textureUvBuffer))
+			
+			MutableMap<Mesh, MemoryCacheState> meshCaches = Maps.mutable.of();
+			
+			if (meshCache.isContinuous())
 			{
-				VulkanBuffer localVertexBuffer = transfert.getLocal(vertexBuffer);
-				VulkanBuffer localTextureUvBuffer = transfert.getLocal(textureUvBuffer);
-				int vertexBufferOffset = 0;
-				int textureUvBufferOffset = 0;
-				
+				VulkanBuffer buffer = (@NonNull VulkanBuffer) meshCache.getBuffer();
+				try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, buffer))
+				{
+					VulkanBuffer localBuffer = transfer.getLocal(buffer);
+					
+					int i = 0;
+					int vertexBufferOffset = 0;
+					for (MeshData d : meshSizes)
+					{
+						Mesh mesh = d.mesh;
+						Properties meshProperties = mesh.getProperties();
+						meshCaches.put(mesh, meshCache.getState(i++));
+						
+						int vertexBufferByteSize = meshProperties.vertexesSize() + meshProperties.normalsSize();
+						int vertexSize = vertexBufferByteSize / meshProperties.indicesSize();
+						int textureUvSize = 2;
+						int textureUvBufferOffset = vertexBufferByteSize / 4 + vertexBufferOffset;
+						
+						mesh.flush(localBuffer, vertexSize, vertexBufferOffset, localBuffer, textureUvSize, textureUvBufferOffset, localBuffer, vertexSize, vertexBufferOffset + meshProperties.vertexesSize() / meshProperties.indicesSize(), null);
+						
+						vertexBufferOffset = textureUvBufferOffset + textureUvSize * meshProperties.vertexCount();
+					}
+					commandBuffer.copyBuffer(localBuffer, 0, buffer, 0, buffer.getSize());
+					
+					commandBuffer.pipelineBarrier(VK10.VK_PIPELINE_STAGE_TRANSFER_BIT, VK10.VK_PIPELINE_STAGE_TRANSFER_BIT, 0, null, VkBufferMemoryBarrier.malloc(1, stack)
+						.apply(b -> b
+							.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER)
+							.pNext(0)
+							.srcAccessMask(VK10.VK_ACCESS_MEMORY_WRITE_BIT)
+							.dstAccessMask(VK10.VK_ACCESS_MEMORY_READ_BIT)
+							.srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+							.dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+							.buffer(buffer.getVk())
+							.offset(0)
+							.size(buffer.getSize())
+						).rewind(), null);
+				}
+			}
+			else
+			{
+				int i = 0;
+				for (MemoryCacheState c : meshCache)
+				{
+					Mesh mesh = meshSizes.get(i).mesh;
+					Properties meshProperties = mesh.getProperties();
+					meshCaches.put(mesh, c);
+					
+					int vertexBufferByteSize = meshProperties.vertexesSize() + meshProperties.normalsSize();
+					int vertexSize = vertexBufferByteSize / meshProperties.indicesSize();
+					int textureUvSize = 2;
+					int textureUvBufferOffset = vertexBufferByteSize / 4;
+					
+					VulkanBuffer buffer = c.getBuffer();
+					try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, buffer))
+					{
+						VulkanBuffer localBuffer = transfer.getLocal(buffer);
+						mesh.flush(localBuffer, vertexSize, 0, localBuffer, textureUvSize, textureUvBufferOffset, localBuffer, vertexSize, meshProperties.vertexesSize() / meshProperties.indicesSize(), null);
+						commandBuffer.copyBuffer(localBuffer, 0, buffer, 0, buffer.getSize());
+					}
+				}
+				//TODO: add barrier
+			}
+			
+			boolean useTextureUv = false;
+			boolean useSpatial = false;
+			
+			{
 				ShaderComponent.Params shaderParams = new ShaderComponent.Params(device);
 				
+				int i = 0;
 				for (Entity entity : entities)
 				{
-					MeshComponent mesh = entity.getComponent(MeshComponent.TYPE);
-					if (mesh == null) continue;
-					if (!mesh.isLoaded()) continue;
+					MeshComponent meshComponent = entity.getComponent(MeshComponent.TYPE);
+					if (meshComponent == null) continue;
+					if (!meshComponent.isLoaded()) continue;
+					Mesh mesh = meshComponent.getMesh();
+					Properties meshProperties = mesh.getProperties();
+					MemoryCacheState cacheState = meshCaches.get(mesh);
 					
-					MeshComponent.Properties meshProperties = mesh.getProperties();
-					
-					int vertexSize = (meshProperties.vertexesSize() + meshProperties.normalsSize()) / meshProperties.indicesSize();
-					int textureUvSize = 2;
-					
-					mesh.initVertex(new MeshComponent.VertexParams(localVertexBuffer, vertexSize, vertexBufferOffset, localTextureUvBuffer, textureUvSize, textureUvBufferOffset, localVertexBuffer, vertexSize, vertexBufferOffset + meshProperties.vertexesSize() / meshProperties.indicesSize(), null));
-					
-					vertexBufferOffset += (meshProperties.vertexesSize() + meshProperties.normalsSize()) / 4;
-					textureUvBufferOffset += meshProperties.textureUvSize() / 4;
+					commandBuffer.copyBuffer(cacheState.getBuffer(), 0, vertexBuffer, vertexOffsets[i], vertexSizes[i]);
+					commandBuffer.copyBuffer(cacheState.getBuffer(), vertexSizes[i], textureUvBuffer, textureUvOffsets[i], meshProperties.textureUvSize());
+					commandBuffer.addCompletionAction(cacheState::release);
 					
 					if (meshProperties.useTextureUv()) useTextureUv = true;
 					
@@ -399,11 +530,37 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 						shaders.putIfAbsent(shader.getProgram(), shader.getStages());
 					}
 					groupedEntities.put(shader == null ? defaultProgram : shader.getProgram(), entity);
+					
+					SpatialComponent spatial = entity.getComponent(SpatialComponent.TYPE);
+					if (spatial != null)
+					{
+						useSpatial = true;
+					}
+					i++;
 				}
-				
-				commandBuffer.copyBuffer(localVertexBuffer, 0, vertexBuffer, 0, vertexBuffer.getSize());
-				commandBuffer.copyBuffer(localTextureUvBuffer, 0, textureUvBuffer, 0, textureUvBuffer.getSize());
 			}
+			commandBuffer.pipelineBarrier(VK10.VK_PIPELINE_STAGE_TRANSFER_BIT, VK10.VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, null, VkBufferMemoryBarrier.malloc(2, stack)
+				.apply(b -> b
+					.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER)
+					.pNext(0)
+					.srcAccessMask(VK10.VK_ACCESS_MEMORY_WRITE_BIT)
+					.dstAccessMask(VK10.VK_ACCESS_SHADER_READ_BIT)
+					.srcQueueFamilyIndex(0)
+					.dstQueueFamilyIndex(0)
+					.buffer(textureUvBuffer.getVk())
+					.offset(0)
+					.size(textureUvBuffer.getSize())
+				).apply(b -> b
+					.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER)
+					.pNext(0)
+					.srcAccessMask(VK10.VK_ACCESS_MEMORY_WRITE_BIT)
+					.dstAccessMask(VK10.VK_ACCESS_SHADER_READ_BIT)
+					.srcQueueFamilyIndex(0)
+					.dstQueueFamilyIndex(0)
+					.buffer(vertexBuffer.getVk())
+					.offset(0)
+					.size(vertexBuffer.getSize())
+				).rewind(), null);
 			
 			int renderersCount = shaders.size();
 			if (defaultProgram != null) renderersCount++;
@@ -412,14 +569,17 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 			
 			int vertexBindingSize = (int) vertexStageUniforms.sumOfInt(v -> v.getType().getLength());
 			int fragmentBindingSize = (int) fragmentStageUniforms.sumOfInt(v -> v.getType().getLength());
-			int initComputeBindingSize = ShaderInputType.VECTOR_FLOAT_2.getLength() * 2 + ShaderInputType.INT.getLength();
+			int spatialMoveComputeBindingSize = ShaderInputType.VECTOR_FLOAT_4.getLength() * 2 + ShaderInputType.INT.getLength();
+			int initComputeBindingSize = ShaderInputType.VECTOR_FLOAT_2.getLength() * 3 + ShaderInputType.INT.getLength();
 			int transformComputeBindingSize = ShaderInputType.VECTOR_FLOAT_2.getLength() * 3 + ShaderInputType.INT.getLength();
 			
-			int minVertexSize = Math.ceilDiv(vertexBindingSize, minUniformBufferOffsetAlignment) * minUniformBufferOffsetAlignment;
-			int minFragmentSize = Math.ceilDiv(fragmentBindingSize, minUniformBufferOffsetAlignment) * minUniformBufferOffsetAlignment;
-			int minInitComputeSize = Math.ceilDiv(initComputeBindingSize, minUniformBufferOffsetAlignment) * minUniformBufferOffsetAlignment;
-			int minTransformComputeSize = Math.ceilDiv(transformComputeBindingSize, minUniformBufferOffsetAlignment) * minUniformBufferOffsetAlignment;
-			int minComputeSize = Math.max(minInitComputeSize, minTransformComputeSize);
+			int minVertexSize = Math.align(vertexBindingSize, minUniformBufferOffsetAlignment);
+			int minFragmentSize = Math.align(fragmentBindingSize, minUniformBufferOffsetAlignment);
+			int minSpatialMoveComputeSize = Math.align(spatialMoveComputeBindingSize, minUniformBufferOffsetAlignment);
+			int minInitComputeSize = Math.align(initComputeBindingSize, minUniformBufferOffsetAlignment);
+			int minTransformComputeSize = Math.align(transformComputeBindingSize, minUniformBufferOffsetAlignment);
+			int minUvComputeSize = Math.max(minInitComputeSize, minTransformComputeSize);
+			int minComputeSize = minSpatialMoveComputeSize + minUvComputeSize;
 			
 			int renderingUniformSize = minVertexSize + minFragmentSize;
 			int renderersUniformSize = renderingUniformSize * buffersCount * renderersCount;
@@ -428,26 +588,55 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 			
 			int bufferSize = renderersUniformSize + computersUniformSize;
 			VulkanBuffer uniformBuffer = VulkanBuffer.ofUniforms(device, bufferSize);
+			Debug.runOnDebug(() -> {
+				uniformBuffer.setName("RenderEngine UniformBuffer");
+			});
 			
 			int computerBuffersCount = entityMaterialCount;
-			int computerUniformOffset = renderersUniformSize;
+			int computerUniformOffset0 = renderersUniformSize;
 			
 			computeShadersFuture.join();
+			ComputePipeline spatialMoveComputePipeline = new ComputePipeline(device, computeLayout, spatialMoveComputeShader.getShader());
 			ComputePipeline initComputePipeline = new ComputePipeline(device, computeLayout, initComputeShader.getShader());
 			ComputePipeline transformComputePipeline = new ComputePipeline(device, computeLayout, transformComputeShader.getShader());
+			Debug.runOnDebug(() -> {
+				spatialMoveComputePipeline.setName("RenderEngine SpatialMove Pipeline");
+				initComputePipeline.setName("RenderEngine Init Pipeline");
+				transformComputePipeline.setName("RenderEngine Transform Pipeline");
+			});
+			
+			Computer spatialMoveComputer = Computer.builder()
+				.computePipeline(spatialMoveComputePipeline)
+				.descriptorSets(spatialComputingDescriptorSets)
+				.buffersCount(entities.size())
+				.groupCount(Vector3ir.of(256, 1, 1))
+				.bindings(i -> new BindingInfo[] {
+					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, computerUniformOffset0 + minComputeSize * i, spatialMoveComputeBindingSize), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+						ShaderVariable.POSITION,
+						ShaderVariable.POSITION_EXTRA_1,
+						ShaderVariable.OFFSET
+					)),
+					BindingInfo.ofStorage(VulkanBuffer.view(vertexBuffer, vertexBlockOffsets[i], vertexOffsets[i] - vertexBlockOffsets[i] + vertexSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+						ShaderVariable.VERTEX_POSITION,
+						ShaderVariable.NORMAL_POSITION
+					))
+				})
+				.build();
+			int computerUniformOffset1 = computerUniformOffset0 + minSpatialMoveComputeSize;
 			
 			Computer initComputer = Computer.builder()
 				.computePipeline(initComputePipeline)
-				.descriptorSets(computingDescriptorSets)
+				.descriptorSets(uvComputingDescriptorSets)
 				.buffersCount(computerBuffersCount)
-				.groupCount(Vector3i.of(256, 1, 1))
+				.groupCount(Vector3ir.of(256, 1, 1))
 				.bindings(i -> new BindingInfo[] {
-					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, computerUniformOffset + minComputeSize * i, initComputeBindingSize), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, computerUniformOffset1 + minComputeSize * i, initComputeBindingSize), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.UV,
 						ShaderVariable.UV_EXTRA_1,
+						ShaderVariable.PADDING_2,
 						ShaderVariable.OFFSET
 					)),
-					BindingInfo.ofStorage(VulkanBuffer.view(textureUvBuffer, textureUvOffsets[i], textureUvSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+					BindingInfo.ofStorage(VulkanBuffer.view(textureUvBuffer, textureUvBlockOffsets[i], textureUvOffsets[i] - textureUvBlockOffsets[i] + textureUvSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.UV
 					))
 				})
@@ -455,25 +644,61 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 			
 			Computer transformComputer = Computer.builder()
 				.computePipeline(transformComputePipeline)
-				.descriptorSets(computingDescriptorSets)
+				.descriptorSets(uvComputingDescriptorSets)
 				.buffersCount(computerBuffersCount)
-				.groupCount(Vector3i.of(256, 1, 1))
+				.groupCount(Vector3ir.of(256, 1, 1))
 				.bindings(i -> new BindingInfo[] {
-					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, computerUniformOffset + minComputeSize * i, transformComputeBindingSize), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, computerUniformOffset1 + minComputeSize * i, transformComputeBindingSize), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.UV,
 						ShaderVariable.UV_EXTRA_1,
 						ShaderVariable.UV_EXTRA_2,
 						ShaderVariable.OFFSET
 					)),
-					BindingInfo.ofStorage(VulkanBuffer.view(textureUvBuffer, textureUvOffsets[i], textureUvSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
+					BindingInfo.ofStorage(VulkanBuffer.view(textureUvBuffer, textureUvBlockOffsets[i], textureUvOffsets[i] - textureUvBlockOffsets[i] + textureUvSizes[i]), VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, List.of(
 						ShaderVariable.UV
 					))
 				})
 				.build();
 			
-			if (useTextureUv) computeInitData(entities, initComputer, commandBuffer);
+			for (int i = 0; i < entities.size(); i++) spatialMoveComputer.updateDescriptorSet(i);
+			for (int i = 0; i < computerBuffersCount; i++)
+			{
+				initComputer.updateDescriptorSet(i);
+				transformComputer.updateDescriptorSet(i);
+			}
+			if (useSpatial) computeSpatialMoveData(spatialMoveComputer, vertexBlockOffsets, vertexOffsets, entities, () -> new Iterator<>() {
+				
+				@Override
+				public boolean hasNext()
+				{
+					return true;
+				}
+				
+				@Override
+				public Vector3fr next()
+				{
+					return Vector3fr.of();
+				}
+			}, () -> new Iterator<>() {
+				
+				int k = 0;
+				
+				@Override
+				public boolean hasNext()
+				{
+					return true;
+				}
+				
+				@Override
+				public Integer next()
+				{
+					return k++;
+				}
+			}, commandBuffer);
 			atlas.draw(commandBuffer);
+			if (useTextureUv) computeInitData(entities, vertexBlockOffsets, vertexOffsets, initComputer, commandBuffer);
 			
+			//TODO: support multisample
 			GraphicsPipelineTemplate graphicsPipelineTemplate = GraphicsPipelineTemplate.create3dRenderingPipeline()
 				.configureVertexInputState(s -> s
 					.addBinding(0, 24, VK10.VK_VERTEX_INPUT_RATE_VERTEX)
@@ -490,12 +715,13 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 			int uniformStride[] = {minVertexSize};
 			
 			Data.ProgramRenderer defaultRendering = null;
+			TextureSampler sampler = config.nearestAtlasFilter ? TextureSampler.ofNearest(device) : TextureSampler.ofLinear(device);
 			if (defaultProgram != null)
 			{
 				defaultRendering = createRenderer(stack, defaultProgram, vertexStageUniforms, fragmentStageUniforms, descriptorPool, pipelineLayoutInfo, renderPass, outputSize, graphicsPipelineTemplate, buffersCount, vertexBuffer, textureUvBuffer, atlas, i -> new BindingInfo[] {
 					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, renderingUniformSize * i + uniformOffset[0], vertexBindingSize), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, vertexStageUniforms),
 					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, renderingUniformSize * i + uniformStride[0], fragmentBindingSize), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, fragmentStageUniforms),
-					BindingInfo.ofTexture(atlas.getTexture(), new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
+					BindingInfo.ofTexture(atlas.getTexture(), sampler, VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
 				});
 				uniformOffset[0] += renderingUniformSize * buffersCount;
 				uniformStride[0] += renderingUniformSize * buffersCount;
@@ -505,7 +731,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 				renderings.add(createRenderer(stack, e.getKey(), vertexStageUniforms, fragmentStageUniforms, descriptorPool, pipelineLayoutInfo, renderPass, outputSize, graphicsPipelineTemplate, buffersCount, vertexBuffer, textureUvBuffer, atlas, i -> new BindingInfo[] {
 					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, renderingUniformSize * i + uniformOffset[0], vertexBindingSize), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, vertexStageUniforms),
 					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, renderingUniformSize * i + uniformStride[0], fragmentBindingSize), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, fragmentStageUniforms),
-					BindingInfo.ofTexture(atlas.getTexture(), new TextureSampler(device), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
+					BindingInfo.ofTexture(atlas.getTexture(), sampler, VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ShaderVariable.TEXTURE)
 				}));
 				uniformOffset[0] += renderingUniformSize * buffersCount;
 				uniformStride[0] += renderingUniformSize * buffersCount;
@@ -515,23 +741,23 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 			
 			//@formatter:off
 			data = new Data(
-				memoryManager, vertexBuffer, textureUvBuffer, uniformBuffer,
-				params.target, renderPass, outputSize, buffersCount,
-				new int[entities.size() * (Data.MAX_RELOAD_INDEX + 1)], groupedEntities,
+				memoryManager, vertexBuffer, textureUvBuffer, uniformBuffer, cache,
+				target, renderPass, outputSize, buffersCount,
+				groupedEntities, Lists.mutable.ofAll(entities),
 				defaultRendering, renderings,
 				descriptorPool,	graphicsPipelineTemplate,
+				computeLayout, spatialMoveComputePipeline, spatialMoveComputer,
 				computeLayout, initComputePipeline, initComputer,
 				computeLayout, transformComputePipeline, transformComputer,
 				atlas,
-				isFrameUniformsDirty,
-				vertexCount
+				isFrameUniformsDirty
 			);
 			//@formatter:on
 			updateBufferBindings(data);
 		}
 	}
 	
-	private Data.ProgramRenderer createRenderer(MemoryStack stack, ShaderProgram program, MutableList<ShaderVariable> vertexStageUniforms, MutableList<ShaderVariable> fragmentStageUniforms, DescriptorPool descriptorPool, VkPipelineLayoutCreateInfo pipelineLayoutInfo, RenderPass renderPass, Vector2i outputSize, GraphicsPipelineTemplate graphicsPipelineTemplate, int buffersCount, VulkanBuffer vertexBuffer, VulkanBuffer textureUvBuffer, Atlas atlas, VulkanFunction<Integer, BindingInfo[]> bindingFactory) throws VulkanException
+	private Data.ProgramRenderer createRenderer(MemoryStack stack, ShaderProgram program, MutableList<ShaderVariable> vertexStageUniforms, MutableList<ShaderVariable> fragmentStageUniforms, DescriptorPool descriptorPool, VkPipelineLayoutCreateInfo pipelineLayoutInfo, RenderPass renderPass, Vector2ir outputSize, GraphicsPipelineTemplate graphicsPipelineTemplate, int buffersCount, VulkanBuffer vertexBuffer, VulkanBuffer textureUvBuffer, Atlas atlas, VulkanFunction<Integer, BindingInfo[]> bindingFactory) throws VulkanException
 	{
 		Data.ProgramRenderer defaultRendering;
 		DescriptorSetLayout graphicsDescriptorSetLayout = new DescriptorSetLayout(device, VkDescriptorSetLayoutCreateInfo.malloc(stack)
@@ -574,13 +800,13 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 			.buffersCount(buffersCount)
 			.descriptorSets(renderingDescriptorSets)
 			.bindings(bindingFactory)
-			.initDescriptorSets(false)
 			.build();
 		
 		long atlasViewVk = atlas.getTexture().getView().getVk();
 		
+		int bindingIndex = renderer.getBindingIndex(2);
 		for (int i = 0; i < buffersCount; i++) renderer.updateDescriptorSet(i, b -> {
-			((VkDescriptorImageInfo.@NonNull Buffer) b.get(2).pImageInfo()).imageView(atlasViewVk);
+			((VkDescriptorImageInfo.@NonNull Buffer) b.get(bindingIndex).pImageInfo()).imageView(atlasViewVk);
 		});
 		defaultRendering = new Data.ProgramRenderer(program, pipelineLayout, graphicsPipeline, renderer);
 		return defaultRendering;
@@ -613,20 +839,14 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 		});
 	}
 	
-	@Override
-	public void reinit(ReinitParams params) throws VulkanException
+	public void reinit(CommandBuffer commandBuffer, @Nullable ShaderProgram defaultProgram, @Nullable ShaderResource initComputeShader, @Nullable ShaderResource transformComputeShader, @Nullable PipelineOutputTarget target, @Nullable Collection<Entity> addedEntities, @Nullable Collection<Entity> removedEntities) throws VulkanException
 	{
 		Data data = getData();
-		ShaderProgram defaultProgram = params.defaultProgram;
-		ShaderResource initComputeShader = params.initComputeShader;
-		ShaderResource transformComputeShader = params.transformComputeShader;
-		Collection<Entity> addedEntities = params.addedEntities;
-		Collection<Entity> removedEntities = params.removedEntities;
 		RenderPass renderPass;
-		Vector2i outputSize;
+		Vector2ir outputSize;
 		//TODO: handle buffersCount change
 		//int buffersCount;
-		switch (params.target)
+		switch (target)
 		{
 			case null -> {
 				renderPass = data.renderPass;
@@ -634,18 +854,15 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 				//buffersCount = data.buffersCount;
 			}
 			case SurfaceTarget s -> {
-				VulkanWindow window = s.window;
+				VulkanWindow window = s.window();
 				renderPass = window.getRenderPass();
 				outputSize = window.getSurface().getData().size();
 				//buffersCount = window.getFramesCount();
 			}
 			case TextureTarget t -> {
-				Texture texture = t.texture;
-				try (RenderPassTemplate template = RenderPassTemplate.transformColorDepthTextureTemplate(texture.getFormat(), texture.getSamples()))
-				{
-					renderPass = template.createRenderPass(device);
-				}
-				outputSize = Vector2i.of(texture.getWidth(), texture.getHeight());
+				FrameBuffer frameBuffer = t.frameBuffer();
+				renderPass = frameBuffer.getRenderPass();
+				outputSize = Vector2ir.of(frameBuffer.getWidth(), frameBuffer.getHeight());
 				//buffersCount = 1;
 			}
 		}
@@ -712,18 +929,28 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 		for (Data.ProgramRenderer p : data.renderings) action.accept(p, i++);
 	}
 	
-	@Override
-	public void update(UpdateParams params) throws VulkanException
+	private void forEachRendererSafe(Data data, BiConsumer<Data.ProgramRenderer, Integer> action)
+	{
+		if (data.defaultRendering != null) action.accept((Data.@NonNull ProgramRenderer) data.defaultRendering, 0);
+		int i = 0;
+		for (Data.ProgramRenderer p : data.renderings) action.accept(p, i++);
+	}
+	
+	private static final int MESH_RELOAD_BIT = 0x1;
+	private static final int SHADER_RELOAD_BIT = 0x2;
+	
+	public void update(CommandBuffer commandBuffer, int frameIndex, float enlapsed) throws VulkanException
 	{
 		Data data = getData();
-		RichIterable<Entity> entities = data.groupedEntities.valuesView();
+		RichIterable<Entity> groupedEntities = data.groupedEntities.valuesView();
+		Collection<Entity> entities = data.entities;
 		
 		int reloadsCount = 0;
-		int[] reloads = new int[data.reloadCounters.length];
+		int[] reloads = new int[entities.size()];
 		int[] componentTypeReloads = new int[2];
 		{
 			int j = 0;
-			for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
+			for (Iterator<Entity> i = groupedEntities.iterator(); i.hasNext(); j++)
 			{
 				Entity e = i.next();
 				MeshComponent mesh = e.getComponent(MeshComponent.TYPE);
@@ -731,7 +958,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 				
 				if (mesh.validate(null))
 				{
-					reloads[j] |= 0x1;
+					reloads[j] |= MESH_RELOAD_BIT;
 					componentTypeReloads[0]++;
 				}
 				
@@ -740,7 +967,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 				{
 					if (shader.validate(new ShaderComponent.Params(device)))
 					{
-						reloads[j] |= 0x2;
+						reloads[j] |= SHADER_RELOAD_BIT;
 						componentTypeReloads[1]++;
 					}
 				}
@@ -753,7 +980,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 			if (componentTypeReloads[0] > 0)
 			{
 				MutableList<Entity> reinitUvEntities = Lists.mutable.of();
-				try (MemoryStack stack = MemoryStack.stackPush(); MemoryTransferState transfer = data.memoryManager.allocateForTransfer(params.commandBuffer, data.vertexBuffer, data.textureUvBuffer))
+				try (MemoryStack stack = MemoryStack.stackPush(); MemoryTransferState transfer = data.memoryManager.allocateForTransfer(commandBuffer, data.vertexBuffer, data.textureUvBuffer))
 				{
 					VulkanBuffer localVertexBuffer = transfer.getLocal(data.vertexBuffer);
 					VulkanBuffer localTextureUvBuffer = transfer.getLocal(data.textureUvBuffer);
@@ -762,7 +989,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 					VkBufferCopy.Buffer copyVertexRegion = VkBufferCopy.calloc(componentTypeReloads[0], stack);
 					VkBufferCopy.Buffer copyTextureUvRegion = VkBufferCopy.calloc(componentTypeReloads[0], stack);
 					int j = 0;
-					for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
+					for (Iterator<Entity> i = groupedEntities.iterator(); i.hasNext(); j++)
 					{
 						Entity e = i.next();
 						MeshComponent mesh = (@NonNull MeshComponent) e.getComponent(MeshComponent.TYPE);
@@ -772,7 +999,7 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 						int vertexSize = (meshProperties.vertexesSize() + meshProperties.normalsSize()) / meshProperties.indicesSize();
 						int textureUvSize = 2;
 						
-						if (reloads[j] != 0)
+						if ((reloads[j] & MESH_RELOAD_BIT) != 0)
 						{
 							mesh.validate(new MeshComponent.Params(new MeshComponent.VertexParams(localVertexBuffer, vertexSize, vertexBufferOffset, localTextureUvBuffer, textureUvSize, textureUvBufferOffset, localVertexBuffer, vertexSize, vertexBufferOffset + meshProperties.vertexesSize() / meshProperties.indicesSize(), null), null));
 							copyVertexRegion.get()
@@ -789,19 +1016,19 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 						vertexBufferOffset += meshProperties.vertexCount() * vertexSize;
 						textureUvBufferOffset += meshProperties.vertexCount() * textureUvSize;
 					}
-					params.commandBuffer.copyBuffer(localVertexBuffer, data.vertexBuffer, copyVertexRegion.rewind());
-					params.commandBuffer.copyBuffer(localTextureUvBuffer, data.textureUvBuffer, copyTextureUvRegion.rewind());
+					commandBuffer.copyBuffer(localVertexBuffer, data.vertexBuffer, copyVertexRegion.rewind());
+					commandBuffer.copyBuffer(localTextureUvBuffer, data.textureUvBuffer, copyTextureUvRegion.rewind());
 				}
-				if (!reinitUvEntities.isEmpty()) computeInitData(reinitUvEntities, data.initComputer, params.commandBuffer);
+				if (!reinitUvEntities.isEmpty()) computeInitData(reinitUvEntities, data.initComputer, commandBuffer);
 			}
 			if (componentTypeReloads[1] > 0)
 			{
 				MutableSet<ShaderProgram> programs = Sets.mutable.of();
 				int j = 0;
-				for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
+				for (Iterator<Entity> i = groupedEntities.iterator(); i.hasNext(); j++)
 				{
 					Entity e = i.next();
-					if (reloads[j] == 0) continue;
+					if ((reloads[j] & SHADER_RELOAD_BIT) == 0) continue;
 					ShaderComponent shader = (@NonNull ShaderComponent) e.getComponent(ShaderComponent.TYPE);
 					
 					ShaderProgram program = shader.getProgram();
@@ -816,27 +1043,76 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 			}
 		}
 		
+		//TODO find a better way to handle different orders
 		boolean reloadAtlas = false;
 		{
 			int j = 0;
 			for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
 			{
 				Entity e = i.next();
-				if (reloads[j] == 0) continue;
-				MeshComponent mesh = (@NonNull MeshComponent) e.getComponent(MeshComponent.TYPE);
-				//TODO notify other components
-				SpatialComponent spatial = e.getComponent(SpatialComponent.TYPE);
-				if (spatial != null)
+				MeshComponent mesh = e.getComponent(MeshComponent.TYPE);
+				if (mesh == null || !mesh.isLoaded()) continue;
+				
+				if (mesh.validate(null))
 				{
-					//TODO compute vertex data difference from gpu
-					Vector3f position = Vector3f.of(0, 0, 0);
-					
-					spatial.reinit(new SpatialComponent.Params(position, null));
+					reloads[j] |= MESH_RELOAD_BIT;
+				}
+				
+				ShaderComponent shader = e.getComponent(ShaderComponent.TYPE);
+				if (shader != null && shader.isLoaded())
+				{
+					if (shader.validate(new ShaderComponent.Params(device)))
+					{
+						reloads[j] |= SHADER_RELOAD_BIT;
+					}
 				}
 			}
 		}
+		{
+			record ActiveEntity(Entity e, Vector3fr p, Integer k) {}
+			MutableList<ActiveEntity> activeEntities = Lists.mutable.of();
+			int k = 0;
+			for (Iterator<Entity> i = entities.iterator(); i.hasNext(); k++)
+			{
+				Entity e = i.next();
+				SpatialComponent spatial = e.getComponent(SpatialComponent.TYPE);
+				if (spatial != null)
+				{
+					State state = spatial.getState();
+					if ((reloads[k] & MESH_RELOAD_BIT) != 0)
+					{
+						activeEntities.add(new ActiveEntity(e, Vector3fr.of(), k));
+						if (!state.movement().equals(Vector3fr.of()))
+						{
+							state.position().add(Vector3f.of(state.movement()).multiplyAll(enlapsed));
+						}
+					}
+					else
+					{
+						if (!state.movement().equals(Vector3fr.of()))
+						{
+							activeEntities.add(new ActiveEntity(e, state.position(), k));
+							state.position().add(Vector3f.of(state.movement()).multiplyAll(enlapsed));
+						}
+						else if (state.isManuallyUpdated()[0])
+						{
+							Vector3fr oldPosition = spatial.getOldPosition();
+							if (oldPosition != null)
+							{
+								activeEntities.add(new ActiveEntity(e, oldPosition, k));
+								state.isManuallyUpdated()[0] = false;
+							}
+						}
+					}
+				}
+			}
+			if (!activeEntities.isEmpty())
+			{
+				computeSpatialMoveData(data.spatialMoveComputer, LazyIterate.collect(activeEntities, ActiveEntity::e), LazyIterate.collect(activeEntities, ActiveEntity::p), LazyIterate.collect(activeEntities, ActiveEntity::k), commandBuffer);
+			}
+		}
 		
-		if (reloadAtlas && data.atlas.draw(params.commandBuffer))
+		if (reloadAtlas && data.atlas.draw(commandBuffer))
 		{
 			long atlasViewVk = data.atlas.getTexture().getView().getVk();
 			
@@ -851,25 +1127,26 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 				}
 			});
 			int j = 0;
-			for (Iterator<Entity> i = entities.iterator(); i.hasNext(); j++)
+			for (Iterator<Entity> i = groupedEntities.iterator(); i.hasNext(); j++)
 			{
 				Entity e = i.next();
-				if (reloads[j] == 0) continue;
+				if ((reloads[j] & MESH_RELOAD_BIT) == 0) continue;
 				MeshComponent mesh = (@NonNull MeshComponent) e.getComponent(MeshComponent.TYPE);
 				MeshComponent.Properties meshProperties = mesh.getProperties();
 				
-				data.transformComputer.dispatch(params.commandBuffer, j, meshProperties.vertexCount(), 1, 1);
+				data.transformComputer.dispatch(commandBuffer, j, meshProperties.vertexCount(), 1, 1);
 			}
 		}
-		
-		params.commandBuffer.beginRenderPass(params.renderPassBeginInfo, VK10.VK_SUBPASS_CONTENTS_INLINE);
-		forEachRenderer(data, (p, i) -> render(i, p.renderer, p.vertexCount, data, params));
-		params.commandBuffer.endRenderPass();
 	}
 	
-	private void render(int index, Renderer renderer, int vertexCount, Data data, UpdateParams params) throws VulkanException
+	public void draw(CommandBuffer commandBuffer, int frameIndex) throws VulkanException
 	{
-		int frameIndex = params.frameIndex;
+		Data data = getData();
+		forEachRenderer(data, (p, i) -> render(i, p.renderer, p.vertexCount, data, commandBuffer, frameIndex));
+	}
+	
+	private void render(int index, Renderer renderer, int vertexCount, Data data, CommandBuffer commandBuffer, int frameIndex) throws VulkanException
+	{
 		if (data.isFrameUniformsDirty[index * data.buffersCount + frameIndex])
 		{
 			data.isFrameUniformsDirty[index * data.buffersCount + frameIndex] = false;
@@ -882,15 +1159,32 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 					renderer.useBufferLayoutWriter(frameIndex, binding, writer -> action.accept(binding, writer));
 				}
 			}
+			if (onUniformUpdateFinish != null)
+			{
+				boolean r = false;
+				for (boolean b : data.isFrameUniformsDirty) if (b)
+				{
+					r = true;
+					break;
+				}
+				if (!r)
+				{
+					((@NonNull Runnable) onUniformUpdateFinish).run();
+				}
+			}
 		}
 		
-		renderer.draw(params.commandBuffer, params.frameIndex, 1, vertexCount);
+		renderer.draw(commandBuffer, frameIndex, 1, vertexCount);
 	}
 	
-	@Override
-	public Properties getProperties()
+	public boolean isInit()
 	{
-		return new Properties(0);
+		return data != null;
+	}
+	
+	public RenderPass getRenderPass()
+	{
+		return getData().renderPass;
 	}
 	
 	@Override
@@ -898,16 +1192,28 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 	{
 		Data data = this.data;
 		if (data == null) return;
-		data.atlas.close();
+		data.close();
 	}
 	
+	private @Nullable Runnable onUniformUpdateFinish;
+	
 	/**
-	 * Called during {@link #update(UpdateParams)}
+	 * Called during {@link #update}
 	 * @param action
 	 */
 	public void setUniforms(VulkanBiConsumer<Integer, BufferLayoutWriter> action)
 	{
+		setUniforms(action, null);
+	}
+	
+	/**
+	 * Called during {@link #update}
+	 * @param action
+	 */
+	public void setUniforms(VulkanBiConsumer<Integer, BufferLayoutWriter> action, @Nullable Runnable onUpdateFinish)
+	{
 		uniformUpdates = action;
+		onUniformUpdateFinish = onUpdateFinish;
 		Data data = this.data;
 		if (data == null) return;
 		Arrays.fill(data.isFrameUniformsDirty, true);
@@ -916,6 +1222,89 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 	private Data getData()
 	{
 		return VulkanErrorUtils.nonNull(data, "Renderer was not initialized");
+	}
+	
+	private void computeSpatialMoveData(Computer spatialMoveComputer, int[] vertexBlockOffsets, int[] vertexOffsets, Iterable<Entity> entities, Iterable<Vector3fr> oldPositions, Iterable<Integer> indices, CommandBuffer commandBuffer) throws VulkanException
+	{
+		Iterator<Vector3fr> pi = oldPositions.iterator();
+		Iterator<Integer> ki = indices.iterator();
+		for (Iterator<Entity> i = entities.iterator(); i.hasNext() && pi.hasNext();)
+		{
+			Entity e = i.next();
+			Vector3fr p = pi.next();
+			int k = ki.next();
+			MeshComponent mesh = e.getComponent(MeshComponent.TYPE);
+			if (mesh == null) continue;
+			SpatialComponent spatial = e.getComponent(SpatialComponent.TYPE);
+			if (spatial == null) continue;
+			
+			int vertexCount = mesh.getProperties().vertexCount();
+			SpatialComponent.State state = spatial.getState();
+			
+			int offset = vertexOffsets[k] - vertexBlockOffsets[k];
+			spatialMoveComputer.useBufferLayoutWriter(k, 0, writer -> {
+				writer.set(ShaderVariable.POSITION, p);
+				writer.set(ShaderVariable.POSITION_EXTRA_1, state.position());
+				writer.set(ShaderVariable.OFFSET, offset);
+			});
+			
+			spatialMoveComputer.dispatch(commandBuffer, k, vertexCount, 1, 1);
+		}
+	}
+	
+	private void computeSpatialMoveData(Computer spatialMoveComputer, Iterable<Entity> entities, Iterable<Vector3fr> oldPositions, Iterable<Integer> indices, CommandBuffer commandBuffer) throws VulkanException
+	{
+		Iterator<Vector3fr> pi = oldPositions.iterator();
+		Iterator<Integer> ki = indices.iterator();
+		for (Iterator<Entity> i = entities.iterator(); i.hasNext() && pi.hasNext();)
+		{
+			Entity e = i.next();
+			Vector3fr p = pi.next();
+			int k = ki.next();
+			MeshComponent mesh = e.getComponent(MeshComponent.TYPE);
+			if (mesh == null) continue;
+			SpatialComponent spatial = e.getComponent(SpatialComponent.TYPE);
+			if (spatial == null) continue;
+			
+			int vertexCount = mesh.getProperties().vertexCount();
+			SpatialComponent.State state = spatial.getState();
+			
+			spatialMoveComputer.useBufferLayoutWriter(k, 0, writer -> {
+				writer.set(ShaderVariable.POSITION, p);
+				writer.set(ShaderVariable.POSITION_EXTRA_1, state.position());
+			});
+			
+			spatialMoveComputer.dispatch(commandBuffer, k, vertexCount, 1, 1);
+		}
+	}
+	
+	private void computeInitData(Collection<Entity> entities, int[] vertexBlockOffsets, int[] vertexOffsets, Computer initComputer, CommandBuffer commandBuffer) throws VulkanException
+	{
+		int k = 0;
+		for (Iterator<Entity> i = entities.iterator(); i.hasNext();)
+		{
+			Entity e = i.next();
+			MeshComponent mesh = e.getComponent(MeshComponent.TYPE);
+			if (mesh == null) continue;
+			MeshComponent.Properties meshProperties = mesh.getProperties();
+			if (!meshProperties.useTextureUv()) continue;
+			
+			for (Material material : mesh.getMaterials())
+			{
+				TextureData colorTexture = material.colorTexture();
+				if (colorTexture == null) continue;
+				
+				int offset = vertexOffsets[k] - vertexBlockOffsets[k];
+				initComputer.useBufferLayoutWriter(k, 0, writer -> {
+					writer.set(ShaderVariable.UV, colorTexture.region().getUvStart());
+					writer.set(ShaderVariable.UV_EXTRA_1, colorTexture.region().getUvEnd());
+					writer.set(ShaderVariable.OFFSET, offset);
+				});
+				
+				initComputer.dispatch(commandBuffer, k, colorTexture.vertexCount(), 1, 1);
+				k++;
+			}
+		}
 	}
 	
 	private void computeInitData(Collection<Entity> entities, Computer initComputer, CommandBuffer commandBuffer) throws VulkanException
@@ -937,7 +1326,6 @@ public class RenderEngine implements EntityEngine<RenderEngine.InitParams, Rende
 				initComputer.useBufferLayoutWriter(k, 0, writer -> {
 					writer.set(ShaderVariable.UV, colorTexture.region().getUvStart());
 					writer.set(ShaderVariable.UV_EXTRA_1, colorTexture.region().getUvEnd());
-					writer.set(ShaderVariable.OFFSET, colorTexture.vertexOffset());
 				});
 				
 				initComputer.dispatch(commandBuffer, k, colorTexture.vertexCount(), 1, 1);

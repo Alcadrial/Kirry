@@ -70,6 +70,12 @@ public class RawBitSet {
 		}
 		
 		@Override
+		public boolean hasAnyOn()
+		{
+			return bits != 0;
+		}
+		
+		@Override
 		public void clear()
 		{
 			bits = 0;
@@ -151,6 +157,12 @@ public class RawBitSet {
 			long bitValue = 1L << i;
 			bits |= bitValue;
 			return (bits & bitValue) == 0;
+		}
+		
+		@Override
+		public boolean hasAnyOn()
+		{
+			return bits != 0;
 		}
 		
 		@Override
@@ -258,6 +270,12 @@ public class RawBitSet {
 		int word = bits[wordIndex];
 		bits[wordIndex] = word & ~bitValue;
 		return (word & bitValue) != 0;
+	}
+	
+	public boolean hasAnyOn()
+	{
+		for (int b : bits) if (b != 0) return true;
+		return false;
 	}
 	
 	public void clear()

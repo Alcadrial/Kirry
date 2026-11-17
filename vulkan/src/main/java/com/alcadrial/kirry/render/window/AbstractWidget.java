@@ -1,17 +1,21 @@
 package com.alcadrial.kirry.render.window;
 
+import java.math.RoundingMode;
+
 import com.alcadrial.kector.matrix.Matrix4f;
+import com.alcadrial.kector.vector.Vector2fr;
 import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector2ir;
 import com.alcadrial.kector.vector.Vector3i;
+import com.alcadrial.kector.vector.Vector3ir;
+import com.alcadrial.kector.vector.Vector4f;
+import com.alcadrial.kector.vector.Vector4fr;
 import com.alcadrial.kector.vector.Vector4i;
-import com.alcadrial.kector.vector.getter.Vector2fGetter;
-import com.alcadrial.kector.vector.getter.Vector2iGetter;
-import com.alcadrial.kector.vector.getter.Vector3iGetter;
 import com.alcadrial.kirry.core.util.EmptyImplementation;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.commandbuffer.CommandBuffer;
 import com.alcadrial.kirry.render.memory.MemoryManager;
-import com.alcadrial.kirry.render.texture.Atlas;
+import com.alcadrial.kirry.render.texture.TextureManager;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 
 public abstract class AbstractWidget implements Widget {
@@ -21,6 +25,7 @@ public abstract class AbstractWidget implements Widget {
 	private static final byte RENDERED_BIT = 0x02;
 	private static final byte HOVERED_BIT = 0x04;
 	private static final byte DRAGGING_BIT = 0x08;
+	private static final byte FOCUSED_BIT = 0x10;
 	
 	protected final VulkanWindow window;
 	protected Vector3i pos;
@@ -28,11 +33,11 @@ public abstract class AbstractWidget implements Widget {
 	private byte internalStates;
 	//private Object transformation;
 	
-	public AbstractWidget(VulkanWindow window, Vector3i pos, Vector2i size)
+	public AbstractWidget(VulkanWindow window, Vector3ir pos, Vector2ir size)
 	{
 		this.window = window;
-		this.pos = Vector3i.copyOf(pos);
-		this.size = Vector2i.copyOf(size);
+		this.pos = Vector3i.of(pos);
+		this.size = Vector2i.of(size);
 		internalStates = EMPTY_STATE;
 		
 		setInternalStateBit(HOVERED_BIT, isHovered(window.getMousePos()));
@@ -54,27 +59,35 @@ public abstract class AbstractWidget implements Widget {
 	{
 		setInternalStateBit(INITIALIZED_BIT, true);
 	}
-	
-	@EmptyImplementation
+
 	@Override
-	public void initAtlas(Atlas atlas)
-	{}
+	public void initTextures(MemoryManager memoryManager, CommandBuffer commandBuffer, TextureManager textureManager) throws VulkanException
+	{
+		//TODO: setInternalStateBit(INITIALIZED_TEXTURES_BIT, true);
+	}
 	
 	@Override
-	public void render(Matrix4f matrix, Renderer renderer)
+	public void render(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer) throws VulkanException
 	{
 		setInternalStateBit(RENDERED_BIT, true);
 	}
 	
 	@EmptyImplementation
 	@Override
-	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer manager, float partialFrame) throws VulkanException
+	public void update(CommandBuffer commandBuffer, float elapsed) throws VulkanException
+	{}
+	
+	@EmptyImplementation
+	@Override
+	public void draw(Matrix4f matrix, CommandBuffer commandBuffer, Renderer renderer, TextureManager textureManager) throws VulkanException
 	{}
 	
 	@Override
 	public Vector4i drawingArea(Matrix4f matrix, float partialFrame)
 	{
-		return Vector4i.of(Vector2i.of(pos.multiply(matrix).xy()), Vector2i.of(pos.xyz().add(size).multiply(matrix).xy()));
+		Vector4f transformPos = matrix.multiply(Vector4fr.of(pos, 1));
+		Vector4f transformSize = matrix.multiply(Vector4fr.of(size, 0, 0));
+		return Vector4i.of(transformPos.x(), transformPos.y(), transformPos.x() + transformSize.x(), transformPos.y() + transformSize.y(), RoundingMode.FLOOR);
 	}
 	
 	@Override
@@ -102,41 +115,53 @@ public abstract class AbstractWidget implements Widget {
 	}
 	
 	@Override
+	public boolean isFocused()
+	{
+		return getInternalStateBit(FOCUSED_BIT);
+	}
+	
+	@Override
 	public void requestRender()
 	{
 		setInternalStateBit(RENDERED_BIT, false);
 	}
 	
 	@Override
-	public void clearRenderingData()
+	public void clear()
 	{
 		setInternalStateBit(INITIALIZED_BIT, false);
 	}
 	
 	@Override
-	public boolean isHovered(Vector2iGetter v)
+	public boolean isHovered(Vector2ir v)
 	{
 		return v.x() > pos.x() && v.x() < pos.x() + size.x() && v.y() > pos.y() && v.y() < pos.y() + size.y();
 	}
 	
 	@Override
-	public boolean isHovered(Vector2fGetter v)
+	public boolean isHovered(Vector2fr v)
 	{
 		return v.x() > pos.x() && v.x() < pos.x() + size.x() && v.y() > pos.y() && v.y() < pos.y() + size.y();
 	}
 	
-	protected void onMouseEnter(Vector2iGetter enterPos)
+	protected void onMouseEnter(Vector2ir enterPos)
 	{
 		setInternalStateBit(HOVERED_BIT, true);
 	}
 	
-	protected void onMouseExit(Vector2iGetter exitPos)
+	protected void onMouseExit(Vector2ir exitPos)
 	{
 		setInternalStateBit(HOVERED_BIT, false);
 	}
 	
 	@Override
-	public void onMouseMove(Vector2iGetter oldPos, Vector2iGetter newPos)
+	public void setFocus(boolean focus)
+	{
+		setInternalStateBit(FOCUSED_BIT, focus);
+	}
+	
+	@Override
+	public void onMouseMove(Vector2ir oldPos, Vector2ir newPos)
 	{
 		boolean wasOvered = isMouseHover();
 		boolean isPassedThrough = wasOvered ^ isHovered(newPos);
@@ -145,30 +170,30 @@ public abstract class AbstractWidget implements Widget {
 	}
 	
 	@EmptyImplementation
-	protected void move(Vector3iGetter newPos)
+	protected void move(Vector3ir newPos)
 	{}
 	
 	@Override
-	public void setSize(Vector2iGetter size)
+	public void setSize(Vector2ir size)
 	{
-		Vector2i oldSize = Vector2i.copyOf(this.size);
+		Vector2ir oldSize = Vector2ir.of(this.size);
 		resize(size);
-		this.size.setX(size.x()).setY(size.y());
+		this.size.setAll(size);
 		onResize(oldSize, size);
 	}
 	
 	@EmptyImplementation
-	protected void resize(Vector2iGetter newSize)
+	protected void resize(Vector2ir newSize)
 	{}
 	
 	@Override
-	public Vector3iGetter getPos()
+	public Vector3ir getPos()
 	{
 		return pos;
 	}
 	
 	@Override
-	public Vector2iGetter getSize()
+	public Vector2ir getSize()
 	{
 		return size;
 	}
@@ -204,59 +229,59 @@ public abstract class AbstractWidget implements Widget {
 	}
 	
 	@Override
-	public void setPos(Vector3iGetter pos)
+	public void setPos(Vector3ir pos)
 	{
-		Vector3i oldPos = Vector3i.copyOf(this.pos);
+		Vector3ir oldPos = Vector3ir.of(this.pos);
 		move(pos);
-		this.pos.setX(pos.x()).setY(pos.y()).setZ(pos.z());
+		this.pos.setAll(pos);
 		onMove(oldPos, pos);
 	}
 	
 	@EmptyImplementation
-	protected void onMove(Vector3iGetter oldPos, Vector3iGetter newPos)
+	protected void onMove(Vector3ir oldPos, Vector3ir newPos)
 	{}
 	
 	@EmptyImplementation
-	protected void onResize(Vector2iGetter oldSize, Vector2iGetter newSize)
+	protected void onResize(Vector2ir oldSize, Vector2ir newSize)
 	{}
 	
 	@Override
 	@EmptyImplementation
-	public ActionResult onPress(int button, Vector2iGetter mousePos)
+	public ActionResult onPress(int button, Vector2ir mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
 	
 	@Override
 	@EmptyImplementation
-	public ActionResult onRelease(int button, Vector2iGetter mousePos)
+	public ActionResult onRelease(int button, Vector2ir mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
 	
 	@Override
 	@EmptyImplementation
-	public ActionResult onClick(int button, int count, Vector2iGetter mousePos)
+	public ActionResult onClick(int button, int count, Vector2ir mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
 	
 	@Override
 	@EmptyImplementation
-	public ActionResult onScroll(double xScroll, double yScroll, Vector2iGetter mousePos)
+	public ActionResult onScroll(double xScroll, double yScroll, Vector2ir mousePos)
 	{
 		return ActionResult.CONSUME;
 	}
 	
 	@Override
-	public ActionResult onDragStart(Vector2iGetter mousePos)
+	public ActionResult onDragStart(Vector2ir mousePos)
 	{
 		setInternalStateBit(DRAGGING_BIT, true);
 		return ActionResult.CONSUME;
 	}
 	
 	@Override
-	public ActionResult onDragEnd(Vector2iGetter startPos, Vector2iGetter mousePos)
+	public ActionResult onDragEnd(Vector2ir startPos, Vector2ir mousePos)
 	{
 		setInternalStateBit(DRAGGING_BIT, false);
 		return ActionResult.CONSUME;

@@ -27,6 +27,7 @@ import org.lwjgl.vulkan.VkDebugUtilsObjectNameInfoEXT;
 import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkFenceCreateInfo;
 import org.lwjgl.vulkan.VkMemoryRequirements;
+import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 
 import com.alcadrial.kirry.render.buffer.Memory;
@@ -52,6 +53,7 @@ import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.VulkanUtils;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.util.functional.VulkanConsumer;
+import com.alcadrial.kirry.render.util.functional.VulkanRunnable;
 import com.alcadrial.kirry.render.util.future.VulkanFuture;
 
 public class Device extends AbstractVulkanResource<VkDevice> {
@@ -60,6 +62,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	{
 		KirryVulkan.assertLoaded();
 	}
+	private VkPhysicalDeviceFeatures deviceFeatures;
 	
 	private Deque<AbstractDeviceResource<?>> destructionList;
 	private PhysicalDevice physicalDevice;
@@ -73,21 +76,23 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 	
 	private @Nullable Map<Object, String> debugNames;
 	
-	public Device(VkDevice device, PhysicalDevice physicalDevice, QueueFamily graphicsQueueFamily, QueueFamily computeQueueFamily, QueueFamily graphicsComputeQueueFamily, @Nullable QueueFamily presentQueueFamily) throws VulkanException
+	public Device(VkDevice device, VkPhysicalDeviceFeatures deviceFeatures, PhysicalDevice physicalDevice, QueueFamily graphicsQueueFamily, QueueFamily computeQueueFamily, QueueFamily graphicsComputeQueueFamily, @Nullable QueueFamily presentQueueFamily) throws VulkanException
 	{
 		vk = VulkanErrorUtils.nonNull(device);
 		this.physicalDevice = VulkanErrorUtils.nonNull(physicalDevice);
 		destructionList = new LinkedList<>();
+		this.deviceFeatures = VkPhysicalDeviceFeatures.malloc().set(deviceFeatures);
 		
 		if (KirryVulkan.isDebug() && KirryVulkan.getVulkan().isDebugUtilsExtensionEnabled()) debugNames = new HashMap<>(1024);
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			long[] p = new long[1];
 			
-			VkCommandPoolCreateInfo poolInfo = VkCommandPoolCreateInfo.calloc(stack);
-			poolInfo.sType(VK10.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO);
-			poolInfo.queueFamilyIndex(physicalDevice.getGraphicsQueueFamily().getIndex());
-			poolInfo.flags(VK10.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+			VkCommandPoolCreateInfo poolInfo = VkCommandPoolCreateInfo.malloc(stack)
+				.sType$Default()
+				.pNext(0)
+				.flags(VK10.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT)
+				.queueFamilyIndex(physicalDevice.getGraphicsQueueFamily().getIndex());
 			
 			VulkanErrorUtils.assertNoError(VK10.vkCreateCommandPool(device, poolInfo, null, p), "Failed to create reset command pool");
 			multiUseCommandPool = new CommandPool(this, p[0]);
@@ -232,8 +237,9 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		{
 			PointerBuffer p = stack.callocPointer(1);
 			useShortLivedCommandPool(pool -> {
-				VkCommandBufferAllocateInfo commandBufferAllocateInfo = VkCommandBufferAllocateInfo.calloc(stack)
-					.sType(VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
+				VkCommandBufferAllocateInfo commandBufferAllocateInfo = VkCommandBufferAllocateInfo.malloc(stack)
+					.sType$Default()
+					.pNext(0)
 					.commandPool(pool.getVk())
 					.level(VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY)
 					.commandBufferCount(1);
@@ -243,12 +249,13 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			Debug.runOnDebug(() -> commandBuffer.setName("SingleUse CommandBuffer " + Debug.getIncrementalId(this)));
 			
 			useShortLivedCommandPool(_ -> {
-				commandBuffer.beginRecording();
+				commandBuffer.beginUniqueRecording();
 				configure.accept(commandBuffer);
 				commandBuffer.endRecording();
 			});
 			return VulkanFuture.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 				destroyFences(fences);
+				for (VulkanRunnable action : commandBuffer.getCompletionActions()) action.run();
 				synchronized (singleUseCommandPool)
 				{
 					commandBuffer.close();
@@ -281,7 +288,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			for (int i = 0; i < count; i++)
 			{
 				CommandBuffer commandBuffer = new CommandBuffer(this, singleUseCommandPool, new VkCommandBuffer(p.get(), vk));
-				commandBuffer.beginRecording();
+				commandBuffer.beginUniqueRecording();
 				Debug.runOnDebug(() -> commandBuffer.setName("SingleUse CommandBuffer " + Debug.getIncrementalId(this)));
 				commandBuffers[i] = commandBuffer;
 			}
@@ -299,6 +306,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
 		return VulkanFuture.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 			destroyFences(fences);
+			for (VulkanRunnable action : commandBuffer.getCompletionActions()) action.run();
 			synchronized (commandBuffer.getPool())
 			{
 				commandBuffer.close();
@@ -316,6 +324,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
 		return VulkanFuture.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 			destroyFences(fences);
+			for (VulkanRunnable action : commandBuffer.getCompletionActions()) action.run();
 		});
 	}
 	
@@ -329,6 +338,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		if (commandBuffer.getDevice() != this) throw new IllegalArgumentException("Cannot submit a command buffer of another device");
 		return VulkanFuture.composeAfter(queue.submitAsync(VulkanUtils.submitInfo(stack, commandBuffer.getVk()), createFence(stack, false)), fences -> {
 			destroyFences(fences);
+			for (VulkanRunnable action : commandBuffer.getCompletionActions()) action.run();
 			commandBuffer.reset();
 		});
 	}
@@ -435,6 +445,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		
 		int minimal = requiredProperties;
 		int optimal = minimal | optimalProperties;
+		int propertyFlags = 0;
 		int result = 0;
 		
 		int index;
@@ -443,6 +454,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 			if ((memoryRequirements.memoryTypeBits() & (1 << index)) != 0 && (memoryProperties.memoryTypes(index).propertyFlags() & optimal) == optimal)
 			{
 				result = memoryRequirements.memoryTypeBits();
+				propertyFlags = memoryProperties.memoryTypes(index).propertyFlags();
 				break;
 			}
 		}
@@ -456,6 +468,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 					if ((memoryRequirements.memoryTypeBits() & (1 << index)) != 0 && (memoryProperties.memoryTypes(index).propertyFlags() & minimal) == minimal)
 					{
 						result = memoryRequirements.memoryTypeBits();
+						propertyFlags = memoryProperties.memoryTypes(index).propertyFlags();
 						break;
 					}
 				}
@@ -465,7 +478,7 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 		
 		LongBuffer p = stack.mallocLong(1);
 		VulkanErrorUtils.assertNoError(VK10.vkAllocateMemory(vk, VulkanUtils.memoryAllocateInfo(stack, memoryRequirements.size(), index), null, p), () -> "Failed to allocate image memory (" + memoryRequirements.size() + " bytes)");
-		return new Memory(this, p.get(), (int) memoryRequirements.size(), result, index);
+		return new Memory(this, p.get(), (int) memoryRequirements.size(), result, propertyFlags, index);
 	}
 	
 	@Override
@@ -484,14 +497,20 @@ public class Device extends AbstractVulkanResource<VkDevice> {
 				for (int i = 0; i < limit; i++)
 				{
 					AbstractDeviceResource<?> resource = iterator.next();
-					Debug.print(i + " " + resource.getClass(), resource);
+					Debug.print(i + " " + resource, resource);
 				}
 			}
 			while (destructionList.peek() != null) destructionList.pop().close();
+			deviceFeatures.close();
 			VK10.vkDestroyDevice(vk, null);
 			super.close();
 			vk = null;
 		}
+	}
+	
+	public VkPhysicalDeviceFeatures getEnabledFeatures()
+	{
+		return deviceFeatures;
 	}
 	
 	@Override

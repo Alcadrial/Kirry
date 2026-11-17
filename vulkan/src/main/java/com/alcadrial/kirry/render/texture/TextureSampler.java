@@ -6,45 +6,72 @@ import org.lwjgl.vulkan.VkSamplerCreateInfo;
 
 import com.alcadrial.kirry.render.Debug;
 import com.alcadrial.kirry.render.Device;
-import com.alcadrial.kirry.render.KirryVulkan;
 import com.alcadrial.kirry.render.util.RawDeviceResource;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 
 public class TextureSampler extends RawDeviceResource {
 	
-	static
+	public static TextureSampler ofNearest(Device device) throws VulkanException
 	{
-		KirryVulkan.assertLoaded();
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			return new TextureSampler(device, VkSamplerCreateInfo.malloc(stack)
+				.sType$Default()
+				.pNext(0)
+				.flags(0)
+				.magFilter(VK10.VK_FILTER_NEAREST)
+				.minFilter(VK10.VK_FILTER_NEAREST)
+				.mipmapMode(VK10.VK_SAMPLER_MIPMAP_MODE_NEAREST)
+				.addressModeU(VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT)
+				.addressModeV(VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT)
+				.addressModeW(VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT)
+				.mipLodBias(0)
+				.anisotropyEnable(false)
+				.maxAnisotropy(0)
+				.compareEnable(false)
+				.compareOp(VK10.VK_COMPARE_OP_ALWAYS)
+				.minLod(0)
+				.maxLod(0)
+				.borderColor(VK10.VK_BORDER_COLOR_INT_OPAQUE_BLACK)
+				.unnormalizedCoordinates(false)
+			);
+		}
+	}
+	public static TextureSampler ofLinear(Device device) throws VulkanException
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			return new TextureSampler(device, VkSamplerCreateInfo.malloc(stack)
+				.sType$Default()
+				.pNext(0)
+				.flags(0)
+				.magFilter(VK10.VK_FILTER_LINEAR)
+				.minFilter(VK10.VK_FILTER_LINEAR)
+				.mipmapMode(VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR)
+				.addressModeU(VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT)
+				.addressModeV(VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT)
+				.addressModeW(VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT)
+				.mipLodBias(0)
+				.anisotropyEnable(true)
+				.maxAnisotropy(Math.min(16, device.getPhysicalDevice().getProperties().limits().maxSamplerAnisotropy()))
+				.compareEnable(false)
+				.compareOp(VK10.VK_COMPARE_OP_ALWAYS)
+				.minLod(0)
+				.maxLod(VK10.VK_LOD_CLAMP_NONE)
+				.borderColor(VK10.VK_BORDER_COLOR_INT_OPAQUE_BLACK)
+				.unnormalizedCoordinates(false)
+			);
+		}
 	}
 	
-	public TextureSampler(Device device) throws VulkanException
+	public TextureSampler(Device device, VkSamplerCreateInfo createInfo) throws VulkanException
 	{
 		super(device);
 		
-		try (MemoryStack stack = MemoryStack.stackPush())
-		{
-			VkSamplerCreateInfo samplerInfo = VkSamplerCreateInfo.calloc(stack);
-			samplerInfo.sType(VK10.VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
-			samplerInfo.magFilter(VK10.VK_FILTER_NEAREST);
-			samplerInfo.minFilter(VK10.VK_FILTER_NEAREST);
-			samplerInfo.addressModeU(VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT);
-			samplerInfo.addressModeV(VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT);
-			samplerInfo.addressModeW(VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT);
-			samplerInfo.anisotropyEnable(device.getPhysicalDevice().getFeatures().samplerAnisotropy());
-			samplerInfo.maxAnisotropy(Math.min(16, device.getPhysicalDevice().getProperties().limits().maxSamplerAnisotropy()));
-			samplerInfo.borderColor(VK10.VK_BORDER_COLOR_INT_OPAQUE_BLACK);
-			samplerInfo.unnormalizedCoordinates(false);
-			samplerInfo.compareEnable(false);
-			samplerInfo.compareOp(VK10.VK_COMPARE_OP_ALWAYS);
-			samplerInfo.mipmapMode(VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR);
-			
-			long[] p = new long[1];
-			
-			VulkanErrorUtils.assertNoError(VK10.vkCreateSampler(device.getVk(), samplerInfo, null, p), "Failed to create texture sampler");
-			
-			vk = p[0];
-		}
+		long[] p = new long[1];
+		VulkanErrorUtils.assertNoError(VK10.vkCreateSampler(device.getVk(), createInfo, null, p), "Failed to create texture sampler");
+		vk = p[0];
 	}
 	
 	@Override

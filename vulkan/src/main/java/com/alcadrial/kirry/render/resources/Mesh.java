@@ -47,7 +47,6 @@ public class Mesh extends AbstractVulkanResource<Mesh> {
 	public record TextureData(
 		TextureResource resource,
 		TextureRegion region,
-		int vertexOffset,
 		int vertexCount
 	) {}
 	
@@ -125,8 +124,9 @@ public class Mesh extends AbstractVulkanResource<Mesh> {
 				{
 					VulkanBuffer buffer = transfer.getLocal(properties.size());
 					textureResource.copy(buffer);
-					TextureRegion region = atlas.add(TextureBuffer.create(buffer, properties.width(), properties.height(), textureResource));
-					materials.add(new Material(new TextureData(textureResource, region, 0, materialIndex.indices.size())));
+					//TODO use TextureManager
+					TextureRegion region = VulkanErrorUtils.nonNull(atlas.add(TextureBuffer.create(buffer, properties.width(), properties.height(), textureResource)), "Missing space in atlas");
+					materials.add(new Material(new TextureData(textureResource, region, materialIndex.indices.size())));
 				}
 			}
 		}
@@ -206,7 +206,6 @@ public class Mesh extends AbstractVulkanResource<Mesh> {
 		}
 		else
 		{
-			
 			if (indexBuffer == null)
 			{
 				if (useVertexes || useNormals)
@@ -487,18 +486,18 @@ public class Mesh extends AbstractVulkanResource<Mesh> {
 							{
 								for (int i = 0; i < tokens.length; i++)
 								{
-									ref[i] = parseVertexRef(path, tokens[i]);
+									ref[i] = parseVertexRef(path, tokens[i], vertexes, textureUv, normals);
 									for (int j = 0; j < 3; j++) if ((ref[i] == null) != (oldRef[i] == null)) throw new IOException("Invalid geometry (non uniform faces format)");
 								}
 							}
 							else
 							{
-								for (int i = 0; i < tokens.length; i++) ref[i] = parseVertexRef(path, tokens[i]);
+								for (int i = 0; i < tokens.length; i++) ref[i] = parseVertexRef(path, tokens[i], vertexes, textureUv, normals);
 							}
 							if (tokens.length == 4) trianglesCount += tokens.length - 2;
 							faces.add(ref);
 						}
-						case "o" -> name = scanner.nextLine();
+						case "o" -> name = scanner.skip(" ").nextLine();
 						case "mtllib" -> {
 							while (scanner.hasNext())
 							{
@@ -576,7 +575,7 @@ public class Mesh extends AbstractVulkanResource<Mesh> {
 			}
 		}
 		
-		private static Integer[] parseVertexRef(Path path, String s) throws IOException
+		private static Integer[] parseVertexRef(Path path, String s, MutableList<float[]> vertexes, MutableList<float[]> textureUv, MutableList<float[]> normals) throws IOException
 		{
 			String[] ss = s.split("/");
 			if (ss.length > 3) throw new IOException("Failed to parse file " + path);
@@ -587,6 +586,9 @@ public class Mesh extends AbstractVulkanResource<Mesh> {
 				else is[i] = Integer.parseInt(ss[i]) - 1;
 			}
 			for (int i = ss.length; i < 3; i++) is[i] = null;
+			if (is[0] < 0 || is[0] >= vertexes.size()) throw new IOException("Unknown vertex reference in a face");
+			if (is[1] < 0 || is[1] >= textureUv.size()) throw new IOException("Unknown uv reference in a face");
+			if (is[2] < 0 || is[2] >= normals.size()) throw new IOException("Unknown normal reference in a face");
 			return is;
 		}
 		

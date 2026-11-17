@@ -8,6 +8,7 @@ public class VulkanRuntimeException extends RuntimeException {
 	{
 		super(cause);
 	}
+	
 	@Override
 	public @NonNull VulkanException getCause()
 	{

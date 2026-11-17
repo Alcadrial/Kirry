@@ -25,6 +25,7 @@ public class ShaderVariable {
 	public static final ShaderVariable UV = of(ShaderInputType.VECTOR_FLOAT_2, "uv");
 	public static final ShaderVariable UV_EXTRA_1 = of(ShaderInputType.VECTOR_FLOAT_2, "uv1");
 	public static final ShaderVariable UV_EXTRA_2 = of(ShaderInputType.VECTOR_FLOAT_2, "uv2");
+	public static final ShaderVariable UVUV = of(ShaderInputType.VECTOR_FLOAT_4, "uvuv");
 	public static final ShaderVariable NORMAL_POSITION = of(ShaderInputType.VECTOR_FLOAT_3, "normalPosition");
 	public static final ShaderVariable NORMAL_POSITION_EXTRA_1 = of(ShaderInputType.VECTOR_FLOAT_3, "normalPosition1");
 	public static final ShaderVariable POSITION = of(ShaderInputType.VECTOR_FLOAT_3, "position");
@@ -36,8 +37,11 @@ public class ShaderVariable {
 	public static final ShaderVariable ACCELERATION = of(ShaderInputType.VECTOR_FLOAT_3, "acceleration");
 	public static final ShaderVariable ACCELERATION_EXTRA_1 = of(ShaderInputType.VECTOR_FLOAT_3, "acceleration1");
 	public static final ShaderVariable ACCELERATION_EXTRA_2 = of(ShaderInputType.VECTOR_FLOAT_3, "acceleration2");
-	
-	public static final ShaderVariable MATRIX = of(ShaderInputType.MATRIX_FLOAT_4X4, "MATRIX");
+
+	public static final ShaderVariable MATRIX_2X2 = of(ShaderInputType.MATRIX_FLOAT_2X2, "MATRIX_2X2");
+	public static final ShaderVariable MATRIX_3X3 = of(ShaderInputType.MATRIX_FLOAT_3X3, "MATRIX_3X3");
+	public static final ShaderVariable MATRIX_4X4 = of(ShaderInputType.MATRIX_FLOAT_4X4, "MATRIX");
+	public static final ShaderVariable MATRIX = MATRIX_4X4;
 	public static final ShaderVariable PROJECTION = of(ShaderInputType.MATRIX_FLOAT_4X4, "PROJECTION");
 	public static final ShaderVariable VIEW = of(ShaderInputType.MATRIX_FLOAT_4X4, "VIEW");
 	public static final ShaderVariable MODEL = of(ShaderInputType.MATRIX_FLOAT_4X4, "MODEL");
@@ -47,9 +51,17 @@ public class ShaderVariable {
 	public static final ShaderVariable OFFSET_1 = of(ShaderInputType.INT, "offset1");
 	public static final ShaderVariable OFFSET_2 = of(ShaderInputType.INT, "offset2");
 	
+	public static final ShaderVariable STRIDE = of(ShaderInputType.INT, "stride");
+	public static final ShaderVariable STRIDE_1 = of(ShaderInputType.INT, "stride1");
+	public static final ShaderVariable STRIDE_2 = of(ShaderInputType.INT, "stride2");
+	
+	public static final ShaderVariable SIZE = of(ShaderInputType.INT, "size");
+	public static final ShaderVariable SIZE_1 = of(ShaderInputType.INT, "size1");
+	public static final ShaderVariable SIZE_2 = of(ShaderInputType.INT, "size2");
+	
 	public static final ShaderVariable TEXTURE = of(ShaderInputType.SAMPLER_2D, "TEXTURE_SAMPLER");
 	public static final ShaderVariable ATLAS = of(ShaderInputType.SAMPLER_2D, "ATLAS");
-	
+
 	public static ShaderVariable parse(JsonNode json) throws IOException
 	{
 		return parse(json, "$");

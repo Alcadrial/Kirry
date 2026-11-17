@@ -18,7 +18,6 @@ import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kirry.core.util.Test;
 import com.alcadrial.kirry.render.Debug;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.FrameBuffer;
@@ -50,7 +49,6 @@ import com.alcadrial.kirry.render.util.exception.VulkanException;
 import com.alcadrial.kirry.render.util.future.VulkanFuture;
 import com.alcadrial.kirry.render.window.VulkanWindow;
 
-@Test
 public class TestReinit extends RenderTest {
 	
 	private static final String SHADER = "shaders/shader";
@@ -167,7 +165,7 @@ public class TestReinit extends RenderTest {
 			indexBuffer.setName("IndexBuffer");
 			uniformBuffer.setName("UniformBuffer");
 			
-			VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getComputeQueue(), commandBuffer -> {
+			VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
 				
 				try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, indexBuffer))
 				{
@@ -203,7 +201,7 @@ public class TestReinit extends RenderTest {
 			});
 			
 			
-			try (RenderPassTemplate template = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format()))
+			try (RenderPassTemplate template = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format(), window.getDepthTexture().getFormat()))
 			{
 				renderPass = template.createRenderPass(device);
 			}
@@ -276,6 +274,7 @@ public class TestReinit extends RenderTest {
 						BindingInfo.ofUniform(uniformBuffer, VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(ShaderVariable.TRANSFORMATION))
 						)
 					.build();
+				renderer.updateAllDescriptorSets();
 				
 				renderer.setBuffer(0, vertexBuffer);
 				renderer.setIndexBuffer(indexBuffer);

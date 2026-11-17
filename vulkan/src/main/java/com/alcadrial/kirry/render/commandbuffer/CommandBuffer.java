@@ -8,23 +8,29 @@ import org.jspecify.annotations.Nullable;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
+import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkBufferCopy;
 import org.lwjgl.vulkan.VkBufferImageCopy;
 import org.lwjgl.vulkan.VkBufferMemoryBarrier;
+import org.lwjgl.vulkan.VkBufferMemoryBarrier2;
 import org.lwjgl.vulkan.VkClearAttachment;
 import org.lwjgl.vulkan.VkClearColorValue;
 import org.lwjgl.vulkan.VkClearRect;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
+import org.lwjgl.vulkan.VkDependencyInfo;
+import org.lwjgl.vulkan.VkImageBlit;
 import org.lwjgl.vulkan.VkImageCopy;
 import org.lwjgl.vulkan.VkImageMemoryBarrier;
+import org.lwjgl.vulkan.VkImageMemoryBarrier2;
 import org.lwjgl.vulkan.VkImageSubresourceRange;
 import org.lwjgl.vulkan.VkMemoryBarrier;
+import org.lwjgl.vulkan.VkMemoryBarrier2;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 import org.lwjgl.vulkan.VkViewport;
 
-import com.alcadrial.kector.vector.Vector3i;
+import com.alcadrial.kector.vector.Vector3ir;
 import com.alcadrial.kirry.core.util.NotYetImplementedException;
 import com.alcadrial.kirry.core.util.color.Color;
 import com.alcadrial.kirry.render.Debug;
@@ -67,13 +73,32 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		this.name = name;
 	}
 	
+	public boolean beginUniqueRecording()
+	{
+		if (isRecording) return false;
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.malloc(stack)
+				.sType$Default()
+				.pNext(0)
+				.flags(VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
+				.pInheritanceInfo(null);
+			if (VK10.vkBeginCommandBuffer(vk, beginInfo) < 0) return false;
+		}
+		isRecording = true;
+		return true;
+	}
+	
 	public boolean beginRecording()
 	{
 		if (isRecording) return false;
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
-			VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.calloc(stack)
-				.sType(VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
+			VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo.malloc(stack)
+				.sType$Default()
+				.pNext(0)
+				.flags(0)
+				.pInheritanceInfo(null);
 			if (VK10.vkBeginCommandBuffer(vk, beginInfo) < 0) return false;
 		}
 		isRecording = true;
@@ -115,7 +140,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		bindVertexBuffers(bindingOffset, List.of(buffers));
 	}
 	
-	public void bindVertexBuffers(int bindingOffset, VulkanBuffer[] buffers, long...offsets)
+	public void bindVertexBuffers(int bindingOffset, VulkanBuffer[] buffers, long... offsets)
 	{
 		bindVertexBuffers(bindingOffset, List.of(buffers), offsets);
 	}
@@ -125,7 +150,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		bindVertexBuffers(bindingOffset, buffers.stream().mapToLong(VulkanBuffer::getVk).toArray());
 	}
 	
-	public void bindVertexBuffers(int bindingOffset, List<VulkanBuffer> buffers, long...offsets)
+	public void bindVertexBuffers(int bindingOffset, List<VulkanBuffer> buffers, long... offsets)
 	{
 		bindVertexBuffers(bindingOffset, buffers.stream().mapToLong(VulkanBuffer::getVk).toArray(), offsets);
 	}
@@ -140,13 +165,9 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		VK10.vkCmdBindVertexBuffers(vk, bindingOffset, buffers, offsets);
 	}
 	
-	/**
-	 * NYI
-	 */
-	public void blitImage()
+	public void blitImage(Texture src, int srcLayout, Texture dst, int dstLayout, VkImageBlit.Buffer regions, int filter)
 	{
-		// VK10.vkCmdBlitImage(vk);
-		throw new NotYetImplementedException();
+		VK10.vkCmdBlitImage(vk, src.getVk(), srcLayout, dst.getVk(), dstLayout, regions, filter);
 	}
 	
 	public void clear(List<VkClearAttachment> clearAttachments, List<VkClearRect> clearRects)
@@ -221,7 +242,7 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		}
 	}
 	
-	public void copyBufferToImage(VulkanBuffer srcBuffer, long srcOffset, Texture dstTexture, Vector3i imageOffset, Vector3i imageExtent)
+	public void copyBufferToImage(VulkanBuffer srcBuffer, long srcOffset, Texture dstTexture, Vector3ir imageOffset, Vector3ir imageExtent)
 	{
 		copyBufferToImage(srcBuffer, srcOffset, dstTexture, imageOffset.x(), imageOffset.y(), imageOffset.z(), imageExtent.x(), imageExtent.y(), imageExtent.z());
 	}
@@ -350,9 +371,48 @@ public class CommandBuffer extends AbstractDeviceResource<VkCommandBuffer> {
 		VK10.vkCmdNextSubpass(vk, subpassContents);
 	}
 	
+	public void pipelineBarrierTexture(int srcStageMask, int dstStageMask, int srcAccessMask, int dstAccessMask, Texture texture)
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VK10.vkCmdPipelineBarrier(vk, srcStageMask, dstStageMask, 0, null, null, VkImageMemoryBarrier.malloc(1, stack)
+				.sType$Default()
+				.pNext(0)
+				.srcAccessMask(srcAccessMask)
+				.dstAccessMask(dstAccessMask)
+				.oldLayout(0)
+				.newLayout(0)
+				.srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+				.dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+				.image(texture.getVk())
+				.subresourceRange(s -> s
+					.aspectMask(texture.getAspectMask())
+					.baseMipLevel(0)
+					.levelCount(texture.getMipLevels())
+					.baseArrayLayer(0)
+					.layerCount(1))
+				);
+		}
+	}
+	
 	public void pipelineBarrier(int srcStageMask, int dstStageMask, int dependencyFlags, VkMemoryBarrier.@Nullable Buffer memoryBarriers, VkBufferMemoryBarrier.@Nullable Buffer bufferMemoryBarriers, VkImageMemoryBarrier.@Nullable Buffer imageMemoryBarriers)
 	{
 		VK10.vkCmdPipelineBarrier(vk, srcStageMask, dstStageMask, dependencyFlags, memoryBarriers, bufferMemoryBarriers, imageMemoryBarriers);
+	}
+	
+	public void pipelineBarrier(int dependencyFlags, VkMemoryBarrier2.@Nullable Buffer memoryBarriers, VkImageMemoryBarrier2.@Nullable Buffer imageBarriers, VkBufferMemoryBarrier2.@Nullable Buffer bufferBarriers)
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			VK13.vkCmdPipelineBarrier2(vk, VkDependencyInfo.malloc(stack)
+				.sType(VK13.VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
+				.pNext(0)
+				.dependencyFlags(dependencyFlags)
+				.pMemoryBarriers(memoryBarriers)
+				.pImageMemoryBarriers(imageBarriers)
+				.pBufferMemoryBarriers(bufferBarriers)
+			);
+		}
 	}
 	
 	// pushConstants

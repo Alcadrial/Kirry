@@ -1,9 +1,13 @@
 package com.alcadrial.kirry.render.memory;
 
+import java.util.Arrays;
 import java.util.ConcurrentModificationException;
+import java.util.Iterator;
 import java.util.NavigableSet;
 import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
@@ -23,9 +27,9 @@ import com.alcadrial.kirry.render.util.exception.VulkanRuntimeException;
 
 public class DefaultMemoryManager implements MemoryManager {
 	
-	private final MemoryType<StackSegment> stackMemory;
-	private final MemoryType<DynamicSegment> dynamicMemory;
-	private final MemoryType<CacheSegment> cacheMemory;
+	private final MutableMemoryType<StackSegment> stackMemory;
+	private final MutableMemoryType<DynamicSegment> dynamicMemory;
+	private final MutableMemoryType<CacheSegment> cacheMemory;
 	private final ImmutableMemoryType<HostSegment> hostMemory;
 	
 	private final Device device;
@@ -33,9 +37,9 @@ public class DefaultMemoryManager implements MemoryManager {
 	public DefaultMemoryManager(Device device, int minStackSize, int minDynamicSize, int minCacheSize, int minHostSize)
 	{
 		this.device = device;
-		stackMemory = new MemoryType<>(device, minStackSize, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, StackSegment::new);
-		dynamicMemory = new MemoryType<>(device, minDynamicSize, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, DynamicSegment::new);
-		cacheMemory = new MemoryType<>(device, minCacheSize, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, CacheSegment::new);
+		stackMemory = new MutableMemoryType<>(device, minStackSize, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, StackSegment::new);
+		dynamicMemory = new MutableMemoryType<>(device, minDynamicSize, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, DynamicSegment::new);
+		cacheMemory = new MutableMemoryType<>(device, minCacheSize, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, CacheSegment::new);
 		hostMemory = new ImmutableMemoryType<>(device, minHostSize, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_CACHED_BIT, HostSegment::new);
 	}
 	
@@ -48,8 +52,23 @@ public class DefaultMemoryManager implements MemoryManager {
 			StackSegment segment = stackMemory.makeSegment(bufferVk);
 			VulkanBuffer buffer = segment.bind(bufferVk, size, usage);
 			if (buffer == null) throw new ConcurrentModificationException();
+			if (stackMemory.name != null)
+			{
+				buffer.setName(stackMemory.name + " Buffer " + segment.index + " " + segment.nextId());
+			}
 			return buffer;
 		}
+	}
+	
+	@Override
+	public VulkanBuffer allocateHost(int size, int usage) throws VulkanException
+	{
+		HostSegment segment = hostMemory.makeSegment(size, usage);
+		if (hostMemory.name != null)
+		{
+			segment.buffer.setName(hostMemory.name + " Buffer " + segment.index);
+		}
+		return segment.buffer;
 	}
 	
 	@Override
@@ -63,6 +82,10 @@ public class DefaultMemoryManager implements MemoryManager {
 	{
 		HostSegment segment = hostMemory.makeSegment(size, VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 		
+		if (hostMemory.name != null)
+		{
+			segment.buffer.setName(hostMemory.name + " Buffer " + segment.index);
+		}
 		return new StackMemoryTransferState(segment.buffer, commandBuffer) {
 			
 			@Override
@@ -74,15 +97,52 @@ public class DefaultMemoryManager implements MemoryManager {
 	}
 	
 	@Override
-	public VulkanBuffer allocateCache(int size, int usage) throws VulkanException
+	public MemoryCacheState allocateCache(int size, int usage) throws VulkanException
 	{
 		try (MemoryStack stack = MemoryStack.stackPush())
 		{
 			long bufferVk = device.createBuffer(stack, size, usage);
 			CacheSegment segment = cacheMemory.makeSegment(bufferVk);
-			VulkanBuffer buffer = segment.bind(bufferVk, size, usage);
-			if (buffer == null) throw new ConcurrentModificationException();
-			return buffer;
+			MemoryCacheState cache = segment.bindCache(bufferVk, size, usage);
+			if (cache == null) throw new ConcurrentModificationException();
+			if (cacheMemory.name != null)
+			{
+				cache.getBuffer().setName(cacheMemory.name + " Buffer " + segment.index + " " + segment.size());
+			}
+			return cache;
+		}
+	}
+	
+	@Override
+	public MemoryCacheBulkState allocateCacheAll(int[] sizes, int usage, int bulkUsage) throws VulkanException
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			long[] vks = new long[sizes.length];
+			int[] newSizes = new int[sizes.length];
+			for (int i = 0; i < sizes.length; i++)
+			{
+				vks[i] = device.createBuffer(stack, sizes[i], usage);
+				newSizes[i] = (int) device.getBufferRequirements(stack, vks[i]).size();
+			}
+			int size = 0;
+			for (int i = 0; i < newSizes.length; i++) size += newSizes[i];
+			long bulkVk = device.createBuffer(stack, size, bulkUsage);
+			size = (int) device.getBufferRequirements(stack, bulkVk).size();
+			
+			CacheSegment segment = cacheMemory.makeSegment(bulkVk);
+			MemoryCacheBulkState cache = segment.bindBulkCache(bulkVk, size, bulkUsage, vks, newSizes, usage);
+			if (cache == null) throw new ConcurrentModificationException();
+			
+			if (cacheMemory.name != null)
+			{
+				int k = -sizes.length;
+				for (MemoryCacheState memoryCacheState : cache)
+				{
+					memoryCacheState.getBuffer().setName(cacheMemory.name + " Buffer " + segment.index + " " + (k++ + segment.size()));
+				}
+			}
+			return cache;
 		}
 	}
 	
@@ -95,6 +155,7 @@ public class DefaultMemoryManager implements MemoryManager {
 			DynamicSegment segment = dynamicMemory.makeSegment(bufferVk);
 			VulkanBuffer buffer = segment.bind(bufferVk, size, usage);
 			if (buffer == null) throw new ConcurrentModificationException();
+			if (dynamicMemory.name != null) buffer.setName(dynamicMemory.name + " Buffer " + segment.index + " " + segment.size());
 			return buffer;
 		}
 	}
@@ -128,16 +189,31 @@ public class DefaultMemoryManager implements MemoryManager {
 	protected static abstract class AbstractSegment implements Segment {
 		
 		protected final Memory memory;
+		protected final MemoryType<?> type;
+		protected final int index;
 		
-		protected AbstractSegment(Memory memory)
+		protected AbstractSegment(MemoryType<?> type, Memory memory, int index)
 		{
+			this.type = type;
 			this.memory = memory;
+			this.index = index;
 		}
 		
 		@Override
 		public Memory getMemory()
 		{
 			return memory;
+		}
+		
+		@SuppressWarnings("unchecked")
+		protected void release()
+		{
+			release0((MemoryType<AbstractSegment>) type, this);
+		}
+		
+		private static <S extends Segment> void release0(MemoryType<S> type, S s)
+		{
+			type.release(s);
 		}
 		
 		@Override
@@ -149,25 +225,48 @@ public class DefaultMemoryManager implements MemoryManager {
 	
 	protected static class StackSegment extends AbstractSegment {
 		
-		private int offset;
-		
-		public StackSegment(Memory memory, long bufferVk, long size)
-		{
-			super(memory);
-			offset = 0;
+		private class VB extends VulkanBuffer {
+			
+			public VB(Memory memory, long vk, long offset, int size, int usage) throws VulkanException
+			{
+				super(memory, vk, offset, size, usage);
+			}
+			
+			@Override
+			public void close()
+			{
+				deallocate(size);
+				deallocateVk();
+			}
 		}
 		
+		private int offset;
+		private int count;
+		
+		public StackSegment(MemoryType<?> type, Memory memory, long bufferVk, long size, int index)
+		{
+			super(type, memory, index);
+			offset = 0;
+			count = -1;
+		}
+		
+		public int nextId()
+		{
+			return count;
+		}
+
 		public @Nullable VulkanBuffer bind(long vk, int size, int usage) throws VulkanException
 		{
 			int offset = this.offset;
 			if (getFreeSize() < size) return null;
 			try
 			{
-				return new VulkanBuffer(memory, vk, offset, size, usage);
+				return new VB(memory, vk, offset, size, usage);
 			}
 			finally
 			{
 				this.offset += size;
+				count++;
 			}
 		}
 		
@@ -185,7 +284,7 @@ public class DefaultMemoryManager implements MemoryManager {
 	
 	protected static class DynamicSegment extends AbstractSegment {
 		
-		protected class Slot {
+		protected static class Slot {
 			
 			int x;
 			int w;
@@ -197,13 +296,29 @@ public class DefaultMemoryManager implements MemoryManager {
 			}
 		}
 		
+		private class VB extends VulkanBuffer {
+			
+			public VB(Memory memory, long vk, long offset, int size, int usage) throws VulkanException
+			{
+				super(memory, vk, offset, size, usage);
+			}
+			
+			@Override
+			public void close()
+			{
+				deallocate(this);
+				deallocateVk();
+			}
+		}
+		
 		protected NavigableSet<Slot> slotsW;
 		protected NavigableSet<Slot> slotsX;
 		protected int freeArea;
+		protected int count;
 		
-		public DynamicSegment(Memory memory, long bufferVk, long size)
+		public DynamicSegment(MemoryType<?> type, Memory memory, long bufferVk, long size, int index)
 		{
-			super(memory);
+			super(type, memory, index);
 			slotsX = new TreeSet<>((s0, s1) -> {
 				int c = Integer.compare(s0.x, s1.x);
 				if (c != 0) return c;
@@ -214,17 +329,28 @@ public class DefaultMemoryManager implements MemoryManager {
 				if (c != 0) return c;
 				return Integer.compare(s0.x, s1.x);
 			});
+			
 			freeArea = memory.getSize();
+			Slot newSlot = new Slot(0, freeArea);
+			slotsX.add(newSlot);
+			slotsW.add(newSlot);
+			
+			count = 0;
+		}
+		
+		public int size()
+		{
+			return count;
 		}
 		
 		public @Nullable VulkanBuffer bind(long vk, int size, int usage) throws VulkanException
 		{
 			if (size > freeArea) return null;
 			SortedSet<Slot> tail = slotsW.tailSet(new Slot(0, size));
+			if (tail.isEmpty()) return null;
 			Slot candidate = tail.first();
-			if (candidate == null) return null;
 			
-			VulkanBuffer vulkanBuffer = new VulkanBuffer(memory, vk, candidate.x, size, usage);
+			VulkanBuffer vulkanBuffer = new VB(memory, vk, candidate.x, size, usage);
 			tail.removeFirst();
 			int remaining = candidate.w - size;
 			if (remaining > 0)
@@ -233,8 +359,48 @@ public class DefaultMemoryManager implements MemoryManager {
 				slotsW.add(newSlot);
 				slotsX.add(newSlot);
 			}
+			count++;
 			
 			return vulkanBuffer;
+		}
+		
+		/**
+		 * 
+		 * @param bulkVk
+		 * @param bulkUsage
+		 * @param size -1 means unknown
+		 * @param vks
+		 * @param sizes
+		 * @param usage
+		 * @throws VulkanException
+		 */
+		public VulkanBuffer @Nullable [] bulkBind(long bulkVk, int size, int bulkUsage, long[] vks, int[] sizes, int usage) throws VulkanException
+		{
+			if (size == -1)
+			{
+				size = 0;
+				for (int i = 0; i < sizes.length; i++) size += sizes[i];
+			}
+			if (size > freeArea) return null;
+			
+			SortedSet<Slot> tail = slotsW.tailSet(new Slot(0, size));
+			if (tail.isEmpty()) return null;
+			Slot candidate = tail.first();
+			
+			VulkanBuffer[] buffers = new VulkanBuffer[sizes.length + 1];
+			for (int i = 0, x = candidate.x; i < sizes.length; x += sizes[i], i++) buffers[i] = new VB(memory, vks[i], x, sizes[i], usage);
+			buffers[sizes.length] = new VB(memory, bulkVk, candidate.x, size, bulkUsage);
+			tail.removeFirst();
+			int remaining = candidate.w - size;
+			if (remaining > 0)
+			{
+				Slot newSlot = new Slot(candidate.x + size, remaining);
+				slotsW.add(newSlot);
+				slotsX.add(newSlot);
+			}
+			count += sizes.length;
+			
+			return buffers;
 		}
 		
 		public void deallocate(VulkanBuffer buffer)
@@ -269,7 +435,9 @@ public class DefaultMemoryManager implements MemoryManager {
 					((@NonNull Slot) lower).w += ((@NonNull Slot) higher).w;
 					slotsW.add(lower);
 				}
+				default -> {}
 			}
+			count--;
 		}
 		
 		@Override
@@ -281,18 +449,133 @@ public class DefaultMemoryManager implements MemoryManager {
 	
 	protected static class CacheSegment extends DynamicSegment {
 		
-		public CacheSegment(Memory memory, long bufferVk, long size)
-		{
-			super(memory, bufferVk, size);
+		private static class CacheState implements MemoryCacheState {
+			
+			private VulkanBuffer buffer;
+			private boolean isValid;
+			private AtomicInteger usageCount;
+			
+			public CacheState(VulkanBuffer buffer)
+			{
+				this.buffer = buffer;
+				isValid = true;
+				usageCount = new AtomicInteger(1);
+			}
+			
+			@Override
+			public VulkanBuffer getBuffer()
+			{
+				return buffer;
+			}
+			
+			@Override
+			public boolean isValid()
+			{
+				return isValid;
+			}
+			
+			@Override
+			public void acquire()
+			{
+				usageCount.incrementAndGet();
+			}
+			
+			@Override
+			public void release()
+			{
+				usageCount.decrementAndGet();
+			}
 		}
 		
-		@Override
-		public @Nullable VulkanBuffer bind(long vk, int size, int usage) throws VulkanException
+		static class CacheBulkState implements MemoryCacheBulkState {
+			
+			private @Nullable VulkanBuffer buffer;
+			private MemoryCacheState[] states;
+			
+			public CacheBulkState(@Nullable VulkanBuffer buffer, MemoryCacheState[] states)
+			{
+				this.buffer = buffer;
+				this.states = states;
+			}
+			
+			@Override
+			public @Nullable VulkanBuffer getBuffer()
+			{
+				return buffer;
+			}
+			
+			@Override
+			public MemoryCacheState getState(int index)
+			{
+				return states[index];
+			}
+			
+			@Override
+			public boolean isContinuous()
+			{
+				return buffer != null;
+			}
+			
+			@Override
+			public Iterator<MemoryCacheState> iterator()
+			{
+				return Arrays.asList(states).iterator();
+			}
+		}
+		
+		private TreeMap<Long, CacheState> allocations;
+		
+		public CacheSegment(MemoryType<?> type, Memory memory, long bufferVk, long size, int index)
 		{
-			VulkanBuffer result = super.bind(vk, size, usage);
-			if (result != null) return result;
+			super(type, memory, bufferVk, size, index);
+			allocations = new TreeMap<>();
+		}
+		
+		public @Nullable CacheState bindCache(long vk, int size, int usage) throws VulkanException
+		{
+			VulkanBuffer result = bind(vk, size, usage);
+			if (result != null)
+			{
+				CacheState cache = new CacheState(result);
+				allocations.put(result.getOffset(), cache);
+				return cache;
+			}
 			if (!makeContinuousSpace(size)) return null;
-			return bind(vk, size, usage);
+			result = bind(vk, size, usage);
+			if (result == null) return null;
+			
+			CacheState cache = new CacheState(result);
+			allocations.put(result.getOffset(), cache);
+			return cache;
+		}
+		
+		//TODO: allocate buffers in blocks and return then ordered by offset (partial continuous memory)
+		public @Nullable MemoryCacheBulkState bindBulkCache(long bulkVk, int size, int bulkUsage, long[] vks, int[] sizes, int usage) throws VulkanException
+		{
+			CacheState[] caches = new CacheState[sizes.length];
+			VulkanBuffer[] result = bulkBind(bulkVk, size, bulkUsage, vks, sizes, usage);
+			if (result != null)
+			{
+				for (int i = 0; i < sizes.length; i++)
+				{
+					CacheState cache = new CacheState(result[i]);
+					allocations.put(result[i].getOffset(), cache);
+					caches[i] = cache;
+				}
+				return new CacheBulkState(result[sizes.length], caches);
+			}
+			for (int i = 0; i < sizes.length; i++)
+			{
+				CacheState cache = bindCache(vks[i], sizes[i], usage);
+				if (cache == null)
+				{
+					for (int j = i - 1; j >= 0; j--) caches[j].release();
+					return null;
+				}
+				allocations.put(cache.getBuffer().getOffset(), cache);
+				caches[i] = cache;
+			}
+			return new CacheBulkState(null, caches);
 		}
 		
 		protected boolean makeContinuousSpace(int size)
@@ -304,23 +587,54 @@ public class DefaultMemoryManager implements MemoryManager {
 	
 	protected static class HostSegment extends StackSegment {
 		
-		protected final VulkanBuffer buffer;
+		private class VB extends VulkanBuffer {
+			
+			public VB(Memory memory, long vk, long offset, int size, int usage) throws VulkanException
+			{
+				super(memory, vk, offset, size, usage);
+			}
+			
+			@Override
+			public void close()
+			{
+				release();
+			}
+			
+			public void closeSegment()
+			{
+				deallocateVk();
+			}
+		}
 		
-		public HostSegment(Memory memory, long bufferVk, long size) throws VulkanException
+		protected final VB buffer;
+		
+		public HostSegment(MemoryType<HostSegment> type, Memory memory, long bufferVk, long size, int index) throws VulkanException
 		{
-			super(memory, bufferVk, size);
-			buffer = new VulkanBuffer(memory, bufferVk, 0, (int) size, 0);
+			super(type, memory, bufferVk, size, index);
+			buffer = new VB(memory, bufferVk, 0, (int) size, 0);
 			memory.mapMemory();
+		}
+		
+		@Override
+		public void close()
+		{
+			buffer.closeSegment();
+			super.close();
 		}
 	}
 	
-	protected static class MemoryType<S extends Segment> implements AutoCloseable {
+	protected static interface MemoryType<S extends Segment> extends AutoCloseable {
 		
 		@FunctionalInterface
 		public interface Allocation<S extends Segment> {
 			
-			S allocate(Memory memory, long bufferVk, long size) throws VulkanException;
+			S allocate(MemoryType<S> type, Memory memory, long bufferVk, long size, int index) throws VulkanException;
 		}
+		
+		void release(S segment);
+	}
+	
+	protected static class MutableMemoryType<S extends Segment> implements MemoryType<S> {
 		
 		private final Allocation<S> allocationFactory;
 		
@@ -332,7 +646,7 @@ public class DefaultMemoryManager implements MemoryManager {
 		protected long maxCurrentSegmentSize;
 		private @Nullable String name;
 		
-		protected MemoryType(Device device, int minSegmentSize, int properties, Allocation<S> allocationFactory)
+		protected MutableMemoryType(Device device, int minSegmentSize, int properties, Allocation<S> allocationFactory)
 		{
 			this.allocationFactory = allocationFactory;
 			this.device = device;
@@ -353,7 +667,7 @@ public class DefaultMemoryManager implements MemoryManager {
 				if (allocationSize > maxCurrentSegmentSize)
 				{
 					Memory memory = device.allocateMemory(stack, requirements, properties, 0);
-					memory.setName(name + " " + segments.size());
+					if (name != null) memory.setName(name + " " + segments.size());
 					return allocateSegment(memory, bufferVk, allocationSize, true);
 				}
 				
@@ -365,7 +679,7 @@ public class DefaultMemoryManager implements MemoryManager {
 							try
 							{
 								Memory memory = device.allocateMemory(stack, requirements, properties, 0);
-								memory.setName(name + " " + segments.size());
+								if (name != null) memory.setName(name + " " + segments.size());
 								return allocateSegment(memory, bufferVk, allocationSize, true);
 							}
 							catch (VulkanException e)
@@ -384,7 +698,7 @@ public class DefaultMemoryManager implements MemoryManager {
 		public S allocateSegment(Memory memory, long bufferVk, long size, boolean autoConsume) throws VulkanException
 		{
 			size = Math.max(size, minSegmentSize);
-			S segment = allocationFactory.allocate(memory, bufferVk, size);
+			S segment = allocationFactory.allocate(this, memory, bufferVk, size, segments.size());
 			
 			if (!autoConsume)
 			{
@@ -397,6 +711,7 @@ public class DefaultMemoryManager implements MemoryManager {
 			return segment;
 		}
 		
+		@Override
 		public void release(S segment)
 		{
 			int i = segments.detectIndex(s -> s == segment);
@@ -418,13 +733,7 @@ public class DefaultMemoryManager implements MemoryManager {
 		}
 	}
 	
-	protected static class ImmutableMemoryType<S extends Segment> implements AutoCloseable {
-		
-		@FunctionalInterface
-		public interface Allocation<S extends Segment> {
-			
-			S allocate(Memory memory, long bufferVk, long size) throws VulkanException;
-		}
+	protected static class ImmutableMemoryType<S extends Segment> implements MemoryType<S> {
 		
 		private final Allocation<S> allocationFactory;
 		
@@ -457,7 +766,7 @@ public class DefaultMemoryManager implements MemoryManager {
 				{
 					long bufferVk = device.createBuffer(stack, effectiveSize, usage);
 					Memory memory = device.allocateBufferMemory(stack, bufferVk, properties, 0);
-					memory.setName(name + " " + segments.size());
+					if (name != null) memory.setName(name + " " + segments.size());
 					return allocateSegment(memory, bufferVk, effectiveSize, true);
 				}
 				
@@ -470,7 +779,7 @@ public class DefaultMemoryManager implements MemoryManager {
 							{
 								long bufferVk = device.createBuffer(stack, effectiveSize, usage);
 								Memory memory = device.allocateBufferMemory(stack, bufferVk, properties, 0);
-								memory.setName(name + " " + segments.size());
+								if (name != null) memory.setName(name + " " + segments.size());
 								return allocateSegment(memory, bufferVk, effectiveSize, true);
 							}
 							catch (VulkanException e)
@@ -488,7 +797,7 @@ public class DefaultMemoryManager implements MemoryManager {
 		
 		public S allocateSegment(Memory memory, long bufferVk, long size, boolean autoConsume) throws VulkanException
 		{
-			S segment = allocationFactory.allocate(memory, bufferVk, size);
+			S segment = allocationFactory.allocate(this, memory, bufferVk, size, segments.size());
 			
 			if (!autoConsume)
 			{
@@ -501,6 +810,7 @@ public class DefaultMemoryManager implements MemoryManager {
 			return segment;
 		}
 		
+		@Override
 		public void release(S segment)
 		{
 			int i = segments.detectIndex(s -> s == segment);

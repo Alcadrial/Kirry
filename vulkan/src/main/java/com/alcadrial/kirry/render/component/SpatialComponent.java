@@ -4,31 +4,59 @@ import java.util.concurrent.CompletableFuture;
 
 import org.jspecify.annotations.Nullable;
 
-import com.alcadrial.kector.vector.getter.Vector3fGetter;
-import com.alcadrial.kirry.core.component.Component;
+import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3fr;
 import com.alcadrial.kirry.core.component.ComponentType;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 
-public class SpatialComponent implements Component<SpatialComponent.Params, SpatialComponent.Properties, VulkanException> {
-
+public class SpatialComponent extends AbstractVulkanComponent<SpatialComponent.Params, SpatialComponent.Properties> {
+	
 	public static final ComponentType<SpatialComponent> TYPE = ComponentType.of(SpatialComponent.class);
 	
 	public record Params(
-		@Nullable Vector3fGetter position,
-		@Nullable Vector3fGetter movement
+		@Nullable Vector3fr position,
+		@Nullable Vector3fr movement
 	) {}
 	
 	public record Properties(
 		boolean isDirty
 	) {}
 	
-	private @Nullable Vector3fGetter position;
-	private @Nullable Vector3fGetter movement;
+	public record State(
+		Vector3f position,
+		Vector3f movement,
+		boolean[] isManuallyUpdated
+	) {}
+	
+	public static SpatialComponent of(Vector3f position, Vector3f oldPosition)
+	{
+		SpatialComponent spatial = new SpatialComponent(new State(position, Vector3f.of(0, 0, 0), new boolean[] {false}));
+		spatial.setOldPosition(oldPosition);
+		return spatial;
+	}
+	
+	public static SpatialComponent of(Vector3f position)
+	{
+		return new SpatialComponent(new State(position, Vector3f.of(0, 0, 0), new boolean[] {false}));
+	}
+	
+	public static SpatialComponent of(State state)
+	{
+		return new SpatialComponent(state);
+	}
+	
+	private final State state;
+	private @Nullable Vector3fr oldPosition;
 	private boolean isDirty;
 	
 	public SpatialComponent()
 	{
-		
+		state = new State(Vector3f.of(0, 0, 0), Vector3f.of(0, 0, 0), new boolean[] {false});
+	}
+	
+	public SpatialComponent(State state)
+	{
+		this.state = state;
 	}
 	
 	@Override
@@ -44,18 +72,6 @@ public class SpatialComponent implements Component<SpatialComponent.Params, Spat
 	}
 	
 	@Override
-	public boolean isLoaded()
-	{
-		return true;
-	}
-	
-	@Override
-	public int reloadCount()
-	{
-		return 0;
-	}
-	
-	@Override
 	public void init(Params params)
 	{
 		reinit(params);
@@ -64,8 +80,8 @@ public class SpatialComponent implements Component<SpatialComponent.Params, Spat
 	@Override
 	public void reinit(Params params)
 	{
-		if (params.position != null) position = params.position;
-		if (params.movement != null) movement = params.movement;
+		if (params.position != null) state.position.setAll(params.position);
+		if (params.movement != null) state.movement.setAll(params.movement);
 		isDirty = true;
 	}
 	
@@ -78,9 +94,17 @@ public class SpatialComponent implements Component<SpatialComponent.Params, Spat
 	
 	public void reset()
 	{
-		position = null;
-		movement = null;
 		isDirty = false;
+	}
+	
+	public void setOldPosition(Vector3fr oldPosition)
+	{
+		this.oldPosition = oldPosition;
+	}
+	
+	public @Nullable Vector3fr getOldPosition()
+	{
+		return oldPosition;
 	}
 	
 	@Override
@@ -89,10 +113,15 @@ public class SpatialComponent implements Component<SpatialComponent.Params, Spat
 		return new Properties(isDirty);
 	}
 	
+	public State getState()
+	{
+		return state;
+	}
+	
 	@Override
 	public void close()
 	{}
-
+	
 	@Override
 	public boolean listenResource()
 	{

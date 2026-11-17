@@ -6,23 +6,24 @@ import org.jspecify.annotations.Nullable;
 import org.lwjgl.vulkan.VK10;
 
 import com.alcadrial.kector.matrix.Matrix4f;
-import com.alcadrial.kector.vector.Vector2f;
-import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector2fr;
+import com.alcadrial.kector.vector.Vector3fr;
+import com.alcadrial.kector.vector.Vector4fr;
 import com.alcadrial.kirry.core.util.color.Color;
 import com.alcadrial.kirry.render.Device;
-import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.buffer.Memory.Mapping;
+import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.buffer.writer.DeferredBufferWriter;
 import com.alcadrial.kirry.render.util.exception.VulkanException;
 
 public class RenderingDataUtils {
 	
-	public static void loadOrthoCube(DeferredBufferWriter vertexBuffer, int vertexBufferOffset, Vector3f start, Vector3f end, BiFunction<Integer, Integer, Color> color) throws VulkanException
+	public static void loadOrthoCube(DeferredBufferWriter vertexBuffer, int vertexBufferOffset, Vector3fr start, Vector3fr end, BiFunction<Integer, Integer, Color> color) throws VulkanException
 	{
 		loadOrthoCube(vertexBuffer, vertexBufferOffset, null, 0, 0, start, end, color);
 	}
 	
-	public static void loadOrthoCube(DeferredBufferWriter vertexBufferWriter, int vertexBufferOffset, @Nullable DeferredBufferWriter indexBufferWriter, int indexBufferOffset, int startIndex, Vector3f start, Vector3f end, BiFunction<Integer, Integer, Color> color) throws VulkanException
+	public static void loadOrthoCube(DeferredBufferWriter vertexBufferWriter, int vertexBufferOffset, @Nullable DeferredBufferWriter indexBufferWriter, int indexBufferOffset, int startIndex, Vector3fr start, Vector3fr end, BiFunction<Integer, Integer, Color> color) throws VulkanException
 	{
 		if (indexBufferWriter != null) indexBufferWriter.setCursor(indexBufferOffset);
 		
@@ -86,12 +87,12 @@ public class RenderingDataUtils {
 		loadVertex(vertexBuffer, x, y, z, color.r() / 255, color.g() / 255, color.b() / 255, color.a() / 255, nX, nY, nZ);
 	}
 	
-	public static void loadRectangle(DeferredBufferWriter vertexBuffer, Matrix4f matrix, Vector3f start, Vector3f end, float z, Color color)
+	public static void loadRectangle(DeferredBufferWriter vertexBuffer, Matrix4f matrix, Vector3fr start, Vector3fr end, float z, Color color)
 	{
-		loadRectangle(vertexBuffer, matrix.multiply(start.xyz1()).xy(), matrix.multiply(end.xyz1()).xy(), z, color);
+		loadRectangle(vertexBuffer, matrix.multiply(Vector4fr.of(start, 1)), matrix.multiply(Vector4fr.of(end, 1)), z, color);
 	}
 	
-	public static void loadRectangle(DeferredBufferWriter vertexBuffer, Vector2f start, Vector2f end, float z, Color color)
+	public static void loadRectangle(DeferredBufferWriter vertexBuffer, Vector2fr start, Vector2fr end, float z, Color color)
 	{
 		loadRectangleColor(vertexBuffer, start.x(), start.y(), end.x(), end.y(), z, color.r() / 255, color.g() / 255, color.b() / 255, color.a() / 255);
 	}

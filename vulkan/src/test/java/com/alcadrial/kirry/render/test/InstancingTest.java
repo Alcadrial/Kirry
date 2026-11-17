@@ -16,14 +16,17 @@ import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 
-import com.alcadrial.kector.angle.AngleUnit;
+import com.alcadrial.kector.AngleUnit;
+import com.alcadrial.kector.Math;
 import com.alcadrial.kector.matrix.Matrix4f;
 import com.alcadrial.kector.vector.Vector3f;
+import com.alcadrial.kector.vector.Vector3fr;
+import com.alcadrial.kector.vector.Vector4fr;
 import com.alcadrial.kirry.core.util.color.Color;
 import com.alcadrial.kirry.render.Device;
 import com.alcadrial.kirry.render.FrameBuffer;
-import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.KirryVulkan;
+import com.alcadrial.kirry.render.PhysicalDevice;
 import com.alcadrial.kirry.render.Renderer;
 import com.alcadrial.kirry.render.buffer.VulkanBuffer;
 import com.alcadrial.kirry.render.buffer.writer.DeferredBufferWriter;
@@ -135,17 +138,23 @@ public class InstancingTest extends RenderTest {
 		
 		Device device = window.getDevice();
 		
-		try (RenderPassTemplate template = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format()))
+		try (RenderPassTemplate template = RenderPassTemplate.initColorDepthTextureTemplate(window.getSurface().getData().format().format(), window.getDepthTexture().getFormat()))
 		{
 			renderPass = template.createRenderPass(device);
 		}
 		
 		memoryManager = MemoryManager.getDefault(device);
+		int minUniformBufferOffsetAlignment = (int) device.getPhysicalDevice().getLimits().minUniformBufferOffsetAlignment();
+		int vertexUniformSize = 16 * 2 * 4;
+		int fragmentUniformSize = (3 + 1 + 1) * 4;
+		int fragmentUniformOffset = Math.align(vertexUniformSize, minUniformBufferOffsetAlignment);
+		int frameUniformSize = fragmentUniformOffset + Math.align(fragmentUniformSize, minUniformBufferOffsetAlignment);
+		int lastFrameUniformSize = fragmentUniformOffset + fragmentUniformSize;
 		
 		vertexBuffer = memoryManager.allocate(24 * 10 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		instanceVertexBuffer = memoryManager.allocate(instanceCount * 3 * 4, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		indexBuffer = memoryManager.allocate(36 * 4, VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-		uniformBuffer = VulkanBuffer.ofUniformsBindings(device, 6, 16 * 2 * 4);
+		uniformBuffer = VulkanBuffer.ofUniforms(device, frameUniformSize * 2 + lastFrameUniformSize);
 		
 		vertexBuffer.setName("VertexBuffer");
 		instanceVertexBuffer.setName("InstanceVertexBuffer");
@@ -160,7 +169,7 @@ public class InstancingTest extends RenderTest {
 			Color.VERY_LIGHT_CYAN,
 			Color.VERY_LIGHT_BLUE
 		};
-		VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getComputeQueue(), commandBuffer -> {
+		VulkanFuture<?> transferFuture = device.configureAndSubmitSingleUseCommandBuffer(device.getGraphicsQueue(), commandBuffer -> {
 			
 			try (MemoryTransferState transfer = memoryManager.allocateForTransfer(commandBuffer, vertexBuffer, instanceVertexBuffer, indexBuffer))
 			{
@@ -173,7 +182,7 @@ public class InstancingTest extends RenderTest {
 					vertexBuffer0Writer.put(Vector3f.of(j, k, 0));
 				}
 				
-				RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3f.origin(), Vector3f.of(1, 1, 1), (i, _) -> colors[i]);
+				RenderingDataUtils.loadOrthoCube(vertexBufferWriter, 0, indexBufferWriter, 0, 0, Vector3fr.of(), Vector3f.of(1, 1, 1), (i, _) -> colors[i]);
 			}
 		});
 		
@@ -192,14 +201,14 @@ public class InstancingTest extends RenderTest {
 				.pPoolSizes(VkDescriptorPoolSize.malloc(2, stack)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-						.descriptorCount(1)
-						)
+						.descriptorCount(window.getFramesCount())
+					)
 					.apply(b -> b
 						.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-						.descriptorCount(1)
-						)
+						.descriptorCount(window.getFramesCount())
+					)
 					.rewind()
-					);
+				);
 			
 			VkDescriptorSetLayoutCreateInfo createInfo = VkDescriptorSetLayoutCreateInfo.malloc(stack)
 				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
@@ -219,7 +228,7 @@ public class InstancingTest extends RenderTest {
 						.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
 						.pImmutableSamplers(null))
 					.rewind()
-					);
+				);
 			
 			DescriptorPool descriptorPool = new DescriptorPool(device, descriptorPoolCreateInfo);
 			DescriptorSetLayout descriptorSetLayout = new DescriptorSetLayout(device, createInfo);
@@ -236,7 +245,7 @@ public class InstancingTest extends RenderTest {
 					.addAttribute(1, 0, ShaderInputType.VECTOR_FLOAT_4, 12)
 					.addAttribute(2, 0, ShaderInputType.VECTOR_FLOAT_3, 28)
 					.addAttribute(3, 1, ShaderInputType.VECTOR_FLOAT_3, 0)
-					)
+				)
 				.build();
 			
 			graphicsPipeline = graphicsPipelineTemplate.createPipeline(device, shaderProgram, window, pipelineLayout, renderPass, 0);
@@ -246,24 +255,25 @@ public class InstancingTest extends RenderTest {
 				.descriptorSets(descriptorSets)
 				.buffersCount(window.getFramesCount())
 				.bindings(i -> new BindingInfo[] {
-					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i, 1, 16 * 2 * 4), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
+					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, frameUniformSize * i, vertexUniformSize), VK10.VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, List.of(
 						ShaderVariable.PROJECTION,
 						ShaderVariable.MODEL
-						)),
-					BindingInfo.ofUniform(VulkanBuffer.ofUniformsBindingsView(uniformBuffer, 2 * i + 1, 1, (3 + 1 + 1) * 4), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
+					)),
+					BindingInfo.ofUniform(VulkanBuffer.view(uniformBuffer, frameUniformSize * i + fragmentUniformOffset, fragmentUniformSize), VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, List.of(
 						lightPos,
 						lightIntensity,
 						spaceFogIntensity
-						))
+					))
 				})
 				.build();
+			renderer.updateAllDescriptorSets();
 			renderer.setBuffer(0, vertexBuffer);
 			renderer.setBuffer(1, instanceVertexBuffer);
 			renderer.setIndexBuffer(indexBuffer);
 			
 			Matrix4f projectionMatrix = buildFullSceneMatrix(window, (float) (Math.PI * 2 / 3));
 			Matrix4f modelMatrix = buildModelMatrix(f);
-			Vector3f relativeLightPos = buildScaleMatrix().multiply(Vector3f.of(5, 20, 0).xyz1()).xyz();
+			Vector3f relativeLightPos = buildScaleMatrix().multiply(Vector4fr.of(5, 20, 0, 1));
 			
 			for (int i = 0; i < window.getFramesCount(); i++)
 			{

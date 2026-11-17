@@ -88,14 +88,29 @@ public class VulkanUtils {
 	}
 	
 	@SafeVarargs
-	public static <VR extends AbstractVulkanResource<Pointer>> PointerBuffer toPointerBuffer(MemoryStack stack, VR... resources)
+	public static <V> LongBuffer toBuffer(MemoryStack stack, Function<V, Long> address, V... resources)
 	{
-		return toPointerBuffer(stack, List.of(resources));
+		LongBuffer buffer = stack.mallocLong(resources.length);
+		for (V v : resources) buffer.put(address.apply(v));
+		return buffer.rewind();
 	}
 	
-	public static <VR extends AbstractVulkanResource<Pointer>> PointerBuffer toPointerBuffer(MemoryStack stack, List<VR> resources)
+	public static <V> LongBuffer toBuffer(MemoryStack stack, Function<V, Long> address, List<V> resources)
 	{
-		PointerBuffer buffer = stack.mallocPointer(resources.size());
+		LongBuffer buffer = stack.mallocLong(resources.size());
+		for (V v : resources) buffer.put(address.apply(v));
+		return buffer.rewind();
+	}
+	
+	@SafeVarargs
+	public static <VR extends AbstractVulkanResource<Long>> LongBuffer toVkBuffer(MemoryStack stack, VR... resources)
+	{
+		return toVkBuffer(stack, List.of(resources));
+	}
+	
+	public static <VR extends AbstractVulkanResource<Long>> LongBuffer toVkBuffer(MemoryStack stack, List<VR> resources)
+	{
+		LongBuffer buffer = stack.mallocLong(resources.size());
 		for (VR vr : resources) buffer.put(vr.getVk());
 		return buffer.rewind();
 	}
@@ -184,7 +199,7 @@ public class VulkanUtils {
 	 * @param width width and height are the viewport’s width and height, respectively
 	 * @param height see width
 	 * @param minDepth minDepth and maxDepth are the depth range for the viewport
-	 * @param maxDepth see minDepth 
+	 * @param maxDepth see minDepth
 	 * @return a new buffer of {@link VkViewport}s in the stack
 	 */
 	public static VkViewport.Buffer viewport(MemoryStack stack, float x, float y, float width, float height, float minDepth, float maxDepth)
@@ -221,7 +236,7 @@ public class VulkanUtils {
 	 * 
 	 * @param stack the stack from which to allocate
 	 * @param type the type of descriptor
-	 * @param count the number of descriptors of that type to allocate. If type is DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK then descriptorCount 
+	 * @param count the number of descriptors of that type to allocate. If type is DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK then descriptorCount
 	 * 		is the number of bytes to allocate for descriptors of this type
 	 * @return a new buffer of {@link VkDescriptorPoolSize}s in the stack
 	 */
@@ -233,11 +248,11 @@ public class VulkanUtils {
 	/**
 	 * 
 	 * @param stack the stack from which to allocate
-	 * @param type a VkDescriptorType specifying the type of each descriptor in pImageInfo, pBufferInfo, or pTexelBufferView, as described below. 
-	 * 		If VkDescriptorSetLayoutBinding for dstSet at dstBinding is not equal to DESCRIPTOR_TYPE_MUTABLE_VALVE, descriptorType must be the 
-	 * 		same type as the descriptorType specified in VkDescriptorSetLayoutBinding for dstSet at dstBinding. The type of the descriptor also 
+	 * @param type a VkDescriptorType specifying the type of each descriptor in pImageInfo, pBufferInfo, or pTexelBufferView, as described below.
+	 * 		If VkDescriptorSetLayoutBinding for dstSet at dstBinding is not equal to DESCRIPTOR_TYPE_MUTABLE_VALVE, descriptorType must be the
+	 * 		same type as the descriptorType specified in VkDescriptorSetLayoutBinding for dstSet at dstBinding. The type of the descriptor also
 	 * 		controls which array the descriptors are taken from
-	 * @param count the number of descriptors to update. If the descriptor binding identified by dstSet and dstBinding has a descriptor type of 
+	 * @param count the number of descriptors to update. If the descriptor binding identified by dstSet and dstBinding has a descriptor type of
 	 * 		DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK, then descriptorCount specifies the number of bytes to update. Otherwise, descriptorCount is one of
 	 * 		<ul>
 	 * 			<li>the number of elements in pImageInfo</li>
@@ -257,11 +272,11 @@ public class VulkanUtils {
 	 * 
 	 * @param stack the stack from which to allocate
 	 * @param stackSize the number of elements to allocate
-	 * @param type a VkDescriptorType specifying the type of each descriptor in pImageInfo, pBufferInfo, or pTexelBufferView, as described below. 
-	 * 		If VkDescriptorSetLayoutBinding for dstSet at dstBinding is not equal to DESCRIPTOR_TYPE_MUTABLE_VALVE, descriptorType must be the 
-	 * 		same type as the descriptorType specified in VkDescriptorSetLayoutBinding for dstSet at dstBinding. The type of the descriptor also 
+	 * @param type a VkDescriptorType specifying the type of each descriptor in pImageInfo, pBufferInfo, or pTexelBufferView, as described below.
+	 * 		If VkDescriptorSetLayoutBinding for dstSet at dstBinding is not equal to DESCRIPTOR_TYPE_MUTABLE_VALVE, descriptorType must be the
+	 * 		same type as the descriptorType specified in VkDescriptorSetLayoutBinding for dstSet at dstBinding. The type of the descriptor also
 	 * 		controls which array the descriptors are taken from
-	 * @param count the number of descriptors to update. If the descriptor binding identified by dstSet and dstBinding has a descriptor type of 
+	 * @param count the number of descriptors to update. If the descriptor binding identified by dstSet and dstBinding has a descriptor type of
 	 * 		DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK, then descriptorCount specifies the number of bytes to update. Otherwise, descriptorCount is one of
 	 * 		<ul>
 	 * 			<li>the number of elements in pImageInfo</li>
@@ -299,10 +314,10 @@ public class VulkanUtils {
 	 * @param stack the stack from which to allocate
 	 * @param topology a VkPrimitiveTopology defining the primitive topology, as described below
 	 * @param primitiveRestartEnable controls whether a special vertex index value is treated as restarting the assembly of primitives.
-	 * 		This enable only applies to indexed draws (CmdDrawIndexed, CmdDrawMultiIndexedEXT, and CmdDrawIndexedIndirect), and the special 
-	 * 		index value is either 0xFFFFFFFF when the indexType parameter of vkCmdBindIndexBuffer is equal to INDEX_TYPE_UINT32, 0xFF when 
-	 * 		indexType is equal to INDEX_TYPE_UINT8_EXT, or 0xFFFF when indexType is equal to INDEX_TYPE_UINT16. Primitive restart is not 
-	 * 		allowed for "list" topologies, unless one of the features primitiveTopologyPatchListRestart (for PRIMITIVE_TOPOLOGY_PATCH_LIST) 
+	 * 		This enable only applies to indexed draws (CmdDrawIndexed, CmdDrawMultiIndexedEXT, and CmdDrawIndexedIndirect), and the special
+	 * 		index value is either 0xFFFFFFFF when the indexType parameter of vkCmdBindIndexBuffer is equal to INDEX_TYPE_UINT32, 0xFF when
+	 * 		indexType is equal to INDEX_TYPE_UINT8_EXT, or 0xFFFF when indexType is equal to INDEX_TYPE_UINT16. Primitive restart is not
+	 * 		allowed for "list" topologies, unless one of the features primitiveTopologyPatchListRestart (for PRIMITIVE_TOPOLOGY_PATCH_LIST)
 	 * 		or primitiveTopologyListRestart (for all other list topologies) is enabled
 	 * @return a new {@link VkPipelineInputAssemblyStateCreateInfo} in the stack
 	 */

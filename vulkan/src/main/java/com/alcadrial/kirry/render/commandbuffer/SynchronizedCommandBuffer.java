@@ -14,6 +14,7 @@ import org.lwjgl.vulkan.VkClearColorValue;
 import org.lwjgl.vulkan.VkClearRect;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
+import org.lwjgl.vulkan.VkImageBlit;
 import org.lwjgl.vulkan.VkImageMemoryBarrier;
 import org.lwjgl.vulkan.VkImageSubresourceRange;
 import org.lwjgl.vulkan.VkMemoryBarrier;
@@ -21,7 +22,7 @@ import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
 import org.lwjgl.vulkan.VkViewport;
 
-import com.alcadrial.kector.vector.Vector3i;
+import com.alcadrial.kector.vector.Vector3ir;
 import com.alcadrial.kirry.core.util.NotYetImplementedException;
 import com.alcadrial.kirry.core.util.color.Color;
 import com.alcadrial.kirry.render.Debug;
@@ -131,15 +132,15 @@ public class SynchronizedCommandBuffer extends CommandBuffer {
 			VK10.vkCmdBindVertexBuffers(vk, bindingOffset, buffers, new long[buffers.length]);
 		}
 	}
+
 	
-	/**
-	 * NYI
-	 */
 	@Override
-	public void blitImage()
+	public void blitImage(Texture src, int srcLayout, Texture dst, int dstLayout, VkImageBlit.Buffer regions, int filter)
 	{
-		// VK10.vkCmdBlitImage(vk);
-		throw new NotYetImplementedException();
+		synchronized (pool)
+		{
+			VK10.vkCmdBlitImage(vk, src.getVk(), srcLayout, dst.getVk(), dstLayout, regions, filter);
+		}
 	}
 	
 	@Override
@@ -225,7 +226,7 @@ public class SynchronizedCommandBuffer extends CommandBuffer {
 	}
 	
 	@Override
-	public void copyBufferToImage(VulkanBuffer srcBuffer, long srcOffset, Texture dstTexture, Vector3i imageOffset, Vector3i imageExtent)
+	public void copyBufferToImage(VulkanBuffer srcBuffer, long srcOffset, Texture dstTexture, Vector3ir imageOffset, Vector3ir imageExtent)
 	{
 		copyBufferToImage(srcBuffer, srcOffset, dstTexture, imageOffset.x(), imageOffset.y(), imageOffset.z(), imageExtent.x(), imageExtent.y(), imageExtent.z());
 	}

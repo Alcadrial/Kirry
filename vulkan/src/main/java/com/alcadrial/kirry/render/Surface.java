@@ -13,7 +13,7 @@ import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSurfaceFormatKHR;
 
-import com.alcadrial.kector.vector.Vector2i;
+import com.alcadrial.kector.vector.Vector2ir;
 import com.alcadrial.kirry.render.util.AbstractVulkanResource;
 import com.alcadrial.kirry.render.util.VulkanErrorUtils;
 import com.alcadrial.kirry.render.util.VulkanUtils;
@@ -91,7 +91,7 @@ public class Surface extends AbstractVulkanResource<Long> {
 		return new Builder();
 	}
 	
-	public static record SurfaceData(PhysicalDevice physicalDevice, VkSurfaceFormatKHR format, int mode, VkExtent2D extent, Vector2i maxSize, Vector2i minSize, Vector2i size) {}
+	public static record SurfaceData(PhysicalDevice physicalDevice, VkSurfaceFormatKHR format, int mode, VkExtent2D extent, Vector2ir maxSize, Vector2ir minSize, Vector2ir size) {}
 	
 	private static final VarHandle DATA_HANDLE;
 	static
@@ -158,8 +158,8 @@ public class Surface extends AbstractVulkanResource<Long> {
 			VkExtent2D extent = VkExtent2D.malloc();
 			VkExtent2D minExtent = capabilities.minImageExtent();
 			VkExtent2D maxExtent = capabilities.maxImageExtent();
-			Vector2i maxSize = Vector2i.ofImmutable(minExtent.width(), minExtent.height());
-			Vector2i minSize = Vector2i.ofImmutable(maxExtent.width(), maxExtent.height());
+			Vector2ir maxSize = Vector2ir.of(minExtent.width(), minExtent.height());
+			Vector2ir minSize = Vector2ir.of(maxExtent.width(), maxExtent.height());
 			if (capabilities.currentExtent().width() != 0xFFFFFFFF)
 			{
 				extent = VulkanUtils.copy(capabilities.currentExtent(), VkExtent2D::create);
@@ -172,7 +172,7 @@ public class Surface extends AbstractVulkanResource<Long> {
 				if (extent.height() < minExtent.height()) extent.height(minExtent.height());
 				else if (extent.height() > maxExtent.height()) extent.height(maxExtent.height());
 			}
-			Vector2i size = Vector2i.ofImmutable(extent.width(), extent.height());
+			Vector2ir size = Vector2ir.of(extent.width(), extent.height());
 			return new SurfaceData(physicalDevice, format, mode, extent, maxSize, minSize, size);
 		}
 	}

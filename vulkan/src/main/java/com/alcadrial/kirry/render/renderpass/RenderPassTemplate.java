@@ -58,6 +58,29 @@ public class RenderPassTemplate implements AutoCloseable {
 			.build();
 	}
 	
+	public static RenderPassTemplate colorTextureWriteReadTemplate(int format)
+	{
+		return create()
+			.addAttachment(config -> config
+				.format(format)
+				.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
+				.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR)
+				.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE)
+				.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+				.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE)
+				.initialLayout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+				.finalLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
+			.addSubpass(config -> config
+				.pipelineBindPoint(VK10.VK_PIPELINE_BIND_POINT_GRAPHICS)
+				.addColor(0, VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
+			.addSubpassDependency(config -> config
+				.srcSubpass(VK10.VK_SUBPASS_EXTERNAL)
+				.srcStageMask(VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
+				.dstStageMask(VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
+				.dstAccessMask(VK10.VK_ACCESS_SHADER_READ_BIT))
+			.build();
+	}
+	
 	public static RenderPassTemplate initColorTextureTemplate(int format)
 	{
 		return create()
@@ -92,7 +115,7 @@ public class RenderPassTemplate implements AutoCloseable {
 				.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE)
 				.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE)
 				.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
-				.finalLayout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
+				.finalLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
 			.addSubpass(config -> config
 				.pipelineBindPoint(VK10.VK_PIPELINE_BIND_POINT_GRAPHICS)
 				.addColor(0, VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
@@ -104,7 +127,7 @@ public class RenderPassTemplate implements AutoCloseable {
 			.build();
 	}
 	
-	public static RenderPassTemplate colorDepthTextureTemplate(int format)
+	public static RenderPassTemplate colorDepthTextureTemplate(int format, int depthFormat)
 	{
 		return create()
 			.addAttachment(config -> config
@@ -117,7 +140,7 @@ public class RenderPassTemplate implements AutoCloseable {
 				.initialLayout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 				.finalLayout(KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
 			).addAttachment(config -> config
-				.format(VK10.VK_FORMAT_D24_UNORM_S8_UINT)
+				.format(depthFormat)
 				.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
 				.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR)
 				.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE)
@@ -137,7 +160,7 @@ public class RenderPassTemplate implements AutoCloseable {
 			).build();
 	}
 	
-	public static RenderPassTemplate transformColorDepthTextureTemplate(int format, int sampleCount)
+	public static RenderPassTemplate transformColorDepthTextureTemplate(int format, int depthFormat, int sampleCount)
 	{
 		return create()
 			.addAttachment(config -> config
@@ -148,9 +171,9 @@ public class RenderPassTemplate implements AutoCloseable {
 				.stencilLoadOp(VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE)
 				.stencilStoreOp(VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE)
 				.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
-				.finalLayout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+				.finalLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 			).addAttachment(config -> config
-				.format(VK10.VK_FORMAT_D24_UNORM_S8_UINT)
+				.format(depthFormat)
 				.samples(sampleCount)
 				.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR)
 				.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE)
@@ -169,7 +192,7 @@ public class RenderPassTemplate implements AutoCloseable {
 				.dstAccessMask(VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
 			).build();
 	}
-	public static RenderPassTemplate initColorDepthTextureTemplate(int format)
+	public static RenderPassTemplate initColorDepthTextureTemplate(int format, int depthFormat)
 	{
 		return create()
 			.addAttachment(config -> config
@@ -182,7 +205,7 @@ public class RenderPassTemplate implements AutoCloseable {
 				.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
 				.finalLayout(KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
 			).addAttachment(config -> config
-				.format(VK10.VK_FORMAT_D24_UNORM_S8_UINT)
+				.format(depthFormat)
 				.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
 				.loadOp(VK10.VK_ATTACHMENT_LOAD_OP_CLEAR)
 				.storeOp(VK10.VK_ATTACHMENT_STORE_OP_STORE)
@@ -209,14 +232,16 @@ public class RenderPassTemplate implements AutoCloseable {
 		this.createInfo = createInfo;
 	}
 	
-	public RenderPass createRenderPass() throws VulkanException
-	{
-		return createRenderPass(KirryVulkan.getVulkan().getDevice());
-	}
-	
 	public RenderPass createRenderPass(Device device) throws VulkanException
 	{
 		return new RenderPass(device, createInfo);
+	}
+	
+	public RenderPass createRenderPassAndClose(Device device) throws VulkanException
+	{
+		RenderPass renderPass = new RenderPass(device, createInfo);
+		close();
+		return renderPass;
 	}
 	
 	private void free(@Nullable NativeResource struct)
@@ -243,7 +268,7 @@ public class RenderPassTemplate implements AutoCloseable {
 	
 	public static class Builder {
 		
-		public class AttachmentConfigurator {
+		public static class AttachmentConfigurator {
 			
 			private int flags;
 			private int format;
@@ -315,7 +340,7 @@ public class RenderPassTemplate implements AutoCloseable {
 			}
 		}
 		
-		public class SubpassConfigurator {
+		public static class SubpassConfigurator {
 			
 			private int flags;
 			private int pipelineBindPoint;
@@ -420,7 +445,7 @@ public class RenderPassTemplate implements AutoCloseable {
 			}
 		}
 		
-		public class SubpassDependencyConfigurator {
+		public static class SubpassDependencyConfigurator {
 			
 			private int srcSubpass;
 			private int dstSubpass;

@@ -52,7 +52,7 @@ public class CompletableTaskHandler<V> implements VulkanFuture<V> {
 	@Override
 	public void await(long timeout, TimeUnit unit) throws InterruptedException, TimeoutException
 	{
-		if (!isDone) termination.await(timeout, unit);
+		if (!isDone && !termination.await(timeout, unit)) throw new TimeoutException();
 	}
 	
 	@Override
